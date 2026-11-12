@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>RythmnEscape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f1e;
+    --panel: #171a33;
+    --text: #e8eaff;
+    --muted: #8b90b8;
+    --accent: #ffd34d;
+    --danger: #ff5a6a;
+    --exit: #3ee6a0;
+    --chaser: #b46bff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Jua", system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12px 16px 24px;
+    -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
+  }
+  .wrap { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 10px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: 0.5px; }
+  h1 span { color: var(--accent); }
+  .stats { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .stage-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+  .stage-bar button {
+    width: 34px; height: 30px; border-radius: 8px; border: 1px solid #2c3160;
+    background: var(--panel); color: var(--muted); font-weight: 600; cursor: pointer;
+  }
+  .stage-bar button.current { border-color: var(--accent); color: var(--accent); }
+  .stage-bar button.cleared::after { content: "✓"; font-size: 10px; margin-left: 1px; color: var(--exit); }
+  .info { background: var(--panel); border-radius: 10px; padding: 10px 12px; }
+  .info .name { font-weight: 700; }
+  .info .hint { color: var(--muted); font-size: 14px; margin-top: 2px; line-height: 1.4; }
+  .board-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
+  canvas { display: block; border-radius: 12px; touch-action: none; }
+  .overlay {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    background: rgba(8, 9, 20, 0.72); border-radius: 12px; text-align: center; padding: 16px;
+  }
+  .overlay.show { display: flex; }
+  .overlay .title { font-size: 28px; font-weight: 800; }
+  .overlay .sub { color: var(--muted); }
+  .overlay .row { display: flex; gap: 8px; }
+  .btn {
+    border: none; border-radius: 10px; padding: 10px 16px; font-size: 15px; font-weight: 700;
+    background: #2a2f5c; color: var(--text); cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); color: #231c00; }
+  .toolbar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .toolbar .btn { padding: 8px 12px; font-size: 14px; }
+  .pad {
+    display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(3, 56px);
+    gap: 6px; justify-content: center; margin-top: 4px;
+  }
+  .pad button {
+    border: none; border-radius: 12px; background: var(--panel); color: var(--text);
+    font-size: 22px; cursor: pointer;
+  }
+  .pad button:active { background: #2a2f5c; }
+  .pad .wait { font-size: 13px; font-weight: 700; color: var(--muted); }
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 13px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .keys { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
+  kbd { background: var(--panel); border: 1px solid #2c3160; border-radius: 4px; padding: 0 5px; font-family: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Rythmn<span>Escape</span></h1>
+    <div class="stats" id="stats">턴 0</div>
+  </header>
+  <div class="stage-bar" id="stageBar"></div>
+  <div class="info">
+    <div class="name" id="stageName"></div>
+    <div class="hint" id="stageHint"></div>
+  </div>
+  <div class="board-wrap" id="boardWrap">
+    <canvas id="board"></canvas>
+    <div class="overlay" id="overlay">
+      <div class="title" id="ovTitle"></div>
+      <div class="sub" id="ovSub"></div>
+      <div class="row" id="ovButtons"></div>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button class="btn" id="undoBtn">↶ 되돌리기 (Z)</button>
+    <button class="btn" id="restartBtn">⟳ 다시하기 (R)</button>
+  </div>
+  <div class="pad">
+    <span></span><button data-act="up">▲</button><span></span>
+    <button data-act="left">◀</button><button data-act="wait" class="wait">대기</button><button data-act="right">▶</button>
+    <span></span><button data-act="down">▼</button><span></span>
+  </div>
+  <div class="legend">
+    <div><i style="background:#fff1b8;border:2px solid #ffd23f"></i>병아리 (나)</div>
+    <div><i style="background:#3ee6a0"></i>출구</div>
+    <div><i style="background:#ff5a6a"></i>순찰병 (왕복 이동)</div>
+    <div><i style="background:#b46bff"></i>추적자 (따라옴)</div>
+    <div><i style="background:rgba(255,90,106,.35);border:1px dashed #ff5a6a"></i>적의 다음 이동 칸</div>
+    <div><i style="background:#8a6a3c"></i>무너지는 발판</div>
+  </div>
+  <div class="keys">
+    <kbd>←↑↓→</kbd>/<kbd>WASD</kbd> 점프 · <kbd>Space</kbd> 제자리 대기 · <kbd>Z</kbd> 되돌리기 · <kbd>R</kbd> 다시하기<br>
+    모바일: 보드를 스와이프하거나 아래 버튼 사용
+  </div>
+</div>
+
+<script id="logic">
+// ===================== 게임 로직 (렌더링과 분리) =====================
+// 맵 기호: # 벽  . 바닥  ~ 무너지는 발판  P 플레이어  E 출구
+//          > < v ^ 순찰병(초기 진행 방향)  C 추적자
+const LEVELS = [
+  {
+    name: "1. 첫 점프",
+    hint: "방향키로 한 칸씩 점프해서 초록색 출구까지 가세요.",
+    map: [
+      "#######",
+      "#P....#",
+      "#.###.#",
+      "#.#E..#",
+      "#.###.#",
+      "#.....#",
+      "#######",
+    ],
+  },
+  {
+    name: "2. 순찰병",
+    hint: "빨간 점선 칸은 적이 다음 턴에 올 자리예요. 피하거나 Space로 기다리세요.",
+    map: [
+      "#########",
+      "#P......#",
+      "#.#####.#",
+      "#...<...#",
+      "#.#####.#",
+      "#......E#",
+      "#########",
+    ],
+  },
+  {
+    name: "3. 엇갈리는 길",
+    hint: "순찰병 둘이 길을 가로막아요. 타이밍을 보고 사이로 빠져나가세요.",
+    map: [
+      "#########",
+      "#P..#...#",
+      "#.#.v.#.#",
+      "#.......#",
+      "#.#.#.#.#",
+      "#...^...#",
+      "###.#.#.#",
+      "#E......#",
+      "#########",
+    ],
+  },
+  {
+    name: "4. 추적자",
+    hint: "보라색 추적자는 한 박자 늦게 당신을 쫓아와요. 기둥을 돌아 따돌리세요.",
+    map: [
+      "#########",
+      "#P......#",
+      "#.##.##.#",
+      "#...C...#",
+      "#.##.##.#",
+      "#.......#",
+      "#.##.##.#",
+      "#......E#",
+      "#########",
+    ],
+  },
+  {
+    name: "5. 무너지는 다리",
+    hint: "갈색 발판은 밟고 떠나면 무너져요. 적은 구멍을 건널 수 없어요.",
+    map: [
+      "###########",
+      "#P..#.....#",
+      "#...#.###.#",
+      "#...~.#E#.#",
+      "#C..#.#...#",
+      "###########",
+    ],
+  },
+  {
+    name: "6. 탈출",
+    hint: "지금까지 배운 걸 모두 써서 탈출하세요!",
+    map: [
+      "###########",
+      "#P....#...#",
+      "#.###.#.#.#",
+      "#.....~.#E#",
+      "#.#.#.#.#.#",
+      "#..C..#>..#",
+      "###########",
+    ],
+  },
+];
+
+const DIRS = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  wait: { x: 0, y: 0 },
+};
+
+function parseLevel(level) {
+  const grid = [];
+  const enemies = [];
+  let player = null;
+  level.map.forEach((row, y) => {
+    const r = [];
+    [...row].forEach((ch, x) => {
+      let t = "floor";
+      if (ch === "#") t = "wall";
+      else if (ch === "~") t = "crumble";
+      else if (ch === "E") t = "exit";
+      else if (ch === "P") player = { x, y };
+      else if (ch === ">") enemies.push({ type: "patrol", x, y, dx: 1, dy: 0 });
+      else if (ch === "<") enemies.push({ type: "patrol", x, y, dx: -1, dy: 0 });
+      else if (ch === "v") enemies.push({ type: "patrol", x, y, dx: 0, dy: 1 });
+      else if (ch === "^") enemies.push({ type: "patrol", x, y, dx: 0, dy: -1 });
+      else if (ch === "C") enemies.push({ type: "chaser", x, y, dx: 0, dy: 0 });
+      r.push(t);
+    });
+    grid.push(r);
+  });
+  return { grid, player, enemies: enemies.map((e, id) => ({ ...e, id, intent: null })) };
+}
+
+function tileAt(s, x, y) {
+  if (y < 0 || y >= s.grid.length || x < 0 || x >= s.grid[0].length) return "wall";
+  return s.grid[y][x];
+}
+const playerCanEnter = (t) => t !== "wall" && t !== "pit";
+const enemyCanEnter = (t) => t === "floor" || t === "crumble";
+
+// 추적자: BFS로 플레이어까지 최단 경로의 첫 칸
+function chaseStep(s, e) {
+  const W = s.grid[0].length, H = s.grid.length;
+  const prev = new Array(W * H).fill(-1);
+  const start = e.y * W + e.x, goal = s.player.y * W + s.player.x;
+  prev[start] = start;
+  const q = [start];
+  const order = [DIRS.up, DIRS.right, DIRS.down, DIRS.left];
+  while (q.length) {
+    const cur = q.shift();
+    if (cur === goal) break;
+    const cx = cur % W, cy = (cur / W) | 0;
+    for (const d of order) {
+      const nx = cx + d.x, ny = cy + d.y, ni = ny * W + nx;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev[ni] !== -1) continue;
+      if (ni !== goal && !enemyCanEnter(tileAt(s, nx, ny))) continue;
+      prev[ni] = cur;
+      q.push(ni);
+    }
+  }
+  if (prev[goal] === -1) return null;
+  let cur = goal;
+  while (prev[cur] !== start) cur = prev[cur];
+  return { x: cur % W, y: (cur / W) | 0 };
+}
+
+// 각 적의 "다음 턴 이동"을 미리 확정 (화면에 예고됨)
+function planIntents(s) {
+  const reserved = new Set();
+  const k = (x, y) => x + "," + y;
+  const blocked = (e, x, y) =>
+    !enemyCanEnter(tileAt(s, x, y)) ||
+    reserved.has(k(x, y)) ||
+    s.enemies.some((o) => o !== e && o.x === x && o.y === y);
+  for (const e of s.enemies) {
+    let target = null;
+    if (e.type === "patrol") {
+      if (blocked(e, e.x + e.dx, e.y + e.dy)) { e.dx = -e.dx; e.dy = -e.dy; }
+      if (!blocked(e, e.x + e.dx, e.y + e.dy)) target = { x: e.x + e.dx, y: e.y + e.dy };
+    } else if (e.type === "chaser") {
+      const t = chaseStep(s, e);
+      if (t && !blocked(e, t.x, t.y)) target = t;
+    }
+    e.intent = target;
+    reserved.add(target ? k(target.x, target.y) : k(e.x, e.y));
+  }
+}
+
+function initState(level) {
+  const p = parseLevel(level);
+  const s = { grid: p.grid, player: p.player, enemies: p.enemies, turn: 0, status: "playing", cause: "" };
+  planIntents(s);
+  return s;
+}
+
+const cloneState = (s) => JSON.parse(JSON.stringify(s));
+
+// 한 턴 진행: 플레이어 점프 → 적 이동 → 다음 예고 계산. 불가능한 이동이면 null.
+function step(prev, action) {
+  if (prev.status !== "playing") return null;
+  const d = DIRS[action];
+  if (!d) return null;
+  const nx = prev.player.x + d.x, ny = prev.player.y + d.y;
+  if (action !== "wait" && !playerCanEnter(tileAt(prev, nx, ny))) return null;
+
+  const s = cloneState(prev);
+  s.turn++;
+  const from = s.player;
+  if (action !== "wait" && tileAt(s, from.x, from.y) === "crumble") s.grid[from.y][from.x] = "pit";
+  s.player = { x: nx, y: ny };
+
+  if (s.enemies.some((e) => e.x === nx && e.y === ny)) {
+    s.status = "dead"; s.cause = "적에게 뛰어들었어요!";
+    return s;
+  }
+  if (tileAt(s, nx, ny) === "exit") { s.status = "won"; return s; }
+
+  for (const e of s.enemies) if (e.intent) { e.x = e.intent.x; e.y = e.intent.y; }
+  if (s.enemies.some((e) => e.x === nx && e.y === ny)) {
+    s.status = "dead"; s.cause = "적에게 잡혔어요!";
+    return s;
+  }
+  planIntents(s);
+  return s;
+}
+
+// 레벨 검증용: 최소 턴 수 탐색 (BFS)
+function solve(level, maxDepth = 80) {
+  const key = (s) => JSON.stringify([s.player, s.enemies.map((e) => [e.x, e.y, e.dx, e.dy]), s.grid.flat().join("")]);
+  let frontier = [{ s: initState(level), path: [] }];
+  const seen = new Set([key(frontier[0].s)]);
+  for (let depth = 0; depth < maxDepth && frontier.length; depth++) {
+    const next = [];
+    for (const { s, path } of frontier) {
+      for (const a of ["up", "down", "left", "right", "wait"]) {
+        const n = step(s, a);
+        if (!n || n.status === "dead") continue;
+        if (n.status === "won") return [...path, a];
+        const kk = key(n);
+        if (seen.has(kk)) continue;
+        seen.add(kk);
+        next.push({ s: n, path: [...path, a] });
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}
+
+if (typeof module !== "undefined") module.exports = { LEVELS, initState, step, solve };
+</script>
+
+<script>
+// ===================== 렌더링 & 입력 =====================
+(() => {
+  const canvas = document.getElementById("board");
+  const ctx = canvas.getContext("2d");
+  const $ = (id) => document.getElementById(id);
+
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem("rythmnescape.cleared") || "[]"); } catch { return []; } },
+    set(v) { try { localStorage.setItem("rythmnescape.cleared", JSON.stringify(v)); } catch {} },
+  };
+
+  let levelIndex = 0;
+  let state, history;
+  let anim = null;          // { from, to, start, dur }
+  let queued = null;
+  let tile = 48;
+  let facing = { x: 0, y: 1 };
+  let cleared = new Set(store.get());
+
+  const COLORS = {
+    floorA: "#1b1f3d", floorB: "#20254a", wallTop: "#3b4175", wallSide: "#272b52",
+    exit: "#3ee6a0", crumble: "#8a6a3c", crumbleLine: "#4d3a1f", pit: "#05060d",
+    player: "#ffd23f", patrol: "#ff5a6a", chaser: "#b46bff", intent: "rgba(255,90,106,0.22)",
+  };
+
+  function load(i) {
+    levelIndex = i;
+    state = initState(LEVELS[i]);
+    history = [];
+    anim = null; queued = null; facing = { x: 0, y: 1 };
+    $("stageName").textContent = LEVELS[i].name;
+    $("stageHint").textContent = LEVELS[i].hint;
+    renderStageBar();
+    resize();
+    updateUI();
+  }
+
+  function renderStageBar() {
+    const bar = $("stageBar");
+    bar.innerHTML = "";
+    LEVELS.forEach((_, i) => {
+      const b = document.createElement("button");
+      b.textContent = i + 1;
+      if (i === levelIndex) b.classList.add("current");
+      if (cleared.has(i)) b.classList.add("cleared");
+      b.onclick = () => load(i);
+      bar.appendChild(b);
+    });
+  }
+
+  function resize() {
+    const W = state.grid[0].length, H = state.grid.length;
+    const maxW = $("boardWrap").clientWidth;
+    const maxH = Math.max(240, window.innerHeight * 0.5);
+    tile = Math.floor(Math.min(maxW / W, maxH / H, 64));
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.width = tile * W + "px";
+    canvas.style.height = tile * H + "px";
+    canvas.width = tile * W * dpr;
+    canvas.height = tile * H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function act(action) {
+    if (anim) { queued = action; return; }
+    const next = step(state, action);
+    if (action !== "wait") facing = { ...DIRS[action] };
+    if (!next) { bump(action); return; }
+    history.push(state);
+    anim = { from: state, to: next, start: performance.now(), dur: 190 };
+    state = next;
+    updateUI();
+  }
+
+  let bumpInfo = null;
+  function bump(action) {
+    if (state.status !== "playing") return;
+    bumpInfo = { d: DIRS[action], start: performance.now() };
+  }
+
+  function undo() {
+    if (!history.length) return;
+    state = history.pop();
+    anim = null; queued = null;
+    updateUI();
+  }
+
+  function updateUI() {
+    $("stats").textContent = `턴 ${state.turn}`;
+    const ov = $("overlay");
+    const btns = $("ovButtons");
+    btns.innerHTML = "";
+    if (state.status === "playing") { ov.classList.remove("show"); return; }
+    // 애니메이션이 끝난 뒤 오버레이 표시
+    setTimeout(() => {
+      if (state.status === "playing") return;
+      ov.classList.add("show");
+    }, 260);
+    if (state.status === "won") {
+      cleared.add(levelIndex); store.set([...cleared]); renderStageBar();
+      $("ovTitle").textContent = "탈출 성공!";
+      $("ovTitle").style.color = COLORS.exit;
+      $("ovSub").textContent = `${state.turn}턴 만에 탈출했어요.`;
+      addBtn("다시하기", () => load(levelIndex));
+      if (levelIndex < LEVELS.length - 1) addBtn("다음 스테이지 →", () => load(levelIndex + 1), true);
+      else $("ovSub").textContent += " 모든 스테이지 클리어! 🎉";
+    } else {
+      $("ovTitle").textContent = "실패";
+      $("ovTitle").style.color = COLORS.patrol;
+      $("ovSub").textContent = state.cause;
+      addBtn("↶ 한 턴 되돌리기", undo);
+      addBtn("다시하기", () => load(levelIndex), true);
+    }
+    function addBtn(label, fn, primary) {
+      const b = document.createElement("button");
+      b.className = "btn" + (primary ? " primary" : "");
+      b.textContent = label;
+      b.onclick = fn;
+      btns.appendChild(b);
+    }
+  }
+
+  // ---------- 그리기 ----------
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawTiles(s, now) {
+    const H = s.grid.length, W = s.grid[0].length;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const t = s.grid[y][x], px = x * tile, py = y * tile;
+      if (t === "wall") {
+        ctx.fillStyle = COLORS.wallSide; ctx.fillRect(px, py, tile, tile);
+        ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, tile, tile * 0.78);
+        continue;
+      }
+      ctx.fillStyle = (x + y) % 2 ? COLORS.floorA : COLORS.floorB;
+      ctx.fillRect(px, py, tile, tile);
+      if (t === "pit") {
+        ctx.fillStyle = COLORS.pit;
+        roundRect(px + tile * 0.08, py + tile * 0.08, tile * 0.84, tile * 0.84, tile * 0.18); ctx.fill();
+      } else if (t === "crumble") {
+        ctx.fillStyle = COLORS.crumble;
+        roundRect(px + tile * 0.08, py + tile * 0.08, tile * 0.84, tile * 0.84, tile * 0.12); ctx.fill();
+        ctx.strokeStyle = COLORS.crumbleLine; ctx.lineWidth = Math.max(1.5, tile * 0.04);
+        ctx.beginPath();
+        ctx.moveTo(px + tile * 0.25, py + tile * 0.2); ctx.lineTo(px + tile * 0.45, py + tile * 0.5);
+        ctx.lineTo(px + tile * 0.35, py + tile * 0.8);
+        ctx.moveTo(px + tile * 0.45, py + tile * 0.5); ctx.lineTo(px + tile * 0.78, py + tile * 0.42);
+        ctx.stroke();
+      } else if (t === "exit") {
+        const pulse = 0.5 + 0.5 * Math.sin(now / 300);
+        ctx.save();
+        ctx.shadowColor = COLORS.exit; ctx.shadowBlur = tile * (0.25 + 0.25 * pulse);
+        ctx.fillStyle = COLORS.exit;
+        roundRect(px + tile * 0.18, py + tile * 0.12, tile * 0.64, tile * 0.78, tile * 0.3); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = "#0b3b2a";
+        roundRect(px + tile * 0.3, py + tile * 0.28, tile * 0.4, tile * 0.62, tile * 0.18); ctx.fill();
+      }
+    }
+  }
+
+  function drawIntents(s) {
+    if (s.status !== "playing") return;
+    for (const e of s.enemies) {
+      if (!e.intent) continue;
+      const px = e.intent.x * tile, py = e.intent.y * tile;
+      ctx.fillStyle = COLORS.intent;
+      ctx.fillRect(px + 2, py + 2, tile - 4, tile - 4);
+      ctx.save();
+      ctx.setLineDash([tile * 0.12, tile * 0.08]);
+      ctx.strokeStyle = e.type === "chaser" ? COLORS.chaser : COLORS.patrol;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 3, py + 3, tile - 6, tile - 6);
+      ctx.restore();
+      // 화살표
+      const sx = (e.x + 0.5) * tile, sy = (e.y + 0.5) * tile;
+      const ex = (e.intent.x + 0.5) * tile, ey = (e.intent.y + 0.5) * tile;
+      const ang = Math.atan2(ey - sy, ex - sx);
+      const tipX = ex - Math.cos(ang) * tile * 0.12, tipY = ey - Math.sin(ang) * tile * 0.12;
+      ctx.fillStyle = e.type === "chaser" ? COLORS.chaser : COLORS.patrol;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX - Math.cos(ang - 0.5) * tile * 0.22, tipY - Math.sin(ang - 0.5) * tile * 0.22);
+      ctx.lineTo(tipX - Math.cos(ang + 0.5) * tile * 0.22, tipY - Math.sin(ang + 0.5) * tile * 0.22);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  function drawShadow(cx, cy, scale) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + tile * 0.32, tile * 0.28 * scale, tile * 0.09 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // kong 저장소 병아리 스타일: 굵은 잉크 외곽선 + 단순한 단색 면
+  const INK = "#1b1d24";
+  function inked(fill, lw) {
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.lineWidth = lw; ctx.strokeStyle = INK; ctx.lineJoin = "round"; ctx.stroke();
+  }
+  function ellipsePath(x, y, rx, ry, rot = 0) { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); }
+
+  // 콩알 모양 눈 + 흰 하이라이트
+  function beanEye(x, y, w, h) {
+    ctx.fillStyle = INK;
+    roundRect(x - w / 2, y - h / 2, w, h, w / 2); ctx.fill();
+    ctx.fillStyle = "#fffdf0";
+    ctx.beginPath(); ctx.arc(x - w * 0.18, y - h * 0.22, w * 0.24, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawEnemy(e, x, y, hop) {
+    const cx = (x + 0.5) * tile, cy = (y + 0.5) * tile;
+    drawShadow(cx, cy, 1 - hop * 0.3);
+    const by = cy - hop * tile * 0.25;
+    const look = e.intent ? { x: e.intent.x - e.x, y: e.intent.y - e.y } : { x: e.dx || 0, y: e.dy || 0 };
+    const lw = Math.max(2, tile * 0.05);
+    if (e.type === "patrol") {
+      roundRect(cx - tile * 0.32, by - tile * 0.3, tile * 0.64, tile * 0.6, tile * 0.18);
+      inked(COLORS.patrol, lw);
+    } else {
+      ctx.beginPath();
+      const spikes = 8, r1 = tile * 0.36, r2 = tile * 0.26;
+      for (let i = 0; i < spikes * 2; i++) {
+        const r = i % 2 ? r2 : r1, a = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2;
+        ctx.lineTo(cx + Math.cos(a) * r, by + Math.sin(a) * r);
+      }
+      ctx.closePath();
+      inked(COLORS.chaser, lw);
+    }
+    // 화난 눈썹 느낌의 눈꺼풀이 있는 콩눈
+    const ox = look.x * tile * 0.06, oy = look.y * tile * 0.05;
+    for (const side of [-1, 1]) beanEye(cx + side * tile * 0.11 + ox, by - tile * 0.02 + oy, tile * 0.08, tile * 0.13);
+    ctx.strokeStyle = INK; ctx.lineWidth = lw * 0.8; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx - tile * 0.19 + ox, by - tile * 0.14 + oy); ctx.lineTo(cx - tile * 0.05 + ox, by - tile * 0.09 + oy);
+    ctx.moveTo(cx + tile * 0.19 + ox, by - tile * 0.14 + oy); ctx.lineTo(cx + tile * 0.05 + ox, by - tile * 0.09 + oy);
+    ctx.stroke();
+  }
+
+  // 플레이어: 노란 유치원 모자를 쓴 병아리
+  function drawPlayer(x, y, jump, status, facing) {
+    const cx = (x + 0.5) * tile, cy = (y + 0.5) * tile;
+    drawShadow(cx, cy, 1 - jump * 0.45);
+    const u = tile * 1.08;
+    const gy = cy + tile * 0.36 - jump * tile * 0.5;   // 발 위치(땅)
+    const lw = Math.max(2, tile * 0.045);
+    const dead = status === "dead";
+    const C = dead
+      ? { cream: "#cfc9b3", yellow: "#c9b25a", orange: "#c08a52" }
+      : { cream: "#fff1b8", yellow: "#ffd23f", orange: "#ff9f30" };
+    const back = facing.y < 0;                        // 위로 갈 땐 뒷모습
+    const fx = facing.x * u * 0.05;                   // 좌우 볼 때 얼굴 이동
+
+    ctx.save();
+    // 점프할 때 늘어나고, 착지 직전엔 찌그러짐
+    const stretch = 1 + jump * 0.16;
+    ctx.translate(cx, gy);
+    ctx.scale(1 / stretch, stretch);
+    ctx.translate(-cx, -gy);
+
+    // 날개
+    for (const side of [-1, 1]) {
+      const flap = jump * 0.6 * side;
+      ellipsePath(cx + side * u * 0.24, gy - u * 0.2, u * 0.065, u * 0.1, side * 0.5 + flap);
+      inked(C.cream, lw * 0.8);
+    }
+    // 몸통
+    roundRect(cx - u * 0.22, gy - u * 0.33, u * 0.44, u * 0.3, u * 0.12); inked(C.cream, lw);
+    // 발 (몸통 앞으로 살짝 나옴)
+    for (const side of [-1, 1]) { ellipsePath(cx + side * u * 0.1, gy - u * 0.02, u * 0.085, u * 0.045); inked(C.orange, lw * 0.8); }
+    // 머리 (둥근 사각형)
+    roundRect(cx - u * 0.33, gy - u * 0.78, u * 0.66, u * 0.5, u * 0.17); inked(C.cream, lw);
+
+    if (!back) {
+      const ey = gy - u * 0.5;
+      if (dead) {
+        ctx.strokeStyle = INK; ctx.lineWidth = lw * 0.8; ctx.lineCap = "round";
+        for (const side of [-1, 1]) {
+          const ex = cx + side * u * 0.13 + fx, r = u * 0.045;
+          ctx.beginPath(); ctx.moveTo(ex - r, ey - r); ctx.lineTo(ex + r, ey + r);
+          ctx.moveTo(ex + r, ey - r); ctx.lineTo(ex - r, ey + r); ctx.stroke();
+        }
+      } else {
+        for (const side of [-1, 1]) beanEye(cx + side * u * 0.13 + fx, ey, u * 0.075, u * 0.12);
+      }
+      // 부리
+      const bx = cx + fx * 1.4, byk = gy - u * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(bx - u * 0.08, byk); ctx.lineTo(bx, byk - u * 0.055);
+      ctx.lineTo(bx + u * 0.08, byk); ctx.lineTo(bx, byk + u * 0.06); ctx.closePath();
+      inked(C.orange, lw * 0.7);
+    }
+    // 노란 모자: 둥근 정수리 + 넓은 챙
+    ellipsePath(cx, gy - u * 0.8, u * 0.27, u * 0.17); inked(C.yellow, lw);
+    ellipsePath(cx, gy - u * 0.74, u * 0.41, u * 0.085); inked(C.yellow, lw);
+    ctx.restore();
+  }
+
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+
+  function frame(now) {
+    const W = state.grid[0].length, H = state.grid.length;
+    ctx.clearRect(0, 0, W * tile, H * tile);
+
+    let t = 1;
+    if (anim) {
+      t = Math.min(1, (now - anim.start) / anim.dur);
+      if (t >= 1) {
+        anim = null;
+        if (queued) { const q = queued; queued = null; act(q); }
+      }
+    }
+    const view = state;
+    drawTiles(view, now);
+    if (!anim) drawIntents(view);
+
+    const from = anim ? anim.from : null;
+    const et = ease(t);
+    const hop = anim ? Math.sin(Math.PI * t) : 0;
+
+    for (const e of view.enemies) {
+      const pe = from ? from.enemies.find((o) => o.id === e.id) : e;
+      const moved = pe.x !== e.x || pe.y !== e.y;
+      const x = pe.x + (e.x - pe.x) * et, y = pe.y + (e.y - pe.y) * et;
+      drawEnemy(e, x, y, moved ? hop * 0.6 : 0);
+    }
+
+    let px = view.player.x, py = view.player.y, jump = 0;
+    if (anim) {
+      const fp = anim.from.player;
+      px = fp.x + (view.player.x - fp.x) * t;
+      py = fp.y + (view.player.y - fp.y) * t;
+      jump = Math.sin(Math.PI * t);
+    }
+    if (bumpInfo) {
+      const bt = (now - bumpInfo.start) / 140;
+      if (bt >= 1) bumpInfo = null;
+      else { const k = Math.sin(Math.PI * bt) * 0.15; px += bumpInfo.d.x * k; py += bumpInfo.d.y * k; }
+    }
+    drawPlayer(px, py, jump, anim ? "playing" : view.status, facing);
+
+    if (view.status === "dead" && !anim) {
+      ctx.fillStyle = "rgba(255,60,80,0.12)";
+      ctx.fillRect(0, 0, W * tile, H * tile);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- 입력 ----------
+  const KEYMAP = {
+    ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+    w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right",
+    " ": "wait", ".": "wait",
+  };
+  window.addEventListener("keydown", (ev) => {
+    if (ev.key in KEYMAP) { ev.preventDefault(); act(KEYMAP[ev.key]); return; }
+    if (ev.key === "z" || ev.key === "Z") undo();
+    else if (ev.key === "r" || ev.key === "R") load(levelIndex);
+    else if ((ev.key === "n" || ev.key === "N" || ev.key === "Enter") && state.status === "won" && levelIndex < LEVELS.length - 1) load(levelIndex + 1);
+  });
+  document.querySelectorAll(".pad button").forEach((b) => b.addEventListener("click", () => act(b.dataset.act)));
+  $("undoBtn").onclick = undo;
+  $("restartBtn").onclick = () => load(levelIndex);
+
+  let touchStart = null;
+  canvas.addEventListener("touchstart", (e) => { const t = e.touches[0]; touchStart = { x: t.clientX, y: t.clientY }; }, { passive: true });
+  canvas.addEventListener("touchend", (e) => {
+    if (!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+    touchStart = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) { act("wait"); return; }
+    act(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+  });
+  window.addEventListener("resize", resize);
+
+  load(0);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
