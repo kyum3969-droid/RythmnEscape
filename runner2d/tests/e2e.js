@@ -50,7 +50,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 자동 풀이로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).presses); g.startFresh(); });
-  const shots = { 26: 'a_steps', 49.5: 'b_wall', 73.5: 'c_tunnel', 82: 'c_bridge', 105.5: 'd_mix', 126: 'd_tunnel2' };
+  const shots = { 26: 'a_steps', 49.5: 'b_wall', 73.5: 'c_wallgap', 82: 'c_bridge', 105.5: 'd_mix', 126: 'd_thick' };
   for (let beat = 0; beat <= 140; beat += 0.25) {
     await G((bt) => window.__game.tickTo(bt), beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }

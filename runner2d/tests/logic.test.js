@@ -55,20 +55,52 @@ L.cps.forEach((cp, i) => {
   ok(Math.floor(best / 16) === 10, `점프만으로는 마디 10(첫 대시 구간)에서 막힌다 (마디 ${Math.floor(best / 16)})`);
 }
 
-// 타이밍 여유: 각 입력을 앞뒤로 밀어도 그 뒤를 이어 갈 수 있는 폭
+// 타이밍 여유(ms).
+//  점프: 그 점프를 앞뒤로 밀어도 뒤를 이어 갈 수 있는 폭.
+//  대시: 점프 시점에 따라 달라지므로, 점프를 여러 시점으로 옮겨 보며 그중 가장 넓은 대시 폭.
+const types = [];
+{ const s = Lg.spawnState(L, -1), set = new Set(sol);
+  while (!s.dead && !s.won) { const ev = []; Lg.stepState(L, s, set.has(s.step + 1), ev); for (const e of ev) if (e.type === 'jump' || e.type === 'dash') types.push(e.type); } }
+function stateBefore(i, margin) {            // i번째 입력의 margin 스텝 전 상태
+  const s = Lg.spawnState(L, -1), set = new Set(sol.slice(0, i));
+  while (s.step < sol[i] - margin - 1) Lg.stepState(L, s, set.has(s.step + 1));
+  return s;
+}
+const survives = (s, nextPress) => {
+  if (s.dead) return false;
+  const until = nextPress != null ? Lg.TPB * (nextPress + Lg.SUB) / Lg.SUB : L.goalX + 1;
+  return !!Lg.solve(L, s, { grid: 6, untilX: Math.min(until, L.goalX + 1) }).presses;
+};
+function tryPresses(base, steps, upto) {     // base에서 steps에 누르며 upto 스텝까지 진행
+  const s = { ...base }, set = new Set(steps);
+  while (!s.dead && s.step < upto) Lg.stepState(L, s, set.has(s.step + 1));
+  return s;
+}
 const tight = {};
 for (let i = 0; i < sol.length; i++) {
-  const okShift = (shift) => {
-    const p = new Set(sol.slice(0, i).concat([sol[i] + shift])), s = Lg.spawnState(L, -1);
-    while (!s.dead && s.step < sol[i] + Math.max(shift, 0) + 1) Lg.stepState(L, s, p.has(s.step + 1));
-    if (s.dead) return false;
-    const until = i + 1 < sol.length ? Lg.TPB * (sol[i + 1] + Lg.SUB) / Lg.SUB : L.goalX + 1;
-    return !!Lg.solve(L, s, { grid: 6, untilX: Math.min(until, L.goalX + 1) }).presses;
-  };
-  let early = 0, late = 0;
-  while (early > -60 && okShift(early - 1)) early--;
-  while (late < 60 && okShift(late + 1)) late++;
-  const bar = Math.floor(Lg.TPB * sol[i] / Lg.SUB / 16), win = (late - early + 1) * msPerStep;
+  if (types[i] !== 'jump') continue;
+  const hasDash = types[i + 1] === 'dash';
+  const next = sol[i + (hasDash ? 2 : 1)];
+  const base = stateBefore(i, 60);
+  const bar = Math.floor(Lg.TPB * sol[i] / Lg.SUB / 16);
+  const jumpOk = [];
+  for (let sh = -60; sh <= 60; sh++) {
+    const s = tryPresses(base, [sol[i] + sh], sol[i] + Math.max(sh, 0) + 1);
+    if (survives(s, next)) jumpOk.push(sh);
+  }
+  let win = jumpOk.length * msPerStep;
+  if (hasDash) {                               // 점프 시점을 4스텝 간격으로 옮기며 가장 넓은 대시 폭
+    let bestDash = 0;
+    for (const sh of jumpOk.filter((v, k) => k % 4 === 0)) {
+      const j = sol[i] + sh; let run = 0, longest = 0;
+      for (let d = j + 2; d <= j + 96; d += 2) {
+        const s = tryPresses(base, [j, d], d + 1);
+        if (s.dashing > 0 && survives(s, next)) { run += 2; longest = Math.max(longest, run); } else run = 0;
+      }
+      bestDash = Math.max(bestDash, longest);
+    }
+    win = Math.min(win, bestDash * msPerStep);
+  }
   tight[bar] = Math.min(tight[bar] ?? 1e9, win);
 }
 const line = Object.entries(tight).map(([b, w]) => `${b}:${w > 290 ? '290+' : w.toFixed(0)}`).join('  ');
