@@ -1,0 +1,9 @@
+# Godot
+.godot/
+*.translation
+# Android export
+/android/
+*.apk
+*.aab
+*.keystore
+export_credentials.cfg
