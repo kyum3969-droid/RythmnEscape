@@ -5,8 +5,11 @@
 ## 구성
 | 위치 | 내용 |
 |---|---|
-| `godot/` | **Godot 4 3D 버전** (모바일 목표). 자세한 내용은 [godot/README.md](godot/README.md) |
-| `index.html` | 웹 프로토타입(2D, 단일 파일). 규칙/조작/스테이지를 먼저 검증하던 버전 |
+| `web3d/` | **3D 웹 프로토타입** (Three.js). 휴대폰 브라우저에서 바로 해보며 다듬는 곳. [web3d/README.md](web3d/README.md) |
+| `godot/` | **Godot 4 3D 버전** (모바일 출시 목표). web3d에서 확정된 것을 옮김. [godot/README.md](godot/README.md) |
+| `index.html` | 첫 2D 웹 프로토타입(단일 파일) |
+
+작업 흐름: `web3d`에서 조작감·스테이지를 다듬기 → 확정되면 `godot`으로 이식 → APK 빌드.
 
 ## 실행 (웹 프로토타입)
 빌드 없이 `index.html`을 브라우저로 열면 됩니다.

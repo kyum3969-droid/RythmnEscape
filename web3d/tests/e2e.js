@@ -1,0 +1,96 @@
+const { chromium } = require('playwright');
+// 실행: curl -o web3d/tests/three.min.js https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+//       node web3d/tests/e2e.js   (스크린샷은 web3d/tests/out/ 에 저장)
+const path = require('path'), fs = require('fs');
+const out = path.join(__dirname, 'out') + '/';
+fs.mkdirSync(out, { recursive: true });
+const FILE = 'file://' + path.join(__dirname, '..', 'index.html');
+let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') + msg); if (!c) fails++; };
+(async () => {
+  const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'],
+    proxy: process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY } : undefined });
+  const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
+  const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
+  await p.route('https://cdnjs.cloudflare.com/**', r => r.fulfill({ path: __dirname + '/three.min.js', contentType: 'application/javascript' }));
+  await p.goto(FILE); await p.waitForTimeout(1200);
+  await p.screenshot({ path: out + 'w_menu.png' });
+  ok(await p.isVisible('#select'), '시작하면 스테이지 선택 화면');
+  const G = (fn, arg) => p.evaluate(fn, arg);
+  await G(() => { window.__game.fake.on = true; });
+  await p.click('#stages button:nth-child(1)'); await p.waitForTimeout(200);
+  ok(await G(() => window.__game.phase) === 'ready' && await p.isVisible('#overlay'), '스테이지를 고르면 준비 화면');
+  await p.screenshot({ path: out + 'w_ready.png' });
+  await p.click('#ovButtons button'); await p.waitForTimeout(100);
+  ok(await G(() => window.__game.phase) === 'playing', '시작 버튼 → 플레이 중');
+
+  console.log('== 실제 탭(포인터 이벤트) ==');
+  const beat = (k) => G((k) => window.__game.tick(window.__game.J.beatTime(k)), k);
+  const tapTile = async (x, y, dx = 0, dy = 0) => { const pt = await G(([x, y]) => window.__game.project({ x, y }), [x, y]); await p.touchscreen.tap(pt.x + dx, pt.y + dy); };
+  await beat(3); await tapTile(2, 1);
+  let st = await G(() => ({ p: window.__game.state.player, c: window.__game.J.counts }));
+  ok(st.p.x === 2 && st.p.y === 1 && st.c.perfect === 1, '옆 칸 탭 = 그쪽으로 점프 (PERFECT)');
+  await p.waitForTimeout(250);
+  await beat(4); await tapTile(3, 1, 8, 14);
+  st = await G(() => window.__game.state.player); ok(st.x === 3 && st.y === 1, '칸 중앙에서 살짝 벗어나도 같은 방향');
+  await p.waitForTimeout(250);
+  await beat(5); await tapTile(3, 1);
+  st = await G(() => ({ p: window.__game.state.player, t: window.__game.state.turn })); ok(st.p.x === 3 && st.t === 3, '병아리 탭 = 대기');
+  // 예약: 반 박자 일찍 탭 → 다음 박자에 실행
+  await G((k) => { window.__game.fake.t = window.__game.J.beatTime(k) - 0.3; }, 6);
+  await tapTile(4, 1);
+  st = await G(() => ({ p: window.__game.state.player, pend: window.__game.J.pending })); ok(st.p.x === 3 && st.pend === 'right', '일찍 탭 = 예약(아직 안 움직임)');
+  await p.waitForTimeout(120);
+  await p.screenshot({ path: out + 'w_reserve.png' });
+  await beat(6);
+  st = await G(() => window.__game.state.player); ok(st.x === 4, '박자가 오면 예약대로 점프');
+
+  console.log('== 스테이지 4 클리어 / 6 실패 ==');
+  const run = async (stage, seq) => {
+    await G((i) => { const g = window.__game; g.loadStage(i); g.startRun(); }, stage);
+    const M = { u: 'up', d: 'down', l: 'left', r: 'right', w: 'wait' };
+    for (let i = 0; i < seq.length; i++) {
+      if (await G(() => window.__game.state.status) !== 'playing') break;
+      await beat(3 + i);
+      await G((a) => window.__game.act(a), M[seq[i]]);
+      if (i === 4 && stage === 3) { await p.waitForTimeout(70); await p.screenshot({ path: out + 'w_mid.png' }); }
+    }
+  };
+  await run(3, 'dddddwdrrrrrr');
+  ok(await G(() => window.__game.state.status) === 'won', '스테이지 4: 박자에 맞춰 클리어');
+  ok(await G(() => window.__game.J.rank()) === 'S', '전부 PERFECT → S');
+  await p.waitForTimeout(1400);
+  ok(await p.isVisible('#overlay') && (await p.textContent('#ovTitle')) === '탈출 성공!', '클리어 결과 화면');
+  await p.screenshot({ path: out + 'w_win.png' });
+  await run(5, 'rrrrddllll');
+  ok(await G(() => window.__game.state.status) === 'dead', '스테이지 6: 무작정 가면 잡힘');
+  await p.waitForTimeout(1400);
+  ok((await p.textContent('#ovTitle')) === '실패', '실패 결과 화면');
+  await p.screenshot({ path: out + 'w_dead.png' });
+
+  console.log('== 퍼즐 모드 ==');
+  await G(() => { const g = window.__game; g.setRhythm(false); g.loadStage(0); g.act('right'); g.act('right'); g.act('up'); g.undo(); });
+  st = await G(() => ({ p: window.__game.state.player, t: window.__game.state.turn }));
+  ok(st.t === 1 && st.p.x === 2, '즉시 이동 · 벽은 턴 안 씀 · 되돌리기');
+
+  console.log('== 다른 화면 크기에서 보드가 무대 안에 들어오는지 ==');
+  await G(() => window.__game.setRhythm(true));
+  for (const [w, h] of [[360, 640], [430, 932], [1280, 800]]) {
+    await p.setViewportSize({ width: w, height: h });
+    for (const s of [2, 4]) {
+      await G((i) => window.__game.loadStage(i), s); await p.waitForTimeout(150);
+      const r = await G(() => {
+        const g = window.__game, st = g.state, rect = document.getElementById('stage').getBoundingClientRect();
+        const W = st.grid[0].length, H = st.grid.length;
+        const pts = [[0, 0], [W - 1, 0], [0, H - 1], [W - 1, H - 1]].map(([x, y]) => g.project({ x, y }));
+        return pts.every(pt => pt.x >= rect.left && pt.x <= rect.right && pt.y >= rect.top && pt.y <= rect.bottom);
+      });
+      ok(r, `${w}x${h} 스테이지 ${s + 1}: 네 모서리 칸이 화면 안`);
+    }
+  }
+  await p.setViewportSize({ width: 390, height: 844 });
+  ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '가로 스크롤 없음');
+  console.log('콘솔/페이지 오류:', errs.length ? errs : '없음');
+  console.log('실패 ' + fails + '건');
+  await b.close();
+  process.exit(fails || errs.length ? 1 : 0);
+})();
