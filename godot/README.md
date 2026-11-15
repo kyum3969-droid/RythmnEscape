@@ -37,11 +37,26 @@ xvfb-run -a godot --rendering-driver opengl3 --resolution 720x1280 --path godot 
   --script res://tests/screenshot.gd -- mid 4 /tmp/shot.png
 ```
 
-## 안드로이드 빌드 (아직 안 해봄)
-1. 에디터 → Editor → Manage Export Templates 에서 4.4 템플릿 설치
-2. 에디터 설정에 Android SDK / JDK 17 경로 지정, 디버그 키스토어 생성
-3. Project → Export → Add → Android: 패키지 이름(`com.…`) 지정, Min SDK 24 이상
-4. 릴리스용은 별도 키스토어 필요 (`*.keystore`는 .gitignore에 있음 — 저장소에 올리지 마세요)
+## 안드로이드 빌드
+패키지 이름 `com.kyum3969.rythmnescape`, arm64-v8a, 세로 고정, Min/Target SDK는 Godot 기본값. 설정은 `export_presets.cfg`에 있습니다.
+
+필요한 것 (한 번만):
+1. Godot 4.4.1 + 같은 버전의 **내보내기 템플릿** (에디터: Editor → Manage Export Templates, 또는 `Godot_v4.4.1-stable_export_templates.tpz`)
+2. JDK 17 이상 (`keytool` 사용)
+3. **Android SDK** — 명령줄 도구를 받은 뒤 (라이선스에 동의해야 설치됩니다):
+   ```bash
+   sdkmanager --licenses            # 직접 읽고 동의
+   sdkmanager "platform-tools" "build-tools;35.0.1" "platforms;android-35"
+   ```
+
+빌드:
+```bash
+ANDROID_HOME=/path/to/android-sdk GODOT=/path/to/godot ./godot/tools/build_android.sh debug
+adb install -r godot/build/RythmnEscape-debug.apk
+```
+`debug`는 디버그 키스토어(`~/.android/rythmnescape-debug.keystore`, 없으면 자동 생성)로 서명합니다. 스토어 출시용은 `release` 모드와 별도 릴리스 키스토어가 필요하고, 키스토어는 저장소에 올리지 마세요(`.gitignore`에 `*.keystore`).
+
+검증 상태: 이 저장소의 프리셋은 Godot 내보내기 검사를 통과했습니다(템플릿, 패키지 이름, 키스토어 OK). SDK가 없는 환경이라 **APK를 실제로 만들어 기기에 설치해 보지는 못했습니다.**
 
 ## 알려진 한계
 - **실제 기기에서 박자감/소리 지연은 아직 못 재봤습니다.** 곡 시간은 `재생 위치 + 믹서 보정 − 출력 지연`으로 계산하지만, 기기별 편차는 위 보정 설정으로 맞추게 했습니다.
