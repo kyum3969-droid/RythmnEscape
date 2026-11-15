@@ -5,11 +5,12 @@
 ## 구성
 | 위치 | 내용 |
 |---|---|
+| `runner2d/` | **현재 방향.** 음악에 맞춰 설계한 2D 횡스크롤 코스(점프 + 공중 대시) 프로토타입. [runner2d/README.md](runner2d/README.md) |
 | `web3d/` | **3D 웹 프로토타입** (Three.js). 휴대폰 브라우저에서 바로 해보며 다듬는 곳. [web3d/README.md](web3d/README.md) |
 | `godot/` | **Godot 4 3D 버전** (모바일 출시 목표). web3d에서 확정된 것을 옮김. [godot/README.md](godot/README.md) |
 | `index.html` | 첫 2D 웹 프로토타입(단일 파일) |
 
-작업 흐름: `web3d`에서 조작감·스테이지를 다듬기 → 확정되면 `godot`으로 이식 → APK 빌드.
+`web3d/`, `godot/`, `index.html`은 이전 컨셉(리듬 턴제 탈출)의 프로토타입입니다. Godot 이식은 웹에서 방향이 확정된 뒤에 합니다.
 
 ## 실행 (웹 프로토타입)
 빌드 없이 `index.html`을 브라우저로 열면 됩니다.
