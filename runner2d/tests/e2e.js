@@ -50,12 +50,11 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 자동 풀이로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).presses); g.startFresh(); });
-  const shots = { 26: 'a_steps', 49.5: 'b_wall', 73.5: 'c_wallgap', 82: 'c_bridge', 105.8: 'e_gate', 113.5: 'e_bounce', 137.5: 'd_mix', 158: 'd_thick' };
+  const shots = { 26.25: 'a_sawlow', 30: 'a_nojump', 53.75: 'b_pad', 65.25: 'b_saws', 74: 'c_rings', 94: 'c_padwall', 98.5: 'c_rings2', 105.75: 'e_gate', 113.5: 'e_bounce', 125.75: 'e_bbpad', 129.75: 'e_bbring', 141.75: 'd_sawmix', 162.5: 'd_ringfinal' };
   const modes = {};
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await G((bt) => window.__game.tickTo(bt), beat);
     if (beat === 100 || beat === 112 || beat === 134) modes[beat] = await G(() => window.__game.state.mode);
-    if (shots[beat + 0.05]) { await G((bt) => window.__game.tickTo(bt), beat + 0.05); await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat + 0.05] + '.png' }); }
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
     if (await G(() => window.__game.phase) !== 'running') break;
   }

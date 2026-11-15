@@ -16,9 +16,14 @@ const BUFFER_STEPS = 13;       // 착지 직전 입력을 점프로 예약
 const SIZE = 0.8, HALF = 0.4;  // 플레이어 판정 상자
 const ROWS = 10;               // 화면 세로 칸 수 (row 0 = 맨 위, row 9 = 바닥)
 const STEP_UP = 0.22;          // 모서리에 살짝 걸렸을 때 올려주는 여유
+const V_PAD = G * 1.5 / 2;     // 점프대: 체공 1.5박자(6칸), 높이 약 5칸
+const SAW_R = 0.4;             // 톱날 판정 반지름
+const SAW_TRAVEL = 2.2;        // 움직이는 톱날이 오르내리는 거리(칸)
 const BOUNCE_TOL = 8;          // 바운스 모드: 박자 직후 이 스텝 안에 땅에 있으면 바로 튄다(그 뒤면 다음 박자까지 구름)
 
 // 마디(16칸) 조각. 아래 6줄(row 4~9)만 적는다.  # 블록  ^ 바닥 가시  v 천장 가시  D 대시벽  C 체크포인트  G 결승선
+// o 고정 톱날   S / s 박자에 맞춰 위아래로 움직이는 톱날(S는 짝수 박자에, s는 홀수 박자에 아래)
+// J 점프대(밟으면 저절로 높이 솟음)   O 대시 충전 고리(지나가면 공중에서 대시가 다시 참)
 // B / R = 화면 높이의 거대한 대시벽(모드 관문). 깨고 지나가면 B는 바운스 모드, R은 달리기 모드가 된다.
 // 바운스 모드: 구슬이 박자마다 저절로 튄다(평지에서는 0·4·8·12번 칸에 착지). 플레이어는 공중 대시만 한다.
 const E = "................", F = "################";
@@ -46,6 +51,16 @@ const CHUNKS = {
   mix1:      [E, "........D.......", "........D.......", "........D.......", "....^...D.....^^", F],
   mix2:      [E, E, E, E, E, "#####...###....#"],
   final:     [E, E, E, E, "....^^..........", "########.......#"],
+  // ---- 톱날 · 점프대 · 고리 · 천장 가시
+  sawlow:    [E, E, E, E, "......o......o..", F],                                                        // 바닥 톱날: 뛰어넘기
+  nojump:    [E, "....########....", "....vvvvvvvv....", E, "...............^", F],                      // 낮은 천장 가시: 뛰지 말고 달리기
+  pad1:      [E, E, "......###.......", "......###.......", "....J.###...^^..", F],                     // 점프대로 높은 벽 넘기
+  saws1:     [E, E, E, E, "....S...S...S...", F],                                                        // 톱날이 위에 있으면 달리고, 아래 있으면 뛰기
+  rings1:    [E, E, ".........O......", E, E, "####..........##"],                                       // 고리로 대시를 이어 긴 허공 건너기
+  rings2:    [E, E, "........O..O....", E, E, "###............#"],
+  padwall:   [E, ".......D........", ".......D........", ".......D........", "...J...D....^^..", F],     // 점프대로 벽 위를 넘거나, 대시로 깨거나
+  sawmix:    [E, "........D.......", "........D.......", "........D.......", "....S...D...S..^", F],     // 톱날 밑은 달리고 → 벽은 대시 → 다시 톱날 밑 → 가시
+  ringfinal: [E, "..........D.....", "........O.D.O...", "..........D.....", "..........D.....", "###............#"],
   // ---- 바운스 구간
   bgate_in:  [E, E, E, E, "........B.......", F],
   bb1:       [E, E, E, E, ".......^^.......", F],                                                        // 착지점에 가시 → 대시로 넘기
@@ -53,6 +68,8 @@ const CHUNKS = {
   bb3:       [E, E, E, E, E, "#######..#######"],                                                         // 착지점에 구덩이
   bb4:       [E, "..D.............", "..D.............", "..D.............", "..D.......^^....", F],     // 벽을 깬 뒤에는 대시를 참아야 함
   bb5:       [E, E, E, E, ".......###..^^..", F],                                                        // 발판에서 튄 다음 착지점에 가시
+  bbpad:     [E, E, E, E, "....J.^^^^^^....", F],                                                        // 점프대 = 큰 바운스. 가시밭이 넓어 대시도 필요
+  bbring:    [E, "......D.........", "......D..O......", "......D..O......", "......D.........", "##########....##"],   // 벽을 깨고, 고리에서 한 번 더 대시
   bgate_out: [E, E, E, E, "......R.........", F],
 };
 
@@ -61,11 +78,11 @@ const COURSE = {
   name: "첫 번째 코스", bpm: 128,
   bars: [
     "flat", "flat",
-    "hop", "hop", "double", "gaps", "steps", "hopgap", "double2", "cp",
-    "dashgap6", "hop", "wall", "double", "dashgap7", "wallspike", "gaps2", "cp",
-    "wallgap", "up", "bridge", "down", "wall2", "wallspike", "hopgap", "cp",
-    "bgate_in", "bb1", "bb2", "bb3", "bb4", "bb5", "bgate_out", "cp",
-    "mix1", "mix2", "up", "bridge", "down", "thick", "final", "goal",
+    "hop", "double", "gaps", "steps", "sawlow", "nojump", "hopgap", "cp",
+    "dashgap6", "hop", "wall", "pad1", "dashgap7", "wallspike", "saws1", "cp",
+    "rings1", "up", "bridge", "down", "wall2", "padwall", "rings2", "cp",
+    "bgate_in", "bb1", "bb2", "bb3", "bbpad", "bbring", "bgate_out", "cp",
+    "mix1", "sawmix", "up", "bridge", "down", "thick", "ringfinal", "goal",
     "flat",
   ],
   sections: [   // 음악/색 구간 (시작 마디)
@@ -77,7 +94,7 @@ function buildLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill("."));
-  const cps = [], switches = [];
+  const cps = [], switches = [], saws = [];
   let goalX = cols - 8;
   course.bars.forEach((name, b) => {
     const ch = CHUNKS[name];
@@ -91,16 +108,28 @@ function buildLevel(course) {
         else if (t === "B" || t === "R") {
           switches.push({ col, mode: t === "B" ? "bounce" : "run" });
           for (let r = 0; r <= 4 + i; r++) grid[r][col] = "D";
+        } else if (t === "o" || t === "S" || t === "s") {
+          saws.push({ c: col, r: 4 + i, kind: t === "o" ? "static" : t === "S" ? "even" : "odd" });
         } else grid[4 + i][col] = t;
       }
     });
   });
   switches.sort((a, b) => a.col - b.col);
-  return { grid, cols, cps, switches, goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  const sawCols = new Map();
+  for (const w of saws) { if (!sawCols.has(w.c)) sawCols.set(w.c, []); sawCols.get(w.c).push(w); }
+  return { grid, cols, cps, switches, saws, sawCols, goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);   // 코스 앞뒤는 평지
 const isSolid = (L, c, r) => tile(L, c, r) === "#";
+
+// 톱날 중심의 높이(row 좌표). 움직이는 톱날은 2박자 주기로 오르내린다.
+function sawY(w, beat) {
+  const low = w.r + 0.5;
+  if (w.kind === "static") return low;
+  const k = Math.cos(Math.PI * beat);            // 짝수 박자 +1, 홀수 박자 -1
+  return low - SAW_TRAVEL * (w.kind === "even" ? 1 - k : 1 + k) / 2;
+}
 
 // 그 칸 열에서 서 있을 바닥 높이(위에서부터 처음 만나는 블록의 윗면)
 function groundY(L, col) {
@@ -118,16 +147,17 @@ function spawnState(L, cp = -1) {
   return {
     mode: sw > 0 ? L.switches[sw - 1].mode : "run", sw,
     step, x, lead: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
-    dashAvail: false, dashing: 0, grace: 0, coyote: 0, buffer: 0,
+    dashAvail: false, dashing: 0, grace: 0, coyote: 0, buffer: 0, ring: -1,
     cp, dead: false, cause: "", won: false,
   };
 }
 
 // 바운스 모드: 박자에 맞춰 땅에 있으면 저절로 튄다
-function tryBounce(s, ev) {
+function tryBounce(L, s, ev) {
   if (s.step % SUB > BOUNCE_TOL) return;
-  s.vy = -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true;
-  if (ev) ev.push({ type: "bounce" });
+  const pad = tile(L, Math.floor(s.x), s.y - 1) === "J";     // 점프대 위라면 큰 바운스
+  s.vy = pad ? -V_PAD : -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true;
+  if (ev) ev.push({ type: pad ? "pad" : "bounce" });
 }
 
 function die(s, cause, ev) { s.dead = true; s.cause = cause; if (ev) ev.push({ type: "die", cause }); }
@@ -138,7 +168,7 @@ function stepState(L, s, press, ev) {
   s.step++;
   if (s.mode === "bounce") {            // 점프는 박자가 해 준다. 입력은 공중 대시뿐.
     s.buffer = 0;
-    if (s.onGround) tryBounce(s, ev);
+    if (s.onGround) tryBounce(L, s, ev);
     else if (press && s.dashAvail && s.dashing === 0) {
       s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0;
       if (ev) ev.push({ type: "dash" });
@@ -164,7 +194,8 @@ function stepState(L, s, press, ev) {
     s.dashing--;
     if (s.dashing === 0) s.grace = GRACE_STEPS;
   } else {
-    if (s.lead > 0) s.lead = Math.max(0, s.lead - LEAD_DECAY * DT);
+    // 연속 대시로 많이 앞서 나갔으면 더 빨리 제자리로 돌아온다
+    if (s.lead > 0) s.lead = Math.max(0, s.lead - (LEAD_DECAY + Math.max(0, s.lead - DASH_LEAD) * 1.5) * DT);
     if (s.grace > 0) s.grace--;
     if (!s.onGround) { s.vy += G * DT; s.y += s.vy * DT; }
   }
@@ -182,7 +213,7 @@ function stepState(L, s, press, ev) {
         for (let c = c0; c <= c1; c++) if (isSolid(L, c, T)) {
           s.y = T; s.vy = 0; s.onGround = true; s.dashAvail = false;
           if (ev) ev.push({ type: "land" });
-          if (s.mode === "bounce") tryBounce(s, ev);
+          if (s.mode === "bounce") tryBounce(L, s, ev);
           break;
         }
       }
@@ -204,8 +235,15 @@ function stepState(L, s, press, ev) {
       if (!s.onGround && s.dashing === 0 && s.vy >= 0 && s.y - r <= STEP_UP) {   // 모서리에 살짝 걸림 → 올려줌
         s.y = r; s.vy = 0; s.onGround = true; s.dashAvail = false;
         if (ev) ev.push({ type: "land" });
-        if (s.mode === "bounce") tryBounce(s, ev);
+        if (s.mode === "bounce") tryBounce(L, s, ev);
       } else die(s, "crash", ev);
+    } else if (t === "J") {                // 점프대: 밟는 순간 저절로 솟는다
+      if (s.onGround && r === s.y - 1) {
+        s.vy = -V_PAD; s.onGround = false; s.coyote = 0; s.dashAvail = true; s.buffer = 0;
+        if (ev) ev.push({ type: "pad" });
+      }
+    } else if (t === "O") {                // 충전 고리: 공중에서 대시가 다시 찬다
+      if (s.ring !== c) { s.ring = c; s.dashAvail = true; if (ev) ev.push({ type: "ring", c, r }); }
     } else if (t === "D") {
       if (s.dashing > 0 || s.grace > 0) { if (ev) ev.push({ type: "break", c, r }); }
       else die(s, "wall", ev);
@@ -213,6 +251,16 @@ function stepState(L, s, press, ev) {
       const hx0 = c + 0.22, hx1 = c + 0.78;
       const hy0 = t === "^" ? r + 0.4 : r, hy1 = t === "^" ? r + 1 : r + 0.6;
       if (s.x + HALF - 0.08 > hx0 && s.x - HALF + 0.08 < hx1 && s.y - 0.08 > hy0 && top + 0.08 < hy1) die(s, "spike", ev);
+    }
+  }
+  for (let c = c0 - 1; c <= c1 + 1 && !s.dead; c++) {      // 톱날(원)과 몸(상자)
+    const list = L.sawCols.get(c);
+    if (!list) continue;
+    for (const w of list) {
+      const cx = w.c + 0.5, cy = sawY(w, s.step / SUB);
+      const bx = Math.max(s.x - HALF + 0.06, Math.min(cx, s.x + HALF - 0.06));
+      const by = Math.max(top + 0.06, Math.min(cy, s.y - 0.06));
+      if ((bx - cx) ** 2 + (by - cy) ** 2 < SAW_R * SAW_R) { die(s, "saw", ev); break; }
     }
   }
   if (!s.dead && s.y > ROWS + 1.5) die(s, "fall", ev);
@@ -261,4 +309,4 @@ function solve(L, start, opts = {}) {
   return { presses: null, best };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, DASH_STEPS, CHUNKS, COURSE, buildLevel, spawnState, stepState, solve, groundY, tile };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, DASH_STEPS, SAW_TRAVEL, CHUNKS, COURSE, buildLevel, spawnState, stepState, solve, groundY, tile, sawY };
