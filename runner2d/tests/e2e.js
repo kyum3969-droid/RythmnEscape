@@ -50,19 +50,40 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 자동 풀이로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).presses); g.startFresh(); });
-  const shots = { 26: 'a_steps', 49.5: 'b_wall', 73.5: 'c_wallgap', 82: 'c_bridge', 105.5: 'd_mix', 126: 'd_thick' };
-  for (let beat = 0; beat <= 140; beat += 0.25) {
+  const shots = { 26: 'a_steps', 49.5: 'b_wall', 73.5: 'c_wallgap', 82: 'c_bridge', 105.8: 'e_gate', 113.5: 'e_bounce', 137.5: 'd_mix', 158: 'd_thick' };
+  const modes = {};
+  for (let beat = 0; beat <= 172; beat += 0.25) {
     await G((bt) => window.__game.tickTo(bt), beat);
+    if (beat === 100 || beat === 112 || beat === 134) modes[beat] = await G(() => window.__game.state.mode);
+    if (shots[beat + 0.05]) { await G((bt) => window.__game.tickTo(bt), beat + 0.05); await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat + 0.05] + '.png' }); }
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
     if (await G(() => window.__game.phase) !== 'running') break;
   }
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, broken: window.__game.broken.size, cause: window.__game.state.cause, x: window.__game.state.x }));
   ok(st.phase === 'won', '풀이대로 누르면 완주' + (st.phase === 'won' ? '' : ` (${st.cause} @마디 ${Math.floor(st.x / 16)})`));
-  ok(st.cp === 2 && st.broken > 0, '체크포인트 3개 통과, 대시벽이 깨져 사라짐');
+  ok(st.cp === 3 && st.broken > 0, '체크포인트 4개 통과, 대시벽이 깨져 사라짐');
+  ok(modes[100] === 'run' && modes[112] === 'bounce' && modes[134] === 'run', '관문을 깨면 바운스 모드, 다시 깨면 달리기 모드');
   await p.waitForTimeout(200);
   ok(await p.isVisible('#overlay') && (await p.textContent('#ovTitle')).includes('CLEAR'), '완주 화면');
   ok((await p.textContent('#pct')) === '100%' && (await p.textContent('#best')).includes('100'), '진행률 100%, 최고 기록 저장');
   await p.screenshot({ path: out + 'clear.png' });
+
+  console.log('== 바운스 모드: 점프는 저절로, 입력은 대시만 ==');
+  await G(() => { const g = window.__game; g.startFresh(); });
+  for (let beat = 0; beat <= 108; beat += 0.25) await G((bt) => window.__game.tickTo(bt), beat);
+  await G(() => window.__game.setBot(null));
+  await G(() => window.__game.tickTo(109.5));
+  st = await G(() => ({ mode: window.__game.state.mode, g: window.__game.state.onGround, phase: window.__game.phase }));
+  ok(st.mode === 'bounce' && !st.g && st.phase === 'running', '아무것도 안 눌러도 박자에 맞춰 튀어 오른다');
+  await p.touchscreen.tap(400, 200);
+  await G(() => window.__game.tickTo(109.6));
+  st = await G(() => ({ d: window.__game.state.dashing }));
+  ok(st.d > 0, '공중에서 누르면 대시');
+  await G(() => { const g = window.__game; g.respawn(); });
+  for (let beat = 99; beat <= 108; beat += 0.25) await G((bt) => window.__game.tickTo(bt), beat);
+  st = await G(() => ({ phase: window.__game.phase, cause: window.__game.state.cause, cp: window.__game.state.cp }));
+  ok(st.phase === 'dead' && st.cause === 'wall' && st.cp === 2, '입력 없이 달리면 모드 관문에 부딪혀 죽는다 (체크포인트 3에서 재시작한 상태)');
+  await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).presses); });
 
   console.log('== 체크포인트에서 다시 시작 ==');
   await G(() => { const g = window.__game; g.startFresh(); });

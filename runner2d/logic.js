@@ -16,8 +16,11 @@ const BUFFER_STEPS = 13;       // 착지 직전 입력을 점프로 예약
 const SIZE = 0.8, HALF = 0.4;  // 플레이어 판정 상자
 const ROWS = 10;               // 화면 세로 칸 수 (row 0 = 맨 위, row 9 = 바닥)
 const STEP_UP = 0.22;          // 모서리에 살짝 걸렸을 때 올려주는 여유
+const BOUNCE_TOL = 8;          // 바운스 모드: 박자 직후 이 스텝 안에 땅에 있으면 바로 튄다(그 뒤면 다음 박자까지 구름)
 
 // 마디(16칸) 조각. 아래 6줄(row 4~9)만 적는다.  # 블록  ^ 바닥 가시  v 천장 가시  D 대시벽  C 체크포인트  G 결승선
+// B / R = 화면 높이의 거대한 대시벽(모드 관문). 깨고 지나가면 B는 바운스 모드, R은 달리기 모드가 된다.
+// 바운스 모드: 구슬이 박자마다 저절로 튄다(평지에서는 0·4·8·12번 칸에 착지). 플레이어는 공중 대시만 한다.
 const E = "................", F = "################";
 const CHUNKS = {
   flat:      [E, E, E, E, E, F],
@@ -43,6 +46,14 @@ const CHUNKS = {
   mix1:      [E, "........D.......", "........D.......", "........D.......", "....^...D.....^^", F],
   mix2:      [E, E, E, E, E, "#####...###....#"],
   final:     [E, E, E, E, "....^^..........", "########.......#"],
+  // ---- 바운스 구간
+  bgate_in:  [E, E, E, E, "........B.......", F],
+  bb1:       [E, E, E, E, ".......^^.......", F],                                                        // 착지점에 가시 → 대시로 넘기
+  bb2:       [E, "......D.........", "......D.........", "......D.........", "......D.........", F],     // 정점에 벽 → 대시로 깨기
+  bb3:       [E, E, E, E, E, "#######..#######"],                                                         // 착지점에 구덩이
+  bb4:       [E, "..D.............", "..D.............", "..D.............", "..D.......^^....", F],     // 벽을 깬 뒤에는 대시를 참아야 함
+  bb5:       [E, E, E, E, ".......###..^^..", F],                                                        // 발판에서 튄 다음 착지점에 가시
+  bgate_out: [E, E, E, E, "......R.........", F],
 };
 
 // 곡 구성: 마디 순서. 8마디 단위, 각 구간의 마지막 마디는 체크포인트(숨 고르기).
@@ -53,11 +64,12 @@ const COURSE = {
     "hop", "hop", "double", "gaps", "steps", "hopgap", "double2", "cp",
     "dashgap6", "hop", "wall", "double", "dashgap7", "wallspike", "gaps2", "cp",
     "wallgap", "up", "bridge", "down", "wall2", "wallspike", "hopgap", "cp",
+    "bgate_in", "bb1", "bb2", "bb3", "bb4", "bb5", "bgate_out", "cp",
     "mix1", "mix2", "up", "bridge", "down", "thick", "final", "goal",
     "flat",
   ],
   sections: [   // 음악/색 구간 (시작 마디)
-    { bar: 0, id: "intro" }, { bar: 2, id: "a" }, { bar: 10, id: "b" }, { bar: 18, id: "c" }, { bar: 26, id: "d" }, { bar: 33, id: "outro" },
+    { bar: 0, id: "intro" }, { bar: 2, id: "a" }, { bar: 10, id: "b" }, { bar: 18, id: "c" }, { bar: 26, id: "bounce" }, { bar: 34, id: "d" }, { bar: 41, id: "outro" },
   ],
 };
 
@@ -65,7 +77,7 @@ function buildLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill("."));
-  const cps = [];
+  const cps = [], switches = [];
   let goalX = cols - 8;
   course.bars.forEach((name, b) => {
     const ch = CHUNKS[name];
@@ -76,11 +88,15 @@ function buildLevel(course) {
         const t = row[c], col = b * 16 + c;
         if (t === "C") cps.push({ col, beat: col / TPB, bar: b });
         else if (t === "G") goalX = col;
-        else grid[4 + i][col] = t;
+        else if (t === "B" || t === "R") {
+          switches.push({ col, mode: t === "B" ? "bounce" : "run" });
+          for (let r = 0; r <= 4 + i; r++) grid[r][col] = "D";
+        } else grid[4 + i][col] = t;
       }
     });
   });
-  return { grid, cols, cps, goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  switches.sort((a, b) => a.col - b.col);
+  return { grid, cols, cps, switches, goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);   // 코스 앞뒤는 평지
@@ -97,11 +113,21 @@ function spawnState(L, cp = -1) {
   const beat = cp < 0 ? 0 : L.cps[cp].beat - 1;
   const step = Math.round(beat * SUB);
   const x = TPB * step / SUB;
+  let sw = 0;
+  while (sw < L.switches.length && x >= L.switches[sw].col + 0.5) sw++;
   return {
+    mode: sw > 0 ? L.switches[sw - 1].mode : "run", sw,
     step, x, lead: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
     dashAvail: false, dashing: 0, grace: 0, coyote: 0, buffer: 0,
     cp, dead: false, cause: "", won: false,
   };
+}
+
+// 바운스 모드: 박자에 맞춰 땅에 있으면 저절로 튄다
+function tryBounce(s, ev) {
+  if (s.step % SUB > BOUNCE_TOL) return;
+  s.vy = -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true;
+  if (ev) ev.push({ type: "bounce" });
 }
 
 function die(s, cause, ev) { s.dead = true; s.cause = cause; if (ev) ev.push({ type: "die", cause }); }
@@ -110,14 +136,23 @@ function die(s, cause, ev) { s.dead = true; s.cause = cause; if (ev) ev.push({ t
 function stepState(L, s, press, ev) {
   if (s.dead || s.won) return;
   s.step++;
-  if (press) s.buffer = BUFFER_STEPS;
-  if (s.buffer > 0) {
-    if (s.onGround || s.coyote > 0) {
-      s.vy = -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true; s.buffer = 0;
-      if (ev) ev.push({ type: "jump" });
-    } else if (press && s.dashAvail && s.dashing === 0) {
-      s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0; s.buffer = 0;
+  if (s.mode === "bounce") {            // 점프는 박자가 해 준다. 입력은 공중 대시뿐.
+    s.buffer = 0;
+    if (s.onGround) tryBounce(s, ev);
+    else if (press && s.dashAvail && s.dashing === 0) {
+      s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0;
       if (ev) ev.push({ type: "dash" });
+    }
+  } else {
+    if (press) s.buffer = BUFFER_STEPS;
+    if (s.buffer > 0) {
+      if (s.onGround || s.coyote > 0) {
+        s.vy = -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true; s.buffer = 0;
+        if (ev) ev.push({ type: "jump" });
+      } else if (press && s.dashAvail && s.dashing === 0) {
+        s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0; s.buffer = 0;
+        if (ev) ev.push({ type: "dash" });
+      }
     }
   }
   if (s.buffer > 0) s.buffer--;
@@ -147,6 +182,7 @@ function stepState(L, s, press, ev) {
         for (let c = c0; c <= c1; c++) if (isSolid(L, c, T)) {
           s.y = T; s.vy = 0; s.onGround = true; s.dashAvail = false;
           if (ev) ev.push({ type: "land" });
+          if (s.mode === "bounce") tryBounce(s, ev);
           break;
         }
       }
@@ -168,6 +204,7 @@ function stepState(L, s, press, ev) {
       if (!s.onGround && s.dashing === 0 && s.vy >= 0 && s.y - r <= STEP_UP) {   // 모서리에 살짝 걸림 → 올려줌
         s.y = r; s.vy = 0; s.onGround = true; s.dashAvail = false;
         if (ev) ev.push({ type: "land" });
+        if (s.mode === "bounce") tryBounce(s, ev);
       } else die(s, "crash", ev);
     } else if (t === "D") {
       if (s.dashing > 0 || s.grace > 0) { if (ev) ev.push({ type: "break", c, r }); }
@@ -181,6 +218,10 @@ function stepState(L, s, press, ev) {
   if (!s.dead && s.y > ROWS + 1.5) die(s, "fall", ev);
   if (s.dead) return;
   while (s.cp + 1 < L.cps.length && s.x >= L.cps[s.cp + 1].col + 0.5) { s.cp++; if (ev) ev.push({ type: "checkpoint", index: s.cp }); }
+  while (s.sw < L.switches.length && s.x >= L.switches[s.sw].col + 0.5) {
+    s.mode = L.switches[s.sw].mode; s.sw++; s.buffer = 0;
+    if (ev) ev.push({ type: "mode", mode: s.mode });
+  }
   if (s.x >= L.goalX + 0.5) { s.won = true; if (ev) ev.push({ type: "win" }); }
 }
 
@@ -192,7 +233,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < offset; i++) stepState(L, s0, false);
   if (s0.dead) return null;
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.dashAvail ? 1 : 0}|${s.dashing}|${Math.round(s.lead * 8)}|${s.grace}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.dashAvail ? 1 : 0}|${s.dashing}|${Math.round(s.lead * 8)}|${s.grace}|${s.mode}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {
@@ -206,7 +247,8 @@ function solve(L, start, opts = {}) {
     if (seen.has(k)) continue;
     seen.add(k);
     if (s.x > best) best = s.x;
-    const canAct = s.onGround || s.coyote > 0 || (s.dashAvail && s.dashing === 0);
+    const canDash = !s.onGround && s.dashAvail && s.dashing === 0;
+    const canAct = s.mode === "bounce" ? canDash : s.onGround || s.coyote > 0 || canDash;
     const options = canAct ? [true, false] : [false];   // 스택이라 뒤에 넣은 것(안 누름)을 먼저 시도
     for (const press of options) {
       const n = { ...s };

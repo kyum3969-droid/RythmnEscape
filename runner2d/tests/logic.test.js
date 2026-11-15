@@ -29,6 +29,28 @@ for (let c = 0; c < L.cols; c++) for (let r = 0; r < Lg.ROWS; r++) if (Lg.tile(L
 ok(wallCols.size > 0 && new Set(full.ev.filter(e => e.type === 'break').map(e => e.c)).size === wallCols.size, `대시벽 ${wallCols.size}개를 모두 대시로 깬다`);
 ok(count('dash') >= 10, '대시가 꼭 필요한 구간이 충분히 있다');
 
+// ---- 바운스 모드
+ok(L.switches.length === 2 && L.switches[0].mode === 'bounce' && L.switches[1].mode === 'run', '모드 관문 2개: 바운스로 들어갔다가 달리기로 돌아온다');
+{
+  const s = Lg.spawnState(L, -1), set = new Set(sol); let bounces = 0, offBeat = 0, jumpsInBounce = 0, modes = [];
+  while (!s.dead && !s.won) {
+    const ev = []; Lg.stepState(L, s, set.has(s.step + 1), ev);
+    for (const e of ev) {
+      if (e.type === 'bounce') { bounces++; if (s.step % Lg.SUB > 1) offBeat++; }
+      if (e.type === 'jump' && s.mode === 'bounce') jumpsInBounce++;
+      if (e.type === 'mode') modes.push(e.mode);
+    }
+  }
+  ok(bounces >= 15 && offBeat === 0, `바운스 모드에서 ${bounces}번 저절로 튀고, 전부 박자 정각`);
+  ok(jumpsInBounce === 0 && modes.join() === 'bounce,run', '바운스 모드에는 직접 점프가 없고, 관문을 지날 때 모드가 바뀐다');
+  const gateIn = L.switches[0].col, bar1 = Math.floor(gateIn / 16) + 1;
+  const cut = sol.filter(st => Lg.TPB * st / Lg.SUB < bar1 * 16);       // 바운스 첫 마디부터는 아무것도 안 누름
+  const r = run(cut);
+  ok(r.s.dead && r.s.cause === 'spike' && Math.floor(r.s.x / 16) === bar1, '바운스에서 대시를 안 하면 착지점 가시에 죽는다');
+  const noGate = run(sol.filter(st => Lg.TPB * st / Lg.SUB < gateIn - 8));   // 관문 앞에서 입력을 끊음
+  ok(noGate.s.dead && noGate.s.cause === 'wall' && Math.abs(noGate.s.x - gateIn) < 1, '모드 관문은 대시 없이는 못 지나간다');
+}
+
 L.cps.forEach((cp, i) => {
   const s = Lg.spawnState(L, i);
   ok(s.onGround && Math.abs(s.x - (cp.col - 4)) < 1e-9, `체크포인트 ${i + 1}: 한 박자 앞 평지에서 다시 시작`);
@@ -58,9 +80,10 @@ L.cps.forEach((cp, i) => {
 // 타이밍 여유(ms).
 //  점프: 그 점프를 앞뒤로 밀어도 뒤를 이어 갈 수 있는 폭.
 //  대시: 점프 시점에 따라 달라지므로, 점프를 여러 시점으로 옮겨 보며 그중 가장 넓은 대시 폭.
-const types = [];
+const typeAt = {};
 { const s = Lg.spawnState(L, -1), set = new Set(sol);
-  while (!s.dead && !s.won) { const ev = []; Lg.stepState(L, s, set.has(s.step + 1), ev); for (const e of ev) if (e.type === 'jump' || e.type === 'dash') types.push(e.type); } }
+  while (!s.dead && !s.won) { const ev = [], pressing = set.has(s.step + 1); Lg.stepState(L, s, pressing, ev); if (pressing) for (const e of ev) if (e.type === 'jump' || e.type === 'dash') typeAt[s.step] = e.type; } }
+const types = sol.map((st) => typeAt[st]);
 function stateBefore(i, margin) {            // i번째 입력의 margin 스텝 전 상태
   const s = Lg.spawnState(L, -1), set = new Set(sol.slice(0, i));
   while (s.step < sol[i] - margin - 1) Lg.stepState(L, s, set.has(s.step + 1));
@@ -77,9 +100,21 @@ function tryPresses(base, steps, upto) {     // base에서 steps에 누르며 up
   return s;
 }
 const tight = {};
+const paired = new Set();
+for (let i = 0; i < sol.length; i++) if (types[i] === 'jump' && types[i + 1] === 'dash' && sol[i + 1] - sol[i] <= 100) paired.add(i + 1);
 for (let i = 0; i < sol.length; i++) {
+  if (types[i] === 'dash' && !paired.has(i)) {      // 점프 입력 없이 하는 대시(바운스 모드 등): 그 대시만 앞뒤로 밀어 봄
+    const base = stateBefore(i, 60); let n = 0;
+    for (let sh = -60; sh <= 60; sh++) {
+      const s = tryPresses(base, [sol[i] + sh], sol[i] + sh + 1);
+      if (s.dashing > 0 && survives(s, sol[i + 1])) n++;
+    }
+    const bar = Math.floor(Lg.TPB * sol[i] / Lg.SUB / 16);
+    tight[bar] = Math.min(tight[bar] ?? 1e9, n * msPerStep);
+    continue;
+  }
   if (types[i] !== 'jump') continue;
-  const hasDash = types[i + 1] === 'dash';
+  const hasDash = paired.has(i + 1);
   const next = sol[i + (hasDash ? 2 : 1)];
   const base = stateBefore(i, 60);
   const bar = Math.floor(Lg.TPB * sol[i] / Lg.SUB / 16);
