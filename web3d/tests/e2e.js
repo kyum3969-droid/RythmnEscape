@@ -15,6 +15,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   await p.goto(FILE); await p.waitForTimeout(1200);
   await p.screenshot({ path: out + 'w_menu.png' });
   ok(await p.isVisible('#select'), '시작하면 스테이지 선택 화면');
+  ok(await p.evaluate(() => window.__game.control) === 'pad' && (await p.textContent('#controlBtn')) === '조작: 십자 패드', '기본 조작은 십자 패드');
   const G = (fn, arg) => p.evaluate(fn, arg);
   await G(() => { window.__game.fake.on = true; });
   await p.click('#stages button:nth-child(1)'); await p.waitForTimeout(200);
@@ -91,9 +92,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   await p.click('#padMenu'); await p.waitForTimeout(150);
   ok(await p.isVisible('#select'), '패드의 메뉴 버튼');
   await p.click('#controlBtn');
-  ok((await p.textContent('#controlBtn')) === '조작: 칸 탭' && await G(() => window.__game.control) === 'tap', '메뉴에서 조작 방식 바꾸기 (패드 → 칸 탭)');
-  await p.click('#controlBtn');
-  ok(await G(() => window.__game.control) === 'swipe', '칸 탭 → 스와이프');
+  ok((await p.textContent('#controlBtn')) === '조작: 스와이프' && await G(() => window.__game.control) === 'swipe', '메뉴에서 조작 방식 바꾸기 (패드 → 스와이프)');
   await p.click('#stages button:nth-child(1)'); await p.waitForTimeout(100);
   ok((await p.textContent('#ovSub')).includes('밀기'), '준비 화면 안내가 조작 방식에 맞게 바뀜');
 

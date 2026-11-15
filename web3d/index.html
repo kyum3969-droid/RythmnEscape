@@ -197,7 +197,7 @@
       <p class="tag">비트에 맞춰 점프! 적을 피해 탈출하세요</p>
       <div id="stages"></div>
       <button class="btn" id="modeBtn">리듬 모드</button>
-      <button class="btn" id="controlBtn">조작: 스와이프</button>
+      <button class="btn" id="controlBtn">조작: 십자 패드</button>
       <div class="setting">
         <span class="cap">소리 지연 보정</span>
         <button class="btn icon" id="offMinus" aria-label="보정 10ms 줄이기">-</button>
@@ -440,7 +440,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
   const save = {
     cleared: store.get("cleared", []), best: store.get("best", {}),
     offsetMs: store.get("offsetMs", 0), rhythm: store.get("rhythm", true),
-    control: store.get("control", "swipe"),          // swipe | pad | tap
+    control: store.get("control", "pad"),            // pad | swipe | tap
   };
   const persist = () => { store.set("cleared", save.cleared); store.set("best", save.best); store.set("offsetMs", save.offsetMs); store.set("rhythm", save.rhythm); store.set("control", save.control); };
 
@@ -1464,7 +1464,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
   $("padRestart").addEventListener("click", () => restart());
   $("padUndo").addEventListener("click", () => undo());
   $("controlBtn").addEventListener("click", () => {
-    const order = ["swipe", "pad", "tap"];
+    const order = ["pad", "swipe", "tap"];
     save.control = order[(order.indexOf(save.control) + 1) % order.length];
     persist();
     applyControlUI();
