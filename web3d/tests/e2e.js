@@ -72,21 +72,58 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   st = await G(() => ({ p: window.__game.state.player, t: window.__game.state.turn }));
   ok(st.t === 1 && st.p.x === 2, '즉시 이동 · 벽은 턴 안 씀 · 되돌리기');
 
-  console.log('== 다른 화면 크기에서 보드가 무대 안에 들어오는지 ==');
+  console.log('== 따라가는 카메라: 칸 크기 일정 / 병아리는 늘 화면 안 ==');
   await G(() => window.__game.setRhythm(true));
-  for (const [w, h] of [[360, 640], [430, 932], [1280, 800]]) {
+  const tileSize = () => G(() => {
+    const g = window.__game, pl = g.state.player;
+    const a = g.project(pl), b = g.project({ x: pl.x + 1, y: pl.y });
+    const r = document.getElementById('stage').getBoundingClientRect();
+    return { size: Math.hypot(b.x - a.x, b.y - a.y), inside: a.x > r.left && a.x < r.right && a.y > r.top && a.y < r.bottom };
+  });
+  for (const [w, h] of [[390, 844], [360, 640], [430, 932]]) {
     await p.setViewportSize({ width: w, height: h });
-    for (const s of [2, 4]) {
-      await G((i) => window.__game.loadStage(i), s); await p.waitForTimeout(150);
-      const r = await G(() => {
-        const g = window.__game, st = g.state, rect = document.getElementById('stage').getBoundingClientRect();
-        const W = st.grid[0].length, H = st.grid.length;
-        const pts = [[0, 0], [W - 1, 0], [0, H - 1], [W - 1, H - 1]].map(([x, y]) => g.project({ x, y }));
-        return pts.every(pt => pt.x >= rect.left && pt.x <= rect.right && pt.y >= rect.top && pt.y <= rect.bottom);
-      });
-      ok(r, `${w}x${h} 스테이지 ${s + 1}: 네 모서리 칸이 화면 안`);
+    const sizes = [];
+    for (let s = 0; s < 6; s++) {
+      await G((i) => { const g = window.__game; g.loadStage(i); g.startRun(); g.settle(); }, s);
+      await p.waitForTimeout(60);
+      const t = await tileSize();
+      sizes.push(t.size);
+      if (!t.inside) ok(false, `${w}x${h} 스테이지 ${s + 1}: 병아리가 화면 밖`);
     }
+    const mn = Math.min(...sizes), mx = Math.max(...sizes);
+    // 원근 때문에 병아리가 화면 아래쪽(가까운 줄)에 있으면 칸이 조금 커 보인다 → ±15% 허용
+    ok(mx / mn < 1.15 && mn > w / 9, `${w}x${h}: 6개 스테이지 칸 크기 ${mn.toFixed(0)}~${mx.toFixed(0)}px (원근 차 15% 이내, 화면폭의 1/9 이상)`);
   }
+  await p.setViewportSize({ width: 390, height: 844 });
+  // 스테이지 6을 끝까지 따라가며 병아리가 계속 화면 안에 있는지
+  await G(() => { const g = window.__game; g.loadStage(5); g.startRun(); g.settle(); });
+  const M2 = { u: 'up', d: 'down', l: 'left', r: 'right', w: 'wait' }, path6 = 'rwrrrddrruurrdd';
+  let allIn = true;
+  for (let i = 0; i < path6.length; i++) {
+    await beat(3 + i); await G((a) => window.__game.act(a), M2[path6[i]]);
+    await p.waitForTimeout(260);
+    if (!(await tileSize()).inside) allIn = false;
+    if (i === 8) await p.screenshot({ path: out + 'w_follow.png' });
+  }
+  ok(allIn && await G(() => window.__game.state.status) === 'won', '스테이지 6 내내 병아리가 화면 안 + 클리어');
+
+  console.log('== 미니맵 / 전체 맵 보기 ==');
+  await p.waitForTimeout(1300);
+  await G(() => { const g = window.__game; g.loadStage(4); g.startRun(); });
+  await p.waitForTimeout(700);
+  ok(await p.isVisible('#mapBtn') && !(await G(() => window.__game.overview)), '플레이 중에는 따라가기 + 미니맵 표시');
+  await p.click('#mapBtn'); await p.waitForTimeout(900);
+  const corners = await G(() => {
+    const g = window.__game, st = g.state, r = document.getElementById('stage').getBoundingClientRect();
+    const W = st.grid[0].length, H = st.grid.length;
+    return [[0, 0], [W - 1, 0], [0, H - 1], [W - 1, H - 1]].map(([x, y]) => g.project({ x, y })).every((pt) => pt.x >= r.left && pt.x <= r.right && pt.y >= r.top && pt.y <= r.bottom);
+  });
+  ok(corners && await G(() => window.__game.overview), '미니맵 탭 → 전체 맵(네 모서리 모두 화면 안)');
+  await p.screenshot({ path: out + 'w_overview.png' });
+  await p.click('#mapBtn'); await p.waitForTimeout(300);
+  ok(!(await G(() => window.__game.overview)), '다시 탭 → 따라가기');
+  await G(() => window.__game.loadStage(2)); await p.waitForTimeout(300);
+  ok(await G(() => window.__game.overview), '시작 전(준비 화면)에는 전체 맵');
   await p.setViewportSize({ width: 390, height: 844 });
   ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '가로 스크롤 없음');
   console.log('콘솔/페이지 오류:', errs.length ? errs : '없음');

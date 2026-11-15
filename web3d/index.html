@@ -73,6 +73,15 @@
     100% { opacity: 0; transform: translateY(-10px) scale(1); }
   }
   #count { top: 28%; font-size: 96px; opacity: 0; }
+  #mapBtn {
+    position: absolute; top: 8px; right: var(--gutter-r); z-index: 2;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: rgba(23, 26, 51, 0.88); border: 2px solid var(--line); border-radius: 14px;
+    padding: 8px; font: inherit; font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+  #mapBtn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  #mapBtn.on { border-color: var(--yellow); color: var(--yellow); }
+  #minimap { display: block; }
 
   #bottom {
     display: flex; flex-direction: column; gap: 10px;
@@ -138,6 +147,7 @@
   </header>
   <main id="stage">
     <canvas id="scene" aria-label="게임 보드"></canvas>
+    <button id="mapBtn" aria-label="전체 맵 보기"><canvas id="minimap"></canvas><span id="mapLabel">전체 맵</span></button>
     <div class="float" id="judge"></div>
     <div class="float" id="count"></div>
   </main>
@@ -516,6 +526,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
   const LIGHT_DIR = new THREE.Vector3(0.35, 0.82, 0.45).normalize();   // 왼쪽 앞 위에서 오는 빛
   const CAM_PITCH = THREE.MathUtils.degToRad(52);
+  const raycaster = new THREE.Raycaster(), ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
   // ---------------------------------------------------------------- 셰이더 (툰 4단계 + 잉크 외곽선)
   const TOON_VS = `
@@ -953,25 +964,35 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
     },
   };
 
-  // ---------------------------------------------------------------- 카메라: 보드가 무대 영역에 꽉 차게
-  function frameCamera() {
+  // ---------------------------------------------------------------- 카메라
+  // 따라가기: 병아리 근처에서 화면 가로에 VIEW_TILES칸이 보이게 → 어느 스테이지든 칸 크기(누르는 크기)가 같다.
+  // 전체 보기: 맵 전체가 무대에 들어오게 맞춘다(시작 전, 미니맵을 눌렀을 때).
+  const VIEW_TILES = 6;
+  const MIN_ROWS = 5.5;
+  const cam = { tx: 0, tz: 0, d: 20 };
+  let overview = true;
+  let ov = { tx: 0, tz: 0, d: 20 };
+
+  function placeCamera(tx, tz, d) {
+    camera.position.set(tx, Math.sin(CAM_PITCH) * d, tz + Math.cos(CAM_PITCH) * d);
+    camera.lookAt(tx, 0, tz);
+    camera.updateMatrixWorld(true);
+  }
+  function resize() {
     const w = stageEl.clientWidth, h = stageEl.clientHeight;
-    if (!w || !h || !board.w) return;
+    if (!w || !h) return;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.fov = 30;
     camera.updateProjectionMatrix();
+    if (board.w) ov = computeOverview();
+  }
+  function computeOverview() {
     const hw = board.w / 2, hh = board.h / 2;
     const pts = [];
     for (const x of [-hw, hw]) for (const z of [-hh, hh]) for (const y of [0, 0.6]) pts.push(new THREE.Vector3(x, y, z));
-    pts.push(new THREE.Vector3(0, 1.1, -hh + 0.5));   // 맨 윗줄 병아리 모자
+    pts.push(new THREE.Vector3(0, 1.1, -hh + 0.5));
     const v = new THREE.Vector3();
-    const place = (tz, d) => {
-      const target = new THREE.Vector3(0, 0, tz);
-      camera.position.set(0, Math.sin(CAM_PITCH) * d, tz + Math.cos(CAM_PITCH) * d);
-      camera.lookAt(target);
-      camera.updateMatrixWorld(true);
-    };
     const bounds = () => {
       let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
       for (const p of pts) { v.copy(p).project(camera); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); }
@@ -982,17 +1003,86 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
       let lo = 2, hi = 120;
       for (let i = 0; i < 28; i++) {
         const mid = (lo + hi) / 2;
-        place(tz, mid);
+        placeCamera(0, tz, mid);
         const b = bounds();
-        const fits = b.x0 > -0.94 && b.x1 < 0.94 && b.y0 > -0.92 && b.y1 < 0.92;
-        if (fits) hi = mid; else lo = mid;
+        if (b.x0 > -0.94 && b.x1 < 0.94 && b.y0 > -0.92 && b.y1 < 0.92) hi = mid; else lo = mid;
       }
       d = hi;
-      place(tz, d);
+      placeCamera(0, tz, d);
       const b = bounds();
       tz -= ((b.y0 + b.y1) / 2) * d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / Math.sin(CAM_PITCH);
     }
-    place(tz, d);
+    placeCamera(cam.tx, cam.tz, cam.d);
+    return { tx: 0, tz, d };
+  }
+  function followTarget() {
+    const vt = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), ht = vt * camera.aspect;
+    const d = Math.max((VIEW_TILES / 2) / ht, MIN_ROWS * Math.sin(CAM_PITCH) / (2 * vt));
+    const halfX = d * ht - 0.3, halfZ = (d * vt) / Math.sin(CAM_PITCH) - 0.3;
+    const clampAxis = (v, half, limit) => (limit <= half ? 0 : Math.max(-limit + half, Math.min(limit - half, v)));
+    const p = chick.root.position;
+    return { tx: clampAxis(p.x, halfX, board.w / 2), tz: clampAxis(p.z, halfZ, board.h / 2), d };
+  }
+  function updateCamera(dt, snap = false) {
+    if (!board.w) return;
+    const want = overview ? ov : followTarget();
+    const k = snap ? 1 : 1 - Math.exp(-dt * 7);
+    cam.tx += (want.tx - cam.tx) * k;
+    cam.tz += (want.tz - cam.tz) * k;
+    cam.d += (want.d - cam.d) * k;
+    placeCamera(cam.tx, cam.tz, cam.d);
+  }
+  function setOverview(on) {
+    overview = on;
+    $("mapBtn").classList.toggle("on", on);
+    $("mapLabel").textContent = on ? "따라가기" : "전체 맵";
+    $("mapBtn").setAttribute("aria-label", on ? "병아리 따라가기" : "전체 맵 보기");
+  }
+
+  // 미니맵: 전체 맵 + 적/예고 칸 + 지금 화면에 보이는 영역
+  const mctx = $("minimap").getContext("2d");
+  const MAP_COLORS = { wall: "#525baa", floor: "#2a2f5c", crumble: "#a8793f", pit: "#05060d", exit: "#3ee6a0" };
+  const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => new THREE.Vector2(x, y));
+  function drawMinimap() {
+    if (!state) return;
+    const W = board.w, H = board.h, mm = $("minimap");
+    const cell = Math.max(5, Math.floor(Math.min(108 / W, 96 / H)));
+    const cw = W * cell, ch = H * cell, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (mm.width !== cw * dpr || mm.height !== ch * dpr) {
+      mm.width = cw * dpr; mm.height = ch * dpr; mm.style.width = cw + "px"; mm.style.height = ch + "px";
+    }
+    mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    mctx.clearRect(0, 0, cw, ch);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      mctx.fillStyle = MAP_COLORS[state.grid[y][x]] || MAP_COLORS.floor;
+      mctx.fillRect(x * cell, y * cell, cell - 1, cell - 1);
+    }
+    const dot = (x, y, r, color) => { mctx.fillStyle = color; mctx.beginPath(); mctx.arc((x + 0.5) * cell, (y + 0.5) * cell, r, 0, Math.PI * 2); mctx.fill(); };
+    for (const e of state.enemies) {
+      const c = e.type === "patrol" ? CSS.red : "#b46bff";
+      if (e.intent && state.status === "playing") {
+        mctx.strokeStyle = c; mctx.lineWidth = 1;
+        mctx.strokeRect(e.intent.x * cell + 1.5, e.intent.y * cell + 1.5, cell - 4, cell - 4);
+      }
+      dot(e.x, e.y, cell * 0.36, c);
+    }
+    dot(state.player.x, state.player.y, cell * 0.42, "#1b1d24");
+    dot(state.player.x, state.player.y, cell * 0.32, CSS.yellow);
+    if (!overview) {      // 화면에 보이는 땅 영역(사다리꼴)
+      const pts = [];
+      for (const c of corners) {
+        raycaster.setFromCamera(c, camera);
+        const hit = new THREE.Vector3();
+        if (!raycaster.ray.intersectPlane(ground, hit)) return;
+        pts.push([(hit.x + W / 2) * cell, (hit.z + H / 2) * cell]);
+      }
+      mctx.save();
+      mctx.beginPath(); mctx.rect(0, 0, cw, ch); mctx.clip();          // 맵 밖으로 나간 부분은 그리지 않음
+      mctx.beginPath(); pts.forEach(([x, y], i) => (i ? mctx.lineTo(x, y) : mctx.moveTo(x, y))); mctx.closePath();
+      mctx.fillStyle = "rgba(232,234,255,0.10)"; mctx.fill();
+      mctx.strokeStyle = "rgba(232,234,255,0.85)"; mctx.lineWidth = 2; mctx.stroke();
+      mctx.restore();
+    }
   }
 
   // ---------------------------------------------------------------- 게임 진행
@@ -1011,7 +1101,9 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
     J.resetStats();
     J.resetClock(60 / level.bpm, LEAD);
     clockStarted = false;
+    setOverview(true);
     rebuildViews();
+    updateCamera(0, true);
     hideOverlay();
     setCount("", 1, 0);
     $("stageName").textContent = level.name;
@@ -1043,7 +1135,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
     chick.reset();
     chick.place(board.world(state.player));
     board.showIntents(state);
-    frameCamera();
+    resize();
   }
 
   const lookOf = (e) => (e.intent ? { x: e.intent.x - e.x, y: e.intent.y - e.y } : { x: e.dx, y: e.dy });
@@ -1052,6 +1144,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
     if (phase !== "ready" && phase !== "paused") return;
     phase = "playing";
     hideOverlay();
+    setOverview(false);          // 카운트다운 동안 병아리 쪽으로 줌인
     J.resetClock(60 / LEVELS[levelIdx].bpm, LEAD);
     startClock(LEVELS[levelIdx].bpm);
     clockStarted = true;
@@ -1092,6 +1185,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
     if (overlayOpen() && phase !== "ready") return;
     if (phase === "ready") { startRun(); return; }
     if (phase !== "playing") return;
+    if (overview && !rhythm) setOverview(false);
     if (rhythm) applyEvents(J.input(action, songNow()));
     else doStep(action, "puzzle");
   }
@@ -1278,7 +1372,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
     else if (e.key === "Escape") pause();
   });
   // 보드 탭: 병아리 기준 방향. 병아리를 누르면 대기. (손가락이 닿는 순간 판정)
-  const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2(), ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const ndc = new THREE.Vector2();
   function tap(clientX, clientY) {
     if (phase !== "playing" && phase !== "ready") return;
     const r = canvas.getBoundingClientRect();
@@ -1305,11 +1399,15 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
   $("offMinus").addEventListener("click", () => changeOffset(-10));
   $("offPlus").addEventListener("click", () => changeOffset(10));
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
-  new ResizeObserver(frameCamera).observe(stageEl);
+  new ResizeObserver(() => resize()).observe(stageEl);
+  $("mapBtn").addEventListener("click", () => setOverview(!overview));
 
   // ---------------------------------------------------------------- 매 프레임
+  let lastFrame = performance.now() / 1000;
   function frame() {
     const now = performance.now() / 1000;
+    const dt = Math.min(0.1, now - lastFrame);
+    lastFrame = now;
     let pulse = 0;
     if (phase === "playing" && rhythm && clock.running) {
       scheduleAudio();
@@ -1331,6 +1429,8 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
     board.update(now, pulse);
     board.showTargets(state, rhythm && phase === "playing" ? J.pending : "", pulse);
     drawBeatBar(pulse);
+    updateCamera(dt);
+    drawMinimap();
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
@@ -1339,6 +1439,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, DIRS, initState, s
   window.__game = {
     J, fake, act, tap, get state() { return state; }, get phase() { return phase; }, loadStage, startRun, restart, undo,
     setRhythm(v) { rhythm = v; }, world: (p) => board.world(p), camera, canvas,
+    get overview() { return overview; }, setOverview, settle() { updateCamera(0, true); },
     project(p) { const v = board.world(p).project(camera); const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; },
     tick(t) { fake.t = t; applyEvents(J.advance(songNow())); },
   };
