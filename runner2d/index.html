@@ -80,6 +80,21 @@
   .panel .sub { color: var(--muted); font-size: 16px; line-height: 1.55; white-space: pre-line; }
   .panel .stat { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .panel .buttons { display: flex; flex-direction: column; gap: 10px; }
+  #dev { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+  #devJumps { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+  .btn.small { font-size: 13px; font-weight: 500; padding: 8px 10px; color: var(--muted); }
+  #devJumps .btn.small { color: var(--text); font-variant-numeric: tabular-nums; }
+  #devTag { color: var(--danger); font-weight: 700; letter-spacing: 0.08em; }
+  .layer { overflow-y: auto; }
+  @media (max-height: 480px) {             /* 가로로 든 휴대폰: 패널을 낮게 */
+    .panel { padding: 14px 18px; gap: 8px; max-width: 560px; }
+    .panel h1 { font-size: 30px; }
+    .panel .sub { font-size: 14px; line-height: 1.35; }
+    .panel .buttons { flex-direction: row; }
+    .panel .buttons .btn { flex: 1; padding: 9px 12px; }
+    #dev { padding-top: 8px; }
+    #devJumps { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  }
   @media (prefers-reduced-motion: reduce) { #toast.show { animation-duration: 0.01s; } }
 </style>
 </head>
@@ -93,6 +108,7 @@
       <span id="pct">0%</span>
       <span id="tries">시도 1</span>
       <span class="grow"></span>
+      <span id="devTag" hidden>DEV</span>
       <span id="best"></span>
       <button class="btn icon" id="pauseBtn" aria-label="일시정지">II</button>
     </div>
@@ -105,6 +121,10 @@
       <div class="sub" id="ovSub"></div>
       <div class="stat" id="ovStat"></div>
       <div class="buttons" id="ovButtons"></div>
+      <div id="dev">
+        <button class="btn small" id="devToggle">개발자 모드: 꺼짐</button>
+        <div id="devJumps" hidden></div>
+      </div>
     </div>
   </div>
 </div>
@@ -125,6 +145,8 @@
     set(k, v) { try { localStorage.setItem("pulserun." + k, JSON.stringify(v)); } catch (e) { /* 저장 불가 */ } },
   };
   let best = store.get("best", 0);
+  let dev = store.get("dev", false);     // 개발자 모드: 체크포인트로 바로 이동
+  let devRun = false;                    // 건너뛰어 시작한 판은 최고 기록에 넣지 않는다
 
   // ---------------------------------------------------------------- 색 (구간마다 바뀜)
   const PAL = {
@@ -337,7 +359,24 @@
     startClock(state.step / SUB);
     refreshHud();
   }
-  function startFresh() { tries = 1; begin(-1); }
+  function startFresh() { tries = 1; devRun = false; begin(-1); }
+  function devJump(cp) { if (!dev) return; tries = 1; devRun = cp >= 0; begin(cp); }
+  function renderDev() {
+    $("devToggle").textContent = "개발자 모드: " + (dev ? "켜짐" : "꺼짐");
+    $("devTag").hidden = !dev;
+    const box = $("devJumps");
+    box.hidden = !dev;
+    box.innerHTML = "";
+    if (!dev) return;
+    const add = (label, cp) => {
+      const b = document.createElement("button");
+      b.className = "btn small"; b.textContent = label;
+      b.addEventListener("click", () => devJump(cp));
+      box.appendChild(b);
+    };
+    add("처음 · 0%", -1);
+    L.cps.forEach((cp, i) => add(`CP${i + 1} · ${Math.round((cp.col / L.goalX) * 100)}%`, i));
+  }
   function respawn() { tries++; begin(state.cp); }
 
   function advanceTo(targetStep) {
@@ -371,10 +410,10 @@
         stopClock(true); sfx("die");
         burst(state.x, state.y - HALF, 26, "accent", 13);
         const pct = progress();
-        if (pct > best) { best = pct; store.set("best", best); }
+        if (pct > best && !devRun) { best = pct; store.set("best", best); }
         refreshHud();
       } else if (e.type === "win") {
-        phase = "won"; best = 100; store.set("best", 100);
+        phase = "won"; if (!devRun) { best = 100; store.set("best", 100); }
         sfx("win"); refreshHud();
         setTimeout(showWin, fake.on ? 0 : 900);
       }
@@ -701,7 +740,7 @@
     showOverlay('PULSE <span>RUN</span>', "화면을 누르면 점프\n공중에서 한 번 더 누르면 대시", best > 0 ? `최고 기록 ${best}%` : `${COURSE.name} · ${L.bpm} BPM`, [["시작", startFresh, true]]);
   }
   function showWin() {
-    showOverlay('<span>CLEAR!</span>', `${tries}번 만에 완주했어요.`, "", [["처음부터 다시", startFresh, true]]);
+    showOverlay('<span>CLEAR!</span>', `${tries}번 만에 완주했어요.`, devRun ? "개발자 모드로 건너뛴 판이라 기록에는 남기지 않아요." : "", [["처음부터 다시", startFresh, true]]);
   }
   function pause() {
     if (phase !== "running") return;
@@ -723,8 +762,10 @@
       e.preventDefault();
       if (phase === "title") startFresh(); else press();
     } else if (e.key === "Escape") pause();
+    else if (dev && /^[0-9]$/.test(e.key) && +e.key <= L.cps.length) devJump(+e.key - 1);   // 0 = 처음, 1~ = 체크포인트
   });
   $("pauseBtn").addEventListener("click", pause);
+  $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); renderDev(); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   new ResizeObserver(resize).observe(canvas);
 
@@ -753,12 +794,13 @@
   // 자동 테스트용 훅
   window.__game = {
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
-    press, startFresh, respawn, pause, view,
+    press, startFresh, respawn, pause, view, devJump, get dev() { return dev; }, get best() { return best; },
     setBot(steps) { bot = steps ? new Set(steps) : null; },
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },
   };
 
   buildTicks();
+  renderDev();
   resize();
   showTitle();
   refreshHud();

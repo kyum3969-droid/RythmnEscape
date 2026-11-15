@@ -96,6 +96,29 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, x: window.__game.state.x, tries: window.__game.tries, beat: window.__game.fake.beat, cpCol: window.__game.L.cps[0].col }));
   ok(st.phase === 'running' && st.cp === 0 && st.x === st.cpCol - 4 && st.beat === st.cpCol / 4 - 1 && st.tries === 2, '체크포인트 한 박자 앞에서 재시작, 음악 위치도 거기로');
 
+  console.log('== 개발자 모드: 체크포인트로 바로 이동 ==');
+  await p.click('#pauseBtn'); await p.waitForTimeout(100);
+  ok(!(await p.isVisible('#devJumps')) && !(await p.isVisible('#devTag')), '꺼져 있으면 이동 버튼이 안 보인다');
+  await p.keyboard.press('3'); await p.waitForTimeout(50);
+  ok(await G(() => window.__game.phase) === 'paused', '꺼져 있으면 숫자 키도 동작하지 않는다');
+  await p.click('#devToggle'); await p.waitForTimeout(50);
+  const labels = await p.$$eval('#devJumps button', (bs) => bs.map((b) => b.textContent));
+  ok(labels.length === 5 && labels[0].startsWith('처음') && labels[4].startsWith('CP4') && await p.isVisible('#devTag'), `켜면 이동 버튼 5개: ${labels.join(' / ')}`);
+  const bestBefore = await G(() => window.__game.best);
+  await p.click('#devJumps button:nth-child(4)'); await p.waitForTimeout(80);       // CP3
+  st = await G(() => { const g = window.__game; return { phase: g.phase, cp: g.state.cp, x: g.state.x, col: g.L.cps[2].col, beat: g.fake.beat, mode: g.state.mode, overlay: !document.getElementById('overlay').hidden, ticks: document.querySelectorAll('#bar .tick.on').length }; });
+  ok(st.phase === 'running' && st.cp === 2 && st.x === st.col - 4 && st.beat === st.col / 4 - 1 && !st.overlay && st.ticks === 3, 'CP3 버튼: 세 번째 체크포인트 한 박자 앞에서 바로 시작 (음악 위치·진행 막대도 맞춤)');
+  await G(() => { const g = window.__game; g.setBot(null); g.tickTo(g.fake.beat + 12); });
+  ok(await G(() => window.__game.phase) === 'dead' && await G(() => window.__game.best) === bestBefore, '건너뛰어 시작한 판은 죽어도 최고 기록이 바뀌지 않는다');
+  await p.keyboard.press('4'); await p.waitForTimeout(80);
+  st = await G(() => ({ cp: window.__game.state.cp, mode: window.__game.state.mode, phase: window.__game.phase }));
+  ok(st.cp === 3 && st.mode === 'run' && st.phase === 'running', '숫자 키 4: 바운스 구간 뒤의 체크포인트 4로 이동 (달리기 모드)');
+  await p.keyboard.press('0'); await p.waitForTimeout(80);
+  ok(await G(() => window.__game.state.cp) === -1 && await G(() => window.__game.state.step) === 0, '숫자 키 0: 처음으로');
+  await p.reload(); await p.waitForTimeout(700);
+  ok(await G(() => window.__game.dev) === true && await p.isVisible('#devJumps'), '새로고침해도 개발자 모드가 유지된다');
+  await G(() => { const g = window.__game; g.fake.on = true; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).presses); g.devJump(0); });
+
   console.log('== 일시정지 / 화면 방향 ==');
   await p.click('#pauseBtn'); await p.waitForTimeout(100);
   ok(await G(() => window.__game.phase) === 'paused' && await p.isVisible('#overlay'), '일시정지');
