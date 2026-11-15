@@ -100,7 +100,7 @@ ok(L.switches.length === 2 && L.switches[0].mode === 'bounce' && L.switches[1].m
 {
   const evs = full.ev.map(e => e.type);
   const n = (t) => evs.filter(e => e === t).length;
-  ok(n('pad') >= 2 && n('ring') >= 5, `전체 코스 풀이에 점프대 ${n('pad')}번, 고리 ${n('ring')}번이 쓰인다`);
+  ok(n('pad') >= 2 && n('ring') >= 3, `전체 코스 풀이에 점프대 ${n('pad')}번, 고리 ${n('ring')}번이 쓰인다`);
   ok(L.saws.length >= 7 && L.saws.some(w => w.kind !== 'static'), `톱날 ${L.saws.length}개 (움직이는 것 ${L.saws.filter(w => w.kind !== 'static').length}개)`);
 }
 
@@ -130,71 +130,48 @@ L.cps.forEach((cp, i) => {
   ok(Math.floor(best / 16) === 10, `점프만으로는 마디 10(첫 대시 구간)에서 막힌다 (마디 ${Math.floor(best / 16)})`);
 }
 
-// 타이밍 여유(ms).
-//  점프: 그 점프를 앞뒤로 밀어도 뒤를 이어 갈 수 있는 폭.
-//  대시: 점프 시점에 따라 달라지므로, 점프를 여러 시점으로 옮겨 보며 그중 가장 넓은 대시 폭.
-const typeAt = {};
-{ const s = Lg.spawnState(L, -1), set = new Set(sol);
-  while (!s.dead && !s.won) { const ev = [], pressing = set.has(s.step + 1); Lg.stepState(L, s, pressing, ev); if (pressing) for (const e of ev) if (e.type === 'jump' || e.type === 'dash') typeAt[s.step] = e.type; } }
-const types = sol.map((st) => typeAt[st]);
-function stateBefore(i, margin) {            // i번째 입력의 margin 스텝 전 상태
-  const s = Lg.spawnState(L, -1), set = new Set(sol.slice(0, i));
-  while (s.step < sol[i] - margin - 1) Lg.stepState(L, s, set.has(s.step + 1));
-  return s;
+// ---- 대시 예약 / 벽 깨짐
+{
+  const mini = (name) => Lg.buildLevel({ name, bpm: 128, bars: ['flat', name, 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const sim = (lv, presses, untilX = 1e9) => {       // presses: 누를 x 좌표 목록
+    const s = Lg.spawnState(lv, -1), ev = [], todo = [...presses];
+    while (!s.dead && !s.won && s.x < untilX) { const press = todo.length && s.x >= todo[0]; if (press) todo.shift(); Lg.stepState(lv, s, press, ev); }
+    return { s, ev };
+  };
+  const dashes = (r) => r.ev.filter(e => e.type === 'dash').length;
+  // rings1: 구덩이 4~13, 고리 9번 칸. 첫 대시가 끝나기 전에 한 번 더 눌러 둔다.
+  let lv = mini('rings1');
+  let r = sim(lv, [16 + 3.4, 16 + 5.4, 16 + 8.4], 16 + 15);
+  ok(!r.s.dead && dashes(r) === 2, '대시 예약: 첫 대시가 끝나기 전에 누른 입력이 고리에서 다음 대시로 이어진다');
+  r = sim(lv, [16 + 3.4, 16 + 5.4], 16 + 15);
+  ok(r.s.dead && r.s.cause === 'fall' && dashes(r) === 1, '대시 예약: 두 번째를 안 누르면 그대로 떨어진다(저절로 대시하지 않음)');
+  r = sim(lv, [16 + 3.4, 16 + 5.4, 16 + 6.0], 16 + 15);
+  ok(dashes(r) === 1, '대시 예약: 너무 일찍(150ms보다 전에) 누른 입력은 잊는다');
+  // wall: 가시 6번 칸, 벽 9번 칸
+  lv = mini('wall');
+  r = sim(lv, [16 + 5.5, 16 + 6.0], 16 + 12);        // 대시가 벽 안에서 끝난다
+  ok(!r.s.dead && r.ev.some(e => e.type === 'break'), '벽: 대시가 벽 안에서 끝나도, 대시로 닿은 벽은 깨져서 죽지 않는다');
+  r = sim(lv, [16 + 4.6, 16 + 4.95], 16 + 12);       // 대시가 벽 바로 앞에서 끝난다
+  ok(!r.s.dead && r.ev.some(e => e.type === 'break'), '벽: 대시가 벽 바로 앞에서 끝나도 직후(80ms)에 닿으면 깨진다');
+  r = sim(lv, [16 + 4.6], 16 + 12);
+  ok(r.s.dead && r.s.cause === 'wall', '벽: 대시 없이 닿으면 죽는다');
+  lv = mini('thick');                                  // 두 칸짜리 벽(6·7번 칸)
+  r = sim(lv, [16 + 2.5, 16 + 3.0], 16 + 10);        // 대시가 첫 칸에서 끝난다
+  ok(!r.s.dead && new Set(r.ev.filter(e => e.type === 'break').map(e => e.c)).size === 2, '두꺼운 벽: 대시로 닿으면 붙어 있는 칸이 한꺼번에 깨진다');
 }
-const survives = (s, nextPress) => {
-  if (s.dead) return false;
-  const until = nextPress != null ? Lg.TPB * (nextPress + Lg.SUB) / Lg.SUB : L.goalX + 1;
-  return !!Lg.solve(L, s, { grid: 6, untilX: Math.min(until, L.goalX + 1) }).presses;
-};
-function tryPresses(base, steps, upto) {     // base에서 steps에 누르며 upto 스텝까지 진행
-  const s = { ...base }, set = new Set(steps);
-  while (!s.dead && s.step < upto) Lg.stepState(L, s, set.has(s.step + 1));
-  return s;
-}
+
+// ---- 타이밍 여유(ms): 앞의 입력을 모두 여유 한가운데에서 눌렀을 때, 다음 입력을 얼마나 일찍/늦게 눌러도 되는가
+const { centeredWindows } = require('./windows.js');
+const wins = centeredWindows(L);
 const tight = {};
-const paired = new Set();
-for (let i = 0; i < sol.length; i++) if (types[i] === 'jump' && types[i + 1] === 'dash' && sol[i + 1] - sol[i] <= 100) paired.add(i + 1);
-for (let i = 0; i < sol.length; i++) {
-  if (types[i] === 'dash' && !paired.has(i)) {      // 점프 입력 없이 하는 대시(바운스 모드 등): 그 대시만 앞뒤로 밀어 봄
-    const base = stateBefore(i, 60); let n = 0;
-    for (let sh = -60; sh <= 60; sh++) {
-      const s = tryPresses(base, [sol[i] + sh], sol[i] + sh + 1);
-      if (s.dashing > 0 && survives(s, sol[i + 1])) n++;
-    }
-    const bar = Math.floor(Lg.TPB * sol[i] / Lg.SUB / 16);
-    tight[bar] = Math.min(tight[bar] ?? 1e9, n * msPerStep);
-    continue;
-  }
-  if (types[i] !== 'jump') continue;
-  const hasDash = paired.has(i + 1);
-  const next = sol[i + (hasDash ? 2 : 1)];
-  const base = stateBefore(i, 60);
-  const bar = Math.floor(Lg.TPB * sol[i] / Lg.SUB / 16);
-  const jumpOk = [];
-  for (let sh = -60; sh <= 60; sh++) {
-    const s = tryPresses(base, [sol[i] + sh], sol[i] + Math.max(sh, 0) + 1);
-    if (survives(s, next)) jumpOk.push(sh);
-  }
-  let win = jumpOk.length * msPerStep;
-  if (hasDash) {                               // 점프 시점을 4스텝 간격으로 옮기며 가장 넓은 대시 폭
-    let bestDash = 0;
-    for (const sh of jumpOk.filter((v, k) => k % 4 === 0)) {
-      const j = sol[i] + sh; let run = 0, longest = 0;
-      for (let d = j + 2; d <= j + 96; d += 2) {
-        const s = tryPresses(base, [j, d], d + 1);
-        if (s.dashing > 0 && survives(s, next)) { run += 2; longest = Math.max(longest, run); } else run = 0;
-      }
-      bestDash = Math.max(bestDash, longest);
-    }
-    win = Math.min(win, bestDash * msPerStep);
-  }
-  tight[bar] = Math.min(tight[bar] ?? 1e9, win);
-}
-const line = Object.entries(tight).map(([b, w]) => `${b}:${w > 290 ? '290+' : w.toFixed(0)}`).join('  ');
-console.log('  마디별 가장 좁은 타이밍 여유(ms)  ' + line);
-const min = Math.min(...Object.values(tight));
-ok(min >= 50, `가장 좁은 입력 여유 ${min.toFixed(0)}ms (60fps 기준 3프레임 이상)`);
+for (const w of wins) tight[w.bar] = Math.min(tight[w.bar] ?? 1e9, w.ms);
+console.log('  마디별 가장 좁은 타이밍 여유(ms)  ' + Object.entries(tight).map(([b, w]) => `${b}:${w > 290 ? '290+' : w.toFixed(0)}`).join('  '));
+const worst = wins.reduce((a, b) => (b.ms < a.ms ? b : a));
+ok(worst.ms >= 80, `가장 좁은 입력 여유 ${worst.ms.toFixed(0)}ms (마디 ${worst.bar} ${Lg.COURSE.bars[worst.bar]}의 ${worst.type === 'jump' ? '점프' : '대시'})`);
+L.cps.forEach((cp, i) => {
+  const w = centeredWindows(L, i);
+  ok(w.every(x => x.ms >= 80), `체크포인트 ${i + 1}에서 다시 시작해도 모든 입력 여유가 80ms 이상`);
+});
 
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);

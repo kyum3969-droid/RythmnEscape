@@ -10,7 +10,8 @@ const V0 = 4 * JUMP_H;         // 점프 초속
 const DASH_STEPS = SUB / 2;    // 대시 길이: 반 박자 동안 수평 비행
 const DASH_LEAD = 1.5;         // 대시로 실제로 앞서 나가는 거리(칸)
 const LEAD_DECAY = 1.0;        // 대시 후 원래 자리로 돌아오는 속도(칸/박자)
-const GRACE_STEPS = 6;         // 대시 직후 대시벽 통과 유예
+const GRACE_STEPS = 16;        // 대시가 끝난 직후에도 잠깐은 벽을 깬다(약 80ms)
+const DASH_BUF_STEPS = 30;     // 대시할 수 없을 때 누른 입력을 기억하는 시간(약 150ms). 대시 중·고리 직전에 눌러도 이어진다
 const COYOTE_STEPS = 8;        // 발판 끝을 벗어난 직후에도 점프 허용
 const BUFFER_STEPS = 13;       // 착지 직전 입력을 점프로 예약
 const SIZE = 0.8, HALF = 0.4;  // 플레이어 판정 상자
@@ -69,7 +70,7 @@ const CHUNKS = {
   bb4:       [E, "..D.............", "..D.............", "..D.............", "..D.......^^....", F],     // 벽을 깬 뒤에는 대시를 참아야 함
   bb5:       [E, E, E, E, ".......###..^^..", F],                                                        // 발판에서 튄 다음 착지점에 가시
   bbpad:     [E, E, E, E, "....J.^^^^^^....", F],                                                        // 점프대 = 큰 바운스. 가시밭이 넓어 대시도 필요
-  bbring:    [E, "......D.........", "......D..O......", "......D..O......", "......D.........", "##########....##"],   // 벽을 깨고, 고리에서 한 번 더 대시
+  bbring:    [E, "......D.........", "......D.O.......", "......D.O.......", "......D.........", "#########....###"],   // 벽을 깨고, 고리에서 한 번 더 대시
   bgate_out: [E, E, E, E, "......R.........", F],
 };
 
@@ -147,16 +148,25 @@ function spawnState(L, cp = -1) {
   return {
     mode: sw > 0 ? L.switches[sw - 1].mode : "run", sw,
     step, x, lead: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
-    dashAvail: false, dashing: 0, grace: 0, coyote: 0, buffer: 0, ring: -1,
+    dashAvail: false, dashing: 0, grace: 0, coyote: 0, buffer: 0, dashBuf: 0, ring: -1,
+    bA: -1, bB: -1,                // 마지막으로 깬 대시벽의 칸 범위(깨진 벽은 다시 닿아도 안전)
     cp, dead: false, cause: "", won: false,
   };
+}
+
+// 공중에서 대시가 가능하면 시작한다
+function tryDash(s, ev) {
+  if (s.onGround || !s.dashAvail || s.dashing > 0) return false;
+  s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0; s.dashBuf = 0;
+  if (ev) ev.push({ type: "dash" });
+  return true;
 }
 
 // 바운스 모드: 박자에 맞춰 땅에 있으면 저절로 튄다
 function tryBounce(L, s, ev) {
   if (s.step % SUB > BOUNCE_TOL) return;
   const pad = tile(L, Math.floor(s.x), s.y - 1) === "J";     // 점프대 위라면 큰 바운스
-  s.vy = pad ? -V_PAD : -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true;
+  s.vy = pad ? -V_PAD : -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true; s.dashBuf = 0;
   if (ev) ev.push({ type: pad ? "pad" : "bounce" });
 }
 
@@ -169,22 +179,18 @@ function stepState(L, s, press, ev) {
   if (s.mode === "bounce") {            // 점프는 박자가 해 준다. 입력은 공중 대시뿐.
     s.buffer = 0;
     if (s.onGround) tryBounce(L, s, ev);
-    else if (press && s.dashAvail && s.dashing === 0) {
-      s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0;
-      if (ev) ev.push({ type: "dash" });
-    }
+    else { if (press) s.dashBuf = DASH_BUF_STEPS; if (s.dashBuf > 0) tryDash(s, ev); }
   } else {
     if (press) s.buffer = BUFFER_STEPS;
-    if (s.buffer > 0) {
-      if (s.onGround || s.coyote > 0) {
-        s.vy = -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true; s.buffer = 0;
-        if (ev) ev.push({ type: "jump" });
-      } else if (press && s.dashAvail && s.dashing === 0) {
-        s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0; s.buffer = 0;
-        if (ev) ev.push({ type: "dash" });
-      }
+    if (s.buffer > 0 && (s.onGround || s.coyote > 0)) {
+      s.vy = -V0; s.onGround = false; s.coyote = 0; s.dashAvail = true; s.buffer = 0; s.dashBuf = 0;
+      if (ev) ev.push({ type: "jump" });
+    } else {
+      if (press && !s.onGround) s.dashBuf = DASH_BUF_STEPS;
+      if (s.dashBuf > 0 && tryDash(s, ev)) s.buffer = 0;
     }
   }
+  if (s.dashBuf > 0) s.dashBuf--;
   if (s.buffer > 0) s.buffer--;
   if (s.coyote > 0) s.coyote--;
 
@@ -194,8 +200,8 @@ function stepState(L, s, press, ev) {
     s.dashing--;
     if (s.dashing === 0) s.grace = GRACE_STEPS;
   } else {
-    // 연속 대시로 많이 앞서 나갔으면 더 빨리 제자리로 돌아온다
-    if (s.lead > 0) s.lead = Math.max(0, s.lead - (LEAD_DECAY + Math.max(0, s.lead - DASH_LEAD) * 1.5) * DT);
+    // 앞서 나간 만큼 서서히 제자리로. 연속 대시로 많이 앞섰으면 땅에서는 더 빨리 돌아온다(공중에서는 그대로 → 멀리 난다)
+    if (s.lead > 0) s.lead = Math.max(0, s.lead - (s.onGround ? Math.min(2.5, LEAD_DECAY + Math.max(0, s.lead - DASH_LEAD) * 1.5) : LEAD_DECAY) * DT);
     if (s.grace > 0) s.grace--;
     if (!s.onGround) { s.vy += G * DT; s.y += s.vy * DT; }
   }
@@ -239,14 +245,20 @@ function stepState(L, s, press, ev) {
       } else die(s, "crash", ev);
     } else if (t === "J") {                // 점프대: 밟는 순간 저절로 솟는다
       if (s.onGround && r === s.y - 1) {
-        s.vy = -V_PAD; s.onGround = false; s.coyote = 0; s.dashAvail = true; s.buffer = 0;
+        s.vy = -V_PAD; s.onGround = false; s.coyote = 0; s.dashAvail = true; s.buffer = 0; s.dashBuf = 0;
         if (ev) ev.push({ type: "pad" });
       }
     } else if (t === "O") {                // 충전 고리: 공중에서 대시가 다시 찬다
       if (s.ring !== c) { s.ring = c; s.dashAvail = true; if (ev) ev.push({ type: "ring", c, r }); }
     } else if (t === "D") {
-      if (s.dashing > 0 || s.grace > 0) { if (ev) ev.push({ type: "break", c, r }); }
-      else die(s, "wall", ev);
+      if (c >= s.bA && c <= s.bB) continue;          // 이미 깬 벽
+      if (s.dashing > 0 || s.grace > 0) {            // 대시로 닿는 순간 그 벽(붙어 있는 칸 전부)이 깨져 사라진다
+        let a = c, b = c;
+        while (tile(L, a - 1, r) === "D") a--;
+        while (tile(L, b + 1, r) === "D") b++;
+        s.bA = a; s.bB = b;
+        if (ev) for (let k = a; k <= b; k++) ev.push({ type: "break", c: k, r });
+      } else die(s, "wall", ev);
     } else if (t === "^" || t === "v") {
       const hx0 = c + 0.22, hx1 = c + 0.78;
       const hy0 = t === "^" ? r + 0.4 : r, hy1 = t === "^" ? r + 1 : r + 0.6;
@@ -281,7 +293,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < offset; i++) stepState(L, s0, false);
   if (s0.dead) return null;
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.dashAvail ? 1 : 0}|${s.dashing}|${Math.round(s.lead * 8)}|${s.grace}|${s.mode}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.dashAvail ? 1 : 0}|${s.dashing}|${Math.round(s.lead * 8)}|${s.grace}|${s.mode}|${s.bB}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {
