@@ -5,6 +5,7 @@
 ## 구성
 | 위치 | 내용 |
 |---|---|
+| `bounce2d/` | **비교용 두 번째 프로토타입.** 공이 박자마다 저절로 튀고, 왼쪽 누르고 있기 = 멈춤, 오른쪽 누르기 = 대시. [bounce2d/README.md](bounce2d/README.md) |
 | `runner2d/` | **현재 방향.** 음악에 맞춰 설계한 2D 횡스크롤 코스(점프 + 공중 대시) 프로토타입. [runner2d/README.md](runner2d/README.md) |
 | `web3d/` | **3D 웹 프로토타입** (Three.js). 휴대폰 브라우저에서 바로 해보며 다듬는 곳. [web3d/README.md](web3d/README.md) |
 | `godot/` | **Godot 4 3D 버전** (모바일 출시 목표). web3d에서 확정된 것을 옮김. [godot/README.md](godot/README.md) |
