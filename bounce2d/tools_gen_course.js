@@ -139,9 +139,77 @@ function generate(T, seed) {
     return (feverOk[key] = !!(m && m.ok && m.min >= 60 && m.idleDies && m.needed.every(Boolean)));
   };
 
+  // ---- 짜임을 정해 주는 자리(구간 모음용): { m: 'A', g } 새 마디(되풀이할 수 있는 것) / { r: 'A' } 그 마디 한 번 더 / { t: 'A', kind } 그 마디의 함정
+  //   kind: stop-last 마지막 입력을 뺀다 / stop-first 첫 입력을 뺀다 / hand-last 마지막 입력의 손을 바꾼다 / hand-first 첫 입력의 손을 바꾼다
+  //         add 되풀이하던 것보다 하나 더 눌러야 한다({ m, add: true }로 뽑은 마디에만)
+  //   피버는 { zm } / { zr } / { zt } (넓은 통로는 wm / wr / wt): 함정은 "앞쪽은 같고 누르던 자리에서 끊기는" 줄
+  const motifs = {}, trapList = [], roles = {};
+  const same = (u, v) => JSON.stringify([u.holds, u.presses]) === JSON.stringify([v.holds, v.presses]);
+  const toDef = (list, tol) => ({ holds: list.filter((i) => i.k === 'L').map((i) => [i.t, i.z]), presses: list.filter((i) => i.k === 'R').map((i) => i.t), tol });
+  const variant = (A, kind) => {
+    const ins = inputsOf(A), habit = { presses: A.presses.slice(), holds: A.holds.map((h) => h.slice()) };
+    const sw = (i) => (i.k === 'R' ? (i.t + 0.75 <= 4 ? { t: i.t, z: q8(i.t + 0.75), k: 'L' } : null) : { t: i.t, k: 'R' });
+    let list = null;
+    if (kind === 'stop-last') list = ins.slice(0, -1);
+    else if (kind === 'stop-first' && ins.length >= 2) list = ins.slice(1);
+    else if (kind === 'hand-last') { const x = sw(ins[ins.length - 1]); if (x) list = [...ins.slice(0, -1), x]; }
+    else if (kind === 'hand-first' && ins.length >= 2) { const x = sw(ins[0]); if (x) list = [x, ...ins.slice(1)]; }
+    return list ? { ...toDef(list, A.tol), traps: [{ full: habit }] } : null;
+  };
+  const phraseSlot = (slot, b) => {
+    const name = `${T.prefix}_${b}`;
+    if (slot.m) {
+      for (let tries = 0; tries < 120; tries++) {
+        const def = randomBar(name, slot.g);
+        if (!def) continue;
+        let v = validate(name);
+        if (!v || !v.clean || !v.startClean) continue;
+        if (Object.values(motifs).some((mm) => mm.def && (same(mm.def, def) || (mm.full && same(mm.full, def))))) continue;
+        if (slot.add) {                                // 되풀이할 것은 "마지막 입력을 뺀 것", 함정 자리에는 온전한 것을 놓는다
+          const ins = inputsOf(def);
+          if (ins.length < 2) continue;
+          const red = toDef(ins.slice(0, -1), def.tol);
+          Lg.PATTERNS[name] = red; v = validate(name);
+          if (!v || !v.clean || !v.startClean) continue;
+          made[name] = red; bars.push(name); motifs[slot.m] = { name, def: red, full: def }; roles[b] = slot.m; return;
+        }
+        made[name] = def; bars.push(name); motifs[slot.m] = { name, def }; roles[b] = slot.m; return;
+      }
+      delete Lg.PATTERNS[name]; throw new Error('되풀이할 마디를 못 뽑았다');
+    }
+    if (slot.r) { bars.push(motifs[slot.r].name); roles[b] = slot.r; return; }
+    const M = motifs[slot.t];
+    const def = slot.kind === 'add' ? (M.full ? { ...JSON.parse(JSON.stringify(M.full)), traps: [{ full: { presses: M.def.presses.slice(), holds: M.def.holds.map((h) => h.slice()) } }] } : null) : variant(M.def, slot.kind);
+    if (!def) throw new Error('이 마디로는 그 함정을 못 만든다: ' + slot.kind);
+    Lg.PATTERNS[name] = def;
+    const v = validate(name, def.traps[0].full);
+    if (!v || !v.clean) { delete Lg.PATTERNS[name]; throw new Error('함정이 통과하지 못했다: ' + slot.kind); }
+    made[name] = def; bars.push(name); trapList.push({ bar: b, kind: slot.kind, of: slot.t }); roles[b] = slot.t + '!';
+  };
+  const breaksOf = (nodes, wide) => (wide ? wAll : zAll).filter((s) => { let k = 0; while (k < 8 && s[k] === nodes[k]) k++; return k >= 2 && k < 7 && nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => feverTry(s, wide));
+  const feverSlot = (slot, b) => {
+    const wide = !!(slot.wm || slot.wr || slot.wt), key = slot.zm || slot.wm || slot.zr || slot.wr || slot.zt || slot.wt, all = wide ? wAll : zAll, name = `${T.prefix}${wide ? 'w' : 'z'}${b}`;
+    if (slot.zr || slot.wr) { bars.push(motifs[key].name); roles[b] = key; return; }
+    if (slot.zt || slot.wt) {
+      const brk = breaksOf(motifs[key].nodes, wide);
+      if (!brk.length) throw new Error('끊기는 줄이 없다');
+      const nodes = pick(brk); made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
+      bars.push(name); trapList.push({ bar: b, kind: 'break', of: key }); roles[b] = key + '!'; return;
+    }
+    const weight = (s) => Math.pow(count(s, 'F'), 2) + 4 * (s.match(/FF/g) || []).length, total = all.reduce((u, s) => u + weight(s), 0);
+    for (let tries = 0; tries < 300; tries++) {
+      let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } }
+      if (!feverTry(s, wide) || Object.values(motifs).some((mm) => mm.nodes === s) || !breaksOf(s, wide).length) continue;
+      made[name] = Lg.PATTERNS[name] = feverDef(s, wide); bars.push(name); motifs[key] = { name, nodes: s, wide }; roles[b] = key; return;
+    }
+    throw new Error('피버 마디를 못 뽑았다');
+  };
+
   let A = null, reps = 0, feverA = null, feverReps = 0, lastHow = '';
   T.sections.forEach(([, slots]) => slots.forEach((slot) => {
     const b = bars.length;
+    if (typeof slot !== 'string' && (slot.m || slot.r || slot.t)) { phraseSlot(slot, b); return; }
+    if (typeof slot !== 'string' && (slot.zm || slot.wm || slot.zr || slot.wr || slot.zt || slot.wt)) { feverSlot(slot, b); return; }
     if (typeof slot === 'string') { bars.push(slot); A = null; reps = 0; if (!(Lg.PATTERNS[slot] && Lg.PATTERNS[slot].mode === 'rush')) { feverA = null; feverReps = 0; } return; }
     if (slot.z || slot.w) {                            // 피버: 새로 뽑기 → (절반은) 한 번 더 → 앞쪽은 같고 뒤에서 끊기는 것
       const wide = !!slot.w, all = wide ? wAll : zAll, name = `${T.prefix}${wide ? 'w' : 'z'}${b}`;
@@ -186,7 +254,7 @@ function generate(T, seed) {
     delete Lg.PATTERNS[name];
     bars.push(prevClean ? 'box' : 'idle'); A = null; reps = 0; notes[b] = '(뽑지 못해 쉬는 마디)';
   }));
-  return { bars, made, notes };
+  return { bars, made, notes, traps: trapList, roles };
 }
 
 module.exports = { generate, G, LEVELS, mulberry };
