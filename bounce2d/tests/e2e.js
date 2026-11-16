@@ -233,18 +233,18 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(3)')]); await ready();
     st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length }; });
-    ok(st.round === 2 && st.name.includes('Chasing the Gold Token') && Math.abs(st.bpm - 151.9965) < 0.01 && st.off === 0.0659 && st.cps === 6, `3라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개)`);
+    ok(st.round === 2 && st.name.includes('Final Quarter Credit') && Math.abs(st.bpm - 152.0183) < 0.01 && st.off === 1.0518 && st.cps === 9, `3라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개)`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots3 = { 33.5: 'r3_ring', 50.25: 'r3_ringwave', 97.5: 'r3_ringrun', 100.5: 'r3_ringstop', 131.25: 'r3_fever_stream', 166.25: 'r3_stairs_up', 172.25: 'r3_sky_hold', 181.5: 'r3_stairs_down', 199.0: 'r3_ringglide', 241.5: 'r3_fever', 303.5: 'r3_squeeze' };
+    const shots3 = { 29.5: 'r3_ring', 41.5: 'r3_ringwave', 65.5: 'r3_ringrun', 68.5: 'r3_ringstop', 85.0: 'r3_ringglide', 100.25: 'r3_trap', 137.25: 'r3_fever_stream', 162.25: 'r3_stairs_up', 164.25: 'r3_sky_hold', 177.5: 'r3_stairs_down', 290.5: 'r3_fever', 311.5: 'r3_squeeze' };
     let offY = null;
-    for (let beat = 0; beat <= 316; beat += 0.25) {
+    for (let beat = 0; beat <= 322; beat += 0.25) {
       await tick(beat);
       if (shots3[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots3[beat] + '.png' }); }
-      if (beat === 168.5) offY = await G(() => window.__game.state.y);       // 계단 꼭대기(마디 42, 네 칸 높이)에서는 엇박(0.5박)에 닿는다
+      if (beat === 164.5) offY = await G(() => window.__game.state.y);       // 계단 꼭대기(마디 41, 네 칸 높이)에서는 엇박(0.5박)에 닿는다
       if (await G(() => window.__game.phase) !== 'running') break;
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, gems: window.__game.gems }));
-    ok(st.phase === 'won' && st.cp === 5 && st.gems.got === st.gems.total, `3라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(st.phase === 'won' && st.cp === 8 && st.gems.got === st.gems.total, `3라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     ok(offY !== null && Math.abs(offY - 5) < 0.15, `네 단 계단을 오르면 반 박이 당겨져서, 꼭대기에서는 박자와 박자 사이에 닿는다 (엇박 순간의 높이 ${(9 - offY).toFixed(2)}칸)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();

@@ -224,7 +224,7 @@ for (const C of Lg.COURSES) {
         if (e3.some(e => e.type === 'land') && 9 - s3.y >= 0.99) { landBars.add(Math.floor(s3.x / 16)); if (boxBars.includes(Math.floor(s3.x / 16))) lands++; }
       }
       const clean = allBox.filter(b => !Lg.PATTERNS[bars3[b]].tall).every(b => bounceAt[b * 384] < 0.2 && bounceAt[(b + 1) * 384] < 0.2);
-      ok(boxBars.length >= 3 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
+      if (boxBars.length) ok(boxBars.length >= 3 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
       let died = 0, rnd3 = 11;
       const rand = () => (rnd3 = (rnd3 * 1103515245 + 12345) % 2147483648) / 2147483648;
       for (const b of boxBars) for (let n = 0; n < 40; n++) {
@@ -233,9 +233,9 @@ for (const C of Lg.COURSES) {
           if (rand() < 0.03) hold = !hold; Lg.stepState(lv, s4, rand() < 0.02, null, hold); }
         if (s4.dead) died++;
       }
-      ok(died === 0, `[${tag}] 파란 박스 마디에서는 아무렇게나 눌러도 죽지 않는다 (마디마다 40번씩 마구 눌러 봄)`);
+      if (boxBars.length) ok(died === 0, `[${tag}] 파란 박스 마디에서는 아무렇게나 눌러도 죽지 않는다 (마디마다 40번씩 마구 눌러 봄)`);
       const risers = boxBars.every(b => { for (let c = b * 16; c < b * 16 + 16; c++) { const hgt = (cc) => { let k = 0; while (lv.grid[8 - k][cc] === '#') k++; return k; }; if (hgt(c) - hgt(c - 1) > 1) return false; } return true; });
-      ok(risers, `[${tag}] 박스의 왼쪽 턱은 한 칸씩만 높아진다(부딪히면 저절로 올라탈 수 있게)`);
+      if (boxBars.length) ok(risers, `[${tag}] 박스의 왼쪽 턱은 한 칸씩만 높아진다(부딪히면 저절로 올라탈 수 있게)`);
       if (lavaBars.length) {
         // 빨간 바닥과 파란 섬: 빨간 바닥은 닿으면 죽고, 그 위의 박스는 디딜 수 있다. 패턴대로 가면 마디마다 섬을 밟고 지나간다.
         const lavaCols = [], boxOnLava = [];

@@ -71,7 +71,9 @@ console.log('== 실제 곡 (ffmpeg가 있을 때만) ==');
     const x = new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4);
     const r = analyzeTrack(x, 44100, { hintBpm: 96 });
     ok(r.ok && Math.abs(r.musicBpm - C.bpm) < 0.06, `${C.name}: 곡 ${r.musicBpm.toFixed(2)} BPM (코스에 적힌 값 ${C.bpm.toFixed(3)})`);
-    ok(Math.abs(r.offset - C.track.offset) < 0.01 && r.coverage > 0.85, `  첫 박 ${r.offset.toFixed(3)}초 (코스에 적힌 값 ${C.track.offset}초), 킥 잡힌 박 ${(r.coverage * 100).toFixed(0)}%`);
+    // 코스의 첫 박은 첫 킥과 같거나, 킥 없이 시작하는 곡이면 그보다 몇 박 앞이다(박 단위로만 다르다)
+    const beatSec = 60 / r.musicBpm, lead = (r.offset - C.track.offset) / beatSec;
+    ok(Math.abs(lead - Math.round(lead)) * beatSec < 0.01 && Math.round(lead) >= 0 && Math.round(lead) <= 8 && r.coverage > 0.85, `  첫 킥 ${r.offset.toFixed(3)}초, 코스의 첫 박 ${C.track.offset}초(첫 킥보다 ${Math.round(lead)}박 앞), 킥 잡힌 박 ${(r.coverage * 100).toFixed(0)}%`);
     ok(r.wobbleMs < 60, `  템포 흔들림 ±${r.wobbleMs.toFixed(0)}ms`);
     const goal = C.bars.indexOf('goal'), endSec = C.track.offset + goal * 4 * 60 / C.bpm;
     ok(endSec < r.duration && r.duration - endSec < 8, `  결승선 마디(${goal})가 곡의 ${endSec.toFixed(1)}초, 곡 길이 ${r.duration.toFixed(1)}초`);

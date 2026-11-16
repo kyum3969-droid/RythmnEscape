@@ -214,15 +214,17 @@ const ROUND2 = {
     { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 24, id: "rush" }, { bar: 32, id: "c" }, { bar: 40, id: "b" }, { bar: 56, id: "d" }, { bar: 64, id: "rush" }, { bar: 72, id: "outro" },
   ],
 };
-// 라운드 3: "Chasing the Gold Token". 분당 152박(앞의 두 라운드와 같다), 첫 박 0.066초, 76마디이고 77번째 마디 첫 박에 끝맺는 한 방.
-// 곡의 구간(마디): 0~3 조용한 도입 / 4~7 쌓아 올림 / 8~23 첫 큰 구간 / 24~27 넘어가는 자리(26~27은 킥이 듬성) / 28~39 첫 절정
-//                / 40~46 가라앉음(킥은 계속) / 47 채움 / 48~55 두 번째 큰 구간 / 56~59 조용히 올라감 / 60~71 마지막 절정 / 72~75 끝맺음
-// 새 요소 둘: 충전 고리(첫 큰 구간에서 가르친다)와 계단으로 박자 틀기(가라앉는 구간에서 시험한다).
+// 라운드 3: "Final Quarter Credit". 분당 152박(앞의 두 라운드와 같다). 곡은 0.26초에 시작하고 첫 킥은 2.63초.
+// 코스의 첫 박은 첫 킥보다 한 마디 앞(1.052초)으로 잡았다: 그래야 본 리듬이 시작하는 자리(12.1초)가 마디 7의 첫 박이 되고, 그 뒤로 여덟 마디마다 구간이 바뀐다.
+// 곡의 구간(마디): 0~6 조용한 도입(킥이 두 마디에 한 번) / 7~14 본 리듬 / 15~22 더 밝게(22는 숨 고르기) / 23~30 낮게 깔림(30에서 올라감)
+//                / 31~38 첫 절정 / 39~46 가라앉음 / 47~54 본 리듬 다시 / 55~62 더 밝게 / 63~70 낮게 깔렸다가 쌓아 올림 / 71~77 마지막 절정 / 78의 둘째 박에서 곡이 끊긴다
+// (디스코 펑크 곡 "Chasing the Gold Token"으로 한 번 만들었다가 곡을 바꿨다.)
+// 새 요소 둘: 충전 고리(본 리듬 첫 구간에서 가르친다)와 계단으로 박자 틀기(가라앉는 구간에서 시험한다). 쉬는 마디는 거의 없다.
 const ROUND3 = {
-  name: "ROUND 3 · Chasing the Gold Token",
-  bpm: 151.9965,
-  track: { file: "music/chasing_the_gold_token.mp3", offset: 0.0659 },
-  pal: {                                               // 이 곡의 색: 금빛과 청록
+  name: "ROUND 3 · Final Quarter Credit",
+  bpm: 152.0183,
+  track: { file: "music/final_quarter_credit.mp3", offset: 1.0518 },
+  pal: {                                               // 이 라운드의 색: 금빛과 청록
     intro: { top: "#0a1f1c", bottom: "#14594f", accent: "#ffd84a", sun: "#ffb347" },
     a:     { top: "#10231a", bottom: "#1f7a4d", accent: "#ffe066", sun: "#ffd166" },
     b:     { top: "#0b1030", bottom: "#3a2a7a", accent: "#7df9ff", sun: "#c9a0ff" },
@@ -231,28 +233,31 @@ const ROUND3 = {
     rush:  { top: "#141006", bottom: "#8a6a10", accent: "#ffffff", sun: "#ffe066" },
   },
   bars: [
-    // 도입: 앞에서 배운 것을 두 번씩 누르는 마디로
-    "flat", "flat", "mix", "peak",   "mix2", "glideHigh", "box", "cp",
-    // 첫 큰 구간: 충전 고리를 가르친다(하나 → 둘). 사이사이는 쉬지 않고 아는 동작으로 채운다
-    "ring1", "box", "ring1", "peak",   "ringWave", "mix", "ringWave", "lavaHop",   "mix2", "cp",
-    // 고리를 아는 동작과 섞고, 고리 연타가 나온다: 탁탁탁(ringWave) → 탁탁탁탁(ringRun) → 뚝(ringStop: 다음 고리는 미끼). 26은 킥이 빠지는 자리라 쉰다
-    "lavaLeap", "ring1", "glideHigh", "skyGlide",   "lavaGlide", "ringWave", "ringRun", "ringStop",   "box", "cp",
-    // 첫 절정: 피버. 매 박 누르다 뚝(z5 → z4), 넓은 통로에서 다섯 번 연타 두 번 뒤 세 번에서 뚝(w5, w5 → w8)
-    "zT", "z5", "z4", "wUp",   "w5", "w5", "w8", "wDn",   "z6", "z5", "z5", "z7",
+    // 도입(조용함): 앞에서 배운 것을 두 번씩 누르는 마디로. 구간의 마지막 마디마다 체크포인트
+    "flat", "flat", "mix", "peak",   "mix2", "glideHigh", "cp",
+    // 본 리듬: 충전 고리를 가르친다(하나 두 번 → 둘 두 번). 사이는 아는 동작으로 채운다
+    "ring1", "ring1", "peak", "ringWave",   "ringWave", "mix", "lavaHop", "cp",
+    // 더 밝게: 고리 연타. 탁탁탁(ringWave) → 탁탁탁탁(ringRun) → 뚝(ringStop: 다음 고리는 미끼) … 다시 연타 → 이번엔 왼쪽(ringGlide: 다음 고리가 두 배로 멀다)
+    "ringWave", "ringRun", "ringStop", "lavaLeap",   "skyGlide", "ringRun", "ringGlide", "cp",
+    // 낮게 깔림: 손 함정. 오른쪽만 다섯 번 → 뚝 / 왼쪽만 다섯 번 → 뚝
+    "peak", "peak", "goStop", "lavaGlide",   "glideHigh", "glideHigh", "holdStop", "cp",
+    // 첫 절정: 피버. 매 박 누르다 뚝(z5 → z4) → 계단으로 넓은 통로 → 다섯 번 연타 두 번 뒤 세 번에서 뚝(w5, w5 → w8) → 계단으로 내려온다
+    "z5", "z4", "wUp", "w5",   "w5", "w8", "wDn", "z7",
     "cp",
     // 가라앉는 구간: 계단으로 박자 틀기(시험). 네 단을 오르면 엇박 → 꼭대기에서 멈춤 → 이단 점프 → 멈춤 → 네 단을 내려오면 정박(내려온 마디는 뒤 절반에서만 누른다)
     "upStairs", "skyHold", "skyDj", "skyHold",   "downStairs", "dj2", "cp",
-    // 두 번째 큰 구간: 고리 연타 끝에서 이번엔 왼쪽(ringGlide: 다음 고리가 두 배로 멀다). 그리고 계단을 한 번 더
-    "ringWave", "ringRun", "ringGlide", "upStairs",   "skyDj", "downStairs", "hB", "peak",
-    // 조용히 올라감: 오른쪽만 다섯 번 → 뚝
-    "peak", "goStop", "lavaLeap", "cp",
-    // 마지막 절정: 피버. 들어서자마자 넓은 통로. 끝맺는 네 마디는 연출 — 통로가 조여들다 끝맺는 한 방에 터져 나온다
-    "wUp", "w4", "w6", "w5",   "w8", "wDn", "z5", "z5",   "z4", "z2", "z5", "z7",
-    "zT", "zT", "zS1", "zS2",
+    // 본 리듬 다시: 고리 연타 뒤 왼쪽 → 왼·오 다섯 번 → 뚝
+    "ringWave", "ringRun", "ringGlide", "mix",   "mix", "holdStop", "lavaLeap", "cp",
+    // 더 밝게: 계단을 한 번 더(꼭대기에서 이단 점프) → 오른쪽만 다섯 번 → 뚝
+    "upStairs", "skyDj", "downStairs", "hB",   "peak", "peak", "goStop", "cp",
+    // 낮게 깔렸다가 쌓아 올림: 빨간 바닥 → 고리 연타 → 뚝 → 오, 그리고 뚝 → 오
+    "lavaHop", "lavaGlide", "ringWave", "ringRun",   "ringStop", "peak", "stopGo", "cp",
+    // 마지막 절정: 피버. 들어서자마자 넓은 통로의 연타. 끝의 두 마디는 연출 — 통로가 조여들다 터져 나오고, 곡이 끊기는 순간에 결승선을 지난다
+    "wUp", "w6", "w5", "w8",   "wDn", "zS1", "zS2",
     "goal", "flat", "flat",
   ],
   sections: [
-    { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 18, id: "d" }, { bar: 28, id: "rush" }, { bar: 40, id: "b" }, { bar: 48, id: "c" }, { bar: 56, id: "intro" }, { bar: 60, id: "rush" }, { bar: 76, id: "outro" },
+    { bar: 0, id: "intro" }, { bar: 7, id: "a" }, { bar: 15, id: "d" }, { bar: 23, id: "c" }, { bar: 31, id: "rush" }, { bar: 39, id: "b" }, { bar: 47, id: "a" }, { bar: 55, id: "d" }, { bar: 63, id: "c" }, { bar: 71, id: "rush" }, { bar: 78, id: "outro" },
   ],
 };
 const COURSES = [ROUND1, ROUND2, ROUND3];
