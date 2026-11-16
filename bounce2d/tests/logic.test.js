@@ -88,68 +88,65 @@ console.log('== 점프 / 이단 점프 ==');
   ok(still && H(f) > fh + 0.5, '멈춘 채로 점프를 누르면, 손을 떼는 순간 위로 솟는다');
 }
 
-console.log('== 코스 ==');
-const idle = run(L, null);
-ok(idle.s.dead && idle.s.cause === 'spike' && barOf(idle.s.x) === 2, '아무것도 안 누르면 첫 가시(마디 2)에서 죽는다');
-let sol = null;
-for (const o of [{ grid: 12 }, { grid: 12, offset: 6 }, { grid: 8, offset: 3 }]) {
-  const r = Lg.solve(L, Lg.spawnState(L, -1), o);
-  if (!sol) sol = r.plan;
-  ok(!!r.plan, `처음부터 클리어 가능 (탐색 간격 ${o.grid}스텝, 어긋남 ${o.offset || 0})` + (r.plan ? '' : ` — 마디 ${barOf(r.best)} ${Lg.COURSE.bars[barOf(r.best)]}에서 막힘`));
+console.log('== 장애물 판정 ==');
+{
+  const mk = () => Lg.buildLevel({ name: 't', bpm: 96, bars: ['flat', 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  let lv = mk(); lv.floorH[20] = 1;                       // 착지하는 자리(20번 칸)에 선 1칸 덩어리
+  let r = run(lv, null);
+  ok(r.s.dead && r.s.cause === 'spike' && Math.floor(r.s.x + 0.4) === 20, '바닥에서 솟은 덩어리: 그 위로 떨어지면 죽는다');
+  lv = mk(); lv.floorH[22] = 1.25;                        // 꼭대기(22번 칸, 높이 2.25) 밑의 1.25칸 덩어리
+  ok(!run(lv, null).s.dead, '바닥에서 솟은 덩어리: 그 위로 넘어가면 산다');
+  lv = mk(); lv.ceilH[22] = 2.75;                         // 꼭대기에서 공 윗면은 3.05칸
+  r = run(lv, null);
+  ok(r.s.dead && Math.floor(r.s.x) >= 21 && Math.floor(r.s.x) <= 22, '매달린 덩어리: 아랫면보다 높이 뜨면 죽는다');
+  lv = mk(); lv.ceilH[22] = 3.25;
+  ok(!run(lv, null).s.dead, '매달린 덩어리: 그 밑으로 지나가면 산다');
 }
-const full = run(L, sol);
+
+console.log('== 코스 (키 패턴 → 장애물) ==');
+const idle = run(L, null);
+ok(idle.s.dead && idle.s.cause === 'spike' && barOf(idle.s.x) === 2, '아무것도 안 누르면 첫 패턴 마디(마디 2)에서 죽는다');
+ok(L.fixed.length === 0, '패턴의 길과 겹쳐서 걷어 낸 장애물이 없다');
+const full = run(L, L.ref);
 const n = (t) => full.ev.filter(e => e.type === t).length;
-ok(full.s.won, `풀이를 그대로 재생하면 완주 (이단 점프 ${n('double')}번, 땅에서 점프 ${n('jump')}번, 멈춤 ${n('freeze')}번, 고리 ${n('ring')}번, 점프대 ${n('pad')}번)`);
+ok(full.s.won, `코스에 적힌 키 패턴대로 누르면 완주 (이단 점프 ${n('double')}번, 땅에서 점프 ${n('jump')}번, 멈춤 ${n('freeze')}번)`);
 ok(n('checkpoint') === L.cps.length && L.cps.length === 4, '체크포인트 4개를 모두 지난다');
-ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 12), '코스 내내 박자에 맞춰 튄다(늦어도 1/8박 이내, 늦은 만큼 낮게 튀어 다음 박자에 맞춤)');
+ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 12), '코스 내내 박자에 맞춰 튄다(늦어도 1/8박 이내)');
+{
+  // 패턴 마디가 끝나면 다음 마디 첫 박에 땅에서 튀어야 한다(패턴끼리 어떤 순서로 이어 붙여도 되게)
+  const bounceSteps = new Set(full.ev.filter(e => e.type === 'bounce' || e.type === 'pad').map(e => e.step));
+  const bad = [];
+  Lg.COURSE.bars.forEach((name, b) => { if (b > 0 && b < Lg.COURSE.bars.length - 1 && ![0, 1, 2].some(d => bounceSteps.has(4 * b * Lg.SUB + d))) bad.push(b + ' ' + name); });
+  ok(bad.length === 0, '모든 마디가 첫 박에 땅에서 튀며 시작한다' + (bad.length ? ' — 어긋난 마디: ' + bad.join(', ') : ''));
+}
+for (const o of [{ grid: 12 }, { grid: 12, offset: 6 }]) {
+  const r = Lg.solve(L, Lg.spawnState(L, -1), o);
+  ok(!!r.plan, `자동 풀이로도 처음부터 클리어 (탐색 간격 ${o.grid}스텝, 어긋남 ${o.offset || 0})` + (r.plan ? '' : ` — 마디 ${barOf(r.best)} ${Lg.COURSE.bars[barOf(r.best)]}에서 막힘`));
+}
 L.cps.forEach((cp, i) => ok(!!Lg.solve(L, Lg.spawnState(L, i), { grid: 12 }).plan, `체크포인트 ${i + 1}에서 다시 시작해도 완주 가능`));
 {
   const nf = Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noFreeze: true });
   ok(!nf.plan, `멈춤 없이는 못 깬다 (마디 ${barOf(nf.best)} ${Lg.COURSE.bars[barOf(nf.best)]}에서 막힘)`);
   const nd = Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noJump: true });
-  ok(!nd.plan && barOf(nd.best) === 10, `점프 없이는 못 깬다 (마디 ${barOf(nd.best)} ${Lg.COURSE.bars[barOf(nd.best)]}에서 막힘)`);
-  ok(!!Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noGroundJump: true }).plan, '땅에서 누르는 점프는 실수를 만회하는 수단: 그것 없이도 깰 수 있다');
+  ok(!nd.plan, `점프 없이는 못 깬다 (마디 ${barOf(nd.best)} ${Lg.COURSE.bars[barOf(nd.best)]}에서 막힘)`);
 }
-console.log('== 중간지점에 떨어졌을 때 ==');
 {
-  // fz1: 가시가 7~8번 칸. 그 앞 점프(0→4)에서 멈춤을 써 버리면 4~7 사이에 떨어져 가시 쪽으로 굴러간다.
-  const lv = Lg.buildLevel({ name: 't', bpm: 96, bars: ['flat', 'fz1', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
-  const sim = (jumpAtX) => { const s = Lg.spawnState(lv, -1); let pressed = false; while (!s.dead && !s.won && s.x < 16 + 14) { const hold = s.x >= 16 + 1.5 && s.x < 16 + 3.2; const press = !pressed && s.onGround && s.x >= 16 + jumpAtX; if (press) pressed = true; Lg.stepState(lv, s, press, null, hold); } return s; };
-  ok(sim(99).cause === 'spike', '가시 앞 중간지점에 떨어져 그대로 두면 가시로 굴러 들어간다');
-  ok(!sim(5.8).dead, '굴러가다가 가시 앞에서 점프를 누르면 뛰어넘는다');
+  // 장애물은 패턴의 길 둘레에만 생긴다: 패턴이 없는 마디(flat, idle, cp, goal)에는 아무것도 없다
+  let stray = 0;
+  Lg.COURSE.bars.forEach((name, b) => { const p = Lg.PATTERNS[name]; if (p && (p.holds.length || p.presses.length)) return; for (let c = b * 16; c < b * 16 + 16; c++) if (L.floorH[c] > 0 || L.ceilH[c] < 90) stray++; });
+  ok(stray === 0, '쉬는 마디에는 장애물이 없다');
 }
 
-console.log('== 수직 함정 / 계단 ==');
-{
-  const mk = (bars) => Lg.buildLevel({ name: 't', bpm: 96, bars, sections: [{ bar: 0, id: 'a' }] });
-  const holdRun = (lv, fromX, toX, untilX) => { const s = Lg.spawnState(lv, -1), ev = []; let maxH = 0; while (!s.dead && !s.won && s.x < untilX) { Lg.stepState(lv, s, false, ev, s.x >= fromX && s.x < toX); maxH = Math.max(maxH, 9 - s.y); } return { s, ev, maxH }; };
-  let lv = mk(['flat', 'col2', 'flat', 'goal']);
-  ok(holdRun(lv, 99, 99, 30).s.cause === 'spike', '가시 기둥: 그냥 튀면 닿는다');
-  ok(!holdRun(lv, 16 + 5.6, 16 + 7.6, 30).s.dead, '가시 기둥: 꼭대기 근처에서 멈추면 넘어간다');
-  ok(holdRun(lv, 16 + 4.3, 16 + 7.6, 30).s.cause === 'spike', '가시 기둥: 너무 낮을 때 멈추면 닿는다');
-  lv = mk(['flat', 'gate', 'flat', 'goal']);
-  ok(!holdRun(lv, 99, 99, 30).s.dead, '위아래 기둥 사이의 틈: 아무것도 안 눌러도 지나간다');
-  lv = mk(['flat', 'up', 'hi', 'down', 'flat', 'goal']);
-  const r = holdRun(lv, 999, 999, 16 * 5);
-  const climbs = r.ev.filter(e => e.type === 'climb').length;
-  ok(!r.s.dead && climbs >= 2 && r.maxH > 4, `계단: 아무것도 안 눌러도 저절로 올라갔다 내려온다 (턱 ${climbs}번, 최고 높이 ${r.maxH.toFixed(1)}칸)`);
-  const b = r.ev.filter(e => e.type === 'bounce').length;
-  ok(b >= 18, `계단을 오르내리는 5마디 동안 ${b}번 튄다(거의 매 박자)`);
-  lv = mk(['flat', 'hi', 'flat', 'goal']);
-  ok(holdRun(lv, 99, 99, 30).s.cause === 'crash', '2칸 높이 벽은 저절로 못 올라간다(부딪힘)');
-}
-
-console.log('== 조각별: 꼭 필요한 입력마다의 여유 (96 BPM 기준) ==');
-const { measure, context } = require('./windows.js');
-const FREE = ['over', 'gate', 'up', 'hi', 'down'];        // 아무것도 안 눌러도 지나가는 마디
-for (const name of Object.keys(Lg.CHUNKS)) {
-  if (['flat', 'cp', 'goal'].includes(name)) continue;
-  const lv = Lg.buildLevel({ name, bpm: 96, bars: context(name).bars, sections: [{ bar: 0, id: 'a' }] });
+console.log('== 패턴별: 입력마다의 여유와, 장애물이 그 입력을 정말 요구하는지 (96 BPM 기준) ==');
+const { measure } = require('./windows.js');
+for (const name of Object.keys(Lg.PATTERNS)) {
+  if (name === 'idle') continue;
   const m = measure(name, 96);
-  const idleDies = run(lv, null).s.dead;
-  if (FREE.includes(name)) { ok(!idleDies && m.solvable && m.inputs.length === 0, `${name}: 아무것도 안 눌러도 지나간다`); continue; }
-  const list = m.solvable && m.inputs ? m.inputs.map(i => `${i.label} ${i.ms >= 600 ? '600+' : i.ms.toFixed(0)}`).join(', ') : '풀 수 없음';
-  ok(idleDies && m.solvable && m.inputs && m.min >= 140, `${name}: 아무것도 안 하면 죽고, 입력 여유 ${list}ms`);
+  if (!m.ok) { ok(false, `${name}: 패턴대로 눌러도 죽는다`); continue; }
+  const f = (v) => (v >= 600 ? '600+' : v.toFixed(0));
+  const width = Math.min(...m.inputs.map(i => i.early + i.late));
+  ok(m.min >= 60 && width >= 170, `${name}: 입력 여유 ${m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join(', ')}ms`);
+  ok(m.idleDies && m.needed.every(Boolean), `${name}: 안 누르면 죽고, 입력을 하나라도 빼먹으면 죽는다`);
 }
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);

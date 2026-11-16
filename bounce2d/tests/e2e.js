@@ -74,20 +74,20 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   await G(() => window.__game.startFresh());
   await tick(12);
   st = await G(() => ({ phase: window.__game.phase, cause: window.__game.state.cause, bar: Math.floor(window.__game.state.x / 16) }));
-  ok(st.phase === 'dead' && st.cause === 'spike' && st.bar === 2, '아무것도 안 누르면 첫 가시에서 죽는다');
+  ok(st.phase === 'dead' && st.cause === 'spike' && st.bar === 2, '아무것도 안 누르면 첫 장애물(매달린 덩어리)에서 죽는다');
   await p.waitForTimeout(250); await p.mouse.click(150, 200); await p.waitForTimeout(50);
   ok(await G(() => window.__game.phase) === 'running' && await G(() => window.__game.tries) === 2 && !(await G(() => window.__game.holding())), '죽은 뒤 어디든 누르면 바로 재도전');
 
-  console.log('== 자동 풀이로 끝까지 ==');
-  await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).plan); g.startFresh(); });
-  const shots = { 10: 'a_fz1', 25.5: 'a_col2', 41.75: 'b_col3', 50.5: 'b_up', 54.5: 'b_hi', 66.5: 'b_padcol', 73.5: 'c_long', 78: 'c_ring', 81.5: 'c_colpair' };
+  console.log('== 코스에 적힌 키 패턴대로 끝까지 ==');
+  await G(() => { const g = window.__game; g.setBot(g.L.ref); g.startFresh(); });
+  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller' };
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
     if (await G(() => window.__game.phase) !== 'running') break;
   }
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cause: window.__game.state.cause, x: window.__game.state.x }));
-  ok(st.phase === 'won' && st.cp === 3, '풀이대로 누르면 완주, 체크포인트 4개 통과' + (st.phase === 'won' ? '' : ` (${st.cause} @마디 ${Math.floor(st.x / 16)})`));
+  ok(st.phase === 'won' && st.cp === 3, '패턴대로 누르면 완주, 체크포인트 4개 통과' + (st.phase === 'won' ? '' : ` (${st.cause} @마디 ${Math.floor(st.x / 16)})`));
   await p.waitForTimeout(200);
   ok((await p.textContent('#ovTitle')).includes('CLEAR') && (await p.textContent('#pct')) === '100%', '완주 화면, 진행률 100%');
 
@@ -96,6 +96,9 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   await p.click('#devJumps button:nth-child(3)'); await p.waitForTimeout(80);
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, x: window.__game.state.x, col: window.__game.L.cps[1].col }));
   ok(st.phase === 'running' && st.cp === 1 && st.x === st.col - 4, '개발자 모드: CP2 버튼으로 바로 이동');
+  for (let beat = 74; beat <= 81; beat += 0.25) await tick(beat);
+  await p.waitForTimeout(80); await p.screenshot({ path: out + 'dev_path.png' });
+  ok(await G(() => window.__game.phase) === 'running', '개발자 모드: 패턴대로 눌렀을 때의 길을 점선으로 보여 준다(스크린샷 dev_path.png)');
   for (const [w, h, name] of [[390, 844, 'portrait'], [844, 390, 'landscape'], [360, 640, 'small']]) {
     await p.setViewportSize({ width: w, height: h }); await p.waitForTimeout(150);
     await G(() => { const g = window.__game; g.devJump(-1); });
