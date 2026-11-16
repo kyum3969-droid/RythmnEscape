@@ -80,7 +80,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 코스에 적힌 키 패턴대로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(g.L.ref); g.startFresh(); });
-  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller', 103.75: 'rush_gate', 105.5: 'rush_hop', 114: 'rush_ramp', 118.75: 'rush_soar', 121.5: 'rush_leap', 126: 'rush_glide', 131.5: 'rush_exit' };
+  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller', 103.75: 'rush_gate', 110: 'rush_empty', 131.5: 'rush_exit' };
   const modeSeen = {}; let shardsSeen = null;
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);

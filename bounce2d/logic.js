@@ -44,6 +44,7 @@ const PATTERNS = {
   // 굴러가다 땅에서 점프 → 공중에서 멈춤
   roller:    { holds: [[2.25, 2.95]], presses: [0.5, 1.75], mF: 0.1 },
   // ---- 질주 모드. terrain = 반 박마다의 땅 높이 8개(첫 값 0, 마디 끝에서 다시 0). 입력은 박에 맞춰 큼직하게, 여유(tol)는 넓게.
+  rFree:     { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [] },   // 빈 길
   rHop:      { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [1.0], tol: 0.18 },
   rHop2:     { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [0.5, 2.25], tol: 0.18 },
   rRamp:     { mode: "ride", terrain: [0, 0.1, 0.5, 1.2, 2.0, 0, 0, 0], holds: [], presses: [], tol: 0.18 },
@@ -59,7 +60,7 @@ const COURSE = {
     "glideLow", "idle", "glideHigh", "idle", "glideLow", "glideHigh", "peak", "cp",
     "weave", "idle", "weave", "skyGlide", "idle", "lowThenUp", "weave", "cp",
     "roller", "peak", "lowThenUp", "idle", "skyGlide", "weave", "roller", "cp",
-    "rHop", "rHop2", "rRamp", "rSoar", "rLeap", "rGlide", "rHop2", "cp",            // 질주 모드
+    "rFree", "rFree", "rFree", "rFree", "rFree", "rFree", "rFree", "cp",            // 질주 모드: 컨셉을 다시 짜는 중이라 장애물 없이 비워 둠
     "roller", "weave", "lowThenUp", "peak", "glideLow", "skyGlide", "weave", "goal",
     "flat",
   ],
