@@ -189,23 +189,23 @@ const ROUND2 = {
   bpm: 151.9867,
   track: { file: "music/terminal_pursuit.mp3", offset: 0.2809 },
   bars: [
-    // 도입: 1라운드에서 배운 것을 한 번씩 짚는다. 끝 두 마디는 곡이 잠깐 빠진다
-    "flat", "flat", "hA", "dj1",   "mix", "box", "idle", "cp",
-    // 첫 큰 구간
-    "mix", "mix2", "stairs", "glideHigh",   "peak", "box", "skyGlide", "twin",
-    "mix", "mix2", "skyGlide", "stairs",   "glideHigh", "peak", "mix", "cp",
-    // 밝고 가벼운 구간: 첫 피버. 파란 발판 → 좁은 통로 → 계단으로 올라가 넓은 통로(가운데에 떠 있는 장애물) → 계단으로 내려와 다시 좁은 통로
-    "zT", "z5", "z4", "wUp",   "w3", "w5", "wDn", "z3",
-    // 쉬어 감
-    // (여기서 새 장치를 가르친다: 빨간 바닥과 파란 섬. 쉬는 마디를 끼고 하나씩)
-    "stairs", "lavaHop", "box", "lavaLeap",   "idle", "lavaGlide", "twin", "cp",
+    // 2라운드부터는 촘촘하게: 쉬는 마디는 구간마다 하나쯤만 두고, 나머지는 누르는 마디나 함정으로 채운다.
+    // 도입: 1라운드에서 배운 것을 두 번씩 누르는 마디로 짚는다. 끝에서 곡이 잠깐 빠지는 자리만 쉰다
+    "flat", "flat", "mix", "peak",   "mix2", "glideHigh", "box", "cp",
+    // 첫 큰 구간: 오른쪽만 다섯 번 → 뚝 / 왼·오 다섯 번 → 뚝
+    "mix", "mix2", "glideHigh", "peak",   "peak", "goStop", "skyGlide", "mix2",
+    "mix", "mix", "holdStop", "stairs",   "glideHigh", "peak", "mix2", "cp",
+    // 밝고 가벼운 구간: 첫 피버. 파란 발판 → 매 박 누르다 뚝 → 계단으로 올라가 넓은 통로(연타) → 계단으로 내려와 다시 좁은 통로
+    "zT", "z5", "z4", "wUp",   "w6", "w5", "wDn", "z3",
+    // 쉬어 감이었던 구간: 새 장치(빨간 바닥과 파란 섬)를 두 번씩 가르친다. 쉬는 마디는 하나
+    "lavaHop", "lavaHop", "lavaLeap", "box",   "lavaLeap", "lavaGlide", "lavaGlide", "cp",
     // 두 번째 큰 구간: 같은 손이 이어지다가 어긋난다. 오른쪽만 다섯 번 → 왼쪽 / 왼쪽만 다섯 번 → 뚝
     // (왼쪽만 치다가 오른쪽으로 바꾸는 것은 함정이 못 된다: 그 자리는 왼쪽으로 떠서 넘어가도 살아남는다)
-    "peak", "peak", "mix2", "box",   "glideHigh", "glideHigh", "holdStop", "stairs",
+    "peak", "peak", "mix2", "lavaHop",   "glideHigh", "glideHigh", "holdStop", "lavaLeap",
     // 오른쪽만 다섯 번 → 뚝(여섯 번째는 누르지 않는다)
-    "lavaHop", "lavaGlide", "peak", "peak",   "goStop", "twin", "lavaLeap", "cp",
+    "lavaGlide", "mix", "peak", "peak",   "goStop", "skyGlide", "lavaLeap", "cp",
     // 절정: 왼·오·왼·오·왼 → 뚝, 그리고 뚝 → 오
-    "mix", "mix", "holdStop", "lavaGlide",   "box", "peak", "stopGo", "cp",
+    "mix", "mix", "holdStop", "lavaGlide",   "mix2", "peak", "stopGo", "cp",
     // 가장 센 절정: 마지막 피버. 들어서자마자 계단으로 넓은 통로에 올라간다. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다
     "wUp", "w5", "w5", "w8",   "wDn", "z5", "zS1", "zS2",
     "goal", "flat", "flat",
@@ -231,21 +231,21 @@ const ROUND3 = {
     rush:  { top: "#141006", bottom: "#8a6a10", accent: "#ffffff", sun: "#ffe066" },
   },
   bars: [
-    // 도입: 앞에서 배운 것을 한 번씩
-    "flat", "flat", "hA", "dj1",   "mix", "box", "idle", "cp",
-    // 첫 큰 구간: 충전 고리를 가르친다(쉬는 마디를 끼고 하나 → 둘)
-    "ring1", "box", "ring1", "idle",   "ringWave", "stairs", "ringWave", "twin",   "mix", "cp",
-    // 고리를 아는 동작과 섞고, 고리 연타가 나온다: 탁탁탁(ringWave) → 탁탁탁탁(ringRun) → 뚝(ringStop: 다음 고리는 미끼)
-    "lavaHop", "ring1", "box", "skyGlide",   "lavaLeap", "ringWave", "ringRun", "ringStop",   "idle", "cp",
+    // 도입: 앞에서 배운 것을 두 번씩 누르는 마디로
+    "flat", "flat", "mix", "peak",   "mix2", "glideHigh", "box", "cp",
+    // 첫 큰 구간: 충전 고리를 가르친다(하나 → 둘). 사이사이는 쉬지 않고 아는 동작으로 채운다
+    "ring1", "box", "ring1", "peak",   "ringWave", "mix", "ringWave", "lavaHop",   "mix2", "cp",
+    // 고리를 아는 동작과 섞고, 고리 연타가 나온다: 탁탁탁(ringWave) → 탁탁탁탁(ringRun) → 뚝(ringStop: 다음 고리는 미끼). 26은 킥이 빠지는 자리라 쉰다
+    "lavaLeap", "ring1", "glideHigh", "skyGlide",   "lavaGlide", "ringWave", "ringRun", "ringStop",   "box", "cp",
     // 첫 절정: 피버. 매 박 누르다 뚝(z5 → z4), 넓은 통로에서 다섯 번 연타 두 번 뒤 세 번에서 뚝(w5, w5 → w8)
     "zT", "z5", "z4", "wUp",   "w5", "w5", "w8", "wDn",   "z6", "z5", "z5", "z7",
     "cp",
-    // 가라앉는 구간: 계단으로 박자 틀기(시험). 네 단을 오르면 엇박 → 꼭대기에서 그냥 가 보고 → 멈춤 → 이단 점프 → 네 단을 내려오면 정박
-    "upStairs", "skyRun", "skyHold", "skyDj",   "downStairs", "idle", "cp",
+    // 가라앉는 구간: 계단으로 박자 틀기(시험). 네 단을 오르면 엇박 → 꼭대기에서 멈춤 → 이단 점프 → 멈춤 → 네 단을 내려오면 정박(내려온 마디는 뒤 절반에서만 누른다)
+    "upStairs", "skyHold", "skyDj", "skyHold",   "downStairs", "dj2", "cp",
     // 두 번째 큰 구간: 고리 연타 끝에서 이번엔 왼쪽(ringGlide: 다음 고리가 두 배로 멀다). 그리고 계단을 한 번 더
-    "ringWave", "ringRun", "ringGlide", "upStairs",   "skyHold", "downStairs", "idle", "peak",
+    "ringWave", "ringRun", "ringGlide", "upStairs",   "skyDj", "downStairs", "hB", "peak",
     // 조용히 올라감: 오른쪽만 다섯 번 → 뚝
-    "peak", "goStop", "idle", "cp",
+    "peak", "goStop", "lavaLeap", "cp",
     // 마지막 절정: 피버. 들어서자마자 넓은 통로. 끝맺는 네 마디는 연출 — 통로가 조여들다 끝맺는 한 방에 터져 나온다
     "wUp", "w4", "w6", "w5",   "w8", "wDn", "z5", "z5",   "z4", "z2", "z5", "z7",
     "zT", "zT", "zS1", "zS2",

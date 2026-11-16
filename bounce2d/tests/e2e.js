@@ -240,7 +240,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     for (let beat = 0; beat <= 316; beat += 0.25) {
       await tick(beat);
       if (shots3[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots3[beat] + '.png' }); }
-      if (beat === 169.5) offY = await G(() => window.__game.state.y);       // 계단 꼭대기(마디 42, 네 칸 높이)에서는 엇박(1.5박)에 닿는다
+      if (beat === 168.5) offY = await G(() => window.__game.state.y);       // 계단 꼭대기(마디 42, 네 칸 높이)에서는 엇박(0.5박)에 닿는다
       if (await G(() => window.__game.phase) !== 'running') break;
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, gems: window.__game.gems }));

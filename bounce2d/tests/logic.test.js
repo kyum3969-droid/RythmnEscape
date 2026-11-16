@@ -224,7 +224,7 @@ for (const C of Lg.COURSES) {
         if (e3.some(e => e.type === 'land') && 9 - s3.y >= 0.99) { landBars.add(Math.floor(s3.x / 16)); if (boxBars.includes(Math.floor(s3.x / 16))) lands++; }
       }
       const clean = allBox.filter(b => !Lg.PATTERNS[bars3[b]].tall).every(b => bounceAt[b * 384] < 0.2 && bounceAt[(b + 1) * 384] < 0.2);
-      ok(boxBars.length >= 5 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
+      ok(boxBars.length >= 3 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
       let died = 0, rnd3 = 11;
       const rand = () => (rnd3 = (rnd3 * 1103515245 + 12345) % 2147483648) / 2147483648;
       for (const b of boxBars) for (let n = 0; n < 40; n++) {
@@ -272,6 +272,14 @@ for (const C of Lg.COURSES) {
       ok(down >= 0 && [[0.5, 4], [1.625, 3], [2.75, 2], [3.875, 1], [5, 0]].every(([t, h]) => { const x = at(down, t); return x && x.h === h; }), `[${tag}] 내려올 때는 1.125박마다 튄다(0.5 → 1.625 → 2.75 → 3.875박). 땅에 닿으면 다음 마디 둘째 박부터 정박`);
       ok(tallBars.every(b => lv.tallBars.has(b)) && bars4.every((n, b) => !(Lg.PATTERNS[n] && Lg.PATTERNS[n].after) || bars4[b - 1] === Lg.PATTERNS[n].after) && bars4.every((n, b) => n !== 'ringRun' || (Lg.PATTERNS[bars4[b + 1]] || {}).after === 'ringRun'), `[${tag}] 이어 붙여야 하는 마디들이 제자리에 있다(고리 연타 뒤에는 ringStop·ringGlide)`);
     }
+  }
+  {
+    // 밀도: 2라운드부터는 대부분의 마디에서 누르거나 함정을 만난다
+    const pat = C.bars.map(n => Lg.PATTERNS[n]).filter(p => p && p.mode !== 'rush'), busy = pat.filter(p => p.holds.length || p.presses.length || p.traps).length;
+    const rushBars = C.bars.map(n => Lg.PATTERNS[n]).filter(p => p && p.mode === 'rush'), rushBusy = rushBars.filter(p => /[FS]/.test(p.nodes)).length;
+    const perBar = (lv.ref.presses.length + lv.ref.holds.length) / (pat.length + rushBars.length);
+    if (tag !== 'ROUND 1') ok(busy / pat.length >= 0.8 && perBar >= 1.5, `[${tag}] 바운스 마디 ${pat.length}개 가운데 ${busy}개(${Math.round(100 * busy / pat.length)}%)에서 누르거나 함정을 만난다. 피버는 ${rushBars.length}마디 가운데 ${rushBusy}마디. 마디당 입력 ${perBar.toFixed(1)}번`);
+    else console.log(`  (참고) [${tag}] 바운스 마디 ${pat.length}개 가운데 ${busy}개(${Math.round(100 * busy / pat.length)}%), 마디당 입력 ${perBar.toFixed(1)}번`);
   }
   {
     // 함정 마디: 패턴대로 가면 지나가고, 버릇대로(앞 마디들처럼) 누르면 그 마디에서 죽는다
