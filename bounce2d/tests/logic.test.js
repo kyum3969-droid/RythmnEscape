@@ -268,6 +268,25 @@ for (const C of Lg.COURSES) {
       ok(outs.length >= 2 && outs.every(b => bounces.some(x => x.step === (b + 1) * 384 && !x.road)), `[${tag}] 엇박 길에서 내려오면 그 마디 안에 정박으로 돌아온다(다음 마디 첫 박에 땅에서 튄다)`);
     }
   }
+  {
+    // 함정 마디: 패턴대로 가면 지나가고, 버릇대로(앞 마디들처럼) 누르면 그 마디에서 죽는다
+    const trapBars = C.bars.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].traps ? b : -1)).filter(b => b >= 0);
+    if (trapBars.length) {
+      const inp8 = Lg.planInput(lv.ref);
+      let caught = 0, total = 0;
+      for (const b of trapBars) for (const t of Lg.PATTERNS[C.bars[b]].traps) {
+        total++;
+        const p8 = Lg.PATTERNS[C.bars[b]], lo = b * 384, hi = lo + 384;
+        const press = new Set([...p8.presses, ...(t.presses || [])].map(v => lo + Math.round(v * 96))), holds = (t.holds || p8.holds).map(([a, z]) => [lo + Math.round(a * 96), lo + Math.round(z * 96)]);
+        const s8 = Lg.spawnState(lv, -1);
+        while (!s8.dead && !s8.won && s8.step < hi + 96) { const st = s8.step + 1, inBar = st >= lo && st < hi; Lg.stepState(lv, s8, inBar ? press.has(st) : inp8.press.has(st), null, inBar ? holds.some(h => st >= h[0] && st < h[1]) : inp8.hold.has(st)); }
+        if (s8.dead && s8.x >= b * 16 && s8.x < b * 16 + 16.5) caught++;
+      }
+      ok(caught === total && lv.marks.length === total, `[${tag}] 함정 마디(${trapBars.join(', ')}): 버릇대로 누르면 그 마디에서 죽는다 (${caught}/${total}), ✕ 표시 ${lv.marks.length}개`);
+      const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1]; return n === 'goStop' ? prev === 'peak' : n === 'ringFake' ? prev === 'ringWave' : n === 'hCut' ? prev === 'mix' : n === 'stopGo' ? prev === 'peak' : true; });
+      ok(follows, `[${tag}] 함정은 닮은 마디 바로 다음에 온다(연속으로 치다가 끊기도록)`);
+    }
+  }
   if (lv.freeBars.size) {
     // 연출 마디: 장애물이 없고, 아무리 눌러도 길이 바뀌지 않는다(그래서 다음 마디와 어긋나지 않는다)
     const noReds = lv.reds.every(q => !lv.freeBars.has(Math.floor(q.xt / 16)) || !lv.freeBars.has(Math.floor((q.xt - 2.1) / 16)));

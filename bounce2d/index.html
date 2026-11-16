@@ -852,6 +852,16 @@
         c = e;
       }
     }
+    // 함정 표시(✕): 버릇대로라면 눌렀을 자리. 여기서는 누르지 않는다.
+    for (const m of L.marks || []) {
+      if (m.x < cA || m.x > cB) continue;
+      const x = sx(m.x), y = sy(ROWS - 1 - m.h), rr = T * 0.3, k = rr * 0.42;
+      ctx.save(); ctx.globalAlpha = m.x < state.x ? 0.25 : 1;
+      ctx.fillStyle = "rgba(20,6,14,0.75)"; ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 3; ctx.shadowColor = DANGER; ctx.shadowBlur = 8 + 8 * pulse;
+      ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.moveTo(x - k, y - k); ctx.lineTo(x + k, y + k); ctx.moveTo(x + k, y - k); ctx.lineTo(x - k, y + k); ctx.stroke();
+      ctx.restore();
+    }
     // 충전 고리: 지나가면 이단 점프가 다시 찬다. 같은 칸에 쌓인 칸들이 세로로 긴 고리 하나.
     for (let c = cA; c <= cB; c++) for (let r = 0; r < ROWS - 1; r++) {
       if (tile(L, c, r) !== "O" || tile(L, c, r - 1) === "O") continue;
@@ -1226,7 +1236,7 @@
   const HINT_TEXT = {
     hA: "II 표시에서 왼쪽을 누르고 있기 = 공중에서 멈춤", glideHigh: "두 번 이어서 멈춤", dj1: "▲ 표시에서 오른쪽 누르기 = 공중에서 한 번 더 점프", peak: "두 번 이어서 점프",
     mix: "멈춤, 그다음 점프", mix2: "점프, 그다음 멈춤", skyGlide: "점프하고, 그 꼭대기에서 멈춤",
-    zF: "장애물이 없는 구간 · 저절로 달려요", zT: "파란 발판은 닿아도 괜찮아요 · 튕기기만 해요", box: "파란 박스는 닿아도 괜찮아요 · 밟고 튀어요", ring1: "고리 앞에서 누르면 한 번 더 뛰어요", ringWave: "탁, 탁, 탁 · 고리마다 한 번씩", obIn: "하늘색 길 위에서는 엇박에 튀어요", obHold: "엇박 길에서는 킥에 맞춰 눌러요", lavaHop: "빨간 바닥은 안 돼요 · 멈춰서 파란 섬으로", lavaLeap: "이단 점프로 높은 섬에", lavaGlide: "박스를 밟고, 멈춰서 건너가요", w3: "넓은 통로 · 떠 있는 장애물은 비켜 가요", zS1: "통로가 조여들어요 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
+    zF: "장애물이 없는 구간 · 저절로 달려요", zT: "파란 발판은 닿아도 괜찮아요 · 튕기기만 해요", box: "파란 박스는 닿아도 괜찮아요 · 밟고 튀어요", goStop: "✕에서는 누르지 않아요 · 머리 위를 봐요", hCut: "이번엔 멈춤을 일찍 놓아요", ringFake: "뒤의 고리는 미끼예요 · 누르지 마요", ring1: "고리 앞에서 누르면 한 번 더 뛰어요", ringWave: "탁, 탁, 탁 · 고리마다 한 번씩", obIn: "하늘색 길 위에서는 엇박에 튀어요", obHold: "엇박 길에서는 킥에 맞춰 눌러요", lavaHop: "빨간 바닥은 안 돼요 · 멈춰서 파란 섬으로", lavaLeap: "이단 점프로 높은 섬에", lavaGlide: "박스를 밟고, 멈춰서 건너가요", w3: "넓은 통로 · 떠 있는 장애물은 비켜 가요", zS1: "통로가 조여들어요 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
     glideLow: "떨어지다 낮은 곳에서 멈춤", weave: "멈춤 → 이단 점프 → 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];
