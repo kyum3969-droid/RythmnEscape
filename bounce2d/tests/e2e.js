@@ -80,19 +80,19 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 코스에 적힌 키 패턴대로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(g.L.ref); g.startFresh(); });
-  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller', 103.75: 'rush_gate', 106.25: 'rush_tap', 116.75: 'rush_drill', 121.25: 'rush_gallop', 124.5: 'rush_drilltap', 130.25: 'rush_roll', 131.75: 'rush_exit' };
+  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller', 103.75: 'fever1_gate', 106.25: 'fever1_a', 113.25: 'fever1_b', 123.25: 'fever1_c', 131.75: 'fever1_exit' };
   const modeSeen = {}; let shardsSeen = null;
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
-    if (beat === 112) shardsSeen = await G(() => window.__game.smashed);
+    if (beat === 134) shardsSeen = await G(() => window.__game.gems);
     if (beat === 100 || beat === 110 || beat === 134) modeSeen[beat] = await G(() => window.__game.state.mode + ':' + document.querySelector('#zoneL span').textContent + ' / ' + document.querySelector('#zoneR span').textContent);
     if (await G(() => window.__game.phase) !== 'running') break;
   }
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cause: window.__game.state.cause, x: window.__game.state.x }));
   ok(st.phase === 'won' && st.cp === 3, '패턴대로 누르면 완주, 체크포인트 4개 통과' + (st.phase === 'won' ? '' : ` (${st.cause} @마디 ${Math.floor(st.x / 16)})`));
-  ok(modeSeen[100].startsWith('bounce:누르고 있기 = 멈춤') && modeSeen[110] === 'rush:어디든 탁 = 벽 깨기 / 어디든 꾹 = 긴 덩어리 뚫기' && modeSeen[134] === modeSeen[100], `피버 구간(마디 26~32)에서는 모드와 조작 안내가 바뀐다 (${modeSeen[110]})`);
-  ok(shardsSeen === 8, `돌파 구간 셋째 마디 첫 박까지 벽 8개를 깼다 (${shardsSeen}개)`);
+  ok(modeSeen[100].startsWith('bounce:누르고 있기 = 멈춤') && modeSeen[110] === 'rush:어디든 누르고 있으면 = 크게 튄다 / 떼고 있으면 = 낮게 튄다' && modeSeen[134] === modeSeen[100], `피버 구간(마디 26~32)에서는 원버튼이 되고 조작 안내가 바뀐다 (${modeSeen[110]})`);
+  ok(shardsSeen && shardsSeen.got === shardsSeen.total && shardsSeen.total > 100, `패턴대로 가면 길 위의 수정을 전부 뚫는다 (${shardsSeen && shardsSeen.got}/${shardsSeen && shardsSeen.total}개)`);
   await p.waitForTimeout(200);
   ok((await p.textContent('#ovTitle')).includes('CLEAR') && (await p.textContent('#pct')) === '100%', '완주 화면, 진행률 100%');
 
@@ -113,29 +113,57 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok(v.ahead >= 8 && v.rows >= 6.5 && v.scroll && v.zone, `${name} ${w}x${h}: 앞쪽 ${v.ahead.toFixed(1)}칸 보임, 위쪽 ${v.rows.toFixed(1)}칸, 조작 안내는 바닥 아래쪽`);
     await p.screenshot({ path: out + name + '.png' });
   }
-  console.log('== 돌파 구간을 실제 터치로 ==');
+  console.log('== 피버 방식 1 (크게/낮게 튀기)을 실제 터치로 ==');
+  const feverStart = await G(() => window.__game.L.rides[0][0] / 4);
+  let fb = 0;
+  const go = async (to) => { for (; fb < to; fb = Math.min(to, fb + 0.125)) await tick(fb); await tick(to); fb = to; };
   {
     await p.setViewportSize({ width: 844, height: 390 });
-    await G(() => { const g = window.__game; g.setBot(null); g.devJump(2); });     // 체크포인트 3 = 돌파 구간 바로 앞
-    const walls = await G(() => window.__game.L.walls.map(w => w.step / 96));
-    const blk = await G(() => { const b = window.__game.L.blocks[0]; return [b.a / 96, b.b / 96]; });
-    let beat = await G(() => window.__game.state.step / 96);
-    const go = async (to) => { for (; beat < to; beat = Math.min(to, beat + 0.125)) await tick(beat); await tick(to); beat = to; };
-    await go(walls[0] - 0.05); await p.mouse.click(150, 200); await go(walls[0] + 0.05);
-    ok(await G(() => window.__game.smashed) === 1 && await G(() => window.__game.phase) === 'running', '원버튼: 화면 왼쪽을 탁 눌러도 벽이 깨진다');
-    await p.waitForTimeout(60); await p.screenshot({ path: out + 'rush_smash.png' });
-    for (const [k, w] of walls.filter(w => w > walls[0] && w < blk[0]).entries()) { await go(w - 0.03); await p.mouse.click(k % 2 ? 150 : 700, 200); }
-    await go(blk[0] - 0.1); await p.mouse.move(700, 200); await p.mouse.down();
-    await go((blk[0] + blk[1]) / 2);
-    st = await G(() => ({ f: window.__game.state.frozen, phase: window.__game.phase, n: window.__game.smashed }));
-    ok(st.f && st.phase === 'running' && st.n === walls.filter(w => w < blk[0]).length, `원버튼: 화면 오른쪽을 꾹 누르고 있어도 긴 덩어리가 뚫린다 (그 전까지 좌우 번갈아 눌러 벽 ${st.n}개)`);
-    await p.waitForTimeout(60); await p.screenshot({ path: out + 'rush_drilling.png' });
-    await go(blk[1] + 0.05); await p.mouse.up();
-    const nextWall = walls.find(w => w > blk[1]);
-    await go(nextWall + 0.3);
+    await G(() => { const g = window.__game; g.setBot(null); g.devJump(2); });     // 체크포인트 3 = 피버 바로 앞
+    fb = await G(() => window.__game.state.step / 96);
+    await go(feverStart + 0.3);
+    ok(await G(() => window.__game.state.mode === 'rush' && window.__game.state.hopT) === 0.9 && await G(() => window.__game.feverKind) === 'hop', '안 누르고 있으면 낮게 튄다');
+    await p.mouse.move(150, 200); await p.mouse.down();                           // 화면 왼쪽을 누르고 있기
+    await go(feverStart + 0.75);
+    ok(await G(() => window.__game.state.hopT) === 2.6 && await G(() => 9 - window.__game.state.y) > 2.5, '원버튼: 화면 왼쪽을 누르고 있어도 크게 튄다');
+    await p.waitForTimeout(60); await p.screenshot({ path: out + 'fever1_touch.png' });
+    await p.mouse.up(); await go(feverStart + 1.25);
+    ok(await G(() => window.__game.state.hopT) === 0.9, '떼면 다시 낮게 튄다');
+    await p.mouse.move(700, 200); await p.mouse.down(); await go(feverStart + 1.75); await p.mouse.up();
+    ok(await G(() => 9 - window.__game.state.y) > 2.5, '원버튼: 화면 오른쪽을 눌러도 크게 튄다');
+    await go(feverStart + 3.95);                                                    // 넷째·여덟째 칸이 '크게'. 여덟째에서 안 누른다
     st = await G(() => ({ phase: window.__game.phase, cause: window.__game.state.cause }));
-    ok(st.phase === 'dead' && st.cause === 'crash', '다음 벽을 안 치면 부딪혀 죽는다');
-    await p.waitForTimeout(80); await p.screenshot({ path: out + 'rush_crash.png' });
+    ok(st.phase === 'dead' && st.cause === 'spike', '크게 튀어야 하는 칸에서 낮게 튀면 죽는다');
+  }
+  console.log('== 피버 방식 2 (바닥·천장 튕기기)로 바꿔서 ==');
+  {
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    ok((await p.textContent('#feverBtn')).includes('1 · 크게'), '피버 방식 버튼: 지금은 1번');
+    await Promise.all([p.waitForNavigation(), p.click('#feverBtn')]);
+    await p.waitForFunction(() => window.__game && window.__game.feverKind === 'zig', null, { timeout: 15000 });
+    ok((await p.textContent('#feverBtn')).includes('2 · 바닥과 천장'), '버튼을 누르면 2번으로 바뀌어 다시 열린다');
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(null); g.devJump(2); });
+    fb = await G(() => window.__game.state.step / 96);
+    await go(feverStart + 0.25); await p.mouse.click(150, 200);                   // 첫 반 박 안에 화면 왼쪽을 누름
+    await go(feverStart + 0.45);
+    const before = await G(() => window.__game.state.zdir);
+    await go(feverStart + 0.7);
+    st = await G(() => ({ d: window.__game.state.zdir, h: 9 - window.__game.state.y, label: document.querySelector('#zoneL span').textContent }));
+    ok(before === 1 && st.d === -1 && st.h < 1.9 && st.label.includes('방향이 바뀐다'), '누르면 다음 반 박 지점(가운데 높이)에서 방향이 뒤집힌다');
+    await p.waitForTimeout(60); await p.screenshot({ path: out + 'fever2_touch.png' });
+    await G(() => { const g = window.__game; g.setBot(g.L.ref); g.startFresh(); });
+    const shots2 = { 106.25: 'fever2_a', 113.25: 'fever2_b', 121.25: 'fever2_c', 131.75: 'fever2_exit' };
+    for (let beat = 0; beat <= 172; beat += 0.25) {
+      await tick(beat);
+      if (shots2[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots2[beat] + '.png' }); }
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.gems.got >= st.gems.total - 1, `방식 2도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#feverBtn')]);
+    await p.waitForFunction(() => window.__game && window.__game.feverKind === 'hop', null, { timeout: 15000 });
+    await G(() => { const g = window.__game; g.fake.on = true; g.startFresh(); });
   }
   console.log('== 곡 넣기 ==');
   {

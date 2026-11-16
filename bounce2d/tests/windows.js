@@ -5,9 +5,10 @@
 const Lg = require('../logic.js');
 
 function measure(name, bpm = 96) {
-  // 돌파 구간 패턴은 구간 한가운데에 있을 때를 잰다(앞뒤에 빈 돌파 마디)
+  // 피버 패턴은 구간 한가운데에 있을 때를 잰다(앞뒤에 빈 피버 마디)
   const rush = Lg.PATTERNS[name].mode === 'rush';
-  const lv = Lg.buildLevel({ name, bpm, bars: rush ? ['flat', 'rEmpty', name, 'rEmpty', 'flat', 'goal'] : ['flat', name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const lead = Lg.PATTERNS[name].kind === 'zig' ? 'zE' : 'hE';
+  const lv = Lg.buildLevel({ name, bpm, bars: rush ? ['flat', lead, name, lead, 'flat', 'goal'] : ['flat', name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
   const ms = 60000 / bpm / Lg.SUB;
   const acts = [];
   for (const [a, b] of lv.ref.holds) acts.push({ type: 'hold', start: a, end: b });
@@ -22,7 +23,7 @@ function measure(name, bpm = 96) {
   };
   if (!alive()) return { name, ok: false, fixed: lv.fixed };
   const out = [];
-  for (const a of acts) for (const [key, label] of a.type === 'hold' ? [['start', '꾹 시작'], ['end', '꾹 끝']] : [['step', '탁']]) {
+  for (const a of acts) for (const [key, label] of a.type === 'hold' ? [['start', '누르기 시작'], ['end', '떼기']] : [['step', '누르기']]) {
     const v0 = a[key];
     const okAt = (v) => { a[key] = v; const res = (a.type !== 'hold' || a.end > a.start) && alive(); a[key] = v0; return res; };
     let lo = v0, hi = v0;
@@ -47,6 +48,6 @@ if (require.main === module) {
     const f = (v) => (v >= 600 ? '충분' : v.toFixed(0));
     if (!m.ok) { console.log(name.padEnd(10), '패턴대로 달려도 죽음'); continue; }
     console.log(name.padEnd(10), m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join('   ') + (m.fixed.length ? `   [걷어낸 칸 ${m.fixed.join(',')}]` : '')
-      + `\n${' '.repeat(11)}꼭 필요한 입력: ${m.acts.map((t, i) => (t === 'hold' ? '꾹' : '탁') + (m.needed[i] ? '○' : '✕')).join(' ')}${m.idleDies ? '' : '  (아무것도 안 눌러도 지나감!)'}`);
+      + `\n${' '.repeat(11)}꼭 필요한 입력: ${m.acts.map((t, i) => (t === 'hold' ? '누르고 있기' : '누르기') + (m.needed[i] ? '○' : '✕')).join(' ')}${m.idleDies ? '' : '  (아무것도 안 눌러도 지나감!)'}`);
   }
 }
