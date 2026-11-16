@@ -31,6 +31,17 @@ const PATTERNS = {
   idle:      { holds: [], presses: [] },
   // 누르는 시각은 모두 1/8박 단위다(곡의 음 단위). 누르는 순간이 곡의 소리와 겹치게 하려는 것.
   // tol = 통로를 만들 때 봐주는 타이밍 오차(박). 곡이 빨라서(한 박 0.39초) 넓게 잡았다. 너무 넓히면 장애물이 그 입력을 요구하지 못하게 되므로 패턴마다 다르다.
+  // ---- 쉬운 동작(입력 한두 번, 모두 엇박). 라운드 1의 바탕.
+  // 꼭대기에서 멈춰 건너가기: 마디 앞쪽 / 뒤쪽
+  hA:        { holds: [[0.5, 1.375]], presses: [], tol: 0.18 },
+  hB:        { holds: [[2.5, 3.375]], presses: [], tol: 0.18 },
+  // 꼭대기에서 이단 점프: 마디 앞쪽 / 뒤쪽
+  dj1:       { holds: [], presses: [0.5], tol: 0.18 },
+  dj2:       { holds: [], presses: [2.5], tol: 0.18 },
+  // 섞기: 멈춤 → 이단 점프 / 이단 점프 → 멈춤
+  mix:       { holds: [[0.5, 1.375]], presses: [2.5], tol: 0.18 },
+  mix2:      { holds: [[2.5, 3.25]], presses: [0.5], tol: 0.18 },
+  // ---- 조금 더 어려운 동작
   // 떨어지는 길에 낮게 멈춰 미끄러지기 → 착지 → 그냥 튀기
   glideLow:  { holds: [[0.875, 1.75]], presses: [], tol: 0.14 },
   // 꼭대기에서 멈춰 넘어가기를 두 번
@@ -71,22 +82,26 @@ for (const p of Object.values(PATTERNS)) {
 // 한 마디(4박) = 약 1.58초. 곡은 64마디이고 65번째 마디 첫 박에 끝맺는 한 방이 있다.
 // 곡의 구간(마디): 0~15 조용한 도입 / 16~27 첫 큰 구간 / 28~39 가장 밝고 센 구간 / 40~43 쉬어 감 / 44~51 다시 쌓음 / 52~63 마지막 절정
 const COURSE = {
-  name: "Octane Horizon",
+  name: "ROUND 1 · Octane Horizon",
   bpm: 152.0285,                                 // 곡에서 잰 값(킥 256개를 직선에 맞춤). 구간별 어긋남은 ±12ms 안쪽
   track: { file: "music/octane_horizon.mp3", offset: 0.8689 },   // offset = 첫 박이 나오는 곡 속 시각(초)
+  // 라운드 1: 어렵지 않게, 그래도 손맛은 있게.
+  //  - 입력은 마디당 한두 번이고 전부 엇박(킥과 킥 사이). 킥은 공이 저절로 치고, 그 사이의 "탁"을 손이 친다.
+  //  - 한 번에 하나씩 가르친다(멈춤 → 이단 점프 → 섞기). 4마디가 한 마디 말: 해 보기 · 한 번 더 · 살짝 비틀기 · 쉬기.
+  //  - 어려운 엮기(weave, roller, lowThenUp)는 쓰지 않는다. 쉬운 동작을 이어 붙여 흐름을 만든다.
   bars: [
-    // 도입: 멈춤과 이단 점프를 하나씩, 사이사이 쉬는 마디
-    "flat", "flat", "glideLow", "idle", "glideLow", "idle", "glideHigh", "idle", "glideHigh", "idle", "peak", "idle", "peak", "idle", "glideLow", "cp",
-    // 첫 큰 구간: 엮기 시작
-    "glideHigh", "idle", "skyGlide", "idle", "weave", "idle", "skyGlide", "idle", "lowThenUp", "idle", "weave", "cp",
-    // 가장 센 구간: 피버
-    "z1", "z2", "z3", "z4", "z2", "z5", "z6", "z3", "z7", "z5", "z4", "cp",
+    // 도입(조용함): 멈춤만 → 이단 점프만
+    "flat", "flat", "hA", "idle",   "hA", "idle", "hB", "idle",   "glideHigh", "idle", "dj1", "idle",   "dj2", "idle", "peak", "cp",
+    // 첫 큰 구간: 둘을 섞는다
+    "mix", "idle", "mix", "idle",   "mix2", "idle", "glideHigh", "peak",   "idle", "mix", "skyGlide", "cp",
+    // 가장 센 구간: 피버. 같은 마디를 두 번씩(한 번 보고, 한 번 더)
+    "z1", "z1", "z2", "z2",   "z3", "z3", "z4", "z4",   "z6", "z5", "z2", "cp",
     // 쉬어 감
-    "idle", "glideLow", "idle", "glideHigh",
-    // 다시 쌓음
-    "peak", "idle", "roller", "idle", "weave", "idle", "lowThenUp", "cp",
-    // 마지막 절정: 두 마디씩 이어 붙이고 한 마디 쉰다
-    "weave", "lowThenUp", "idle", "roller", "skyGlide", "idle", "weave", "roller", "idle", "lowThenUp", "weave", "peak",
+    "idle", "hA", "idle", "dj2",
+    // 다시 쌓음: 쉬는 마디를 줄인다
+    "mix", "mix2", "idle", "glideHigh",   "peak", "idle", "skyGlide", "cp",
+    // 마지막 절정: 배운 것을 세 마디씩 이어 붙인다
+    "mix", "mix2", "skyGlide", "idle",   "glideHigh", "peak", "mix", "idle",   "mix2", "skyGlide", "peak", "glideHigh",
     "goal", "flat", "flat",
   ],
   sections: [
@@ -289,6 +304,23 @@ function buildLevel(course) {
     const c0 = Math.floor(end.x);
     for (let c = c0 - 1; c <= c0 + 1; c++) { L.floorH[c] = 0; L.ceilH[c] = 99; }
     L.fixed.push(c0);
+  }
+  // 길잡이: 패턴대로 달린 길 위에 수정을 놓고(입력이 있는 점프에만, 반의 반 박마다), 눌러야 하는 자리에는 표시를 둔다.
+  // 판정에는 영향이 없다. 길이 보여서 쉬워지고, 뚫을 때마다 소리가 난다.
+  { const s = spawnState(L, -1), recs = [], active = new Set();
+    let air = 0, wasGround = true;
+    while (!s.dead && !s.won) {
+      const ev = [];
+      stepState(L, s, base.press.has(s.step + 1), ev, base.hold.has(s.step + 1));
+      if (!s.onGround && wasGround) air++;
+      wasGround = s.onGround;
+      if (s.mode === "rush" || s.onGround) continue;
+      const mark = ev.some((e) => e.type === "double" || e.type === "jump") ? "jump" : ev.some((e) => e.type === "freeze") ? "hold" : "";
+      if (mark) active.add(air);
+      if (mark || s.step % (SUB / 4) === 0) recs.push({ air, x: s.x, h: (ROWS - 1) - s.y + HALF, mark });
+    }
+    for (const r of recs) if (active.has(r.air)) L.gems.push(r.mark === "jump" ? { x: r.x, h: r.h, flip: 1 } : r.mark === "hold" ? { x: r.x, h: r.h, hold: true } : { x: r.x, h: r.h });
+    L.gems.sort((u, v) => u.x - v.x);
   }
   return L;
 }

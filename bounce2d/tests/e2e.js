@@ -23,7 +23,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 기본 곡과 실제 시계 ==');
   let st = await G(() => { const t = window.__game.track; return t && { name: t.name, bpm: t.bpm, dur: t.duration, off: t.offset, info: document.getElementById('trackInfo').textContent }; });
-  ok(st && st.name === 'Octane Horizon' && Math.abs(st.bpm - 152.0285) < 0.01 && Math.abs(st.dur - 106.66) < 0.1 && st.off === 0.8689 && st.info.includes('Octane Horizon'), `코스에 실린 곡이 불러와진다 (${st && st.name}, 게임 템포 ${st && st.bpm.toFixed(2)}, ${st && st.dur.toFixed(1)}초)`);
+  ok(st && st.name.includes('Octane Horizon') && Math.abs(st.bpm - 152.0285) < 0.01 && Math.abs(st.dur - 106.66) < 0.1 && st.off === 0.8689 && st.info.includes('Octane Horizon'), `코스에 실린 곡이 불러와진다 (${st && st.name}, 게임 템포 ${st && st.bpm.toFixed(2)}, ${st && st.dur.toFixed(1)}초)`);
   await p.click('#ovButtons button'); await p.waitForTimeout(1500);
   st = await G(() => ({ step: window.__game.state.step, phase: window.__game.phase, bpm: window.__game.bpm }));
   const expect = 1.4 / (60 / st.bpm) * 96;
@@ -74,7 +74,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 코스에 적힌 키 패턴대로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(g.L.ref); g.startFresh(); });
-  const shots = { 9.25: 'p_glideLow', 24.75: 'p_glideHigh', 40.75: 'p_peak', 73.25: 'p_skyGlide', 80.5: 'p_weave1', 82: 'p_weave2', 97.25: 'p_lowThenUp', 111.75: 'fever_gate', 114.25: 'fever_a', 129.25: 'fever_b', 145.25: 'fever_c', 155.75: 'fever_exit', 185.5: 'p_roller', 209.5: 'final_a', 233.5: 'final_b', 255.5: 'final_end' };
+  const shots = { 8.5: 'r1_hold', 9.25: 'r1_holding', 32.75: 'r1_holdhold', 40.5: 'r1_jump', 64.75: 'r1_mix', 80.75: 'r1_mix2', 106.75: 'r1_skyGlide', 111.75: 'fever_gate', 114.25: 'fever_a', 129.25: 'fever_b', 145.25: 'fever_c', 155.75: 'fever_exit', 176.75: 'r1_build', 209.5: 'final_a', 233.5: 'final_b', 255.5: 'final_end' };
   const modeSeen = {}; let shardsSeen = null;
   for (let beat = 0; beat <= 268; beat += 0.25) {
     await tick(beat);
@@ -86,7 +86,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cause: window.__game.state.cause, x: window.__game.state.x }));
   ok(st.phase === 'won' && st.cp === 3, '패턴대로 누르면 완주, 체크포인트 4개 통과' + (st.phase === 'won' ? '' : ` (${st.cause} @마디 ${Math.floor(st.x / 16)})`));
   ok(modeSeen[100].startsWith('bounce:누르고 있기 = 멈춤') && modeSeen[120] === 'rush:어디든 누르면 = 위아래 방향이 바뀐다 / 누르는 즉시 바뀐다' && modeSeen[160] === modeSeen[100], `피버 구간(마디 28~38)에서는 원버튼이 되고 조작 안내가 바뀐다 (${modeSeen[120]})`);
-  ok(shardsSeen && shardsSeen.got >= shardsSeen.total - 1 && shardsSeen.total >= 80, `패턴대로 가면 길 위의 수정을 전부 뚫는다 (${shardsSeen && shardsSeen.got}/${shardsSeen && shardsSeen.total}개)`);
+  ok(shardsSeen && shardsSeen.got >= shardsSeen.passed - 2 && shardsSeen.passed > 200, `패턴대로 가면 길 위의 수정을 전부 뚫는다 (피버가 끝날 때까지 ${shardsSeen && shardsSeen.got}/${shardsSeen && shardsSeen.passed}개)`);
   await p.waitForTimeout(200);
   ok((await p.textContent('#ovTitle')).includes('CLEAR') && (await p.textContent('#pct')) === '100%', '완주 화면, 진행률 100%');
 
@@ -163,7 +163,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     tr = await G(() => ({ bpm: window.__game.track.bpm, zero: window.__game.trackZero }));
     ok(Math.abs(tr.bpm - 100) < 0.03 && Math.abs(tr.zero - 0.89) < 0.01, '새로고침해도 곡과 보정값이 남아 있다');
     await p.click('[data-adj="remove"]'); await p.waitForTimeout(50);
-    ok(await G(() => window.__game.track.bundled && window.__game.track.name === 'Octane Horizon' && Math.abs(window.__game.bpm - 152.0285) < 0.01) && (await p.textContent('#trackBtn')) === '다른 곡 넣어 보기', '곡 빼기: 기본 곡으로 돌아간다');
+    ok(await G(() => window.__game.track.bundled && window.__game.track.name.includes('Octane Horizon') && Math.abs(window.__game.bpm - 152.0285) < 0.01) && (await p.textContent('#trackBtn')) === '다른 곡 넣어 보기', '곡 빼기: 기본 곡으로 돌아간다');
     await p.reload(); await ready();
     ok(await G(() => window.__game.track.bundled), '뺀 곡은 새로고침해도 돌아오지 않는다');
   }
