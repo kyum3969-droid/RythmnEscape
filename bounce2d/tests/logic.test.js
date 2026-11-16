@@ -200,6 +200,33 @@ L.cps.forEach((cp, i) => ok(!!Lg.solve(L, Lg.spawnState(L, i), { grid: 12 }).pla
   ok(stray === 0, '쉬는 마디에는 장애물이 없다');
 }
 
+console.log('== 라운드마다 ==');
+for (const C of Lg.COURSES) {
+  const lv = Lg.buildLevel(C), tag = C.name.split(' · ')[0];
+  const full = run(lv, lv.ref);
+  ok(full.s.won && lv.fixed.length === 0, `[${tag}] ${C.name}: ${lv.bars}마디, 체크포인트 ${lv.cps.length}개(마디 ${lv.cps.map(c => c.bar).join(', ')}), 피버 ${lv.rides.map(r => `${r[0] / 16}~${r[1] / 16 - 1}`).join(' / ')} — 패턴대로 완주`);
+  let solved = 0;
+  for (let k = -1; k < lv.cps.length; k++) if (Lg.solve(lv, Lg.spawnState(lv, k), { grid: 12 }).plan) solved++;
+  ok(solved === lv.cps.length + 1, `[${tag}] 처음과 모든 체크포인트에서 자동 풀이로 완주 (${solved}/${lv.cps.length + 1})`);
+  const idleRun = run(lv, null);
+  ok(idleRun.s.dead && barOf(idleRun.s.x) <= 3, `[${tag}] 아무것도 안 누르면 마디 ${barOf(idleRun.s.x)}에서 죽는다`);
+  const hard = C.bars.filter(n => ['weave', 'roller', 'lowThenUp', 'glideLow'].includes(n));
+  ok(hard.length === 0, `[${tag}] 어려운 엮기 동작은 쓰지 않는다`);
+  if (lv.freeBars.size) {
+    // 연출 마디: 장애물이 없고, 아무리 눌러도 길이 바뀌지 않는다(그래서 다음 마디와 어긋나지 않는다)
+    const noReds = lv.reds.every(q => !lv.freeBars.has(Math.floor(q.xt / 16)) || !lv.freeBars.has(Math.floor((q.xt - 2.1) / 16)));
+    const inp = Lg.planInput(lv.ref), s = Lg.spawnState(lv, -1), ev = [];
+    let rnd = 3;
+    while (!s.dead && !s.won) {
+      const st = s.step + 1, bar = Math.floor(4 * st / 96 / 16), mash = lv.freeBars.has(bar) && (rnd = (rnd * 1103515245 + 12345) % 2147483648) % 9 === 0;
+      const e2 = []; Lg.stepState(lv, s, inp.press.has(st) || mash, e2, inp.hold.has(st)); ev.push(...e2);
+    }
+    const sparks = ev.filter(e => e.type === 'spark').length;
+    ok(s.won && sparks > 20 && noReds, `[${tag}] 연출 마디(${[...lv.freeBars].join(', ')})에서는 마구 눌러도(${sparks}번) 길이 그대로라 완주한다`);
+    ok(lv.gems.filter(g => g.pane).length === lv.freeBars.size * 4, `[${tag}] 연출 마디마다 깨고 지나갈 수정 판이 4장`);
+  }
+}
+
 console.log('== 패턴별: 입력마다의 여유와, 장애물이 그 입력을 정말 요구하는지 (96 BPM 기준) ==');
 const { measure } = require('./windows.js');
 for (const name of Object.keys(Lg.PATTERNS)) {

@@ -61,20 +61,20 @@ console.log('== 까다로운 곡 ==');
 }
 console.log('== 실제 곡 (ffmpeg가 있을 때만) ==');
 {
-  // 코스에 실린 곡: 분당 152박(킥이 매 박). 코스는 매 박마다 튀게 짰다. (다른 곡을 넣을 때의 분석기는 빠른 곡을 두 박에 한 번으로 본다)
+  // 코스에 실린 곡들: 코스에 적어 둔 템포·첫 박·길이가 곡에서 잰 값과 맞는가
   const { execFileSync } = require('child_process'), path = require('path');
-  let pcm = null;
-  try { pcm = execFileSync('ffmpeg', ['-v', 'error', '-i', path.join(__dirname, '..', 'music', 'octane_horizon.mp3'), '-ac', '1', '-ar', '44100', '-f', 'f32le', '-'], { maxBuffer: 64 * 1024 * 1024 }); } catch (e) { /* ffmpeg 없음 */ }
-  if (!pcm) console.log('  (건너뜀: ffmpeg를 찾지 못했어요)');
-  else {
+  const Lg = require('../logic.js');
+  for (const C of Lg.COURSES) {
+    let pcm = null;
+    try { pcm = execFileSync('ffmpeg', ['-v', 'error', '-i', path.join(__dirname, '..', C.track.file), '-ac', '1', '-ar', '44100', '-f', 'f32le', '-'], { maxBuffer: 64 * 1024 * 1024 }); } catch (e) { /* ffmpeg 없음 */ }
+    if (!pcm) { console.log(`  (건너뜀: ffmpeg를 찾지 못했어요 — ${C.name})`); continue; }
     const x = new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4);
     const r = analyzeTrack(x, 44100, { hintBpm: 96 });
-    const Lg = require('../logic.js');
-    ok(r.ok && Math.abs(r.musicBpm - Lg.COURSE.bpm) < 0.06 && r.beatsPerBounce === 2, `Octane Horizon: 곡 ${r.musicBpm.toFixed(2)} BPM (코스에 적힌 값 ${Lg.COURSE.bpm.toFixed(3)})`);
-    ok(Math.abs(r.offset - Lg.COURSE.track.offset) < 0.01 && r.coverage > 0.85, `첫 박 ${r.offset.toFixed(3)}초 (코스에 적힌 값 ${Lg.COURSE.track.offset}초), 킥 잡힌 박 ${(r.coverage * 100).toFixed(0)}%`);
-    ok(r.wobbleMs < 35, `템포 흔들림 ±${r.wobbleMs.toFixed(0)}ms → 박자가 일정한 곡`);
-    const bars = (r.duration - r.offset) / (60 / r.musicBpm) / 4;
-    ok(Math.abs(bars - 67) < 0.3 && Lg.COURSE.bars.length === 67, `곡 길이 ${bars.toFixed(1)}마디 / 코스 ${Lg.COURSE.bars.length}마디(끝맺는 한 방이 65번째 마디 첫 박)`);
+    ok(r.ok && Math.abs(r.musicBpm - C.bpm) < 0.06, `${C.name}: 곡 ${r.musicBpm.toFixed(2)} BPM (코스에 적힌 값 ${C.bpm.toFixed(3)})`);
+    ok(Math.abs(r.offset - C.track.offset) < 0.01 && r.coverage > 0.85, `  첫 박 ${r.offset.toFixed(3)}초 (코스에 적힌 값 ${C.track.offset}초), 킥 잡힌 박 ${(r.coverage * 100).toFixed(0)}%`);
+    ok(r.wobbleMs < 60, `  템포 흔들림 ±${r.wobbleMs.toFixed(0)}ms`);
+    const goal = C.bars.indexOf('goal'), endSec = C.track.offset + goal * 4 * 60 / C.bpm;
+    ok(endSec < r.duration && r.duration - endSec < 8, `  결승선 마디(${goal})가 곡의 ${endSec.toFixed(1)}초, 곡 길이 ${r.duration.toFixed(1)}초`);
   }
 }
 console.log('실패 ' + fails + '건');

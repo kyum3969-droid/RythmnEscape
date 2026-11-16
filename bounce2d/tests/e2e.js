@@ -167,6 +167,39 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     await p.reload(); await ready();
     ok(await G(() => window.__game.track.bundled), '뺀 곡은 새로고침해도 돌아오지 않는다');
   }
+  console.log('== 라운드 2 ==');
+  {
+    await p.setViewportSize({ width: 844, height: 390 });
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    ok((await p.textContent('#rounds button:nth-child(1)')).includes('ROUND 1') && await p.isDisabled('#rounds button:nth-child(1)'), '라운드 고르기: 지금은 1라운드');
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(2)')]); await ready();
+    st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length, free: g.L.freeBars.size }; });
+    ok(st.round === 1 && st.name.includes('Terminal Pursuit') && Math.abs(st.bpm - 151.9867) < 0.01 && st.off === 0.2809 && st.cps === 5, `2라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개)`);
+    await p.screenshot({ path: out + 'r2_title.png' });
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots2 = { 33.25: 'r2_a', 96.75: 'r2_free_in', 98.5: 'r2_free', 105.25: 'r2_fever', 125.5: 'r2_free_out', 226.5: 'r2_peak', 257: 'r2_final_free', 285: 'r2_ending' };
+    let label = null;
+    for (let beat = 0; beat <= 300; beat += 0.25) {
+      await tick(beat);
+      if (shots2[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots2[beat] + '.png' }); }
+      if (beat === 98) label = await G(() => document.querySelector('#zoneL span').textContent + ' / ' + document.querySelector('#zoneR span').textContent);
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === 4 && st.gems.got === st.gems.total, `2라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(label === '장애물이 없는 구간 / 저절로 달려요', `피버의 연출 구간에서는 안내가 바뀐다 (${label})`);
+    await G(() => { const g = window.__game; g.setBot(null); g.devJump(1); });     // 체크포인트 2 = 첫 피버 바로 앞
+    const f0 = await G(() => window.__game.L.rides[0][0] / 4);
+    for (let beat = await G(() => window.__game.state.step / 96); beat <= f0 + 1.25; beat += 0.125) await tick(beat);
+    const before = await G(() => ({ d: window.__game.state.zdir, h: window.__game.state.zh }));
+    await p.mouse.click(150, 200); await tick(f0 + 1.25 + 2 / 96);
+    const after = await G(() => window.__game.state.zdir);
+    for (let beat = f0 + 1.375; beat <= f0 + 8; beat += 0.125) await tick(beat);
+    ok(before.d === after && await G(() => window.__game.phase) === 'running', '연출 구간에서는 눌러도 방향이 바뀌지 않고, 아무것도 안 해도 두 마디를 지나간다');
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
+    ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');
+  }
   console.log('콘솔/페이지 오류:', errs.length ? errs : '없음');
   console.log('실패 ' + fails + '건');
   await b.close(); srv.close();

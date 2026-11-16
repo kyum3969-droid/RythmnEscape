@@ -60,6 +60,8 @@ const PATTERNS = {
   //   nodes = 반 박 지점 8개(마디 안 0.5박, 1박, …, 4박): F 이 박에 뒤집어야 함 / S 뒤집으면 안 됨 / . 상관없음. F·S는 공이 가운데 높이를 지나는 지점에만 쓴다.
   //   마디는 바닥에서 시작해 바닥에서 끝나야 한다(뒤집기는 짝수 번).
   zE: { mode: "rush", nodes: "........" },
+  // 연출만 있는 마디: 장애물이 없고, 공이 저절로 바닥과 천장을 오가며 수정 판을 깨고 지나간다. 눌러도 길은 바뀌지 않는다(다음 마디와 박자가 어긋나지 않게).
+  zF: { mode: "rush", nodes: "........", free: true },
   z1: { mode: "rush", nodes: "..S.F.F." },
   z2: { mode: "rush", nodes: "F.S.F.S." },
   z3: { mode: "rush", nodes: "S.F.S.F." },
@@ -81,7 +83,7 @@ for (const p of Object.values(PATTERNS)) {
 // (처음에는 두 박에 한 번 튀게 했는데 너무 느려서 바꿨다.)
 // 한 마디(4박) = 약 1.58초. 곡은 64마디이고 65번째 마디 첫 박에 끝맺는 한 방이 있다.
 // 곡의 구간(마디): 0~15 조용한 도입 / 16~27 첫 큰 구간 / 28~39 가장 밝고 센 구간 / 40~43 쉬어 감 / 44~51 다시 쌓음 / 52~63 마지막 절정
-const COURSE = {
+const ROUND1 = {
   name: "ROUND 1 · Octane Horizon",
   bpm: 152.0285,                                 // 곡에서 잰 값(킥 256개를 직선에 맞춤). 구간별 어긋남은 ±12ms 안쪽
   track: { file: "music/octane_horizon.mp3", offset: 0.8689 },   // offset = 첫 박이 나오는 곡 속 시각(초)
@@ -108,6 +110,40 @@ const COURSE = {
     { bar: 0, id: "intro" }, { bar: 16, id: "a" }, { bar: 28, id: "rush" }, { bar: 40, id: "c" }, { bar: 44, id: "b" }, { bar: 52, id: "d" }, { bar: 64, id: "outro" },
   ],
 };
+
+// 라운드 2: "Terminal Pursuit". 분당 152박(1라운드와 같다), 첫 박 0.281초, 72마디이고 73번째 마디 첫 박에 끝맺는 한 방.
+// 곡의 구간(마디): 0~7 도입(끝 두 마디는 조용) / 8~22 첫 큰 구간(16부터 멜로디) / 23 채움 / 24~31 밝고 가벼운 구간 / 32~39 쉬어 감
+//                / 40~54 두 번째 큰 구간(48부터 더 밝게) / 55 채움 / 56~63 절정 / 64~71 가장 센 절정
+// 1라운드와 같은 동작만 쓴다. 쉬는 마디가 조금 줄고, 피버가 두 번 나오며, 피버 안에 장애물 없이 연출만 있는 마디(zF)가 있다.
+const ROUND2 = {
+  name: "ROUND 2 · Terminal Pursuit",
+  bpm: 151.9867,
+  track: { file: "music/terminal_pursuit.mp3", offset: 0.2809 },
+  bars: [
+    // 도입: 1라운드에서 배운 것을 한 번씩 짚는다. 끝 두 마디는 곡이 잠깐 빠진다
+    "flat", "flat", "hA", "dj1",   "mix", "idle", "idle", "cp",
+    // 첫 큰 구간
+    "mix", "mix2", "idle", "glideHigh",   "peak", "idle", "skyGlide", "idle",
+    "mix", "mix2", "skyGlide", "idle",   "glideHigh", "peak", "mix", "cp",
+    // 밝고 가벼운 구간: 첫 피버. 연출 두 마디로 들어가서, 연출 한 마디로 나온다
+    "zF", "zF", "z1", "z1",   "z2", "z2", "z3", "zF",
+    // 쉬어 감
+    "idle", "hA", "idle", "dj2",   "mix", "idle", "idle", "cp",
+    // 두 번째 큰 구간
+    "mix", "mix2", "glideHigh", "idle",   "peak", "skyGlide", "mix", "idle",
+    "mix2", "skyGlide", "peak", "idle",   "glideHigh", "mix", "skyGlide", "cp",
+    // 절정: 쉬는 마디 하나만 두고 이어 붙인다
+    "mix", "mix2", "skyGlide", "glideHigh",   "idle", "peak", "mix2", "cp",
+    // 가장 센 절정: 마지막 피버. 끝의 두 마디는 연출만 — 깨부수며 결승선으로
+    "zF", "z2", "z3", "z4",   "z6", "z5", "zF", "zF",
+    "goal", "flat", "flat",
+  ],
+  sections: [
+    { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 24, id: "rush" }, { bar: 32, id: "c" }, { bar: 40, id: "b" }, { bar: 56, id: "d" }, { bar: 64, id: "rush" }, { bar: 72, id: "outro" },
+  ],
+};
+const COURSES = [ROUND1, ROUND2];
+const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
 // 속도: 물리는 다른 구간과 똑같이 한 박에 4칸이고, 화면에서 이 구간의 가로를 RUSH_STRETCH배로 늘려 그린다 → 눈에는 2배로 달리지만 박자(음악)와는 그대로 맞는다.
@@ -140,7 +176,7 @@ function emptyLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill(r === ROWS - 1 ? "#" : "."));
-  const cps = [], rides = [], reds = [], gems = [];
+  const cps = [], rides = [], reds = [], gems = [], freeBars = new Set();
   let goalX = cols - 8;
   let zl = 0, zd = 1;                                   // zig: 패턴대로 갈 때의 높이 단계(0 바닥, 1 가운데, 2 천장)와 방향
   course.bars.forEach((name, b) => {
@@ -148,12 +184,13 @@ function emptyLevel(course) {
     if (p && p.mode === "rush") {
       const last = rides[rides.length - 1];
       if (last && last[1] === x0) last[1] = x0 + 16; else { rides.push([x0, x0 + 16]); zl = 0; zd = 1; }
+      if (p.free) freeBars.add(b);
       {
         for (let k = 1; k <= 8; k++) {
           const from = zl; zl += zd;
           const c = p.nodes[k - 1], xk = x0 + 2 * k;
           gems.push({ x: xk - 1, h: (from + zl) / 2 * ZIG_STEP + HALF });
-          gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? -zd : 0 });        // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
+          gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? -zd : 0, pane: !!p.free && zl === 1 });   // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜). pane = 연출 마디의 수정 판
           if (zl === 0 || zl === 2) { if (c !== ".") throw new Error(`바닥·천장에서는 고를 수 없다: ${name}의 ${k}번째 지점`); zd = -zd; continue; }
           const wrong = c === "F" ? zl + zd : c === "S" ? zl - zd : -1;       // 틀리게 갔을 때 다음 지점에서 닿는 곳(0 바닥 / 2 천장)
           if (c === "F") zd = -zd;
@@ -169,7 +206,7 @@ function emptyLevel(course) {
     else if (name === "goal") goalX = b * 16 + 8;
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
-  return { grid, cols, cps, rides, reds, gems, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  return { grid, cols, cps, rides, reds, gems, freeBars, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 // 패턴대로 달린 공의 자취(스텝마다 위치·상태)
@@ -359,7 +396,8 @@ function rushStep(L, s, press, ev, hold, r) {
       s.zh = s.zdir > 0 ? ZMAX : 0; s.zdir = -s.zdir; s.zv = ZMAX; s.zarr = s.step + 2 * SLOT;
       if (ev) ev.push({ type: "rebound", top: s.zdir < 0 });
     }
-    if (press) {
+    if (press && L.freeBars.has(Math.floor(s.x / 16))) { if (ev) ev.push({ type: "spark" }); }   // 연출 마디: 눌러도 길은 그대로(불꽃만 튄다)
+    else if (press) {
       s.zdir = -s.zdir;
       const dist = s.zdir > 0 ? ZMAX - s.zh : s.zh;
       let arrive = (Math.round(local / SLOT) + 1) * SLOT;
@@ -580,4 +618,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };

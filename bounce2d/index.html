@@ -97,6 +97,9 @@
   #opts .btn.small { color: var(--text); }
   #opts small { color: var(--muted); font-size: 12px; }
   #trackInfo { color: var(--muted); font-size: 12px; line-height: 1.45; white-space: pre-line; font-variant-numeric: tabular-nums; }
+  #rounds { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  #rounds .btn.small { color: var(--text); }
+  #rounds .btn.small[disabled] { border-color: var(--accent); color: var(--accent); opacity: 1; }
   #trackAdj { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; }
   #trackAdj[hidden] { display: none; }
   #devJumps { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
@@ -142,6 +145,7 @@
       <div class="sub" id="ovSub"></div>
       <div class="stat" id="ovStat"></div>
       <div class="buttons" id="ovButtons"></div>
+      <div id="rounds"></div>
       <div id="opts">
         <button class="btn small" id="trackBtn">곡 넣기</button>
         <input type="file" id="trackFile" accept="audio/*" hidden>
@@ -174,11 +178,15 @@
     get(k, d) { try { const v = localStorage.getItem("pulsebounce." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem("pulsebounce." + k, JSON.stringify(v)); } catch (e) { /* 저장 불가 */ } },
   };
+  // 라운드: 고르면 코스와 곡을 다시 만들어야 해서 화면을 새로 연다
+  const round = Math.max(0, Math.min(COURSES.length - 1, store.get("round", 0) | 0));
+  const COURSE = COURSES[round];
   const L = buildLevel(COURSE);
+  const gotoRound = (i) => { store.set("round", i); location.reload(); };
   let SPB = 60 / L.bpm;
   const TOTAL_BEATS = L.cols / TPB;
 
-  let best = store.get("best", 0);
+  let best = store.get("best" + round, round === 0 ? store.get("best", 0) : 0);
   let dev = store.get("dev", false);     // 개발자 모드: 체크포인트로 바로 이동
   let devRun = false;                    // 건너뛰어 시작한 판은 최고 기록에 넣지 않는다
 
@@ -522,12 +530,19 @@
       ev.length = 0;
       stepState(L, state, press, ev, holding() || (bot && bot.hold.has(state.step + 1)));
       if (ev.length) handleEvents();
+      if (state.mode === "rush" && state.step % (4 * SUB) === 0 && phase === "running") {     // 마디가 바뀔 때: 연출 구간에 들어가고 나오는 것을 알린다
+        const bar = Math.floor(state.x / 16), now2 = L.freeBars.has(bar), was = L.freeBars.has(bar - 1) && inRide(L, state.x - 1);
+        if (now2 !== was) { setModeLabel(); toast(now2 ? "FREE RUN" : "FEVER"); }
+      }
       while (gemPtr < L.gems.length && L.gems[gemPtr].x <= state.x) {       // 길 위의 수정: 지나가며 뚫는다
         const gm = L.gems[gemPtr];
         if (phase === "running" && Math.abs((ROWS - 1 - state.y + HALF) - gm.h) < 0.7) {
           gotGems.add(gemPtr); fx.chain++;                  // 소리는 내지 않는다(곡과 어울리지 않았다). 파편만 튄다
           const big = gm.flip || gm.hold;
-          burst(gm.x + 0.1, ROWS - 1 - gm.h, big ? 9 : 3, "accent", big ? 13 : 8, true);
+          if (gm.pane) {                                    // 연출 마디의 수정 판: 천장부터 바닥까지 통째로 깨진다
+            for (let hh = 0.4; hh < ZIG_TOP; hh += 0.7) burst(gm.x + 0.15, ROWS - 1 - hh, 4, "accent", 15, true);
+            fx.shake = Math.max(fx.shake, 0.12); fx.flash = Math.max(fx.flash, 0.2);
+          } else burst(gm.x + 0.1, ROWS - 1 - gm.h, big ? 9 : 3, "accent", big ? 13 : 8, true);
           if (big && state.mode === "rush") fx.shake = Math.max(fx.shake, 0.06);
         } else fx.chain = 0;
         gemPtr++;
@@ -547,7 +562,7 @@
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
       else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "FEVER" : "BOUNCE"); fx.cpFlash = now; fx.chain = 0;
         if (e.mode !== "rush") { holdPointers.clear(); keyHold = false; setZones(); } }   // 피버가 끝나면 누르고 있던 손은 뗀 것으로 본다
-      else if (e.type === "flip") ring(state.x, state.y);
+      else if (e.type === "flip" || e.type === "spark") ring(state.x, state.y);
       else if (e.type === "rebound") { fx.jumpAt = now; puff(state.x, e.top ? ROWS - 1 - ZIG_TOP : ROWS - 1, 6, 0.8); }
       else if (e.type === "break") {
         if (!broken.has(e.c + "," + e.r)) {          // 닿은 순간 그 벽 전체가 깨진다
@@ -560,10 +575,10 @@
         stopClock(true); sfx("die");
         burst(state.x, state.y - HALF, 26, "accent", 13);
         const pct = progress();
-        if (pct > best && !devRun) { best = pct; store.set("best", best); }
+        if (pct > best && !devRun) { best = pct; store.set("best" + round, best); }
         refreshHud();
       } else if (e.type === "win") {
-        phase = "won"; if (!devRun) { best = 100; store.set("best", 100); }
+        phase = "won"; if (!devRun) { best = 100; store.set("best" + round, 100); }
         sfx("win"); refreshHud();
         setTimeout(showWin, fake.on ? 0 : 900);
       }
@@ -831,7 +846,15 @@
         if (gm.x < cA || gm.x > cB || gotGems.has(i)) continue;
         const x = sx(gm.x), y = sy(ROWS - 1 - gm.h);
         ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 12;
-        if (gm.hold) {                              // 누르고 있기 시작하는 자리: 고리 + II
+        if (gm.pane) {                              // 연출 마디의 수정 판: 천장부터 바닥까지 선 유리. 공이 지나가며 깬다
+          const xa = x - T * 0.16, xb = x + T * 0.16, yT = sy(ROWS - 1 - ZIG_TOP);
+          const pg = ctx.createLinearGradient(xa, 0, xb, 0);
+          pg.addColorStop(0, css(pal.accent, 0.55)); pg.addColorStop(0.5, css(pal.accent, 0.16 + 0.1 * pulse)); pg.addColorStop(1, css(pal.accent, 0.55));
+          ctx.fillStyle = pg; ctx.fillRect(xa, yT, xb - xa, view.groundY - yT);
+          ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.6)); ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(xa, yT); ctx.lineTo(xa, view.groundY); ctx.moveTo(xb, yT); ctx.lineTo(xb, view.groundY); ctx.stroke();
+          ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(x, y, T * 0.1, 0, Math.PI * 2); ctx.fill();
+        } else if (gm.hold) {                       // 누르고 있기 시작하는 자리: 고리 + II
           const R = T * (0.42 + 0.06 * pulse);
           ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
           ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.3));
@@ -1066,7 +1089,7 @@
   const HINT_TEXT = {
     hA: "II 표시에서 왼쪽을 누르고 있기 = 공중에서 멈춤", glideHigh: "두 번 이어서 멈춤", dj1: "▲ 표시에서 오른쪽 누르기 = 공중에서 한 번 더 점프", peak: "두 번 이어서 점프",
     mix: "멈춤, 그다음 점프", mix2: "점프, 그다음 멈춤", skyGlide: "점프하고, 그 꼭대기에서 멈춤",
-    z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
+    zF: "장애물이 없는 구간 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
     glideLow: "떨어지다 낮은 곳에서 멈춤", weave: "멈춤 → 이단 점프 → 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];
@@ -1130,8 +1153,15 @@
     showOverlay('PULSE <span>BOUNCE</span>', "공은 박자마다 저절로 튀어요\n왼쪽 누르고 있기 = 공중에서 멈춤\n오른쪽 누르기 = 점프 (공중에서는 이단 점프)", best > 0 ? `최고 기록 ${best}%` : COURSE.name, [["시작", startFresh, true]]);
   }
   function showWin() {
-    showOverlay('<span>CLEAR!</span>', `${tries}번 만에 완주했어요.`, devRun ? "개발자 모드로 건너뛴 판이라 기록에는 남기지 않아요." : "", [["처음부터 다시", startFresh, true]]);
+    const next = round + 1 < COURSES.length ? [["다음 라운드", () => gotoRound(round + 1), true], ["처음부터 다시", startFresh]] : [["처음부터 다시", startFresh, true]];
+    showOverlay('<span>CLEAR!</span>', `${tries}번 만에 완주했어요.`, devRun ? "개발자 모드로 건너뛴 판이라 기록에는 남기지 않아요." : "", next);
   }
+  COURSES.forEach((c, i) => {                     // 라운드 고르기
+    const b = document.createElement("button");
+    b.className = "btn small"; b.textContent = c.name; b.disabled = i === round;
+    b.addEventListener("click", () => gotoRound(i));
+    $("rounds").appendChild(b);
+  });
   function pause() {
     if (phase !== "running") return;
     phase = "paused";
@@ -1149,8 +1179,9 @@
   function setModeLabel() {
     const rush = state.mode === "rush";
     $("app").classList.toggle("one", rush);        // 피버 모드는 원버튼: 화면 어디든
-    $("zoneL").querySelector("span").textContent = rush ? "어디든 누르면 = 위아래 방향이 바뀐다" : "누르고 있기 = 멈춤";
-    $("zoneR").querySelector("span").textContent = rush ? "누르는 즉시 바뀐다" : "누르기 = 점프 · 공중에선 이단 점프";
+    const free = rush && L.freeBars.has(Math.floor(state.x / 16));
+    $("zoneL").querySelector("span").textContent = free ? "장애물이 없는 구간" : rush ? "어디든 누르면 = 위아래 방향이 바뀐다" : "누르고 있기 = 멈춤";
+    $("zoneR").querySelector("span").textContent = free ? "저절로 달려요" : rush ? "누르는 즉시 바뀐다" : "누르기 = 점프 · 공중에선 이단 점프";
   }
   const oneButton = () => phase === "running" && state.mode === "rush";
   canvas.addEventListener("pointerdown", (e) => {
@@ -1220,7 +1251,7 @@
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
     press, startFresh, respawn, pause, view, devJump, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
-    get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; },
+    get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; }, round,
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },
     loadTrackPCM(samples, sr, name) { const b = new AudioBuffer({ length: samples.length, sampleRate: sr, numberOfChannels: 1 }); b.copyToChannel(samples, 0); return setTrackBuffer(b, name, null).ok; },
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },
