@@ -122,8 +122,10 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok(before === 1 && st.d === -1 && st.mode === 'rush', '원버튼: 화면 왼쪽을 눌러도, 누르는 즉시 방향이 뒤집힌다');
     await go(feverStart + 1);
     ok(await G(() => 9 - window.__game.state.y) < 0.01, '박에 맞춰 눌렀으면 반 박 뒤에 바닥에 닿는다');
-    await p.mouse.click(700, 200); await go(feverStart + 1 + 2 / 96);
-    ok(await G(() => window.__game.state.zdir) === -1, '화면 오른쪽을 눌러도 똑같이 뒤집힌다');
+    await go(feverStart + 1.5);                                                   // 바닥에서 튕겨 다시 가운데 높이
+    const up = await G(() => window.__game.state.zdir);
+    await p.mouse.click(700, 200); await go(feverStart + 1.5 + 2 / 96);
+    ok(up === 1 && await G(() => window.__game.state.zdir) === -1, '화면 오른쪽을 눌러도 똑같이 뒤집힌다');
     await p.waitForTimeout(60); await p.screenshot({ path: out + 'fever_touch.png' });
     await go(feverStart + 4);
     st = await G(() => ({ phase: window.__game.phase, cause: window.__game.state.cause }));
@@ -194,8 +196,15 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     const before = await G(() => ({ d: window.__game.state.zdir, h: window.__game.state.zh }));
     await p.mouse.click(150, 200); await tick(f0 + 1.25 + 2 / 96);
     const after = await G(() => window.__game.state.zdir);
-    for (let beat = f0 + 1.375; beat <= f0 + 8; beat += 0.125) await tick(beat);
-    ok(before.d === after && await G(() => window.__game.phase) === 'running', '연출 구간에서는 눌러도 방향이 바뀌지 않고, 아무것도 안 해도 두 마디를 지나간다');
+    for (let beat = f0 + 1.375; beat <= f0 + 4; beat += 0.125) await tick(beat);
+    ok(before.d === after && await G(() => window.__game.phase) === 'running', '연출 마디에서는 눌러도 방향이 바뀌지 않고, 아무것도 안 해도 지나간다');
+    // 넓은 통로: 천장이 두 배로 물러나고, 화면도 물러나서 통로 전체가 보인다. 가운데에는 떠 있는 장애물.
+    await G(() => { const g = window.__game; g.setBot(g.L.ref); g.devJump(1); });
+    for (let beat = await G(() => window.__game.state.step / 96); beat <= f0 + 18; beat += 0.125) await tick(beat);
+    await p.waitForTimeout(60);
+    const wv = await G(() => { const g = window.__game, v = g.view; return { T: v.zT, top: v.groundY - (g.L.wideBars.size ? 8.4 : 0) * v.zT, mode: g.state.mode, phase: g.phase, floats: g.L.reds.filter((q) => q.kind === 'float').length, lev: g.state.zlk }; });
+    ok(wv.phase === 'running' && wv.mode === 'rush' && wv.top >= 0 && wv.floats >= 8, `넓은 통로에서는 화면이 물러나 천장까지 보인다 (천장 y=${wv.top.toFixed(0)}px, 한 칸 ${wv.T.toFixed(1)}px, 떠 있는 장애물 ${wv.floats}개)`);
+    await p.screenshot({ path: out + 'r2_wide.png' });
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');

@@ -59,22 +59,26 @@ const PATTERNS = {
   // ---- 피버 구간(rush). 원버튼(화면 어디든). 공이 바닥과 천장 사이를 비스듬히 튕기고, 누르는 즉시 위아래 방향이 뒤집힌다.
   //   nodes = 반 박 지점 8개(마디 안 0.5박, 1박, …, 4박): F 이 박에 뒤집어야 함 / S 뒤집으면 안 됨 / . 상관없음. F·S는 공이 가운데 높이를 지나는 지점에만 쓴다.
   //   마디는 바닥에서 시작해 바닥에서 끝나야 한다(뒤집기는 짝수 번).
-  //   teeth = 그 마디의 이빨 모양: tooth 넓은 삼각 이빨 / needle 가는 바늘 / crown 세 갈래 왕관. 닿는 범위는 모두 넓은 이빨 안쪽이라 타이밍 여유는 같거나 더 넉넉하다.
   zE: { mode: "rush", nodes: "........" },
   // 연출만 있는 마디: 장애물이 없고, 공이 저절로 바닥과 천장을 오간다. 눌러도 길은 바뀌지 않는다(다음 마디와 박자가 어긋나지 않게).
   zF: { mode: "rush", nodes: "........", free: true },
+  // 넓은 통로(wide): 천장이 두 배 높이로 물러나, 높이가 다섯 단계(바닥 0 ~ 천장 4)가 된다. 바닥에서 천장까지 두 박.
+  //   가운데 단계(1~3)에서 뒤집을 수 있고, 틀린 쪽이 공중이면 거기에 떠 있는 장애물(마름모)이 놓인다.
+  w1: { mode: "rush", wide: true, nodes: ".S...S.." },     // 크게 한 번 오르내린다(안 누름). 가운데 장애물은 위·아래로 비켜 간다
+  w2: { mode: "rush", wide: true, nodes: ".F...F.." },     // 가운데까지만 올라갔다 내려오기를 두 번. 장애물이 머리 위에 떠 있다
+  w3: { mode: "rush", wide: true, nodes: "..F...F." },     // 천장 바로 밑에서 꺾어 바닥까지 내려오고, 다시 뜨자마자 눌러 낮게 지나간다
   // 조여드는 통로(연출): 바닥과 천장이 가운데로 모여들어, 공이 닿는 간격이 한 박 → 반 박 → … → 1/32박까지 빨라진다("타다다다닥" → "드르르륵").
   // squeeze = 닿는 간격(박)을 차례로 적은 것. 한 마디에 4박어치. 피버의 맨 끝에만 쓴다(통로가 좁아진 채로 끝난다).
   zS1: { mode: "rush", nodes: "........", free: true, squeeze: [1, 1, 0.5, 0.5, 0.5, 0.5] },
   // 둘째 마디: 한 박마다 간격을 반으로. 마지막 박에는 1/32박(약 12ms)마다 닿아 통로가 공 크기와 거의 같아진다(폭 0.92칸, 공 0.8칸)
   zS2: { mode: "rush", nodes: "........", free: true, squeeze: [...Array(4).fill(1 / 4), ...Array(8).fill(1 / 8), ...Array(16).fill(1 / 16), ...Array(32).fill(1 / 32)] },
-  z1: { mode: "rush", nodes: "..S.F.F.", teeth: "tooth" },
-  z2: { mode: "rush", nodes: "F.S.F.S.", teeth: "needle" },
-  z3: { mode: "rush", nodes: "S.F.S.F.", teeth: "crown" },
-  z4: { mode: "rush", nodes: "F.F.S.S.", teeth: "tooth" },
-  z5: { mode: "rush", nodes: "F.F.F.F.", teeth: "crown" },
-  z6: { mode: "rush", nodes: "S.F.F.S.", teeth: "needle" },
-  z7: { mode: "rush", nodes: "F.F.S.S.", teeth: "crown" },
+  z1: { mode: "rush", nodes: "..S.F.F." },
+  z2: { mode: "rush", nodes: "F.S.F.S." },
+  z3: { mode: "rush", nodes: "S.F.S.F." },
+  z4: { mode: "rush", nodes: "F.F.S.S." },
+  z5: { mode: "rush", nodes: "F.F.F.F." },
+  z6: { mode: "rush", nodes: "S.F.F.S." },
+  z7: { mode: "rush", nodes: "F.F.S.S." },
 };
 
 // 피버 패턴에 적힌 칸을 "어떻게 누르는가"(holds/presses)로 풀어 둔다. 다른 패턴과 같은 도구로 재고 검사할 수 있게.
@@ -131,8 +135,8 @@ const ROUND2 = {
     // 첫 큰 구간
     "mix", "mix2", "idle", "glideHigh",   "peak", "idle", "skyGlide", "idle",
     "mix", "mix2", "skyGlide", "idle",   "glideHigh", "peak", "mix", "cp",
-    // 밝고 가벼운 구간: 첫 피버. 연출 두 마디로 들어가서, 연출 한 마디로 나온다
-    "zF", "zF", "z1", "z1",   "z2", "z2", "z3", "zF",
+    // 밝고 가벼운 구간: 첫 피버. 좁은 통로 → 넓은 통로(가운데에 떠 있는 장애물) → 다시 좁은 통로
+    "zF", "z1", "z1", "w1",   "w2", "w2", "z3", "zF",
     // 쉬어 감
     "idle", "hA", "idle", "dj2",   "mix", "idle", "idle", "cp",
     // 두 번째 큰 구간
@@ -141,7 +145,7 @@ const ROUND2 = {
     // 절정: 쉬는 마디 하나만 두고 이어 붙인다
     "mix", "mix2", "skyGlide", "glideHigh",   "idle", "peak", "mix2", "cp",
     // 가장 센 절정: 마지막 피버. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다
-    "zF", "z2", "z3", "z4",   "z6", "z5", "zS1", "zS2",
+    "zF", "z2", "w1", "w2",   "w3", "z5", "zS1", "zS2",
     "goal", "flat", "flat",
   ],
   sections: [
@@ -161,6 +165,9 @@ const ZIG_TOP = 4.6;                         // 천장 높이(칸)
 const ZIG_STEP = (ZIG_TOP - SIZE) / 2;       //      반 박에 오르내리는 높이. 바닥·가운데·천장 세 높이를 오간다
 const ZIG_GAP = 1.8;                         // 이빨 끝과 맞은편 면 사이의 틈(공은 0.8칸)
 const TOOTH_W = 1.1;                         // 이빨의 반 너비(칸). 끝에서 밑동까지
+const TOOTH_H = ZIG_TOP - ZIG_GAP;           // 이빨의 길이(칸)
+const KITE_W = 0.85;                         // 떠 있는 장애물(마름모)의 반 너비
+const WIDE_TOP = 4;                          // 넓은 통로의 맨 위 단계(보통 통로는 2)
 const HAZ_MAX_H = 4;       // 바닥에서 솟는 장애물의 최대 높이(칸)
 const WRONG_SHIFT = [-0.3, 0.3];   // "크게 어긋난 입력"으로 치는 박자 차이
 const BLOCK_GROW = 1;      // 막는 칸에서 양옆으로 넓히는 칸 수
@@ -178,29 +185,39 @@ function coursePlan(course) {
   return { presses, holds };
 }
 
-// 이빨 하나: 삼각형 조각(parts)들의 묶음. 조각마다 { xt 끝의 x, w 반 너비, tip 끝의 높이 }.
-// 어떤 모양이든 가운데 조각은 끝이 맞은편 면에서 ZIG_GAP만큼 떨어져 있고, 모든 조각은 넓은 이빨(tooth) 안쪽에 들어간다.
-function tooth(xt, kind, style) {
-  const tip = kind === "floor" ? ZIG_TOP - ZIG_GAP : ZIG_GAP, side = kind === "floor" ? tip - 1.9 : tip + 1.9;
-  const parts = style === "needle" ? [{ xt, w: 0.32, tip }]
-    : style === "crown" ? [{ xt, w: 0.42, tip }, { xt: xt - 0.68, w: 0.42, tip: side }, { xt: xt + 0.68, w: 0.42, tip: side }]
-    : [{ xt, w: TOOTH_W, tip }];
-  return { kind, style, xt, tip, parts, x0: Math.min(...parts.map((q) => q.xt - q.w)), x1: Math.max(...parts.map((q) => q.xt + q.w)) };
+// 틀린 길을 막는 장애물 하나. 공이 반 박 지점 xt에서 ok 단계에 있으면 지나가고, bad 단계에 있거나 그 사이에 떠 있으면 걸린다.
+//  - bad가 바닥·천장이면 그 면에서 뻗은 삼각 이빨(floor / ceil)
+//  - bad가 공중이면 떠 있는 마름모(float). 뾰족한 끝(tip)이 지나가는 쪽을 향한다
+// tip은 언제나 지나가는 공에서 1칸 떨어져 있고, 그쪽 비탈의 기울기도 이빨과 같아서 타이밍 여유는 어떤 장애물이든 같다.
+function hazard(xt, ok, bad, top) {
+  const up = bad > ok;                                              // 틀린 쪽이 위
+  const tip = up ? ok * ZIG_STEP + SIZE + 1 : ok * ZIG_STEP - 1;
+  if (bad === 0) return { kind: "floor", xt, tip, far: 0, w: TOOTH_W, x0: xt - TOOTH_W, x1: xt + TOOTH_W };
+  if (bad === top) return { kind: "ceil", xt, tip, far: top * ZIG_STEP + SIZE, w: TOOTH_W, x0: xt - TOOTH_W, x1: xt + TOOTH_W };
+  return { kind: "float", xt, tip, far: up ? bad * ZIG_STEP + SIZE + 0.4 : bad * ZIG_STEP - 0.4, w: KITE_W, x0: xt - KITE_W, x1: xt + KITE_W };
+}
+// 장애물이 가운데에서 dx만큼 떨어진 곳에서 차지하는 높이 범위 [아래, 위]
+function hazardSpan(q, dx) {
+  const a = Math.min(1, Math.abs(dx) / q.w), slope = TOOTH_H / TOOTH_W * q.w;      // 뾰족한 쪽 비탈: 이빨과 같은 기울기
+  if (q.kind === "floor") return [0, q.tip * (1 - a)];
+  if (q.kind === "ceil") return [q.tip + (q.far - q.tip) * a, q.far];
+  return q.far > q.tip ? [q.tip + slope * a, q.far - (q.far - q.tip - slope) * a] : [q.far + (q.tip - slope - q.far) * a, q.tip - slope * a];
 }
 
 function emptyLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill(r === ROWS - 1 ? "#" : "."));
-  const cps = [], rides = [], reds = [], gems = [], freeBars = new Set(), squeezes = [];
+  const cps = [], rides = [], reds = [], gems = [], freeBars = new Set(), wideBars = new Set(), squeezes = [];
   let goalX = cols - 8;
-  let zl = 0, zd = 1;                                   // zig: 패턴대로 갈 때의 높이 단계(0 바닥, 1 가운데, 2 천장)와 방향
+  let zl = 0, zin = -1;                                 // 피버: 패턴대로 갈 때, 반 박 지점에서의 높이 단계(0 = 바닥)와 거기로 들어온 방향
   course.bars.forEach((name, b) => {
     const p = PATTERNS[name], x0 = b * 16;
     if (p && p.mode === "rush") {
       const last = rides[rides.length - 1];
-      if (last && last[1] === x0) last[1] = x0 + 16; else { rides.push([x0, x0 + 16]); zl = 0; zd = 1; }
+      if (last && last[1] === x0) last[1] = x0 + 16; else { rides.push([x0, x0 + 16]); zl = 0; zin = -1; }
       if (p.free) freeBars.add(b);
+      if (p.wide) wideBars.add(b);
       if (p.squeeze) {                                  // 조여드는 통로: 닿는 시각과 그때의 통로 폭(공이 오르내리는 거리)을 적어 둔다
         if (zl !== 0) throw new Error("조여드는 통로는 바닥에서 시작해야 한다: " + name);
         let sq = squeezes[squeezes.length - 1];
@@ -215,19 +232,18 @@ function emptyLevel(course) {
         sq.x1 = x0 + 16;
       } else if (squeezes.length && squeezes[squeezes.length - 1].x1 === x0) throw new Error("조여드는 통로 뒤에는 피버가 끝나야 한다: " + name);
       else {
-        for (let k = 1; k <= 8; k++) {
-          const from = zl; zl += zd;
-          const c = p.nodes[k - 1], xk = x0 + 2 * k;
-          gems.push({ x: xk - 1, h: (from + zl) / 2 * ZIG_STEP + HALF });
-          gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? -zd : 0 });        // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
-          if (zl === 0 || zl === 2) { if (c !== ".") throw new Error(`바닥·천장에서는 고를 수 없다: ${name}의 ${k}번째 지점`); zd = -zd; continue; }
-          const wrong = c === "F" ? zl + zd : c === "S" ? zl - zd : -1;       // 틀리게 갔을 때 다음 지점에서 닿는 곳(0 바닥 / 2 천장)
-          if (c === "F") zd = -zd;
-          // 다음 지점(바닥이나 천장에 닿는 곳)의 틀린 쪽 면에 삼각 이빨을 세운다. 이빨 끝은 맞은편 면에서 ZIG_GAP만큼 떨어져 있다.
-          // → 틀린 쪽으로 가도, 가운데에 떠 있어도 걸린다. 이빨들 사이로 열린 길이 공이 가는 지그재그 모양 그대로다.
-          if (wrong === 0 || wrong === 2) reds.push(tooth(xk + 2, wrong === 0 ? "floor" : "ceil", p.teeth || "tooth"));
+        const top = p.wide ? WIDE_TOP : 2;
+        for (let k = 0; k < 8; k++) {                   // k번째 반 박 지점에서 어디로 갈지 정한다
+          const c = k ? p.nodes[k - 1] : ".", xk = x0 + 2 * k, surface = zl <= 0 || zl >= top;
+          if (surface && c !== ".") throw new Error(`바닥·천장에서는 고를 수 없다: ${name}의 ${k}번째 지점`);
+          const nat = zl <= 0 ? 1 : zl >= top ? -1 : zin, dir = c === "F" ? -nat : nat;
+          if (k) gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? dir : 0 });      // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
+          gems.push({ x: xk + 1, h: (zl + dir / 2) * ZIG_STEP + HALF });
+          if (c === "F" || c === "S") reds.push(hazard(xk + 2, zl + dir, zl - dir, top));       // 다음 지점의 틀린 쪽을 막는다
+          zl += dir; zin = dir;
         }
-        if (zl !== 0) throw new Error("zig 마디는 바닥에서 끝나야 한다(뒤집기는 짝수 번): " + name);
+        if (p.nodes[7] !== "." || zl !== 0) throw new Error("피버 마디는 바닥에서 끝나야 한다: " + name);
+        gems.push({ x: x0 + 16, h: HALF });
       }
     }
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
@@ -235,7 +251,7 @@ function emptyLevel(course) {
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
   for (const sq of squeezes) { const e = sq.pts[sq.pts.length - 1]; sq.pts.push({ step: Math.round(sq.x1 / TPB * SUB), x: sq.x1, g: e.g, top: !e.top }); }   // 끝에서 한 번 더 닿는다
-  return { grid, cols, cps, rides, reds, gems, freeBars, squeezes, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, squeezes, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 // 패턴대로 달린 공의 자취(스텝마다 위치·상태)
@@ -409,6 +425,8 @@ function drawBar(L, b) {
 
 const rideAt = (L, x) => { for (const r of L.rides) if (x >= r[0] && x < r[1]) return r; return null; };
 const inRide = (L, x) => !!rideAt(L, x);
+// x 지점의 피버 천장 높이(칸). 넓은 통로 마디는 두 배.
+const ceilAt = (L, x) => (L.wideBars.has(Math.floor(x / 16)) ? WIDE_TOP : 2) * ZIG_STEP + SIZE;
 // 조여드는 통로에서 x 지점의 통로 폭(공이 오르내리는 거리). 통로 밖이면 null.
 function squeezeGap(L, x) {
   for (const sq of L.squeezes) if (x >= sq.x0 && x <= sq.x1) {
@@ -431,42 +449,44 @@ function rushStep(L, s, press, ev, hold, r) {
     while (i + 2 < P.length && P[i + 1].step <= s.step) i++;
     const a = P[i], b = P[i + 1], ha = mid + (a.top ? 1 : -1) * a.g / 2, hb = mid + (b.top ? 1 : -1) * b.g / 2;
     s.zh = ha + (hb - ha) * (s.step - a.step) / (b.step - a.step);
-    s.zdir = hb > ha ? 1 : -1; s.zv = Math.abs(hb - ha) / ((b.step - a.step) / SUB); s.zarr = b.step;
+    s.zdir = hb > ha ? 1 : -1; s.zv = Math.abs(hb - ha) / ((b.step - a.step) / SUB);
     if (s.step === a.step && i > 0 && ev) ev.push({ type: "rebound", top: a.top, tight: true });
     if (press && ev) ev.push({ type: "spark" });
     s.y = (ROWS - 1) - s.zh;
     return;
   }
   {
-    // 바닥과 천장 사이를 튕긴다. 누르는 즉시 위아래 방향이 뒤집힌다.
-    // 다만 바닥·천장에는 언제나 반 박 지점에 닿도록 속도를 맞춘다(누른 시각에서 가장 가까운 반 박 지점 + 반 박 뒤에 도착).
-    // → 조금 일찍 누르면 천천히, 조금 늦게 누르면 빠르게 가서 같은 박에 닿는다. 타이밍 오차가 다음으로 넘어가지 않는다.
-    const ZMAX = ZIG_TOP - SIZE;
-    if (local > 0) s.zh = Math.max(0, Math.min(ZMAX, s.zh + s.zdir * s.zv * DT));
-    if (s.step >= s.zarr) {                                // 바닥·천장에 닿음(항상 반 박 지점) → 튕겨서 한 박 뒤 반대쪽에 닿는다
-      s.zh = s.zdir > 0 ? ZMAX : 0; s.zdir = -s.zdir; s.zv = ZMAX; s.zarr = s.step + 2 * SLOT;
-      if (ev) ev.push({ type: "rebound", top: s.zdir < 0 });
+    // 공은 반 박 지점(node)마다 높이 한 단계씩 오르내린다. 바닥과 천장에서는 튕기고, 그 사이 단계에서는 가던 방향으로 계속 간다.
+    // 누르면 "가장 가까운 지점에서 갈 방향"이 뒤집힌다(그 지점 앞뒤 1/4박 안에 누른 것). 반응은 즉시:
+    //   지점에 닿기 전에 누르면 그 자리에서 바로 돌아서 천천히, 지난 뒤에 누르면 바로 꺾어서 빠르게 — 어느 쪽이든 다음 지점에는 같은 높이에 닿는다.
+    // 그래서 타이밍 오차가 다음으로 넘어가지 않는다. 한 번 더 누르면 원래대로 돌아간다.
+    const topAt = (k) => (L.wideBars.has(Math.floor((r[0] + 2 * k) / 16)) ? WIDE_TOP : 2);
+    const dirAt = (lev, zin, tog, top) => (lev <= 0 ? 1 : lev >= top ? -1 : tog ? -zin : zin);
+    while (local >= s.zk * SLOT + SLOT / 2) {              // 지난 지점의 선택을 굳히고, 다음 지점으로 넘어간다
+      const d = dirAt(s.zlk, s.zin, s.ztog, topAt(s.zk));
+      s.zlk += d; s.zin = d; s.zk++; s.ztog = 0;
     }
-    if (press && L.freeBars.has(Math.floor(s.x / 16))) { if (ev) ev.push({ type: "spark" }); }   // 연출 마디: 눌러도 길은 그대로(불꽃만 튄다)
-    else if (press) {
-      s.zdir = -s.zdir;
-      const dist = s.zdir > 0 ? ZMAX - s.zh : s.zh;
-      let arrive = (Math.round(local / SLOT) + 1) * SLOT;
-      if (arrive - local < 8) arrive += SLOT;
-      s.zarr = s.step - local + arrive; s.zv = dist / ((arrive - local) / SUB);
-      if (ev) ev.push({ type: "flip" });
+    const tk = s.zk * SLOT, top = topAt(s.zk);
+    if (press) {
+      if (!L.freeBars.has(Math.floor(s.x / 16)) && s.zlk > 0 && s.zlk < top) { s.ztog ^= 1; if (ev) ev.push({ type: "flip" }); }
+      else if (ev) ev.push({ type: "spark" });               // 연출 마디, 또는 바닥·천장에 닿는 지점: 길은 그대로(불꽃만 튄다)
     }
+    const toNode = local <= tk && !s.ztog;                   // 지점을 향해 가는 중인가, 지점 다음 높이를 향해 가는 중인가
+    const wpStep = toNode ? tk : tk + SLOT, wpH = (toNode ? s.zlk : s.zlk + dirAt(s.zlk, s.zin, s.ztog, top)) * ZIG_STEP;
+    const prev = s.zh;
+    s.zh = local === 0 ? 0 : wpStep - local <= 0 ? wpH : prev + (wpH - prev) / (wpStep - local + 1);
+    s.zv = Math.abs(s.zh - prev) * SUB;
+    if (s.zh !== prev) s.zdir = s.zh > prev ? 1 : -1;
+    if (local === tk && local > 0 && (s.zlk <= 0 || s.zlk >= top) && ev) ev.push({ type: "rebound", top: s.zlk > 0 });
     h = s.zh;
+    if (h + SIZE > ceilAt(L, s.x) + 0.3) return die(s, "crash", ev);     // 넓은 통로에서 좁은 통로로 넘어갈 때 천장보다 높이 있으면 부딪힌다
   }
   s.y = (ROWS - 1) - h;
   const xa = s.x - HALF_RUSH * 0.8, xb = s.x + HALF_RUSH * 0.8, lo = h + 0.06, hi = h + SIZE - 0.06;
   for (const q of L.reds) {
     if (xb <= q.x0 || xa >= q.x1) continue;
-    for (const t of q.parts) {
-      if (xb <= t.xt - t.w || xa >= t.xt + t.w) continue;
-      const near = Math.abs(Math.max(xa, Math.min(t.xt, xb)) - t.xt) / t.w;        // 공에서 조각의 끝에 가장 가까운 x까지(0 = 끝, 1 = 밑동)
-      if (q.kind === "ceil" ? hi > t.tip + (ZIG_TOP - t.tip) * near : lo < t.tip * (1 - near)) return die(s, "spike", ev);
-    }
+    const span = hazardSpan(q, Math.max(xa, Math.min(q.xt, xb)) - q.xt);       // 공에서 장애물 가운데에 가장 가까운 x에서 본다
+    if (hi > span[0] && lo < span[1]) return die(s, "spike", ev);
   }
 }
 
@@ -492,7 +512,7 @@ function spawnState(L, cp = -1) {
   const x = TPB * step / SUB;
   return {
     mode: "bounce", step, x, lead: 0, dashing: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
-    zh: 0, zdir: 1, zv: 0, zarr: 0,
+    zh: 0, zdir: 1, zv: 0, zk: 0, zlk: 0, zin: -1, ztog: 0,
     djAvail: false, jbuf: 0, ring: -1,
     freeze: 0, frozen: false,
     cp, dead: false, cause: "", won: false,
@@ -525,7 +545,7 @@ function stepState(L, s, press, ev, hold) {
     s.mode = ride ? "rush" : "bounce";
     if (s.frozen) { s.frozen = false; if (ev) ev.push({ type: "unfreeze" }); }
     s.jbuf = 0; s.freeze = 0;
-    if (ride) { s.zh = 0; s.zdir = 1; s.zv = ZIG_TOP - SIZE; s.zarr = s.step + 2 * SLOT; }
+    if (ride) { s.zh = 0; s.zdir = 1; s.zv = 0; s.zk = 0; s.zlk = 0; s.zin = -1; s.ztog = 0; }
     else if (s.y > ROWS - 1 - 0.3) { s.y = ROWS - 1; s.vy = 0; s.onGround = true; s.djAvail = false; }   // 바닥에 닿은 채로 나오면 바로 이 박에 다시 튄다
     else { s.vy = 0; s.onGround = false; s.djAvail = false; }                                              // 공중에서 나오면 그대로 떨어진다
     if (ev) ev.push({ type: "mode", mode: s.mode });
@@ -633,7 +653,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < (opts.offset || 0); i++) stepState(L, s0, false, null, false);
   if (s0.dead) return { plan: null, best: s0.x };
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}|${Math.ceil(s.freeze / 8)}|${s.zdir}|${s.zarr}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}|${Math.ceil(s.freeze / 8)}|${s.zk}|${s.zlk}${s.zin}${s.ztog}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {
@@ -672,4 +692,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
