@@ -226,12 +226,12 @@ for (const C of Lg.COURSES) {
     const sqBars = C.bars.filter(n => Lg.PATTERNS[n] && Lg.PATTERNS[n].squeeze).length;
     ok(lv.gems.filter(g => g.pane).length === (lv.freeBars.size - sqBars) * 4, `[${tag}] 연출 마디마다 깨고 지나갈 수정 판이 4장(조여드는 통로 ${sqBars}마디는 빼고)`);
     if (lv.squeezes.length) {
-      // 조여드는 통로: 닿는 간격이 1박 → 반 박 → 반의 반 박 → 그 절반으로 줄고, 통로 폭도 그만큼 좁아진다
+      // 조여드는 통로: 닿는 간격이 1박에서 1/32박까지 반씩 줄고, 통로 폭도 그만큼 좁아진다(끝에서는 공 크기와 거의 같다)
       const sq = lv.squeezes[0], hits = ev.filter(e => e.type === 'rebound' && e.tight).length;
       const gaps = sq.pts.slice(1).map((p, i) => (p.step - sq.pts[i].step) / 96);
       const uniq = [...new Set(gaps)];
-      ok(uniq.join(',') === '1,0.5,0.25,0.125' && hits === sq.pts.length - 2, `[${tag}] 조여드는 통로(마디 ${sq.x0 / 16}~${sq.x1 / 16 - 1}): 닿는 간격 ${uniq.join(' → ')}박, 모두 ${hits}번 친다`);
-      ok(Math.abs(Lg.squeezeGap(lv, sq.x0) - 2 * Lg.ZIG_STEP) < 1e-9 && Lg.squeezeGap(lv, sq.x1) < 0.5 && Lg.squeezeGap(lv, sq.x0 - 1) === null, `[${tag}] 통로 폭이 ${(2 * Lg.ZIG_STEP).toFixed(1)}칸에서 ${Lg.squeezeGap(lv, sq.x1).toFixed(2)}칸까지 좁아진다`);
+      ok(uniq.join(',') === '1,0.5,0.25,0.125,0.0625,0.03125' && hits === sq.pts.length - 2, `[${tag}] 조여드는 통로(마디 ${sq.x0 / 16}~${sq.x1 / 16 - 1}): 닿는 간격 ${uniq.join(' → ')}박, 모두 ${hits}번 친다`);
+      ok(Math.abs(Lg.squeezeGap(lv, sq.x0) - 2 * Lg.ZIG_STEP) < 1e-9 && Lg.squeezeGap(lv, sq.x1) < 0.13 && Lg.squeezeGap(lv, sq.x0 - 1) === null, `[${tag}] 통로 폭이 ${(2 * Lg.ZIG_STEP).toFixed(1)}칸에서 ${Lg.squeezeGap(lv, sq.x1).toFixed(2)}칸까지 좁아진다`);
       const goalBar = C.bars.indexOf('goal');
       ok(sq.x1 === goalBar * 16, `[${tag}] 통로가 끝나는 순간이 곡의 끝맺는 한 방(마디 ${goalBar} 첫 박)`);
     }

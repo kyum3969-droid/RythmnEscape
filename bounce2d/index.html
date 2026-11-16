@@ -568,9 +568,10 @@
         if (e.mode !== "rush") { holdPointers.clear(); keyHold = false; setZones(); } }   // 피버가 끝나면 누르고 있던 손은 뗀 것으로 본다
       else if (e.type === "flip" || e.type === "spark") ring(state.x, state.y);
       else if (e.type === "rebound" && e.tight) {      // 조여드는 통로: 닿을 때마다 불꽃. 통로가 좁을수록 세게 흔들린다
-        const g = squeezeGap(L, state.x) || 1;
-        burst(state.x, e.top ? state.y - SIZE : state.y, 5, "white", 9, true);
-        fx.jumpAt = now; fx.shake = Math.max(fx.shake, g < 1 ? 0.1 : 0.05);
+        const g = squeezeGap(L, state.x) || 1;      // 좁아질수록 불꽃은 잘게, 흔들림은 세게
+        burst(state.x, e.top ? state.y - SIZE : state.y, g < 0.3 ? 2 : 5, "white", g < 0.3 ? 13 : 9, true);
+        if (g >= 0.3) fx.jumpAt = now;
+        fx.shake = Math.max(fx.shake, g < 0.3 ? 0.22 : g < 1 ? 0.1 : 0.05);
       }
       else if (e.type === "rebound") { fx.jumpAt = now; puff(state.x, e.top ? ROWS - 1 - ZIG_TOP : ROWS - 1, 6, 0.8); }
       else if (e.type === "break") {
@@ -1069,7 +1070,8 @@
       else if (sinceLand < 0.1 && state.onGround) { stretchX = 1.22; stretchY = 0.8; }
       ctx.save();
       ctx.translate(cx, cy + (1 - stretchY) * HALF * T);
-      if (zig) ctx.rotate(Math.atan2(-state.zdir * state.zv * 0.5 * T, sx(state.x + 2) - sx(state.x)));   // 가는 방향으로 기운다
+      const sqg = zig ? squeezeGap(L, state.x) : null;                                                       // 아주 좁은 통로에서는 기울지 않는다(너무 빨리 뒤집혀 깜빡인다)
+      if (zig) ctx.rotate(Math.atan2(-state.zdir * state.zv * 0.5 * T, sx(state.x + 2) - sx(state.x)) * (sqg === null ? 1 : Math.min(1, sqg / 1.2)));   // 가는 방향으로 기운다
       ctx.scale(stretchX, stretchY);
       const R = T * HALF;
       if (state.frozen) {
