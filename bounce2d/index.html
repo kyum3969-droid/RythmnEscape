@@ -91,6 +91,9 @@
   .panel .stat { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .panel .buttons { display: flex; flex-direction: column; gap: 10px; }
   #dev { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+  #opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+  #opts .btn.small { color: var(--text); }
+  #opts .btn.small.on { border-color: var(--accent); }
   #devJumps { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
   .btn.small { font-size: 13px; font-weight: 500; padding: 8px 10px; color: var(--muted); }
   #devJumps .btn.small { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -102,7 +105,7 @@
     .panel .sub { font-size: 14px; line-height: 1.35; }
     .panel .buttons { flex-direction: row; }
     .panel .buttons .btn { flex: 1; padding: 9px 12px; }
-    #dev { padding-top: 8px; }
+    #dev, #opts { padding-top: 8px; }
     #devJumps { grid-template-columns: repeat(5, 1fr); gap: 6px; }
   }
   @media (prefers-reduced-motion: reduce) { #toast.show { animation-duration: 0.01s; } }
@@ -133,6 +136,10 @@
       <div class="sub" id="ovSub"></div>
       <div class="stat" id="ovStat"></div>
       <div class="buttons" id="ovButtons"></div>
+      <div id="opts">
+        <button class="btn small" id="optLinear"></button>
+        <button class="btn small" id="optSnap"></button>
+      </div>
       <div id="dev">
         <button class="btn small" id="devToggle">개발자 모드: 꺼짐</button>
         <div id="devJumps" hidden></div>
@@ -148,6 +155,10 @@
   "use strict";
   const $ = (id) => document.getElementById(id);
   const L = buildLevel(COURSE);
+  const cfgStore = { get(k, d) { try { const v = localStorage.getItem("pulsebounce.cfg." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("pulsebounce.cfg." + k, JSON.stringify(v)); } catch (e) { /* 저장 불가 */ } } };
+  L.cfg.linear = cfgStore.get("linear", true);      // 일정한 속도로 오르내리기
+  L.cfg.snap = cfgStore.get("snap", true);          // 멈춤·대시를 누르면 가까운 줄에 붙기
   const SPB = 60 / L.bpm;
   const TOTAL_BEATS = L.cols / TPB;
 
@@ -372,7 +383,7 @@
   const broken = new Set();       // 화면에서 지울 깨진 대시벽
   const usedRings = new Set();    // 이미 지나간 충전 고리(칸 번호)
   const ev = [];
-  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0 };
+  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0, snapOff: 0 };
 
   function begin(cp) {
     state = spawnState(L, cp);
@@ -386,6 +397,12 @@
   }
   function startFresh() { tries = 1; devRun = false; begin(-1); }
   function devJump(cp) { if (!dev) return; tries = 1; devRun = cp >= 0; begin(cp); }
+  function renderOpts() {
+    $("optLinear").textContent = "움직임: " + (L.cfg.linear ? "일정 속도" : "포물선");
+    $("optLinear").classList.toggle("on", L.cfg.linear);
+    $("optSnap").textContent = "줄에 붙이기: " + (L.cfg.snap ? "켜짐" : "꺼짐");
+    $("optSnap").classList.toggle("on", L.cfg.snap);
+  }
   function renderDev() {
     $("devToggle").textContent = "개발자 모드: " + (dev ? "켜짐" : "꺼짐");
     $("devTag").hidden = !dev;
@@ -423,6 +440,7 @@
       else if (e.type === "bounce") { fx.jumpAt = now; puff(state.x, state.y, 6, 0.7); }
       else if (e.type === "freeze") { sfx("freeze"); muffle(true); }
       else if (e.type === "unfreeze") muffle(false);
+      else if (e.type === "snap") fx.snapOff += e.dy;
       else if (e.type === "land") { fx.landAt = now; fx.ringChain = 0; puff(state.x, state.y, 4, 0.4); }
       else if (e.type === "dash") { fx.dashAt = now; fx.shake = 0.16; sfx("dash"); }
       else if (e.type === "break") {
@@ -509,6 +527,21 @@
         const hh = (0.6 + amp * hash(i, layer)) * T * (1 + 0.22 * pulse * hash(i, layer + 9));
         ctx.fillRect(i * bw - off, view.groundY - hh, bw - 3, hh + h);
       }
+    }
+
+    // 높이 줄 안내선: 멈춤·대시를 누르면 붙을 줄. 지금 가장 가까운 줄이 밝다.
+    if (L.cfg.snap) {
+      const h = (ROWS - 1) - state.y;
+      let near = LANES[0];
+      for (const l of LANES) if (Math.abs(l - h) < Math.abs(near - h)) near = l;
+      ctx.setLineDash([6, 10]); ctx.lineWidth = 2; ctx.shadowBlur = 0;
+      for (const l of LANES.slice(0, 2)) {
+        const y = sy(ROWS - 1 - l) - HALF * T;
+        const on = l === near && !state.onGround && phase === "running";
+        ctx.strokeStyle = on ? css(pal.accent, 0.55) : "rgba(255,255,255,0.13)";
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+      ctx.setLineDash([]);
     }
 
     // 지형
@@ -707,7 +740,7 @@
 
     // 플레이어: 빛나는 구슬 + 꼬리
     if (phase !== "dead") {
-      const cx = sx(camX + state.lead), cy = sy(state.y) - HALF * T;
+      const cx = sx(camX + state.lead), cy = sy(state.y + fx.snapOff) - HALF * T;
       const dashing = state.dashing > 0;
       if (fx.tail.length > 1) {
         ctx.lineCap = "round";
@@ -777,7 +810,8 @@
   }
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
-    fz1: "왼쪽 누르고 있기 = 공중에서 멈춤", fz2: "넓은 가시밭은 꼭대기에서 오래 멈추기", sawgate: "톱날 밑에서는 멈추지 말기",
+    fz1: "왼쪽 누르고 있기 = 공중에서 멈춤", fz2: "넓은 가시밭은 위쪽 줄에서 오래 멈추기", sawgate: "톱날 밑에서는 멈추지 말기",
+    pillar: "기둥은 위쪽 줄에서 멈춰 넘기", hang: "매달린 톱날은 아래쪽 줄에서 멈춰 지나가기",
     wall1: "오른쪽 누르기 = 대시! 벽 깨기", wallfield: "대시한 뒤 바로 멈춰서 넘기", ringchain: "고리를 지나면 대시 충전!", long: "멈춤 + 대시 둘 다 쓰기",
   };
   const HINTS = [];
@@ -874,6 +908,10 @@
   window.addEventListener("blur", () => { keyHold = false; holdPointers.clear(); setZones(); });
   $("pauseBtn").addEventListener("click", pause);
   $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); renderDev(); });
+  // 설정은 다음에 달리기 시작할 때부터 적용된다(계속하기·다시 시작)
+  $("optLinear").addEventListener("click", () => { L.cfg.linear = !L.cfg.linear; cfgStore.set("linear", L.cfg.linear); renderOpts(); });
+  $("optSnap").addEventListener("click", () => { L.cfg.snap = !L.cfg.snap; cfgStore.set("snap", L.cfg.snap); renderOpts(); });
+  renderOpts();
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   new ResizeObserver(resize).observe(canvas);
 
@@ -886,7 +924,7 @@
       scheduleAudio();
       advanceTo(Math.floor(songBeat() * SUB));
       if (phase === "running") {
-        fx.tail.push({ x: state.x, y: state.y - HALF, d: state.dashing > 0 });
+        fx.tail.push({ x: state.x, y: state.y + fx.snapOff - HALF, d: state.dashing > 0 });
         if (fx.tail.length > 16) fx.tail.shift();
         refreshHud();
       }
@@ -894,6 +932,7 @@
     for (const p of fx.particles) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; }
     fx.particles = fx.particles.filter((p) => p.life > 0);
     fx.shake = Math.max(0, fx.shake - dt * 1.6);
+    fx.snapOff *= Math.exp(-dt * 38);
     fx.flash = Math.max(0, fx.flash - dt * 5);
     draw(phase === "running" ? songBeat() : state.step / SUB, now);
     requestAnimationFrame(frame);
@@ -902,7 +941,7 @@
   // 자동 테스트용 훅
   window.__game = {
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
-    press, startFresh, respawn, pause, view, devJump, get dev() { return dev; }, get best() { return best; },
+    press, startFresh, respawn, pause, view, devJump, renderOpts, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },
   };

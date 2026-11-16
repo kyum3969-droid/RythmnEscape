@@ -10,6 +10,9 @@ const JUMP_H = 2.25;           // 튀는 높이(칸)
 const G = 8 * JUMP_H;          // 중력 → 체공 1박자
 const V0 = 4 * JUMP_H;
 const V_PAD = G * 1.5 / 2;     // 점프대: 체공 1.5박자, 높이 약 5칸
+const V_LIN = JUMP_H / 0.5;    // "일정 속도" 설정: 반 박자 동안 같은 속도로 올라가고, 같은 속도로 내려온다
+const LANES = [1.0, 2.25, 3.375];   // "줄에 붙이기" 설정: 멈춤·대시를 누르면 가장 가까운 줄(바닥에서 발까지의 높이)로 붙는다. 셋째는 점프대용
+const DEFAULT_CFG = { linear: true, snap: true };
 const DASH_STEPS = SUB / 2;    // 대시 길이: 반 박자
 const DASH_LEAD = 1.5;         // 대시로 앞서 나가는 거리(칸)
 const LEAD_DECAY = 1.0;        // 앞선 거리가 줄어드는 속도(칸/박자)
@@ -23,6 +26,7 @@ const ROWS = 10;               // row 0 = 맨 위, row 9 = 바닥
 const STEP_UP = 0.22;
 
 // 마디(16칸) 조각. 아래 6줄(row 4~9). 평지에서 공은 0·4·8·12번 칸에 착지한다.
+// o 고정 톱날
 // # 블록  ^ 가시  D 대시벽  O 대시 충전 고리  J 점프대  S/s 움직이는 톱날(S: 짝수 박자에 아래)  C 체크포인트  G 결승선
 const E = "................", F = "################";
 const CHUNKS = {
@@ -41,15 +45,17 @@ const CHUNKS = {
   ringpit:   [E, "......D.........", "......D.O.......", "......D.O.......", "......D.........", "#########....###"],
   ringchain: [E, E, ".........O......", ".........O......", E, "#####.........##"],                   // 고리로 대시를 이어 허공 건너기
   long:      [E, E, E, E, ".....^^^^^^^....", F],                                                    // 아주 넓은 가시밭: 멈춤 + 대시
+  pillar:    [E, E, E, ".......#........", ".......#........", F],                                     // 기둥: 위쪽 줄에서 멈춰야 넘는다 (꼭대기 바로 뒤에 둬야 누를 시간이 넉넉하다)
+  hang:      [E, E, "......o.........", E, E, F],                                                    // 매달린 톱날: 아래쪽 줄에서 멈춰야 지나간다
 };
 
 const COURSE = {
   name: "바운스 코스", bpm: 128,
   bars: [
     "flat", "flat",
-    "fz1", "fz3", "fz4", "fz2", "sawgate", "fz1", "fz2", "cp",
+    "fz1", "fz3", "pillar", "hang", "fz2", "sawgate", "fz4", "cp",
     "wall1", "fz3", "wallfield", "pad", "ringpit", "wall1", "ringchain", "cp",
-    "long", "sawgate", "padfield", "wallfield", "fz4", "ringchain", "long", "cp",
+    "long", "hang", "padfield", "wallfield", "pillar", "ringchain", "long", "cp",
     "wall1", "long", "ringpit", "padfield", "sawgate", "wallfield", "fz2", "cp",
     "long", "ringchain", "wallfield", "padfield", "fz4", "ringpit", "long", "goal",
     "flat",
@@ -59,7 +65,7 @@ const COURSE = {
   ],
 };
 
-function buildLevel(course) {
+function buildLevel(course, cfg) {
   const cols = course.bars.length * 16;
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill("."));
@@ -81,7 +87,7 @@ function buildLevel(course) {
   });
   const sawCols = new Map();
   for (const w of saws) { if (!sawCols.has(w.c)) sawCols.set(w.c, []); sawCols.get(w.c).push(w); }
-  return { grid, cols, cps, saws, sawCols, switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  return { cfg: { ...DEFAULT_CFG, ...(cfg || {}) }, grid, cols, cps, saws, sawCols, switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);
@@ -107,14 +113,25 @@ function spawnState(L, cp = -1) {
   return {
     mode: "bounce", step, x, lead: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
     dashAvail: false, dashing: 0, grace: 0, dashBuf: 0, ring: -1, bA: -1, bB: -1,
-    freeze: 0, frozen: false,
+    freeze: 0, frozen: false, rise: 0,
     cp, dead: false, cause: "", won: false,
   };
 }
 
-function tryDash(s, ev) {
+// 가장 가까운 줄로 붙인다(줄에 붙이기 설정)
+function snapToLane(L, s, ev) {
+  if (!L.cfg.snap) return;
+  const h = (ROWS - 1) - s.y;
+  let best = LANES[0];
+  for (const l of LANES) if (Math.abs(l - h) < Math.abs(best - h)) best = l;
+  const ny = (ROWS - 1) - best;
+  if (ny !== s.y) { if (ev) ev.push({ type: "snap", dy: s.y - ny }); s.y = ny; }
+}
+
+function tryDash(L, s, ev) {
   if (s.onGround || !s.dashAvail || s.dashing > 0) return false;
-  s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0; s.dashBuf = 0;
+  snapToLane(L, s, ev);
+  s.dashing = DASH_STEPS; s.dashAvail = false; s.vy = 0; s.rise = 0; s.dashBuf = 0;
   if (ev) ev.push({ type: "dash" });
   return true;
 }
@@ -123,10 +140,12 @@ function tryDash(s, ev) {
 function tryBounce(L, s, ev) {
   if (s.step % SUB > BOUNCE_TOL) return;
   const pad = tile(L, Math.floor(s.x), s.y - 1) === "J";
-  launch(s, pad, ev);
+  launch(L, s, pad, ev);
 }
-function launch(s, pad, ev) {
-  s.vy = pad ? -V_PAD : -V0; s.onGround = false; s.dashAvail = true; s.dashBuf = 0; s.freeze = FREEZE_STEPS;
+function launch(L, s, pad, ev) {
+  if (L.cfg.linear) { s.vy = -V_LIN; s.rise = Math.round(SUB * (pad ? 0.75 : 0.5)); }
+  else { s.vy = pad ? -V_PAD : -V0; s.rise = 0; }
+  s.onGround = false; s.dashAvail = true; s.dashBuf = 0; s.freeze = FREEZE_STEPS;
   if (ev) ev.push({ type: pad ? "pad" : "bounce" });
 }
 
@@ -137,11 +156,15 @@ function stepState(L, s, press, ev, hold) {
   if (s.dead || s.won) return;
   s.step++;
   if (s.onGround) tryBounce(L, s, ev);
-  else { if (press) s.dashBuf = DASH_BUF_STEPS; if (s.dashBuf > 0) tryDash(s, ev); }
+  else { if (press) s.dashBuf = DASH_BUF_STEPS; if (s.dashBuf > 0) tryDash(L, s, ev); }
   if (s.dashBuf > 0) s.dashBuf--;
 
   const frozen = !!hold && !s.onGround && s.dashing === 0 && s.freeze > 0;
-  if (frozen !== s.frozen) { s.frozen = frozen; if (ev) ev.push({ type: frozen ? "freeze" : "unfreeze" }); }
+  if (frozen !== s.frozen) {
+    s.frozen = frozen;
+    if (frozen) snapToLane(L, s, ev);
+    if (ev) ev.push({ type: frozen ? "freeze" : "unfreeze" });
+  }
 
   const prevFeet = s.y;
   if (s.dashing > 0) {
@@ -154,7 +177,12 @@ function stepState(L, s, press, ev, hold) {
   } else {
     if (s.lead > 0) s.lead = Math.max(0, s.lead - (s.onGround ? Math.min(2.5, LEAD_DECAY + Math.max(0, s.lead - DASH_LEAD) * 1.5) : LEAD_DECAY) * DT);
     if (s.grace > 0) s.grace--;
-    if (!s.onGround) { s.vy += G * DT; s.y += s.vy * DT; }
+    if (!s.onGround) {
+      if (L.cfg.linear) {                         // 일정 속도: 올라갈 시간이 남았으면 위로, 아니면 아래로
+        if (s.rise > 0) { s.rise--; s.vy = -V_LIN; } else s.vy = V_LIN;
+        s.y += s.vy * DT;
+      } else { s.vy += G * DT; s.y += s.vy * DT; }
+    }
   }
   s.x = TPB * s.step / SUB + s.lead;
 
@@ -162,7 +190,7 @@ function stepState(L, s, press, ev, hold) {
   if (s.onGround) {
     let support = false;
     for (let c = c0; c <= c1; c++) if (isSolid(L, c, s.y)) support = true;
-    if (!support) { s.onGround = false; s.dashAvail = true; s.vy = 0; }
+    if (!support) { s.onGround = false; s.dashAvail = true; s.vy = 0; s.rise = 0; }
   } else if (s.dashing === 0 && !frozen) {
     if (s.vy >= 0) {
       const T = Math.floor(s.y);
@@ -177,7 +205,7 @@ function stepState(L, s, press, ev, hold) {
     } else {
       const head = s.y - SIZE, B = Math.ceil(head);
       if (B <= prevFeet - SIZE + 1e-9 && B > head) {
-        for (let c = c0; c <= c1; c++) if (isSolid(L, c, B - 1)) { s.y = B + SIZE; s.vy = 0; break; }
+        for (let c = c0; c <= c1; c++) if (isSolid(L, c, B - 1)) { s.y = B + SIZE; s.vy = 0; s.rise = 0; break; }
       }
     }
   }
@@ -194,7 +222,7 @@ function stepState(L, s, press, ev, hold) {
         tryBounce(L, s, ev);
       } else die(s, "crash", ev);
     } else if (t === "J") {
-      if (s.onGround && r === s.y - 1) launch(s, true, ev);
+      if (s.onGround && r === s.y - 1) launch(L, s, true, ev);
     } else if (t === "O") {
       if (s.ring !== c) { s.ring = c; s.dashAvail = true; if (ev) ev.push({ type: "ring", c, r }); }
     } else if (t === "D") {
@@ -236,7 +264,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < (opts.offset || 0); i++) stepState(L, s0, false, null, false);
   if (s0.dead) return { plan: null, best: s0.x };
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.dashAvail ? 1 : 0}|${s.dashing}|${Math.round(s.lead * 8)}|${s.grace}|${Math.ceil(s.freeze / 8)}|${s.bB}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.dashAvail ? 1 : 0}|${s.dashing}|${Math.round(s.lead * 8)}|${s.grace}|${Math.ceil(s.freeze / 8)}|${s.bB}|${s.rise}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {
@@ -273,4 +301,4 @@ function planInput(plan) {
   return { dash, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, DASH_STEPS, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, CHUNKS, COURSE, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, DASH_STEPS, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, LANES, V_LIN, DEFAULT_CFG, CHUNKS, COURSE, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };

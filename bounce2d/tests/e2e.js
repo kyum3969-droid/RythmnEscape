@@ -27,7 +27,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   await p.mouse.move(150, 200); await p.mouse.down();
   await tick(4.9);
   st = await G(() => ({ f: window.__game.state.frozen, h: 9 - window.__game.state.y, zone: document.getElementById('zoneL').classList.contains('on') }));
-  ok(st.f && Math.abs(st.h - h0) < 0.02 && st.zone, `왼쪽을 누르고 있으면 공이 그 높이(${h0.toFixed(2)}칸)에 멈춘다`);
+  ok(st.f && Math.abs(st.h - 2.25) < 1e-6 && st.zone, `왼쪽을 누르고 있으면 공이 멈춘다 (높이 ${h0.toFixed(2)} → 위 줄 2.25에 붙음)`);
   await p.waitForTimeout(80); await p.screenshot({ path: out + 'freeze.png' });
   await p.mouse.up();
   await tick(5.1);
@@ -46,6 +46,25 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   await p.keyboard.up('ArrowLeft'); await p.keyboard.press('ArrowRight'); await tick(4.75);
   ok(kf && await G(() => window.__game.state.dashing) > 0, '키보드: ← 누르고 있기 = 멈춤, → = 대시');
 
+  console.log('== 설정: 움직임 / 줄에 붙이기 ==');
+  await G(() => window.__game.pause()); await p.waitForTimeout(80);
+  ok((await p.textContent('#optLinear')) === '움직임: 일정 속도' && (await p.textContent('#optSnap')) === '줄에 붙이기: 켜짐', '기본값: 일정 속도 + 줄에 붙이기 켜짐');
+  await p.screenshot({ path: out + 'options.png' });
+  await p.click('#optSnap'); await p.click('#optLinear'); await p.waitForTimeout(50);
+  ok((await p.textContent('#optLinear')) === '움직임: 포물선' && (await p.textContent('#optSnap')) === '줄에 붙이기: 꺼짐' && await G(() => !window.__game.L.cfg.linear && !window.__game.L.cfg.snap), '버튼을 누르면 포물선 / 붙이기 꺼짐으로 바뀐다');
+  await G(() => window.__game.startFresh());
+  await tick(4.3);
+  const hp = await G(() => 9 - window.__game.state.y);
+  await p.mouse.move(150, 200); await p.mouse.down(); await tick(4.5);
+  st = await G(() => ({ f: window.__game.state.frozen, h: 9 - window.__game.state.y }));
+  await p.mouse.up();
+  ok(st.f && Math.abs(st.h - hp) < 0.03 && Math.abs(st.h - 2.25) > 0.1 && Math.abs(st.h - 1.0) > 0.1, `붙이기를 끄면 누른 그 높이(${st.h.toFixed(2)})에 멈춘다`);
+  await p.reload(); await p.waitForTimeout(700);
+  ok(await G(() => !window.__game.L.cfg.linear && !window.__game.L.cfg.snap), '새로고침해도 설정이 유지된다');
+  await p.click('#optSnap'); await p.click('#optLinear');
+  ok(await G(() => window.__game.L.cfg.linear && window.__game.L.cfg.snap), '다시 누르면 기본값으로');
+  await G(() => { const g = window.__game; g.fake.on = true; g.startFresh(); });
+
   console.log('== 죽음과 재도전 ==');
   await G(() => window.__game.startFresh());
   await tick(12);
@@ -56,7 +75,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 자동 풀이로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).plan); g.startFresh(); });
-  const shots = { 10: 'a_fz1', 21: 'a_fz2', 41.5: 'b_wall', 50: 'b_wallfield', 66: 'b_ringchain', 73.5: 'c_long', 82: 'c_padfield', 26.5: 'a_sawgate' };
+  const shots = { 10: 'a_fz1', 18: 'a_pillar', 21.75: 'a_hang', 26: 'a_fz2', 41.5: 'b_wall', 50: 'b_wallfield', 66: 'b_ringchain', 73.5: 'c_long' };
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
