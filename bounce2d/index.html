@@ -224,9 +224,7 @@
       comp.connect(A.ctx.destination);
       A.master = A.ctx.createGain();
       A.master.gain.value = 0.55;
-      A.lp = A.ctx.createBiquadFilter();        // 멈춘 동안 소리를 먹먹하게(시간이 멈춘 느낌)
-      A.lp.type = "lowpass"; A.lp.frequency.value = 20000;
-      A.master.connect(A.lp); A.lp.connect(comp);
+      A.master.connect(comp);
       const len = A.ctx.sampleRate;
       A.noise = A.ctx.createBuffer(1, len, A.ctx.sampleRate);
       const d = A.noise.getChannelData(0);
@@ -237,7 +235,9 @@
   function stopTrack() { if (A.src) { try { A.src.stop(A.ctx.currentTime + 0.06); } catch (e) { /* 이미 끝남 */ } A.src = null; } }
   function newBus() {           // 죽으면 예약된 음을 한꺼번에 끊기 위해 판마다 새 버스를 쓴다
     stopTrack();
-    if (A.bus) { const b = A.bus; b.gain.setTargetAtTime(0, A.ctx.currentTime, 0.012); setTimeout(() => b.disconnect(), 250); }
+    for (const b of [A.bus, A.songBus]) if (b) { b.gain.setTargetAtTime(0, A.ctx.currentTime, 0.012); setTimeout(() => b.disconnect(), 250); }
+    // 곡은 효과음과 다른 길로 내보낸다(곡에는 아무 처리도 하지 않는다: 압축기나 필터를 거치면 효과음이 날 때 곡 소리가 눌린다)
+    A.songBus = A.ctx.createGain(); A.songBus.gain.value = 0.85; A.songBus.connect(A.ctx.destination);
     A.bus = A.ctx.createGain();
     A.bus.connect(A.master);
   }
@@ -367,24 +367,18 @@
     clock.t0 = A.ctx.currentTime + 0.06;
     clock.next16 = Math.ceil(beat0 * 4 - 1e-6);
     if (track) {                                  // 넣은 곡: 이 박에 해당하는 자리부터 튼다
-      const src = A.ctx.createBufferSource(), g = A.ctx.createGain();
-      src.buffer = track.buffer; g.gain.value = 1.5;
-      src.connect(g); g.connect(A.bus);
+      const src = A.ctx.createBufferSource();
+      src.buffer = track.buffer;
+      src.connect(A.songBus);
       const at = trackZero() + beat0 * SPB;
       if (at >= 0) src.start(clock.t0, Math.min(at, track.duration)); else src.start(clock.t0 - at, 0);
       A.src = src;
     }
   }
-  function muffle(on) {
-    if (!A.lp || fake.on) return;
-    A.lp.frequency.cancelScheduledValues(A.ctx.currentTime);
-    A.lp.frequency.setTargetAtTime(on ? 650 : 20000, A.ctx.currentTime, on ? 0.03 : 0.05);
-  }
   function stopClock(cut) {
-    muffle(false);
     clock.frozen = songBeat();
     clock.running = false;
-    if (cut && A.bus) { A.bus.gain.setTargetAtTime(0, A.ctx.currentTime, 0.012); stopTrack(); }
+    if (cut && A.bus) { for (const b of [A.bus, A.songBus]) b.gain.setTargetAtTime(0, A.ctx.currentTime, 0.012); stopTrack(); }
   }
   function scheduleAudio() {
     if (fake.on || !clock.running || track) return;
@@ -554,8 +548,7 @@
       else if (e.type === "pad") { fx.jumpAt = now; fx.shake = 0.1; sfx("pad"); puff(state.x, state.y, 10, 1.1); }
       else if (e.type === "ring") { usedRings.add(e.c); sfx("ring"); fx.ringChain++; burst(e.c + 0.5, e.r + 0.5, 8, "white", 6); }
       else if (e.type === "bounce") { fx.jumpAt = now; puff(state.x, state.y, 6, 0.7); }
-      else if (e.type === "freeze") { sfx("freeze"); muffle(true); }
-      else if (e.type === "unfreeze") muffle(false);
+      else if (e.type === "freeze") sfx("freeze");
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
       else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "FEVER" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; fx.chain = 0;
         if (e.mode !== "rush") { holdPointers.clear(); keyHold = false; setZones(); } }   // 피버가 끝나면 누르고 있던 손은 뗀 것으로 본다
