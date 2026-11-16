@@ -177,7 +177,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok(st.round === 1 && st.name.includes('Terminal Pursuit') && Math.abs(st.bpm - 151.9867) < 0.01 && st.off === 0.2809 && st.cps === 5, `2라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개)`);
     await p.screenshot({ path: out + 'r2_title.png' });
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots2 = { 33.25: 'r2_a', 96.75: 'r2_free_in', 98.5: 'r2_free', 105.25: 'r2_fever', 125.5: 'r2_free_out', 226.5: 'r2_peak', 257: 'r2_final_free', 285: 'r2_ending' };
+    const shots2 = { 33.25: 'r2_a', 96.75: 'r2_free_in', 98.5: 'r2_free', 105.25: 'r2_fever', 125.5: 'r2_free_out', 226.5: 'r2_peak', 257: 'r2_final_free', 281.5: 'r2_squeeze1', 285.5: 'r2_squeeze2', 287.5: 'r2_squeeze3', 288: 'r2_burst' };
     let label = null;
     for (let beat = 0; beat <= 300; beat += 0.25) {
       await tick(beat);

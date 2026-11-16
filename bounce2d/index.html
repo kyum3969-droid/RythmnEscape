@@ -561,8 +561,17 @@
       else if (e.type === "double") { fx.jumpAt = now; ring(state.x, state.y); }
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
       else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "FEVER" : "BOUNCE"); fx.cpFlash = now; fx.chain = 0;
+        if (e.mode !== "rush" && squeezeGap(L, state.x - 0.2) !== null) {     // 조여든 통로 끝에서 터져 나온다
+          for (let k = 0; k < 5; k++) burst(state.x, state.y - HALF, 12, k % 2 ? "white" : "accent", 16, true);
+          fx.shake = 0.4; fx.flash = 0.8;
+        }
         if (e.mode !== "rush") { holdPointers.clear(); keyHold = false; setZones(); } }   // 피버가 끝나면 누르고 있던 손은 뗀 것으로 본다
       else if (e.type === "flip" || e.type === "spark") ring(state.x, state.y);
+      else if (e.type === "rebound" && e.tight) {      // 조여드는 통로: 닿을 때마다 불꽃. 통로가 좁을수록 세게 흔들린다
+        const g = squeezeGap(L, state.x) || 1;
+        burst(state.x, e.top ? state.y - SIZE : state.y, 5, "white", 9, true);
+        fx.jumpAt = now; fx.shake = Math.max(fx.shake, g < 1 ? 0.1 : 0.05);
+      }
       else if (e.type === "rebound") { fx.jumpAt = now; puff(state.x, e.top ? ROWS - 1 - ZIG_TOP : ROWS - 1, 6, 0.8); }
       else if (e.type === "break") {
         if (!broken.has(e.c + "," + e.r)) {          // 닿은 순간 그 벽 전체가 깨진다
@@ -809,6 +818,22 @@
         ctx.fillStyle = css(pal.accent, 0.5);
         for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), view.groundY + T * 0.16, sx(c + o + 0.22) - sx(c + o), 3);
         for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), sy(ROWS - 1 - ZIG_TOP) - T * 0.16 - 3, sx(c + o + 0.22) - sx(c + o), 3);
+      }
+      // 조여드는 통로: 바닥과 천장이 가운데로 모여든다(닿아도 죽지 않는다. 공이 그 사이를 점점 빠르게 친다)
+      for (const q of L.squeezes) {
+        if (q.x1 < cA || q.x0 > cB || q.x0 < r[0] || q.x1 > r[1]) continue;
+        const xa = Math.max(q.x0, cA), xb = Math.min(q.x1, cB + 1), yT = sy(ROWS - 1 - ZIG_TOP);
+        const wall = (sign) => {                   // sign -1 = 바닥 쪽, +1 = 천장 쪽
+          const yAt = (x) => sy(ROWS - 1 - (ZIG_STEP + sign * squeezeGap(L, x) / 2 + (sign > 0 ? SIZE : 0)));
+          ctx.beginPath(); ctx.moveTo(sx(xa), sign > 0 ? yT : view.groundY);
+          for (let x = xa; x <= xb + 1e-6; x += 0.25) ctx.lineTo(sx(Math.min(x, xb)), yAt(Math.min(x, xb)));
+          ctx.lineTo(sx(xb), sign > 0 ? yT : view.groundY); ctx.closePath();
+          ctx.shadowBlur = 0; ctx.fillStyle = SIL; ctx.fill();
+          ctx.beginPath();
+          for (let x = xa; x <= xb + 1e-6; x += 0.25) ctx.lineTo(sx(Math.min(x, xb)), yAt(Math.min(x, xb)));
+          ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 3; ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 10 + 12 * pulse; ctx.stroke(); ctx.shadowBlur = 0;
+        };
+        wall(-1); wall(1);
       }
       // 관문: 구간이 바뀌는 자리의 빛 커튼
       for (const [gx, label] of [[r[0], "FEVER"], [r[1], "BOUNCE"]]) {
@@ -1089,7 +1114,7 @@
   const HINT_TEXT = {
     hA: "II 표시에서 왼쪽을 누르고 있기 = 공중에서 멈춤", glideHigh: "두 번 이어서 멈춤", dj1: "▲ 표시에서 오른쪽 누르기 = 공중에서 한 번 더 점프", peak: "두 번 이어서 점프",
     mix: "멈춤, 그다음 점프", mix2: "점프, 그다음 멈춤", skyGlide: "점프하고, 그 꼭대기에서 멈춤",
-    zF: "장애물이 없는 구간 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
+    zF: "장애물이 없는 구간 · 저절로 달려요", zS1: "통로가 조여들어요 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
     glideLow: "떨어지다 낮은 곳에서 멈춤", weave: "멈춤 → 이단 점프 → 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];
