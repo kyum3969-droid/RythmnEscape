@@ -224,7 +224,7 @@ for (const C of Lg.COURSES) {
         if (e3.some(e => e.type === 'land') && 9 - s3.y >= 0.99) { landBars.add(Math.floor(s3.x / 16)); if (boxBars.includes(Math.floor(s3.x / 16))) lands++; }
       }
       const clean = allBox.every(b => bounceAt[b * 384] < 0.2 && bounceAt[(b + 1) * 384] < 0.2);
-      ok(boxBars.length >= 8 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
+      ok(boxBars.length >= 5 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
       let died = 0, rnd3 = 11;
       const rand = () => (rnd3 = (rnd3 * 1103515245 + 12345) % 2147483648) / 2147483648;
       for (const b of boxBars) for (let n = 0; n < 40; n++) {
@@ -249,6 +249,25 @@ for (const C of Lg.COURSES) {
         ok(minClear > 0.5, `[${tag}] 패턴대로 갈 때 공은 빨간 바닥에서 적어도 ${minClear.toFixed(2)}칸 떨어져 지나간다(아슬아슬하게 스치지 않는다)`);
       }
     }
+  {
+    // 충전 고리와 엇박 길(3라운드)
+    const bars4 = C.bars, ringBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].rings ? b : -1)).filter(b => b >= 0), roadBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].road ? b : -1)).filter(b => b >= 0);
+    if (ringBars.length || roadBars.length) {
+      const s7 = Lg.spawnState(lv, -1), inp7 = Lg.planInput(lv.ref), rings = new Set(), bounces = [];
+      let groundInRing = 0;
+      while (!s7.dead && !s7.won) {
+        const e7 = []; Lg.stepState(lv, s7, inp7.press.has(s7.step + 1), e7, inp7.hold.has(s7.step + 1));
+        for (const e of e7) { if (e.type === 'ring') rings.add(e.c); if (e.type === 'bounce' && s7.mode === 'bounce') bounces.push({ step: s7.step, road: lv.grid[Math.ceil(s7.y - 1e-6)][Math.floor(s7.x)] === 'B' }); }
+        if (s7.onGround && ringBars.includes(Math.floor(s7.x / 16)) && s7.x % 16 > 2 && s7.x % 16 < 10) groundInRing++;
+      }
+      const ringCols = new Set(); ringBars.forEach(b => Lg.PATTERNS[bars4[b]].rings.forEach(([c]) => ringCols.add(b * 16 + c)));
+      ok(ringBars.length >= 5 && rings.size === ringCols.size && groundInRing === 0, `[${tag}] 충전 고리 마디(${ringBars.join(', ')}): 고리 ${ringCols.size}개를 모두 지나며, 고리 구간에서는 땅에 닿지 않는다`);
+      const onRoad = bounces.filter(b => b.road), offRoad = bounces.filter(b => !b.road);
+      ok(roadBars.length >= 8 && onRoad.length >= 20 && onRoad.every(b => b.step % 96 === 48) && offRoad.every(b => b.step % 96 <= 12), `[${tag}] 엇박 길 마디(${roadBars.join(', ')}): 길 위에서는 언제나 엇박(반 박 지점)에 튀고(${onRoad.length}번), 땅에서는 정박에 튄다`);
+      const outs = bars4.map((n, b) => (n === 'obOut' ? b : -1)).filter(b => b >= 0);
+      ok(outs.length >= 2 && outs.every(b => bounces.some(x => x.step === (b + 1) * 384 && !x.road)), `[${tag}] 엇박 길에서 내려오면 그 마디 안에 정박으로 돌아온다(다음 마디 첫 박에 땅에서 튄다)`);
+    }
+  }
   if (lv.freeBars.size) {
     // 연출 마디: 장애물이 없고, 아무리 눌러도 길이 바뀌지 않는다(그래서 다음 마디와 어긋나지 않는다)
     const noReds = lv.reds.every(q => !lv.freeBars.has(Math.floor(q.xt / 16)) || !lv.freeBars.has(Math.floor((q.xt - 2.1) / 16)));

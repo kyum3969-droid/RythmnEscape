@@ -8,13 +8,14 @@ function measure(name, bpm = 96) {
   // 피버 패턴은 구간 한가운데에 있을 때를 잰다(앞뒤에 빈 피버 마디)
   const rush = Lg.PATTERNS[name].mode === 'rush';
   const wide = rush && Lg.PATTERNS[name].wide;       // 넓은 통로의 패턴은 계단으로 올라가서 시작하고 계단으로 내려온다
-  const lv = Lg.buildLevel({ name, bpm, tol: process.env.TOL ? +process.env.TOL : Lg.COURSE.tol, bars: rush ? ['flat', wide ? 'wUp' : 'zE', name, wide ? 'wDn' : 'zE', 'flat', 'goal'] : ['flat', name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const ob = !!Lg.PATTERNS[name].ob;                 // 엇박 길 한가운데의 패턴은 길에 올라탄 상태에서 잰다
+  const lv = Lg.buildLevel({ name, bpm, tol: process.env.TOL ? +process.env.TOL : Lg.COURSE.tol, bars: ob ? ['flat', 'obIn', name, 'obOut', 'flat', 'goal'] : rush ? ['flat', wide ? 'wUp' : 'zE', name, wide ? 'wDn' : 'zE', 'flat', 'goal'] : ['flat', name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
   const ms = 60000 / bpm / Lg.SUB;
   const acts = [];
   for (const [a, b] of lv.ref.holds) acts.push({ type: 'hold', start: a, end: b });
   for (const d of lv.ref.presses) acts.push({ type: 'jump', step: d });
   acts.sort((p, q) => (p.start ?? p.step) - (q.start ?? q.step));
-  const endX = 16 * (rush ? 4 : 3) + 8;
+  const endX = 16 * (rush || ob ? 4 : 3) + 8;
   const alive = (list = acts) => {
     const s = Lg.spawnState(lv, -1), press = new Set(list.filter(a => a.type === 'jump').map(a => a.step));
     const holds = list.filter(a => a.type === 'hold');

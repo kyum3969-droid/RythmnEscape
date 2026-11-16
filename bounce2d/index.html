@@ -200,6 +200,7 @@
     rush:  { top: "#0d1b2a", bottom: "#1b6ca8", accent: "#ffef5e", sun: "#ff7ac6" },
     outro: { top: "#101a3a", bottom: "#2a6f97", accent: "#ffffff", sun: "#ffe066" },
   };
+  if (COURSE.pal) Object.assign(PAL, COURSE.pal);    // 라운드마다 다른 색을 쓸 수 있다
   const SIL = "#07070f", DANGER = "#ff3b6b";
   const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
@@ -417,7 +418,7 @@
     state = spawnState(L, cp);
     broken.clear(); usedRings.clear();
     fx.tail.length = 0; fx.particles.length = 0;
-    gotGems.clear(); fx.chain = 0; fx.wideOn = wideZone(state.x); fx.punchAt = -9;
+    gotGems.clear(); fx.chain = 0; fx.wideOn = wideZone(state.x); fx.punchAt = -9; fx.offbeat = false;
     gemPtr = 0; while (gemPtr < L.gems.length && L.gems[gemPtr].x <= state.x) gemPtr++;
     pressQueued = false;
     phase = "running";
@@ -561,8 +562,12 @@
     for (const e of ev) {
       if (e.type === "jump") { fx.jumpAt = now; puff(state.x, state.y, 5, 0.6); }
       else if (e.type === "pad") { fx.jumpAt = now; fx.shake = 0.1; sfx("pad"); puff(state.x, state.y, 10, 1.1); }
-      else if (e.type === "ring") { usedRings.add(e.c); sfx("ring"); fx.ringChain++; burst(e.c + 0.5, e.r + 0.5, 8, "white", 6); }
-      else if (e.type === "bounce") { fx.jumpAt = now; puff(state.x, state.y, 6, 0.7); }
+      else if (e.type === "ring") { usedRings.add(e.c); fx.ringChain++; burst(e.c + 0.5, e.r + 0.5, 10, "white", 8); }     // 소리는 내지 않는다(동작 소리는 곡과 안 어울려서 전부 뺐다)
+      else if (e.type === "bounce") {
+        fx.jumpAt = now; puff(state.x, state.y, 6, 0.7);
+        const ob = tile(L, Math.floor(state.x), Math.ceil(state.y - 1e-6)) === "B";              // 엇박 길에 올라탔거나 내려왔다
+        if (ob !== fx.offbeat) { fx.offbeat = ob; toast(ob ? "OFFBEAT" : "ON BEAT"); }
+      }
       else if (e.type === "land") {
         fx.landAt = now; puff(state.x, state.y, 4, 0.4);
         if (state.y < ROWS - 1.5) { fx.stepAt = now; burst(state.x, state.y, 5, "blue", 7, true); }     // 파란 박스 위에 내려앉음: 박스가 번쩍
@@ -737,33 +742,6 @@
     ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5;
     ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 8 + 10 * pulse;
     ctx.stroke(); ctx.shadowBlur = 0;
-    // 파란 박스(땅 위의 블록): 닿아도 죽지 않는다. 위에 내려앉아 다시 튀고, 옆에서 부딪히면 올라탄다.
-    {
-      const boxH = (c) => { let n = 0; while (n < ROWS - 1 && tile(L, c, ROWS - 2 - n) === "#") n++; return n; };
-      const hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25);
-      for (let c = cA; c <= cB; c++) {
-        if (!boxH(c)) continue;
-        let e = c; while (e + 1 <= cB + 4 && boxH(e + 1)) e++;
-        let a = c; while (boxH(a - 1)) a--;
-        const edge = [[sx(a), view.groundY]];
-        let top = view.groundY;
-        for (let k = a; k <= e; k++) { const y = sy(ROWS - 1 - boxH(k)); top = Math.min(top, y); if (edge[edge.length - 1][1] !== y) edge.push([sx(k), y]); if (k === e || boxH(k + 1) !== boxH(k)) edge.push([sx(k + 1), y]); }
-        edge.push([sx(e + 1), view.groundY]);
-        const trace = () => { ctx.beginPath(); ctx.moveTo(edge[0][0], edge[0][1]); for (const q of edge) ctx.lineTo(q[0], q[1]); };
-        trace(); ctx.closePath();
-        const bg = ctx.createLinearGradient(0, view.groundY, 0, top);
-        bg.addColorStop(0, "#081a3d"); bg.addColorStop(1, hit > 0 ? `rgb(${40 + 60 * hit},${110 + 80 * hit},255)` : "#1f6ee0");
-        ctx.fillStyle = bg; ctx.fill();
-        ctx.save(); ctx.clip();
-        ctx.strokeStyle = "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath();
-        for (let y = view.groundY - T * 0.48; y > top; y -= T * 0.48) { ctx.moveTo(edge[0][0], y); ctx.lineTo(edge[edge.length - 1][0], y); }
-        ctx.stroke(); ctx.restore();
-        trace();
-        ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; ctx.shadowBlur = 10 + 8 * pulse + 16 * hit; ctx.stroke(); ctx.shadowBlur = 0;
-        c = e;
-      }
-    }
-
     // 가시: 결정 날 세 개. 밑동은 어둡고 끝으로 갈수록 붉게 빛난다. (판정은 그림보다 작다)
     const BLADES = [[0.2, 0.15, 0.54], [0.8, 0.15, 0.54], [0.5, 0.2, 0.86]];
     const spikes = [];
@@ -839,6 +817,52 @@
     if (L.floorH) {
       blockRuns(L.floorH, (v) => v > 0, view.groundY);
       blockRuns(L.ceilH, (v) => v < 90, -40);
+    }
+    // 파란 박스(땅 위의 블록): 닿아도 죽지 않는다. 위에 내려앉아 다시 튀고, 옆에서 부딪히면 올라탄다.
+    // 하늘색은 엇박 길: 그 위에서는 박자와 박자 사이에 튄다(그래서 엇박마다 빛난다). 빨간 덩어리보다 나중에 그려서, 길 위의 빨간 덩어리가 길에 얹힌 것처럼 보인다.
+    {
+      const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
+      const kind = (c) => (boxH(c) ? tile(L, c, ROWS - 2) : "");
+      const hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25);
+      const pulseOff = phase === "running" ? Math.pow(1 - ((beat + 0.5) - Math.floor(beat + 0.5)), 3) : 0;
+      for (let c = cA; c <= cB; c++) {
+        const kd = kind(c);
+        if (!kd) continue;
+        let e = c; while (e + 1 <= cB + 4 && kind(e + 1) === kd) e++;
+        let a = c; while (kind(a - 1) === kd) a--;
+        const road = kd === "B";
+        const edge = [[sx(a), view.groundY]];
+        let top = view.groundY;
+        for (let k = a; k <= e; k++) { const y = sy(ROWS - 1 - boxH(k)); top = Math.min(top, y); if (edge[edge.length - 1][1] !== y) edge.push([sx(k), y]); if (k === e || boxH(k + 1) !== boxH(k)) edge.push([sx(k + 1), y]); }
+        edge.push([sx(e + 1), view.groundY]);
+        const trace = () => { ctx.beginPath(); ctx.moveTo(edge[0][0], edge[0][1]); for (const q of edge) ctx.lineTo(q[0], q[1]); };
+        trace(); ctx.closePath();
+        const bg = ctx.createLinearGradient(0, view.groundY, 0, top);
+        if (road) { bg.addColorStop(0, "#06262e"); bg.addColorStop(1, `rgb(${30 + 70 * Math.max(hit, pulseOff * 0.6)},${185 + 50 * Math.max(hit, pulseOff * 0.6)},215)`); }
+        else { bg.addColorStop(0, "#081a3d"); bg.addColorStop(1, hit > 0 ? `rgb(${40 + 60 * hit},${110 + 80 * hit},255)` : "#1f6ee0"); }
+        ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fill();
+        ctx.save(); ctx.clip();
+        ctx.strokeStyle = road ? "rgba(200,255,255,0.22)" : "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath();
+        if (road) for (let k = Math.ceil((a - 2) / 4) * 4 + 2; k <= e + 1; k += 4) { ctx.moveTo(sx(k), top); ctx.lineTo(sx(k), view.groundY); }       // 엇박 자리(2, 6, 10, 14번째 칸)의 세로줄
+        else for (let y = view.groundY - T * 0.48; y > top; y -= T * 0.48) { ctx.moveTo(edge[0][0], y); ctx.lineTo(edge[edge.length - 1][0], y); }
+        ctx.stroke(); ctx.restore();
+        trace();
+        ctx.strokeStyle = road ? "#c9fdff" : "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = road ? "#2fe0f0" : "#3aa0ff";
+        ctx.shadowBlur = 10 + (road ? 18 * pulseOff : 8 * pulse) + 16 * hit; ctx.stroke(); ctx.shadowBlur = 0;
+        c = e;
+      }
+    }
+    // 충전 고리: 지나가면 이단 점프가 다시 찬다. 같은 칸에 쌓인 칸들이 세로로 긴 고리 하나.
+    for (let c = cA; c <= cB; c++) for (let r = 0; r < ROWS - 1; r++) {
+      if (tile(L, c, r) !== "O" || tile(L, c, r - 1) === "O") continue;
+      let r2 = r; while (tile(L, c, r2 + 1) === "O") r2++;
+      const used = usedRings.has(c), cx = sx(c + 0.5), cy = (sy(r) + sy(r2 + 1)) / 2, ry = (sy(r2 + 1) - sy(r)) / 2 - T * 0.08, rx = T * 0.3;
+      ctx.save(); ctx.globalAlpha = used ? 0.25 : 1;
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.shadowColor = css(pal.accent); ctx.shadowBlur = used ? 0 : 14 + 12 * pulse;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = css(pal.accent, 0.9); ctx.lineWidth = 2; ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.55, ry * 0.8, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
     }
     // ---- 피버 구간
     for (const r of L.rides) {
@@ -1056,7 +1080,8 @@
     // 착지 자리 표시: 평소엔 옅게, 지금 이 점프로 닿을 자리 하나만 밝게
     ctx.shadowBlur = 0;
     ctx.fillStyle = css(pal.accent, 0.3);
-    for (let c = Math.ceil(cA / 4) * 4; c <= cB; c += 4) {
+    for (let c = Math.ceil(cA / 2) * 2; c <= cB; c += 2) {
+      if ((c % 4 === 0) === (tile(L, c, groundY(L, c)) === "B")) continue;     // 땅과 파란 박스는 정박 자리(4칸마다), 엇박 길은 그 사이
       if (!(isSolid(L, c, groundY(L, c)) && isSolid(L, c - 1, groundY(L, c))) || (L.floorH && (L.floorH[c] > 0 || L.floorH[c - 1] > 0)) || inRide(L, c)) continue;
       const x = sx(c), y = sy(groundY(L, c)) + T * 0.2;
       ctx.beginPath(); ctx.moveTo(x - T * 0.16, y); ctx.lineTo(x, y + T * 0.16); ctx.lineTo(x + T * 0.16, y); ctx.lineTo(x, y - T * 0.06); ctx.closePath(); ctx.fill();
@@ -1201,7 +1226,7 @@
   const HINT_TEXT = {
     hA: "II 표시에서 왼쪽을 누르고 있기 = 공중에서 멈춤", glideHigh: "두 번 이어서 멈춤", dj1: "▲ 표시에서 오른쪽 누르기 = 공중에서 한 번 더 점프", peak: "두 번 이어서 점프",
     mix: "멈춤, 그다음 점프", mix2: "점프, 그다음 멈춤", skyGlide: "점프하고, 그 꼭대기에서 멈춤",
-    zF: "장애물이 없는 구간 · 저절로 달려요", zT: "파란 발판은 닿아도 괜찮아요 · 튕기기만 해요", box: "파란 박스는 닿아도 괜찮아요 · 밟고 튀어요", lavaHop: "빨간 바닥은 안 돼요 · 멈춰서 파란 섬으로", lavaLeap: "이단 점프로 높은 섬에", lavaGlide: "박스를 밟고, 멈춰서 건너가요", w3: "넓은 통로 · 떠 있는 장애물은 비켜 가요", zS1: "통로가 조여들어요 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
+    zF: "장애물이 없는 구간 · 저절로 달려요", zT: "파란 발판은 닿아도 괜찮아요 · 튕기기만 해요", box: "파란 박스는 닿아도 괜찮아요 · 밟고 튀어요", ring1: "고리 앞에서 누르면 한 번 더 뛰어요", ringWave: "탁, 탁, 탁 · 고리마다 한 번씩", obIn: "하늘색 길 위에서는 엇박에 튀어요", obHold: "엇박 길에서는 킥에 맞춰 눌러요", lavaHop: "빨간 바닥은 안 돼요 · 멈춰서 파란 섬으로", lavaLeap: "이단 점프로 높은 섬에", lavaGlide: "박스를 밟고, 멈춰서 건너가요", w3: "넓은 통로 · 떠 있는 장애물은 비켜 가요", zS1: "통로가 조여들어요 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
     glideLow: "떨어지다 낮은 곳에서 멈춤", weave: "멈춤 → 이단 점프 → 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];

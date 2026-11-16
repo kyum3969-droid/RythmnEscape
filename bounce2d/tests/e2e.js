@@ -229,6 +229,23 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     await p.screenshot({ path: out + 'r2_wide.png' });
     await runTo(28);
     ok(zAt[26.5] < 0.8 && Math.abs(zAt[27.75] - 1) < 0.02 && await G(() => window.__game.phase) === 'running', `내려오는 계단 마디의 끝에서 다시 다가온다 (${zAt[26.5].toFixed(2)}배 → ${zAt[27.75].toFixed(2)}배)`);
+    // 라운드 3: 충전 고리와 엇박 길
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(3)')]); await ready();
+    st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length }; });
+    ok(st.round === 2 && st.name.includes('Chasing the Gold Token') && Math.abs(st.bpm - 151.9965) < 0.01 && st.off === 0.0659 && st.cps === 6, `3라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개)`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots3 = { 33.5: 'r3_ring', 50.25: 'r3_ringwave', 73.5: 'r3_lava', 165.5: 'r3_offbeat_in', 172.25: 'r3_offbeat_hold', 181.25: 'r3_offbeat_dj', 186.75: 'r3_offbeat_out', 241.5: 'r3_fever', 303.5: 'r3_squeeze' };
+    let offY = null;
+    for (let beat = 0; beat <= 316; beat += 0.25) {
+      await tick(beat);
+      if (shots3[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots3[beat] + '.png' }); }
+      if (beat === 169.5) offY = await G(() => window.__game.state.y);       // 엇박 길(마디 42) 위에서 엇박(1.5박)에 길을 딛고 있다
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === 5 && st.gems.got === st.gems.total, `3라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(offY !== null && Math.abs(offY - 8) < 0.15, `엇박 길 위에서는 박자와 박자 사이에 길을 딛는다 (엇박 순간의 높이 ${(9 - offY).toFixed(2)}칸)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');

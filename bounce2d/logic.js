@@ -66,6 +66,20 @@ const PATTERNS = {
   lowThenUp: { holds: [[0.875, 1.25], [2.125, 2.625]], presses: [1.375], tol: 0.14 },
   // 이단 점프 → 굴러가다 땅에서 점프 → 공중에서 멈춤
   roller:    { holds: [[2.25, 3.0]], presses: [0.5, 1.75], mF: 0.1 },
+  // ---- 충전 고리(3라운드): 공중에 뜬 고리를 지나면 이단 점프가 다시 찬다. 고리마다 눌러서 땅에 닿지 않고 빨간 바닥을 건넌다.
+  //   rings = [[칸, 높이], ...] (그 칸의 높이~높이+1칸. 같은 칸에 둘을 쌓아 세로로 긴 고리 하나로 쓴다).
+  //   고리에 닿기 조금 전에 눌러도 닿는 순간 뛴다(입력을 1/3박 기억한다). 그래서 누르는 자리를 고리 바로 앞(1/8박 앞)에 둔다:
+  //   조금 일찍 눌러도 고리에서 뛰고, 늦게 눌러도 빨간 바닥에 닿기 전이면 된다(처음엔 고리를 지난 뒤에 누르게 했더니 늦는 쪽 여유가 60ms뿐이었다).
+  ring1:     { holds: [], presses: [0.5, 1.375], tol: 0.18, rings: [[6, 1], [6, 2]], lava: [[2, 8]] },                             // 이단 점프 → 고리에서 한 번 더
+  ringWave:  { holds: [], presses: [0.5, 1.375, 2.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2]], lava: [[2, 12]] },   // 고리 둘: 탁, 탁, 탁으로 물결치듯 건넌다
+  // ---- 엇박 길(3라운드, 시험): 하늘색 길 위에서는 박자와 박자 사이(엇박)에 튄다. 길에 있는 동안 누르는 자리도 반 박 밀려 정박(킥)에 온다.
+  //   road = [[첫 칸, 끝 칸, 높이], ...]. 엇박 길의 마디들은 이어 붙여 쓴다: obIn(들어감) … obOut(나옴). ob: true = 길 한가운데의 마디.
+  obIn:      { holds: [], presses: [], road: [[3, 15, 1]] },                        // 올라타서 잠깐 구르다가 엇박(1.5박)부터 튄다
+  obRun:     { holds: [], presses: [], ob: true, road: [[0, 15, 1]] },              // 그냥 엇박으로 튀며 간다
+  obOut:     { holds: [], presses: [], ob: true, road: [[0, 7, 1]] },               // 길이 끝나면 땅에 내려와 잠깐 구르다가 정박에 다시 튄다
+  obHold:    { holds: [[1.0, 1.875]], presses: [], tol: 0.18, ob: true, road: [[0, 15, 1]] },     // 엇박 길에서 꼭대기(정박)에 멈춰 건너가기
+  obDj:      { holds: [], presses: [1.0], tol: 0.18, ob: true, road: [[0, 15, 1]] },              // 엇박 길에서 꼭대기(정박)에 이단 점프
+  obMix:     { holds: [[1.0, 1.875]], presses: [3.0], tol: 0.18, ob: true, road: [[0, 15, 1]] },  // 멈춤 → 이단 점프
   // ---- 피버 구간(rush). 원버튼(화면 어디든). 공이 바닥과 천장 사이를 비스듬히 튕기고, 누르는 즉시 위아래 방향이 뒤집힌다.
   //   nodes = 반 박 지점 8개(마디 안 0.5박, 1박, …, 4박): F 이 박에 뒤집어야 함 / S 뒤집으면 안 됨 / . 상관없음. F·S는 공이 가운데 높이를 지나는 지점에만 쓴다.
   //   좁은 통로의 마디는 바닥에서 시작해 바닥에서 끝난다(뒤집기는 짝수 번). 넓은 통로의 마디는 천장에서 시작해 천장에서 끝난다(계단으로 올라가서 시작한다).
@@ -171,7 +185,48 @@ const ROUND2 = {
     { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 24, id: "rush" }, { bar: 32, id: "c" }, { bar: 40, id: "b" }, { bar: 56, id: "d" }, { bar: 64, id: "rush" }, { bar: 72, id: "outro" },
   ],
 };
-const COURSES = [ROUND1, ROUND2];
+// 라운드 3: "Chasing the Gold Token". 분당 152박(앞의 두 라운드와 같다), 첫 박 0.066초, 76마디이고 77번째 마디 첫 박에 끝맺는 한 방.
+// 곡의 구간(마디): 0~3 조용한 도입 / 4~7 쌓아 올림 / 8~23 첫 큰 구간 / 24~27 넘어가는 자리(26~27은 킥이 듬성) / 28~39 첫 절정
+//                / 40~46 가라앉음(킥은 계속) / 47 채움 / 48~55 두 번째 큰 구간 / 56~59 조용히 올라감 / 60~71 마지막 절정 / 72~75 끝맺음
+// 새 요소 둘: 충전 고리(첫 큰 구간에서 가르친다)와 엇박 길(가라앉는 구간에서 시험한다).
+const ROUND3 = {
+  name: "ROUND 3 · Chasing the Gold Token",
+  bpm: 151.9965,
+  track: { file: "music/chasing_the_gold_token.mp3", offset: 0.0659 },
+  pal: {                                               // 이 곡의 색: 금빛과 청록
+    intro: { top: "#0a1f1c", bottom: "#14594f", accent: "#ffd84a", sun: "#ffb347" },
+    a:     { top: "#10231a", bottom: "#1f7a4d", accent: "#ffe066", sun: "#ffd166" },
+    b:     { top: "#0b1030", bottom: "#3a2a7a", accent: "#7df9ff", sun: "#c9a0ff" },
+    c:     { top: "#2a1606", bottom: "#a8501a", accent: "#fff1a8", sun: "#ffd84a" },
+    d:     { top: "#1a0a2a", bottom: "#7a1f6e", accent: "#ffd84a", sun: "#ff9a3c" },
+    rush:  { top: "#141006", bottom: "#8a6a10", accent: "#ffffff", sun: "#ffe066" },
+  },
+  bars: [
+    // 도입: 앞에서 배운 것을 한 번씩
+    "flat", "flat", "hA", "dj1",   "mix", "box", "idle", "cp",
+    // 첫 큰 구간: 충전 고리를 가르친다(쉬는 마디를 끼고 하나 → 둘)
+    "ring1", "box", "ring1", "idle",   "ringWave", "stairs", "ringWave", "twin",   "mix", "cp",
+    // 고리를 아는 동작과 섞는다. 26은 킥이 빠지는 자리라 쉰다
+    "lavaHop", "ring1", "box", "skyGlide",   "lavaLeap", "ringWave", "idle", "mix2",   "idle", "cp",
+    // 첫 절정: 피버. 좁은 통로 → 계단으로 넓은 통로 → 다시 좁은 통로
+    "zT", "z1", "z2", "wUp",   "w3", "w4", "w1", "wDn",   "z3", "z6", "z5", "z2",
+    "cp",
+    // 가라앉는 구간: 엇박 길(시험). 올라타서 그냥 가 보고 → 멈춤 → 쉬고 → 이단 점프 → 내려온다
+    "obIn", "obRun", "obHold", "obRun",   "obDj", "obOut", "cp",
+    // 두 번째 큰 구간: 전부 섞는다. 엇박 길이 한 번 더 나온다(쉬는 마디 없이)
+    "ringWave", "lavaGlide", "obIn", "obHold",   "obDj", "obOut", "lavaLeap", "peak",
+    // 조용히 올라감
+    "idle", "ring1", "idle", "cp",
+    // 마지막 절정: 피버. 들어서자마자 넓은 통로. 끝맺는 네 마디는 연출 — 통로가 조여들다 끝맺는 한 방에 터져 나온다
+    "wUp", "w4", "w2", "w1",   "w3", "wDn", "z5", "z4",   "z6", "z2", "z5", "z7",
+    "zT", "zT", "zS1", "zS2",
+    "goal", "flat", "flat",
+  ],
+  sections: [
+    { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 18, id: "d" }, { bar: 28, id: "rush" }, { bar: 40, id: "b" }, { bar: 48, id: "c" }, { bar: 56, id: "intro" }, { bar: 60, id: "rush" }, { bar: 76, id: "outro" },
+  ],
+};
+const COURSES = [ROUND1, ROUND2, ROUND3];
 const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
@@ -275,6 +330,8 @@ function emptyLevel(course) {
       }
     }
     if (p && p.boxes) for (const [a, z, hh] of p.boxes) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "#";
+    if (p && p.road) for (const [a, z, hh] of p.road) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "B";
+    if (p && p.rings) for (const [c, hh] of p.rings) grid[ROWS - 2 - hh][x0 + c] = "O";
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
     else if (name === "goal") goalX = b * 16 + 8;
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
@@ -369,7 +426,9 @@ function buildLevel(course) {
       const k = env[c];
       if (k.lo > 90) continue;
       const fh = Math.min(HAZ_MAX_H, Math.floor((k.lo - mF) * 4) / 4);
-      if (!k.ground && fh >= 0.5 && !isSolid(L, c, ROWS - 2)) L.floorH[c] = fh;      // 파란 박스가 있는 칸에는 빨간 덩어리를 세우지 않는다
+      // 파란 박스가 있는 칸에는 빨간 덩어리를 세우지 않는다. 엇박 길 위에는 세운다(길 위로 반 칸 넘게 솟을 때만).
+      let bh = 0; while (isSolid(L, c, ROWS - 2 - bh)) bh++;
+      if (!k.ground && fh >= 0.5 && (bh === 0 || (tile(L, c, ROWS - 2) === "B" && fh >= bh + 0.5))) L.floorH[c] = fh;
       const ch = Math.ceil((k.hi + SIZE + mC) * 4) / 4;
       if (ch <= CEIL_MAX_H) L.ceilH[c] = ch;
     }
@@ -532,7 +591,7 @@ function rushStep(L, s, press, ev, hold, r) {
 }
 
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);
-const isSolid = (L, c, r) => tile(L, c, r) === "#";
+const isSolid = (L, c, r) => { const t = tile(L, c, r); return t === "#" || t === "B"; };   // B = 엇박 길(그 위에서는 엇박에 튄다)
 
 function sawY(w, beat) {
   const low = w.r + 0.5;
@@ -561,17 +620,20 @@ function spawnState(L, cp = -1) {
 }
 
 // 땅에서 뛰어오른다. kind: "bounce"(박자에 맞춰 저절로) | "jump"(눌러서) | "pad"(점프대)
-function launch(s, kind, ev) {
+function launch(s, kind, ev, late = 0) {
   // 저절로 튈 때 박자보다 조금 늦었으면 그만큼 낮게 튀어 다음 박자에 맞춰 착지한다(계단을 내려갈 때 박자가 밀리지 않게)
-  s.vy = kind === "pad" ? -V_PAD : kind === "jump" ? -V0 : -G * (1 - (s.step % SUB) / SUB) / 2;
+  s.vy = kind === "pad" ? -V_PAD : kind === "jump" ? -V0 : -G * (1 - late / SUB) / 2;
   s.onGround = false; s.djAvail = true; s.jbuf = 0; s.freeze = FREEZE_STEPS;
   if (ev) ev.push({ type: kind });
 }
 
 // 박자에 맞춰 땅에 있으면 저절로 튄다
+// 엇박 길(B) 위에서는 박자와 박자 사이(반 박 지점)에 튄다. 그 위에 있는 동안은 계속 엇박이고, 땅에 내려오면 다시 정박으로 돌아온다.
+const onOffbeat = (L, s) => { const c0 = Math.floor(s.x - HALF + 0.03), c1 = Math.floor(s.x + HALF - 0.03); for (let c = c0; c <= c1; c++) if (tile(L, c, s.y) === "B") return true; return false; };
 function tryBounce(L, s, ev) {
-  if (s.step % SUB > BOUNCE_TOL) return;
-  launch(s, tile(L, Math.floor(s.x), s.y - 1) === "J" ? "pad" : "bounce", ev);
+  const late = (s.step + (onOffbeat(L, s) ? SUB / 2 : 0)) % SUB;
+  if (late > BOUNCE_TOL) return;
+  launch(s, tile(L, Math.floor(s.x), s.y - 1) === "J" ? "pad" : "bounce", ev, late);
 }
 
 function die(s, cause, ev) { s.dead = true; s.cause = cause; s.frozen = false; if (ev) ev.push({ type: "die", cause }); }
@@ -642,7 +704,7 @@ function stepState(L, s, press, ev, hold) {
   for (let r = r0; r <= r1 && !s.dead; r++) for (let c = c0; c <= c1 && !s.dead; c++) {
     const t = tile(L, c, r);
     if (t === ".") continue;
-    if (t === "#") {
+    if (t === "#" || t === "B") {
       let rt = r;
       while (isSolid(L, c, rt - 1)) rt--;                 // 그 블록 기둥의 꼭대기
       {                                                  // 파란 박스의 옆면: 죽지 않고 저절로 올라탄다(박스는 한 칸씩만 높아지게 놓는다)
