@@ -59,5 +59,23 @@ console.log('== 까다로운 곡 ==');
   const r = analyzeTrack(new Float32Array(44100 * 10), 44100);
   ok(!r.ok, `소리가 없는 파일은 거절한다 (${r.reason})`);
 }
+console.log('== 실제 곡 (ffmpeg가 있을 때만) ==');
+{
+  // 코스에 실린 곡: 귀로 들으면 분당 152박(킥이 매 박). 게임은 두 박에 한 번 튀므로 76.
+  const { execFileSync } = require('child_process'), path = require('path');
+  let pcm = null;
+  try { pcm = execFileSync('ffmpeg', ['-v', 'error', '-i', path.join(__dirname, '..', 'music', 'octane_horizon.mp3'), '-ac', '1', '-ar', '44100', '-f', 'f32le', '-'], { maxBuffer: 64 * 1024 * 1024 }); } catch (e) { /* ffmpeg 없음 */ }
+  if (!pcm) console.log('  (건너뜀: ffmpeg를 찾지 못했어요)');
+  else {
+    const x = new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4);
+    const r = analyzeTrack(x, 44100, { hintBpm: 96 });
+    const Lg = require('../logic.js');
+    ok(r.ok && Math.abs(r.musicBpm - 152.03) < 0.06 && r.beatsPerBounce === 2 && Math.abs(r.bpm - Lg.COURSE.bpm) < 0.03, `Octane Horizon: 곡 ${r.musicBpm.toFixed(2)} BPM → 게임 ${r.bpm.toFixed(2)} BPM (코스에 적힌 값 ${Lg.COURSE.bpm.toFixed(3)})`);
+    ok(Math.abs(r.offset - Lg.COURSE.track.offset) < 0.01 && r.coverage > 0.85, `첫 박 ${r.offset.toFixed(3)}초 (코스에 적힌 값 ${Lg.COURSE.track.offset}초), 킥 잡힌 박 ${(r.coverage * 100).toFixed(0)}%`);
+    ok(r.wobbleMs < 35, `템포 흔들림 ±${r.wobbleMs.toFixed(0)}ms → 박자가 일정한 곡`);
+    const bars = (r.duration - r.offset) / r.period / 4;
+    ok(Math.abs(bars - 33.5) < 0.3 && Lg.COURSE.bars.length === 34, `곡 길이 ${bars.toFixed(1)}마디 / 코스 ${Lg.COURSE.bars.length}마디(끝맺는 한 방이 33번째 마디 첫 박)`);
+  }
+}
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);

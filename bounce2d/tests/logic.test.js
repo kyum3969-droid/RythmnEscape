@@ -103,7 +103,7 @@ console.log('== 장애물 판정 ==');
   ok(!run(lv, null).s.dead, '매달린 덩어리: 그 밑으로 지나가면 산다');
 }
 
-console.log('== 피버 구간 (원버튼, 두 가지 방식) ==');
+console.log('== 피버 구간 (원버튼) ==');
 {
   const H = (st) => 9 - st.y, B = 96, SL = Lg.SLOT;
   const mk = (...bars) => Lg.buildLevel({ name: 't', bpm: 96, bars: ['flat', ...bars, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
@@ -121,32 +121,11 @@ console.log('== 피버 구간 (원버튼, 두 가지 방식) ==');
   };
   const g0 = 4 * B;                                        // 피버가 시작되는 스텝(마디 1)
 
-  // ---- 방식 1: 크게 / 낮게 튀기
-  let lv = mk('hE', 'hE');
-  let r = play(lv, []);
-  const hops = r.ev.filter(e => e.type === 'hop' && !e.late);
-  ok(!r.s.dead && hops.length === 16 && hops.every((e, i) => e.step === g0 + i * SL && !e.high), '방식 1: 반 박마다 튄다(두 배 빠르게). 안 누르면 낮게');
-  ok(Math.abs(r.at[g0 + SL / 2] - Lg.HOP_LO) < 0.01 && r.at[g0 + SL] < 1e-9, `낮게 튀면 꼭대기 ${r.at[g0 + SL / 2].toFixed(2)}칸, 반 박 만에 내려온다`);
-  r = play(lv, [[g0 + 2 * SL - 10, g0 + 2 * SL + 20]]);
-  ok(Math.abs(r.at[g0 + 2.5 * SL] - Lg.HOP_HI) < 0.01 && r.at[g0 + 3 * SL] < 1e-9 && Math.abs(r.at[g0 + 3.5 * SL] - Lg.HOP_LO) < 0.01, `튀는 순간 누르고 있으면 크게(꼭대기 ${r.at[g0 + 2.5 * SL].toFixed(2)}칸). 똑같이 반 박 만에 내려오고, 떼면 다음은 다시 낮게`);
-  r = play(lv, [[g0 + 2 * SL + 6, g0 + 2 * SL + 30]]);
-  const lateHi = Math.abs(r.at[g0 + 2.5 * SL] - Lg.HOP_HI) < 0.01;
-  r = play(lv, [[g0 + 2 * SL + 12, g0 + 2 * SL + 30]]);
-  ok(lateHi && Math.abs(r.at[g0 + 2.5 * SL] - Lg.HOP_LO) < 0.01, '튄 직후 8스텝(약 50ms)까지는 늦게 눌러도 크게 튄다. 그 뒤에 누르면 이번엔 낮게');
-  lv = mk('hE', 'h3');                                     // HHLLHHLL
-  r = play(lv, []);
-  ok(r.s.dead && r.s.cause === 'spike' && r.s.x > 32 && r.s.x < 34, '크게 튀어야 하는 칸에서 낮게 튀면 바닥의 빨간 덩어리에 걸린다');
-  r = play(lv, [[g0, lv.cols * 30]]);
-  ok(r.s.dead && r.s.x > 36 && r.s.x < 38, '낮게 튀어야 하는 칸에서 크게 튀면 매달린 빨간 덩어리에 걸린다(계속 누르고만 있을 수는 없다)');
-  const hopRef = (lvl) => lvl.ref.holds.map(h => [h[0], h[1]]);
-  r = play(lv, hopRef(lv));
-  ok(!r.s.dead, '패턴대로(H에서 누르고 L에서 떼고) 지나간다');
-
   // ---- 방식 2: 바닥과 천장 사이 튕기기
-  lv = mk('zE', 'zE');
-  r = play(lv, []);
+  let lv = mk('zE', 'zE');
+  let r = play(lv, []);
   const lev = [0, 1, 2, 1, 0, 1, 2, 1, 0].map(k => k * Lg.ZIG_STEP), ZM = 2 * Lg.ZIG_STEP;
-  ok(!r.s.dead && lev.every((h, k) => Math.abs(r.at[g0 + k * SL] - h) < 1e-6) && r.n('rebound') === 7, `방식 2: 안 누르면 바닥(0)과 천장(공 바닥 ${lev[2].toFixed(1)}칸) 사이를 한 박에 한 번씩 튕긴다`);
+  ok(!r.s.dead && lev.every((h, k) => Math.abs(r.at[g0 + k * SL] - h) < 1e-6) && r.n('rebound') === 7, `안 누르면 바닥(0)과 천장(공 바닥 ${lev[2].toFixed(1)}칸) 사이를 한 박에 한 번씩 튕긴다`);
   r = play(lv, [[g0 + SL, g0 + SL + 6]]);                  // 가운데 높이를 지나는 박(0.5박)에 딱 맞춰 누름
   const fl = r.ev.find(e => e.type === 'flip');
   ok(fl.step === g0 + SL && r.at[g0 + SL + 5] < r.at[g0 + SL] && r.at[g0 + 2 * SL] < 1e-6, '누르는 즉시 뒤집힌다(지연 없음). 박에 맞춰 누르면 반 박 뒤에 바닥에 닿는다');
@@ -170,19 +149,19 @@ console.log('== 피버 구간 (원버튼, 두 가지 방식) ==');
   r = play(lv, [...lv.ref.presses.map(p => [p, p + 6]), [8 * B + 1.5 * B, 8 * B + 1.5 * B + 6]]);
   ok(r.s.dead, '뒤집으면 안 되는 곳(S)에서 뒤집어도 걸린다');
 
-  // ---- 두 방식의 코스
-  for (const kind of ['hop', 'zig']) {
-    const course = Lg.buildLevel(Lg.courseFor(kind)), ride = course.rides[0];
+  // ---- 코스의 피버 구간
+  {
+    const course = Lg.buildLevel(Lg.COURSE), ride = course.rides[0], cpBefore = course.cps.findIndex(c => c.col > ride[0]) - 1;
     const full = run(course, course.ref);
-    ok(full.s.won && course.rides.length === 1 && ride[2] === kind, `[${kind}] 코스 전체를 패턴대로 완주 (피버 구간: 빨간 덩어리 ${course.reds.length}개, 수정 ${course.gems.length}개)`);
-    ok(!!Lg.solve(course, Lg.spawnState(course, 2), { grid: 12 }).plan, `[${kind}] 체크포인트 3(피버 바로 앞)에서 자동 풀이로 완주`);
+    ok(full.s.won && course.rides.length === 1, `코스 전체를 패턴대로 완주 (피버 구간: 마디 ${ride[0] / 16}~${ride[1] / 16 - 1}, 구멍 뚫린 벽 ${course.reds.length}개, 수정 ${course.gems.length}개)`);
+    ok(!!Lg.solve(course, Lg.spawnState(course, cpBefore), { grid: 12 }).plan, `체크포인트 ${cpBefore + 1}(피버 바로 앞)에서 자동 풀이로 완주`);
     let pass = 0;                                          // 생각 없이 누르는 것으로는 못 지나간다
     const tries = [[], [[0, 1e9]]];
     for (const period of [12, 16, 24, 32, 48, 64, 96, 192]) for (const duty of [0.2, 0.5]) { const d = []; for (let st = ride[0] / 4 * B; st < ride[1] / 4 * B; st += period) d.push([st, st + Math.max(2, Math.round(period * duty))]); tries.push(d); }
-    for (const d of tries) if (!play(course, d, 2, ride[1] + 4).s.dead) pass++;
-    ok(pass === 0, `[${kind}] 안 누르기, 계속 누르기, 일정한 빠르기로 누르기(16가지)로는 피버 구간을 못 지난다`);
+    for (const d of tries) if (!play(course, d, cpBefore, ride[1] + 4).s.dead) pass++;
+    ok(pass === 0, '안 누르기, 계속 누르기, 일정한 빠르기로 누르기(16가지)로는 피버 구간을 못 지난다');
     const exit = full.ev.find(e => e.type === 'mode' && e.mode === 'bounce'), after = full.ev.find(e => e.type === 'bounce' && e.step >= exit.step);
-    ok(exit.step === ride[1] / 4 * B && after.step - exit.step <= 1, `[${kind}] 바닥에 닿은 채로 나와서 그 박에 바로 다시 튄다`);
+    ok(exit.step === ride[1] / 4 * B && after.step - exit.step <= 1, '바닥에 닿은 채로 나와서 그 박에 바로 다시 튄다');
   }
 }
 

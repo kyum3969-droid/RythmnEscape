@@ -7,7 +7,7 @@ const Lg = require('../logic.js');
 function measure(name, bpm = 96) {
   // 피버 패턴은 구간 한가운데에 있을 때를 잰다(앞뒤에 빈 피버 마디)
   const rush = Lg.PATTERNS[name].mode === 'rush';
-  const lead = Lg.PATTERNS[name].kind === 'zig' ? 'zE' : 'hE';
+  const lead = 'zE';
   const lv = Lg.buildLevel({ name, bpm, bars: rush ? ['flat', lead, name, lead, 'flat', 'goal'] : ['flat', name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
   const ms = 60000 / bpm / Lg.SUB;
   const acts = [];

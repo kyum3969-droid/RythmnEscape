@@ -143,9 +143,6 @@
       <div class="stat" id="ovStat"></div>
       <div class="buttons" id="ovButtons"></div>
       <div id="opts">
-        <button class="btn small" id="feverBtn"></button>
-        <button class="btn small" id="speedBtn"></button>
-        <small id="speedNote">누를 때마다 바뀌고, 다음에 달리기 시작할 때 적용돼요.</small>
         <button class="btn small" id="trackBtn">곡 넣기</button>
         <input type="file" id="trackFile" accept="audio/*" hidden>
         <div id="trackInfo">곡 파일을 넣으면 템포와 첫 박을 재서 그 곡에 맞춰 달려요.</div>
@@ -177,13 +174,7 @@
     get(k, d) { try { const v = localStorage.getItem("pulsebounce." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem("pulsebounce." + k, JSON.stringify(v)); } catch (e) { /* 저장 불가 */ } },
   };
-  // 피버 방식: 두 가지를 만들어 비교 중. 바꾸면 코스를 다시 만들어야 해서 화면을 새로 연다.
-  const FEVERS = { hop: "1 · 크게 / 낮게 튀기", zig: "2 · 바닥과 천장 사이 튕기기" };
-  const feverKind = FEVERS[store.get("fever", "zig")] ? store.get("fever", "zig") : "zig";
-  const COURSE = courseFor(feverKind);
   const L = buildLevel(COURSE);
-  // 속도: 물리는 박자 단위라 코스는 그대로이고, 템포만 바뀐다(공·스크롤·음악이 함께 느려지거나 빨라진다)
-  const SPEEDS = [{ name: "느림", bpm: 80 }, { name: "보통", bpm: 96 }, { name: "빠름", bpm: 112 }, { name: "아주 빠름", bpm: 128 }];
   let SPB = 60 / L.bpm;
   const TOTAL_BEATS = L.cols / TPB;
 
@@ -346,8 +337,6 @@
     const t = A.ctx.currentTime + 0.005, m = A.master;
     if (kind === "jump") osc(m, t, "triangle", 520, 0.07, 0.07, { slide: 780 });
     else if (kind === "gem") osc(m, t, "triangle", 523.25 * Math.pow(2, [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24][Math.min(10, fx.chain >> 1)] / 12), 0.09, 0.08);   // 수정을 뚫을 때: 이어질수록 음이 올라간다
-    else if (kind === "hopLo") osc(m, t, "sine", 150, 0.1, 0.4, { slide: 60 });
-    else if (kind === "hopHi") { osc(m, t, "sine", 190, 0.14, 0.5, { slide: 55 }); osc(m, t, "triangle", 392, 0.12, 0.09, { slide: 784 }); }
     else if (kind === "flip") { osc(m, t, "triangle", 880, 0.08, 0.1, { slide: 440 }); noise(m, t, 0.05, 0.08, "highpass", 5000); }
     else if (kind === "rebound") osc(m, t, "sine", 170, 0.1, 0.42, { slide: 60 });
     else if (kind === "double") { osc(m, t, "triangle", 660, 0.1, 0.1, { slide: 1320 }); noise(m, t, 0.07, 0.1, "highpass", 4000); }
@@ -423,6 +412,7 @@
   const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9 };
 
   function begin(cp) {
+    if (songLoading && !fake.on) { ensureAudio(); pendingStart = cp; $("ovStat").textContent = "곡을 불러오는 중…"; return; }   // 누른 순간에 소리 권한은 받아 두고, 곡이 준비되면 시작
     applySpeed();
     state = spawnState(L, cp);
     broken.clear(); usedRings.clear();
@@ -438,17 +428,15 @@
   }
   function startFresh() { tries = 1; devRun = false; begin(-1); }
   function devJump(cp) { if (!dev) return; tries = 1; devRun = cp >= 0; begin(cp); }
-  let speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, store.get("speed", 1)));
-  function applySpeed() { L.bpm = track ? track.bpm : SPEEDS[speedIdx].bpm; SPB = 60 / L.bpm; }
-  function renderSpeed() {
-    const sp = SPEEDS[speedIdx];
-    $("speedBtn").disabled = !!track; $("speedNote").hidden = !!track;
-    $("speedBtn").textContent = track ? `속도: 곡 템포 ${track.bpm.toFixed(1)} BPM · 한 번 튀는 데 ${(60 / track.bpm).toFixed(2)}초` : `속도: ${sp.name} · 한 번 튀는 데 ${(60 / sp.bpm).toFixed(2)}초`;
-  }
+  // 템포는 곡이 정한다(코스가 곡에 맞춰 짜여 있다). 다른 곡을 넣으면 그 곡의 템포로 달린다.
+  function applySpeed() { L.bpm = track ? track.bpm : COURSE.bpm; SPB = 60 / L.bpm; }
+  const renderSpeed = () => {};
 
   // ---------------------------------------------------------------- 넣은 곡 (Gemini 등으로 만든 파일). 템포와 첫 박은 track.js가 잰다.
   // shift = 첫 박을 몇 박 뒤로 볼지, nudge = 소리를 몇 ms 늦출지(기기·이어폰 지연 보정)
-  let track = null;
+  let track = null;               // 지금 틀 곡(기본 곡 또는 직접 넣은 곡)
+  let bundled = null;             // 코스와 함께 실린 기본 곡. 직접 넣은 곡을 빼면 이리로 돌아온다
+  let songLoading = !!L.track, pendingStart = null;
   const trackZero = () => track.offset + track.shift * track.period - track.nudge / 1000;   // 게임의 0박에 해당하는 곡 속 시각(초)
   const idb = (mode, fn) => new Promise((res) => {
     try {
@@ -462,7 +450,7 @@
     const mono = new Float32Array(buffer.length);
     for (let ch = 0; ch < buffer.numberOfChannels; ch++) { const d = buffer.getChannelData(ch); for (let i = 0; i < d.length; i++) mono[i] += d[i] / buffer.numberOfChannels; }
     const r = analyzeTrack(mono, buffer.sampleRate, { hintBpm: 96 });
-    track = r.ok ? { name, buffer, ...r, shift: (adj && adj.shift) || 0, nudge: (adj && adj.nudge) || 0 } : null;
+    track = r.ok ? { name, buffer, ...r, shift: (adj && adj.shift) || 0, nudge: (adj && adj.nudge) || 0 } : bundled;
     applySpeed(); renderSpeed(); renderTrack(r.ok ? "" : `${name}: ${r.reason}`);
     return r;
   }
@@ -472,17 +460,34 @@
       const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext, ctx = new OAC(2, 1, 44100);
       const buffer = await new Promise((res, rej) => { const pr = ctx.decodeAudioData(data.slice(0), res, rej); if (pr && pr.catch) pr.catch(rej); });
       return setTrackBuffer(buffer, name, adj);
-    } catch (e) { track = null; applySpeed(); renderSpeed(); renderTrack(`${name}: 이 파일은 읽을 수 없어요(mp3, wav, m4a를 넣어 주세요).`); return { ok: false }; }
+    } catch (e) { track = bundled; applySpeed(); renderSpeed(); renderTrack(`${name}: 이 파일은 읽을 수 없어요(mp3, wav, m4a를 넣어 주세요).`); return { ok: false }; }
+  }
+  // 기본 곡: 템포와 첫 박은 미리 재서 코스에 적어 둔 값을 쓴다(분석하지 않는다)
+  async function loadBundled() {
+    try {
+      const data = await (await fetch(L.track.file)).arrayBuffer();
+      const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext, ctx = new OAC(2, 1, 44100);
+      const buffer = await new Promise((res, rej) => { const pr = ctx.decodeAudioData(data, res, rej); if (pr && pr.catch) pr.catch(rej); });
+      bundled = { name: COURSE.name, buffer, bpm: COURSE.bpm, period: 60 / COURSE.bpm, offset: L.track.offset, duration: buffer.duration, shift: 0, nudge: store.get("nudge", 0), wobbleMs: 0, coverage: 1, bundled: true };
+      if (!track) track = bundled;
+      applySpeed(); renderTrack();
+    } catch (e) { renderTrack("기본 곡을 불러오지 못했어요. 임시 음악으로 대신합니다."); }
+    songLoading = false;
+    if (pendingStart !== null) { const cp = pendingStart; pendingStart = null; if (phase === "title" || phase === "paused") begin(cp); }
   }
   function renderTrack(msg) {
     $("trackAdj").hidden = !track;
-    $("trackBtn").textContent = track ? "다른 곡 넣기" : "곡 넣기";
-    if (msg || !track) { $("trackInfo").textContent = msg || "곡 파일을 넣으면 템포와 첫 박을 재서 그 곡에 맞춰 달려요."; return; }
+    const user = !!track && !track.bundled;
+    for (const b of $("trackAdj").querySelectorAll("button")) b.hidden = !user && b.dataset.adj !== "nudge";   // 기본 곡은 소리 지연 보정만
+    $("trackBtn").textContent = user ? "다른 곡 넣기" : "다른 곡 넣어 보기";
+    if (msg || !track) { $("trackInfo").textContent = msg || (songLoading ? "곡을 불러오는 중…" : "임시 음악으로 달려요."); return; }
     const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+    const nudge = track.nudge ? ` · 소리 ${track.nudge > 0 ? "+" : ""}${track.nudge}ms` : "";
+    if (!user) { $("trackInfo").textContent = `♪ ${track.name} · ${mmss(track.duration)} · 한 번 튀는 데 ${track.period.toFixed(2)}초${nudge}\n공이 땅에 닿는 순간과 킥이 어긋나 들리면 아래 버튼으로 맞추세요(다음에 달릴 때 적용).`; return; }
     const bars = (track.duration - trackZero()) / track.period / 4;
-    const w = track.wobbleMs, wob = w < 12 ? "좋음" : w < 25 ? "조금 흔들림" : "많이 흔들림 — 뒤로 갈수록 박이 어긋날 수 있어요";
-    $("trackInfo").textContent = `${track.name} · ${mmss(track.duration)}\n템포 ${track.bpm.toFixed(2)} BPM · 첫 박 ${trackZero().toFixed(2)}초${track.nudge ? ` (소리 ${track.nudge > 0 ? "+" : ""}${track.nudge}ms)` : ""}\n`
-      + `템포 흔들림 ±${w.toFixed(0)}ms (${wob})${track.coverage < 0.6 ? " · 킥이 잘 안 잡혀요" : ""}\n곡 ${bars.toFixed(1)}마디 / 코스 ${L.bars}마디 · 바꾼 값은 다음에 달릴 때 적용`;
+    const w = track.wobbleMs, wob = w < 35 ? "좋음" : w < 60 ? "조금 흔들림" : "많이 흔들림 — 뒤로 갈수록 박이 어긋날 수 있어요";
+    $("trackInfo").textContent = `${track.name} · ${mmss(track.duration)}\n템포 ${track.bpm.toFixed(2)} BPM${track.beatsPerBounce === 2 ? ` (곡은 ${track.musicBpm.toFixed(1)}, 두 박에 한 번 튐)` : ""} · 첫 박 ${trackZero().toFixed(2)}초${nudge}\n`
+      + `템포 흔들림 ±${w.toFixed(0)}ms (${wob})${track.coverage < 0.6 ? " · 킥이 잘 안 잡혀요" : ""}\n곡 ${bars.toFixed(1)}마디 / 코스 ${L.bars}마디 · 코스는 기본 곡에 맞춰 짜여 있어요`;
   }
   $("trackBtn").addEventListener("click", () => $("trackFile").click());
   $("trackFile").addEventListener("change", async (e) => {
@@ -496,12 +501,14 @@
   $("trackAdj").addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b || !track) return;
-    if (b.dataset.adj === "remove") { track = null; idb("readwrite", (st) => st.delete("track")); applySpeed(); renderSpeed(); renderTrack(); return; }
+    if (b.dataset.adj === "remove") { track = bundled; idb("readwrite", (st) => st.delete("track")); applySpeed(); renderSpeed(); renderTrack(); return; }
     track[b.dataset.adj] += +b.dataset.d;
+    if (track.bundled) { store.set("nudge", track.nudge); renderTrack(); return; }
     store.set("trackAdj", { shift: track.shift, nudge: track.nudge });
     renderTrack();
   });
-  idb("readonly", (st) => st.get("track")).then((saved) => { if (saved && saved.data && !track) loadTrackFile(saved.data, saved.name, store.get("trackAdj", null)); });
+  idb("readonly", (st) => st.get("track")).then((saved) => { if (saved && saved.data) loadTrackFile(saved.data, saved.name, store.get("trackAdj", null)); });
+  if (L.track) loadBundled();
   function renderDev() {
     $("devToggle").textContent = "개발자 모드: " + (dev ? "켜짐" : "꺼짐");
     $("devTag").hidden = !dev;
@@ -551,7 +558,6 @@
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
       else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "FEVER" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; fx.chain = 0;
         if (e.mode !== "rush") { holdPointers.clear(); keyHold = false; setZones(); } }   // 피버가 끝나면 누르고 있던 손은 뗀 것으로 본다
-      else if (e.type === "hop") { if (!e.late) { fx.jumpAt = now; sfx(e.high ? "hopHi" : "hopLo"); puff(state.x, ROWS - 1, e.high ? 7 : 3, e.high ? 1 : 0.5); } }
       else if (e.type === "flip") { sfx("flip"); ring(state.x, state.y); }
       else if (e.type === "rebound") { sfx("rebound"); fx.jumpAt = now; puff(state.x, e.top ? ROWS - 1 - ZIG_TOP : ROWS - 1, 6, 0.8); }
       else if (e.type === "break") {
@@ -993,7 +999,7 @@
     // 플레이어: 빛나는 구슬 + 꼬리
     if (phase !== "dead") {
       const cx = sx(camX + state.lead), cy = sy(state.y) - HALF * T;
-      const zig = state.mode === "rush" && feverKind === "zig";
+      const zig = state.mode === "rush";
       const dashing = state.dashing > 0 || zig;
       if (fx.tail.length > 1) {
         ctx.lineCap = "round";
@@ -1063,8 +1069,8 @@
   }
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
-    glideLow: "왼쪽 누르고 있기 = 공중에서 멈춤", glideHigh: "꼭대기에서 멈춰서 건너가기", peak: "오른쪽 누르기 = 공중에서 한 번 더 점프!",
-    h1: "피버! 누르고 있으면 크게, 떼면 낮게 튀어요 (화면 어디든)", z1: "피버! 누르면 위아래 방향이 바뀌어요 (화면 어디든)",
+    glideLow: "왼쪽 누르고 있기 = 공중에서 멈춤", glideHigh: "꼭대기(킥 소리)에서 멈춰서 건너가기", peak: "오른쪽 누르기 = 공중에서 한 번 더 점프!",
+    z1: "피버! 화면 어디든 누르면 위아래 방향이 바뀌어요", z2: "킥에 맞춰 누르기 · 벽의 구멍으로",
     weave: "멈춤 → 이단 점프 → 멈춤", skyGlide: "이단 점프 꼭대기에서 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];
@@ -1147,8 +1153,8 @@
   function setModeLabel() {
     const rush = state.mode === "rush";
     $("app").classList.toggle("one", rush);        // 피버 모드는 원버튼: 화면 어디든
-    $("zoneL").querySelector("span").textContent = !rush ? "누르고 있기 = 멈춤" : feverKind === "hop" ? "어디든 누르고 있으면 = 크게 튄다" : "어디든 누르면 = 위아래 방향이 바뀐다";
-    $("zoneR").querySelector("span").textContent = !rush ? "누르기 = 점프 · 공중에선 이단 점프" : feverKind === "hop" ? "떼고 있으면 = 낮게 튄다" : "누르는 즉시 바뀐다";
+    $("zoneL").querySelector("span").textContent = rush ? "어디든 누르면 = 위아래 방향이 바뀐다" : "누르고 있기 = 멈춤";
+    $("zoneR").querySelector("span").textContent = rush ? "누르는 즉시 바뀐다" : "누르기 = 점프 · 공중에선 이단 점프";
   }
   const oneButton = () => phase === "running" && state.mode === "rush";
   canvas.addEventListener("pointerdown", (e) => {
@@ -1186,9 +1192,6 @@
   window.addEventListener("blur", () => { keyHold = false; holdPointers.clear(); setZones(); });
   $("pauseBtn").addEventListener("click", pause);
   $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); renderDev(); });
-  $("speedBtn").addEventListener("click", () => { speedIdx = (speedIdx + 1) % SPEEDS.length; store.set("speed", speedIdx); renderSpeed(); });
-  $("feverBtn").textContent = "피버 방식: " + FEVERS[feverKind];
-  $("feverBtn").addEventListener("click", () => { store.set("fever", feverKind === "hop" ? "zig" : "hop"); location.reload(); });
   applySpeed(); renderSpeed();
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   new ResizeObserver(resize).observe(canvas);
@@ -1202,7 +1205,7 @@
       scheduleAudio();
       advanceTo(Math.floor(songBeat() * SUB));
       if (phase === "running") {
-        const zig = state.mode === "rush" && feverKind === "zig";
+        const zig = state.mode === "rush";
         fx.tail.push({ x: state.x, y: state.y - HALF, d: state.dashing > 0 || zig });
         while (fx.tail.length > (zig ? 22 + Math.min(14, fx.chain >> 1) : 16)) fx.tail.shift();
         refreshHud();
@@ -1221,7 +1224,7 @@
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
     press, startFresh, respawn, pause, view, devJump, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
-    get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, feverKind,
+    get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; },
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },
     loadTrackPCM(samples, sr, name) { const b = new AudioBuffer({ length: samples.length, sampleRate: sr, numberOfChannels: 1 }); b.copyToChannel(samples, 0); return setTrackBuffer(b, name, null).ok; },
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },
