@@ -91,6 +91,9 @@
   .panel .stat { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .panel .buttons { display: flex; flex-direction: column; gap: 10px; }
   #dev { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+  #opts { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  #opts .btn.small { color: var(--text); }
+  #opts small { color: var(--muted); font-size: 12px; }
   #devJumps { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
   .btn.small { font-size: 13px; font-weight: 500; padding: 8px 10px; color: var(--muted); }
   #devJumps .btn.small { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -102,7 +105,8 @@
     .panel .sub { font-size: 14px; line-height: 1.35; }
     .panel .buttons { flex-direction: row; }
     .panel .buttons .btn { flex: 1; padding: 9px 12px; }
-    #dev { padding-top: 8px; }
+    #dev, #opts { padding-top: 8px; }
+    #opts small { display: none; }
     #devJumps { grid-template-columns: repeat(5, 1fr); gap: 6px; }
   }
   @media (prefers-reduced-motion: reduce) { #toast.show { animation-duration: 0.01s; } }
@@ -133,6 +137,10 @@
       <div class="sub" id="ovSub"></div>
       <div class="stat" id="ovStat"></div>
       <div class="buttons" id="ovButtons"></div>
+      <div id="opts">
+        <button class="btn small" id="speedBtn"></button>
+        <small>누를 때마다 바뀌고, 다음에 달리기 시작할 때 적용돼요.</small>
+      </div>
       <div id="dev">
         <button class="btn small" id="devToggle">개발자 모드: 꺼짐</button>
         <div id="devJumps" hidden></div>
@@ -148,7 +156,9 @@
   "use strict";
   const $ = (id) => document.getElementById(id);
   const L = buildLevel(COURSE);
-  const SPB = 60 / L.bpm;
+  // 속도: 물리는 박자 단위라 코스는 그대로이고, 템포만 바뀐다(공·스크롤·음악이 함께 느려지거나 빨라진다)
+  const SPEEDS = [{ name: "느림", bpm: 80 }, { name: "보통", bpm: 96 }, { name: "빠름", bpm: 112 }, { name: "아주 빠름", bpm: 128 }];
+  let SPB = 60 / L.bpm;
   const TOTAL_BEATS = L.cols / TPB;
 
   // ---------------------------------------------------------------- 저장 (이 브라우저 전용)
@@ -375,6 +385,7 @@
   const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0 };
 
   function begin(cp) {
+    applySpeed();
     state = spawnState(L, cp);
     broken.clear(); usedRings.clear();
     fx.tail.length = 0; fx.particles.length = 0;
@@ -386,6 +397,12 @@
   }
   function startFresh() { tries = 1; devRun = false; begin(-1); }
   function devJump(cp) { if (!dev) return; tries = 1; devRun = cp >= 0; begin(cp); }
+  let speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, store.get("speed", 1)));
+  function applySpeed() { L.bpm = SPEEDS[speedIdx].bpm; SPB = 60 / L.bpm; }
+  function renderSpeed() {
+    const sp = SPEEDS[speedIdx];
+    $("speedBtn").textContent = `속도: ${sp.name} · 한 번 튀는 데 ${(60 / sp.bpm).toFixed(2)}초`;
+  }
   function renderDev() {
     $("devToggle").textContent = "개발자 모드: " + (dev ? "켜짐" : "꺼짐");
     $("devTag").hidden = !dev;
@@ -777,7 +794,7 @@
   }
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
-    fz1: "왼쪽 누르고 있기 = 공중에서 멈춤", fz2: "넓은 가시밭은 꼭대기에서 오래 멈추기", sawgate: "톱날 밑에서는 멈추지 말기",
+    fz1: "왼쪽 누르고 있기 = 공중에서 멈춤", over: "이런 가시는 그냥 넘어가요", fz2: "넓은 가시밭은 꼭대기에서 길게 멈추기",
     wall1: "오른쪽 누르기 = 대시! 벽 깨기", wallfield: "대시한 뒤 바로 멈춰서 넘기", ringchain: "고리를 지나면 대시 충전!", long: "멈춤 + 대시 둘 다 쓰기",
   };
   const HINTS = [];
@@ -826,7 +843,7 @@
   }
   function showTitle() {
     phase = "title";
-    showOverlay('PULSE <span>BOUNCE</span>', "공은 박자마다 저절로 튀어요\n왼쪽 누르고 있기 = 공중에서 멈춤\n오른쪽 누르기 = 대시", best > 0 ? `최고 기록 ${best}%` : `${COURSE.name} · ${L.bpm} BPM`, [["시작", startFresh, true]]);
+    showOverlay('PULSE <span>BOUNCE</span>', "공은 박자마다 저절로 튀어요\n왼쪽 누르고 있기 = 공중에서 멈춤\n오른쪽 누르기 = 대시", best > 0 ? `최고 기록 ${best}%` : COURSE.name, [["시작", startFresh, true]]);
   }
   function showWin() {
     showOverlay('<span>CLEAR!</span>', `${tries}번 만에 완주했어요.`, devRun ? "개발자 모드로 건너뛴 판이라 기록에는 남기지 않아요." : "", [["처음부터 다시", startFresh, true]]);
@@ -874,6 +891,8 @@
   window.addEventListener("blur", () => { keyHold = false; holdPointers.clear(); setZones(); });
   $("pauseBtn").addEventListener("click", pause);
   $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); renderDev(); });
+  $("speedBtn").addEventListener("click", () => { speedIdx = (speedIdx + 1) % SPEEDS.length; store.set("speed", speedIdx); renderSpeed(); });
+  applySpeed(); renderSpeed();
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   new ResizeObserver(resize).observe(canvas);
 
@@ -902,7 +921,7 @@
   // 자동 테스트용 훅
   window.__game = {
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
-    press, startFresh, respawn, pause, view, devJump, get dev() { return dev; }, get best() { return best; },
+    press, startFresh, respawn, pause, view, devJump, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },
   };

@@ -18,7 +18,8 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   console.log('== 실제 시계로 저절로 튀는지 ==');
   await p.click('#ovButtons button'); await p.waitForTimeout(1500);
   let st = await G(() => ({ step: window.__game.state.step, phase: window.__game.phase }));
-  ok(st.phase === 'running' && st.step > 200 && st.step < 345, `1.5초 뒤 진행 중 (${st.step}스텝)`);
+  const expect = 1.4 / (60 / await G(() => window.__game.bpm)) * 96;
+  ok(st.phase === 'running' && st.step > expect * 0.7 && st.step < expect * 1.2 && await G(() => window.__game.bpm) === 96, `기본 속도 96 BPM, 1.5초 뒤 약 ${Math.round(expect)}스텝 진행 (실제 ${st.step})`);
 
   console.log('== 왼쪽 누르고 있기 = 멈춤, 오른쪽 누르기 = 대시 (실제 포인터) ==');
   await G(() => { const g = window.__game; g.pause(); g.fake.on = true; g.startFresh(); });
@@ -46,6 +47,20 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   await p.keyboard.up('ArrowLeft'); await p.keyboard.press('ArrowRight'); await tick(4.75);
   ok(kf && await G(() => window.__game.state.dashing) > 0, '키보드: ← 누르고 있기 = 멈춤, → = 대시');
 
+  console.log('== 속도 단계 ==');
+  await G(() => window.__game.pause()); await p.waitForTimeout(80);
+  ok((await p.textContent('#speedBtn')).startsWith('속도: 보통'), '기본값은 보통');
+  await p.screenshot({ path: out + 'options.png' });
+  await p.click('#speedBtn'); await p.waitForTimeout(40);
+  ok((await p.textContent('#speedBtn')).startsWith('속도: 빠름') && await G(() => window.__game.bpm) === 96, '버튼을 누르면 표시가 바뀌고, 달리기 전에는 아직 적용 안 됨');
+  await G(() => window.__game.startFresh());
+  ok(await G(() => window.__game.bpm) === 112 && Math.abs(await G(() => window.__game.spb) - 60 / 112) < 1e-9, '다시 시작하면 적용 (112 BPM)');
+  await p.reload(); await p.waitForTimeout(700);
+  ok((await p.textContent('#speedBtn')).startsWith('속도: 빠름'), '새로고침해도 유지');
+  await p.click('#speedBtn'); await p.click('#speedBtn'); await p.click('#speedBtn');
+  ok((await p.textContent('#speedBtn')).startsWith('속도: 보통'), '느림 → 보통 → 빠름 → 아주 빠름 순서로 돈다');
+  await G(() => { const g = window.__game; g.fake.on = true; g.startFresh(); });
+
   console.log('== 죽음과 재도전 ==');
   await G(() => window.__game.startFresh());
   await tick(12);
@@ -56,7 +71,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 자동 풀이로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).plan); g.startFresh(); });
-  const shots = { 10: 'a_fz1', 21: 'a_fz2', 41.5: 'b_wall', 50: 'b_wallfield', 66: 'b_ringchain', 73.5: 'c_long', 82: 'c_padfield', 26.5: 'a_sawgate' };
+  const shots = { 10: 'a_fz1', 13.5: 'a_over', 25.75: 'a_sawland', 29.5: 'a_fz2', 41.5: 'b_wall', 57.5: 'b_walldouble', 73.5: 'c_long', 118.5: 'd_padwall' };
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }

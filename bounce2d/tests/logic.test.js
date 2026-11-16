@@ -73,13 +73,16 @@ L.cps.forEach((cp, i) => ok(!!Lg.solve(L, Lg.spawnState(L, i), { grid: 12 }).pla
   const nd = Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noDash: true });
   ok(!nd.plan && barOf(nd.best) === 10, `대시 없이는 첫 벽(마디 10)에서 막힌다`);
 }
-console.log('== 조각별 ==');
+console.log('== 조각별: 꼭 필요한 입력마다의 여유 (96 BPM 기준) ==');
+const { measure } = require('./windows.js');
 for (const name of Object.keys(Lg.CHUNKS)) {
   if (['flat', 'cp', 'goal'].includes(name)) continue;
-  const lv = Lg.buildLevel({ name, bpm: 128, bars: ['flat', name, 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
-  // 굵은 단위(1/4박 = 약 117ms)로만 입력해도 깰 수 있으면 타이밍이 넉넉하다고 본다
-  const coarse = [0, 8, 16].every((offset) => !!Lg.solve(lv, Lg.spawnState(lv, -1), { grid: 24, offset }).plan);
-  ok(run(lv, null).s.dead && coarse, `${name}: 아무것도 안 하면 죽고, 1/4박 단위 입력으로도 깰 수 있다`);
+  const lv = Lg.buildLevel({ name, bpm: 96, bars: ['flat', name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const m = measure(name, 96);
+  const idleDies = run(lv, null).s.dead;
+  if (name === 'over') { ok(!idleDies && m.solvable && m.inputs.length === 0, 'over: 아무것도 안 눌러도 지나간다(쉬어 가는 마디)'); continue; }
+  const list = m.solvable && m.inputs ? m.inputs.map(i => `${i.label} ${i.ms >= 600 ? '600+' : i.ms.toFixed(0)}`).join(', ') : '풀 수 없음';
+  ok(idleDies && m.solvable && m.inputs && m.min >= 140, `${name}: 아무것도 안 하면 죽고, 입력 여유 ${list}ms`);
 }
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);
