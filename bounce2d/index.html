@@ -538,8 +538,8 @@
         const gm = L.gems[gemPtr];
         if (state.mode === "rush" && phase === "running" && Math.abs((ROWS - 1 - state.y + HALF) - gm.h) < 0.7) {
           gotGems.add(gemPtr); fx.chain++; sfx("gem");
-          burst(gm.x + 0.1, ROWS - 1 - gm.h, gm.big ? 9 : 4, "accent", gm.big ? 13 : 9, true);
-          if (gm.big) fx.shake = Math.max(fx.shake, 0.06);
+          burst(gm.x + 0.1, ROWS - 1 - gm.h, gm.flip ? 9 : 4, "accent", gm.flip ? 13 : 9, true);
+          if (gm.flip) fx.shake = Math.max(fx.shake, 0.06);
         } else fx.chain = 0;
         gemPtr++;
       }
@@ -794,20 +794,17 @@
       if (r[1] < cA || r[0] > cB) continue;
       ctx.shadowBlur = 0;
       const ca = Math.max(r[0], cA), cb = Math.min(r[1], cB + 1);
-      if (r[2] === "zig") {                      // 천장: 공이 튕기는 면
+      {                                          // 천장: 공이 튕기는 면
         const yT = sy(ROWS - 1 - ZIG_TOP);
         ctx.fillStyle = SIL; ctx.fillRect(sx(ca), -30, sx(cb) - sx(ca), yT + 30);
         ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5; ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 8 + 10 * pulse;
         ctx.beginPath(); ctx.moveTo(sx(ca), yT); ctx.lineTo(sx(cb), yT); ctx.stroke(); ctx.shadowBlur = 0;
       }
-      // 가까이서 스쳐 가는 것들(닿지 않는다. 속도감을 위한 것): 바닥의 점선, hop에서는 머리 위 기둥
+      // 가까이서 스쳐 가는 것들(닿지 않는다. 속도감을 위한 것): 바닥과 천장의 점선
       for (let c = Math.max(r[0] + 1, cA); c < Math.min(r[1] - 1, cB + 1); c++) {
         ctx.fillStyle = css(pal.accent, 0.5);
         for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), view.groundY + T * 0.16, sx(c + o + 0.22) - sx(c + o), 3);
-        if (r[2] === "zig") { for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), sy(ROWS - 1 - ZIG_TOP) - T * 0.16 - 3, sx(c + o + 0.22) - sx(c + o), 3); continue; }
-        const x0 = sx(c + 0.2), x1 = sx(c + 0.55), yb = sy(ROWS - 1 - (4.6 + 0.9 * hash(c, 21)));
-        ctx.fillStyle = SIL; ctx.fillRect(x0, -30, x1 - x0, yb + 30);
-        ctx.fillStyle = css(pal.accent, 0.55); ctx.fillRect(x0, yb - 2, x1 - x0, 2);
+        for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), sy(ROWS - 1 - ZIG_TOP) - T * 0.16 - 3, sx(c + o + 0.22) - sx(c + o), 3);
       }
       // 관문: 구간이 바뀌는 자리의 빛 커튼
       for (const [gx, label] of [[r[0], "FEVER"], [r[1], "BOUNCE"]]) {
@@ -822,35 +819,39 @@
       }
       ctx.shadowBlur = 0;
     }
-    // 틀린 길을 막는 빨간 덩어리(닿으면 죽는다). 모서리는 둥글게.
+    // 틀린 길을 막는 빨간 이빨(닿으면 죽는다): 천장·바닥에서 뻗은 삼각형. 이빨 사이로 열린 지그재그가 공이 갈 길이다.
     for (const q of L.reds) {
       if (q.x1 < cA || q.x0 > cB) continue;
-      const xa = sx(q.x0), xb = sx(q.x1), yb = sy(ROWS - 1 - q.lo), yt = q.hi > 50 ? -40 : sy(ROWS - 1 - q.hi), rr = Math.min(T * 0.3, (xb - xa) / 2);
-      const path = () => {
-        ctx.beginPath();
-        if (q.kind === "floor") { ctx.moveTo(xa, yb); ctx.lineTo(xa, yt + rr); ctx.arcTo(xa, yt, xa + rr, yt, rr); ctx.lineTo(xb - rr, yt); ctx.arcTo(xb, yt, xb, yt + rr, rr); ctx.lineTo(xb, yb); }
-        else { ctx.moveTo(xa, yt); ctx.lineTo(xa, yb - rr); ctx.arcTo(xa, yb, xa + rr, yb, rr); ctx.lineTo(xb - rr, yb); ctx.arcTo(xb, yb, xb, yb - rr, rr); ctx.lineTo(xb, yt); }
-      };
+      const ceil = q.kind === "ceil";
+      const xa = sx(q.x0), xt = sx(q.xt), xb = sx(q.x1), yBase = ceil ? sy(ROWS - 1 - ZIG_TOP) : view.groundY, yTip = sy(ROWS - 1 - q.tip), rr = T * 0.16;
+      const path = () => { ctx.beginPath(); ctx.moveTo(xa, yBase); ctx.arcTo(xt, yTip, xb, yBase, rr); ctx.lineTo(xb, yBase); };
       path(); ctx.closePath();
-      const bg = ctx.createLinearGradient(0, q.kind === "floor" ? yb : yt, 0, q.kind === "floor" ? yt : yb);
-      bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#6d1236");
+      const bg = ctx.createLinearGradient(0, yBase, 0, yTip);
+      bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#7a1440");
       ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fill();
       ctx.save(); ctx.clip(); ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2; ctx.beginPath();
-      const top = Math.max(yt, -40), span = yb - top;
-      for (let x = xa - span; x < xb; x += T * 0.36) { ctx.moveTo(x, yb); ctx.lineTo(x + span, top); }
+      const top = Math.min(yBase, yTip), span = Math.abs(yBase - yTip);
+      for (let x = xa - span; x < xb; x += T * 0.36) { ctx.moveTo(x, top + span); ctx.lineTo(x + span, top); }
       ctx.stroke(); ctx.restore();
-      path(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.shadowColor = DANGER; ctx.shadowBlur = 9 + 8 * pulse; ctx.stroke(); ctx.shadowBlur = 0;
+      path(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.shadowColor = DANGER; ctx.shadowBlur = 10 + 8 * pulse; ctx.stroke(); ctx.shadowBlur = 0;
     }
-    // 수정: 맞는 길 위에 줄지어 있다. 지나가며 뚫는다.
+    // 수정: 맞는 길 위에 줄지어 있다. 지나가며 뚫는다. 눌러야 하는 자리에는 바뀔 방향을 가리키는 화살표가 있다.
     if (L.gems.length) {
-      ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 12;
       for (let i = 0; i < L.gems.length; i++) {
         const gm = L.gems[i];
         if (gm.x < cA || gm.x > cB || gotGems.has(i)) continue;
-        const x = sx(gm.x), y = sy(ROWS - 1 - gm.h), q = T * (gm.big ? 0.3 : 0.15) * (1 + 0.12 * pulse);
-        ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], gm.big ? 0.35 : 0.6), gm.big ? 0.85 : 0.95);
-        ctx.beginPath(); ctx.moveTo(x, y - q * 1.5); ctx.lineTo(x + q, y); ctx.lineTo(x, y + q * 1.5); ctx.lineTo(x - q, y); ctx.closePath(); ctx.fill();
-        if (gm.big) { ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 2; ctx.stroke(); }
+        const x = sx(gm.x), y = sy(ROWS - 1 - gm.h);
+        ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 12;
+        if (gm.flip) {                              // 누르는 자리: 고리 + 화살표(위/아래)
+          const R = T * (0.42 + 0.06 * pulse), d = -gm.flip;       // 화면에서는 위가 -
+          ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.3));
+          ctx.beginPath(); ctx.moveTo(x, y + d * R * 0.62); ctx.lineTo(x + R * 0.55, y - d * R * 0.3); ctx.lineTo(x - R * 0.55, y - d * R * 0.3); ctx.closePath(); ctx.fill();
+        } else {
+          const q = T * 0.13 * (1 + 0.12 * pulse);
+          ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.6), 0.95);
+          ctx.beginPath(); ctx.moveTo(x, y - q * 1.5); ctx.lineTo(x + q, y); ctx.lineTo(x, y + q * 1.5); ctx.lineTo(x - q, y); ctx.closePath(); ctx.fill();
+        }
       }
       ctx.shadowBlur = 0;
     }
@@ -1070,7 +1071,7 @@
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
     glideLow: "왼쪽 누르고 있기 = 공중에서 멈춤", glideHigh: "꼭대기(킥 소리)에서 멈춰서 건너가기", peak: "오른쪽 누르기 = 공중에서 한 번 더 점프!",
-    z1: "피버! 화면 어디든 누르면 위아래 방향이 바뀌어요", z2: "킥에 맞춰 누르기 · 벽의 구멍으로",
+    z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
     weave: "멈춤 → 이단 점프 → 멈춤", skyGlide: "이단 점프 꼭대기에서 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];

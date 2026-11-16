@@ -102,7 +102,8 @@ const HALF_RUSH = HALF / RUSH_STRETCH;
 const SLOT = SUB / 2;                        // 피버의 한 칸 = 반 박
 const ZIG_TOP = 4.6;                         // 천장 높이(칸)
 const ZIG_STEP = (ZIG_TOP - SIZE) / 2;       //      반 박에 오르내리는 높이. 바닥·가운데·천장 세 높이를 오간다
-const ZIG_GAP = 1.8;                         //      벽의 구멍 높이(공은 0.8칸)
+const ZIG_GAP = 1.8;                         // 이빨 끝과 맞은편 면 사이의 틈(공은 0.8칸)
+const TOOTH_W = 1.1;                         // 이빨의 반 너비(칸). 끝에서 밑동까지
 const HAZ_MAX_H = 4;       // 바닥에서 솟는 장애물의 최대 높이(칸)
 const WRONG_SHIFT = [-0.3, 0.3];   // "크게 어긋난 입력"으로 치는 박자 차이
 const BLOCK_GROW = 1;      // 막는 칸에서 양옆으로 넓히는 칸 수
@@ -136,13 +137,15 @@ function emptyLevel(course) {
         for (let k = 1; k <= 8; k++) {
           const from = zl; zl += zd;
           const c = p.nodes[k - 1], xk = x0 + 2 * k;
-          for (const u of [0.5, 1]) gems.push({ x: xk - 2 + 2 * u, h: (from + (zl - from) * u) * ZIG_STEP + HALF, big: u === 1 && zl === 1 });
+          gems.push({ x: xk - 1, h: (from + zl) / 2 * ZIG_STEP + HALF });
+          gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? -zd : 0 });        // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
           if (zl === 0 || zl === 2) { if (c !== ".") throw new Error(`바닥·천장에서는 고를 수 없다: ${name}의 ${k}번째 지점`); zd = -zd; continue; }
           const wrong = c === "F" ? zl + zd : c === "S" ? zl - zd : -1;       // 틀리게 갔을 때 다음 지점에서 닿는 곳(0 바닥 / 2 천장)
           if (c === "F") zd = -zd;
-          // 다음 지점(바닥이나 천장에 닿는 곳)에 벽을 세운다. 맞는 쪽에만 구멍(ZIG_GAP)이 뚫려 있다 → 틀린 쪽으로 가도, 가운데에 떠 있어도 걸린다
-          if (wrong === 0) reds.push({ x0: xk + 2 - 0.15, x1: xk + 2 + 0.45, lo: 0, hi: ZIG_TOP - ZIG_GAP, kind: "floor" });
-          else if (wrong === 2) reds.push({ x0: xk + 2 - 0.15, x1: xk + 2 + 0.45, lo: ZIG_GAP, hi: ZIG_TOP, kind: "ceil" });
+          // 다음 지점(바닥이나 천장에 닿는 곳)의 틀린 쪽 면에 삼각 이빨을 세운다. 이빨 끝은 맞은편 면에서 ZIG_GAP만큼 떨어져 있다.
+          // → 틀린 쪽으로 가도, 가운데에 떠 있어도 걸린다. 이빨들 사이로 열린 길이 공이 가는 지그재그 모양 그대로다.
+          if (wrong === 0) reds.push({ x0: xk + 2 - TOOTH_W, xt: xk + 2, x1: xk + 2 + TOOTH_W, kind: "floor", tip: ZIG_TOP - ZIG_GAP });
+          else if (wrong === 2) reds.push({ x0: xk + 2 - TOOTH_W, xt: xk + 2, x1: xk + 2 + TOOTH_W, kind: "ceil", tip: ZIG_GAP });
         }
         if (zl !== 0) throw new Error("zig 마디는 바닥에서 끝나야 한다(뒤집기는 짝수 번): " + name);
       }
@@ -336,7 +339,11 @@ function rushStep(L, s, press, ev, hold, r) {
   }
   s.y = (ROWS - 1) - h;
   const xa = s.x - HALF_RUSH * 0.8, xb = s.x + HALF_RUSH * 0.8, lo = h + 0.06, hi = h + SIZE - 0.06;
-  for (const q of L.reds) if (xb > q.x0 && xa < q.x1 && hi > q.lo && lo < q.hi) return die(s, "spike", ev);
+  for (const q of L.reds) {
+    if (xb <= q.x0 || xa >= q.x1) continue;
+    const near = Math.abs(Math.max(xa, Math.min(q.xt, xb)) - q.xt) / TOOTH_W;      // 공에서 이빨 끝에 가장 가까운 x까지(0 = 끝, 1 = 밑동)
+    if (q.kind === "ceil" ? hi > q.tip + (ZIG_TOP - q.tip) * near : lo < q.tip * (1 - near)) return die(s, "spike", ev);
+  }
 }
 
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);
@@ -541,4 +548,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, ZIG_TOP, ZIG_STEP, ZIG_GAP, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
