@@ -29,13 +29,14 @@ const STEP_UP = 0.22;
 const PATTERNS = {
   idle:      { holds: [], presses: [] },
   // ---- 함정 마디: 앞의 마디들과 똑같이 누르면 죽는다. "연속으로 치다가 뚝 끊기".
-  //   traps = [{ presses: 더 누르면 죽어야 하는 시각들, holds: 패턴의 멈춤 대신 이렇게 누르면 죽어야 하는 구간들, mark: ✕ 표시를 둘 시각 }, ...]
-  //   통로 바깥을 채운 장애물 가운데 이 "버릇대로 누른 달리기"를 막는 것이 남는다(머리 위의 빨간 덩어리).
-  goStop:    { holds: [], presses: [0.5], tol: 0.18, traps: [{ presses: [2.5], mark: 2.5 }] },                 // peak의 앞 절반만: 탁, (뚝)
-  stopGo:    { holds: [], presses: [2.5], tol: 0.18, traps: [{ presses: [0.5], mark: 0.5 }] },                 // 뒤 절반만: (뚝), 탁
-  hCut:      { holds: [[0.5, 0.875]], presses: [], tol: 0.18, traps: [{ holds: [[0.5, 1.375]], mark: 1.125 }] },   // 멈춤을 일찍 놓는다: 길게 누르면 낮은 천장에 걸린다
-  // 가짜 고리: 고리 둘 가운데 뒤의 것은 미끼. 거기서 누르면 머리 위의 빨간 덩어리에 박는다
-  ringFake:  { holds: [], presses: [0.5, 1.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2]], lava: [[2, 8]], traps: [{ presses: [2.375], mark: 2.42 }] },
+  //   traps = [{ presses: 더 누르면 죽어야 하는 시각들 }, ...] (테스트가 "버릇대로 누르면 그 마디에서 죽는다"를 확인한다)
+  //   죽는 까닭은 따로 세운 장애물이 아니라 코스의 흐름이다: 버릇대로 한 번 더 뛰면 멀리 날아가 빨간 바닥(lava)에 떨어진다.
+  //   누르면 안 되는 자리에 ✕ 표시를 두거나 머리 위에 빨간 덩어리를 매달아 봤는데, 둘 다 너무 친절해서 뺐다.
+  goStop:    { holds: [], presses: [0.5], tol: 0.18, lava: [[13, 14]], traps: [{ presses: [2.5] }] },          // peak의 앞 절반만: 탁, (뚝)
+  stopGo:    { holds: [], presses: [2.5], tol: 0.18, lava: [[5, 6]], traps: [{ presses: [0.5] }] },            // 뒤 절반만: (뚝), 탁
+  holdStop:  { holds: [[0.5, 1.375]], presses: [], tol: 0.18, lava: [[13, 14]], traps: [{ presses: [2.5] }] }, // mix의 앞 절반만: 멈춤, (뚝)
+  // 가짜 고리: 고리 둘 가운데 뒤의 것은 미끼. 거기서 누르면 멀리 날아가 빨간 바닥에 떨어진다
+  ringFake:  { holds: [], presses: [0.5, 1.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2]], lava: [[2, 8], [14, 14]], traps: [{ presses: [2.375] }] },
   // ---- 파란 박스가 있는 쉬는 마디. 파란 박스는 닿아도 죽지 않는다: 위에 내려앉아 박자에 맞춰 다시 튀고, 옆에서 부딪히면 저절로 올라탄다.
   //   boxes = [[첫 칸, 끝 칸, 높이(칸)], ...] (마디 안의 칸 0~15). 누를 것은 없다. 쉬는 마디가 비어 보이지 않게 하려는 것.
   //   마디가 끝날 때는 공이 땅에서 박자에 맞춰 튀고 있어야 한다(다음 마디의 패턴이 그대로 맞도록) — 테스트가 확인한다.
@@ -182,8 +183,8 @@ const ROUND2 = {
     "stairs", "lavaHop", "box", "lavaLeap",   "idle", "lavaGlide", "twin", "cp",
     // 두 번째 큰 구간
     "mix", "mix2", "lavaHop", "box",   "peak", "lavaLeap", "mix", "stairs",
-    // (함정이 처음 나온다: peak 다음에 앞 절반만 같은 goStop, mix 다음에 멈춤을 일찍 놓는 hCut)
-    "mix2", "lavaGlide", "peak", "goStop",   "glideHigh", "mix", "hCut", "cp",
+    // (함정이 처음 나온다: peak 다음에 앞 절반만 같은 goStop, mix 다음에 앞 절반만 같은 holdStop)
+    "mix2", "lavaGlide", "peak", "goStop",   "glideHigh", "mix", "holdStop", "cp",
     // 절정: 쉬는 마디 하나만 두고 이어 붙인다
     "mix", "lavaLeap", "skyGlide", "lavaGlide",   "box", "peak", "stopGo", "cp",
     // 가장 센 절정: 마지막 피버. 들어서자마자 계단으로 넓은 통로에 올라간다. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다
@@ -420,7 +421,7 @@ function buildLevel(course) {
     return s;
   };
   const patternBars = [];
-  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.mode !== "rush" && (p.holds.length || p.presses.length || p.traps) && snaps[b]) patternBars.push([b, p]); });   // 피버 구간의 장애물은 패턴에서 바로 나온다
+  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.mode !== "rush" && (p.holds.length || p.presses.length) && snaps[b]) patternBars.push([b, p]); });   // 피버 구간의 장애물은 패턴에서 바로 나온다
 
   // 1) 통로
   for (const [b, p] of patternBars) {
@@ -463,8 +464,6 @@ function buildLevel(course) {
       wrong.push({ presses: p.presses, holds: rest }, { presses: [...p.presses, h[0]], holds: rest });
       for (const k of WRONG_SHIFT) wrong.push({ presses: p.presses, holds: [...rest, [h[0] + k, h[1] + k]] });
     });
-    // 함정: 버릇대로 누르면 죽어야 하는 입력. presses는 패턴에 더 누르는 것, holds는 패턴의 멈춤 대신 누르는 것.
-    for (const t of p.traps || []) wrong.push({ presses: [...p.presses, ...(t.presses || [])], holds: t.holds || p.holds });
     for (const w of wrong) {
       const s = runBar(b, w, 2);
       const hit = s.dead ? hazardAt(L, s) : null;
@@ -507,11 +506,6 @@ function buildLevel(course) {
     }
     for (const r of recs) if (active.has(r.air)) L.gems.push(r.mark === "jump" ? { x: r.x, h: r.h, flip: 1 } : r.mark === "hold" ? { x: r.x, h: r.h, hold: true } : { x: r.x, h: r.h });
     L.gems.sort((u, v) => u.x - v.x);
-    // 함정 표시(✕): 버릇대로라면 눌렀을 자리. 패턴대로 달린 공이 그 시각에 있는 곳에 둔다.
-    L.marks = [];
-    const want = new Map();
-    course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.traps) for (const t of p.traps) if (t.mark !== undefined) want.set(b * BAR + Math.round(t.mark * SUB), true); });
-    if (want.size) { const s2 = spawnState(L, -1); while (!s2.dead && !s2.won) { stepState(L, s2, base.press.has(s2.step + 1), null, base.hold.has(s2.step + 1)); if (want.has(s2.step)) L.marks.push({ x: s2.x, h: (ROWS - 1) - s2.y + HALF }); } }
   }
   return L;
 }

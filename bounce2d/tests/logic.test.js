@@ -282,8 +282,10 @@ for (const C of Lg.COURSES) {
         while (!s8.dead && !s8.won && s8.step < hi + 96) { const st = s8.step + 1, inBar = st >= lo && st < hi; Lg.stepState(lv, s8, inBar ? press.has(st) : inp8.press.has(st), null, inBar ? holds.some(h => st >= h[0] && st < h[1]) : inp8.hold.has(st)); }
         if (s8.dead && s8.x >= b * 16 && s8.x < b * 16 + 16.5) caught++;
       }
-      ok(caught === total && lv.marks.length === total, `[${tag}] 함정 마디(${trapBars.join(', ')}): 버릇대로 누르면 그 마디에서 죽는다 (${caught}/${total}), ✕ 표시 ${lv.marks.length}개`);
-      const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1]; return n === 'goStop' ? prev === 'peak' : n === 'ringFake' ? prev === 'ringWave' : n === 'hCut' ? prev === 'mix' : n === 'stopGo' ? prev === 'peak' : true; });
+      ok(caught === total, `[${tag}] 함정 마디(${trapBars.join(', ')}): 버릇대로 누르면 그 마디에서 죽는다 (${caught}/${total})`);
+      const hang = trapBars.filter(b => { const p9 = Lg.PATTERNS[C.bars[b]]; for (const t of p9.traps) for (const v of t.presses || []) { const c = b * 16 + Math.round(v * 4); for (let k = c - 1; k <= c + 3; k++) if (lv.ceilH[k] < 90) return true; } return false; });
+      ok(hang.length === 0, `[${tag}] 누르면 안 되는 자리 위에 매달린 빨간 덩어리는 없다(함정은 미리 알려 주지 않는다. 뛰면 빨간 바닥에 떨어진다)`);
+      const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1]; return n === 'goStop' ? prev === 'peak' : n === 'ringFake' ? prev === 'ringWave' : n === 'holdStop' ? prev === 'mix' : n === 'stopGo' ? prev === 'peak' : true; });
       ok(follows, `[${tag}] 함정은 닮은 마디 바로 다음에 온다(연속으로 치다가 끊기도록)`);
     }
   }
