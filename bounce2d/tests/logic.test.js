@@ -103,65 +103,65 @@ console.log('== 장애물 판정 ==');
   ok(!run(lv, null).s.dead, '매달린 덩어리: 그 밑으로 지나가면 산다');
 }
 
-console.log('== 질주 모드 ==');
+console.log('== 돌파 구간 ==');
 {
-  const H = (st) => 9 - st.y;
-  Lg.PATTERNS.tFlat = { mode: 'ride', terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [] };
-  Lg.PATTERNS.tUp = { mode: 'ride', terrain: [0, 0, 0.6, 1.4, 2.0, 1.2, 0.4, 0], holds: [], presses: [] };
+  const H = (st) => 9 - st.y, B = 96;
   const mk = (...bars) => Lg.buildLevel({ name: 't', bpm: 96, bars: ['flat', ...bars, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
-  // 그냥 타기: 땅을 따라가고, 도약대 끝에서 저절로 뜬다. 저절로 튀지는 않는다.
-  let lv = mk('rRamp');
-  let s = Lg.spawnState(lv, -1), ev = [], off = 0, modes = [];
-  while (!s.dead && !s.won && s.x < 16 * 3 + 2) {
-    const e2 = []; Lg.stepState(lv, s, false, e2, false);
-    for (const e of e2) { ev.push({ ...e, x: s.x }); if (e.type === 'mode') modes.push(e.mode + '@' + (s.x / 16).toFixed(2)); }
-    if (s.mode === 'ride' && s.onGround) off = Math.max(off, Math.abs(H(s) - Lg.terrainAt(lv, s.x)));
-  }
-  const inside = (e) => e.x >= 16 && e.x < 32;
-  ok(!s.dead && off < 1e-6, '땅에 있을 때는 언덕 높이를 그대로 따라간다');
-  ok(ev.filter(e => inside(e) && e.type === 'lift').length === 1 && ev.filter(e => inside(e) && e.type === 'land').length === 1, '도약대 끝에서 저절로 떴다가 내려앉는다');
-  ok(!ev.some(e => inside(e) && e.type === 'bounce'), '질주 구간에서는 저절로 튀지 않는다');
-  ok(modes.join(' ') === 'ride@1.00 bounce@2.00' && ev.some(e => e.type === 'bounce' && Math.abs(e.x - 32) < 0.1), `관문: ${modes.join(', ')} — 나오자마자 첫 박에 다시 튄다`);
-  // 점프: 평지에서 높이 약 2.25칸, 1.4박
-  lv = mk('tFlat', 'tFlat');
-  const jumpRun = (level, pressBeat, holdFrom, holdTo, until) => {
-    const st = Lg.spawnState(level, -1), e2 = []; let maxH = 0, landAt = null, hAt = {}, h0 = 0, top = 0;
-    while (!st.dead && st.step < until * 96) {
-      const b = (st.step + 1) / 96;
-      Lg.stepState(level, st, st.step + 1 === Math.round(pressBeat * 96), e2, b >= holdFrom && b < holdTo);
-      maxH = Math.max(maxH, H(st) - Lg.terrainAt(level, st.x));
-      if (st.step === Math.round(pressBeat * 96)) h0 = H(st);
-      if (st.step > pressBeat * 96 && landAt === null) top = Math.max(top, H(st));
-      if (landAt === null && st.step > pressBeat * 96 && e2.some(e => e.type === 'land')) landAt = st.step / 96;
-      if (st.step % 48 === 0) hAt[st.step / 96] = H(st);
-      e2.length = 0;
+  // presses = 누르는 스텝들, holds = [시작, 끝) 스텝 구간들
+  const play = (lv, presses, holds = []) => {
+    const s = Lg.spawnState(lv, -1), ev = [], P = new Set(presses);
+    while (!s.dead && !s.won && s.x < lv.cols - 20) {
+      const st = s.step + 1, e2 = [];
+      Lg.stepState(lv, s, P.has(st), e2, holds.some(h => st >= h[0] && st < h[1]));
+      for (const e of e2) ev.push({ ...e, step: s.step, h: H(s) });
     }
-    return { maxH, landAt, hAt, st, rise: top - h0 };
+    return { s, ev, n: (t) => ev.filter(e => e.type === t).length };
   };
-  let r = jumpRun(lv, 5, 99, 99, 10);
-  ok(r.maxH > 2.15 && r.maxH < 2.35 && Math.abs(r.landAt - 6.42) < 0.05, `점프: 높이 ${r.maxH.toFixed(2)}칸, ${(r.landAt - 5).toFixed(2)}박 동안 뜬다`);
-  // 활공: 꼭대기(5.8박)부터 누르고 있으면 거의 수평으로 간다. 최대 2박.
-  const g = jumpRun(lv, 5, 5.8, 99, 10);
-  ok(g.hAt[6.5] > r.hAt[6.5] + 1 && g.hAt[7] > 1.2, `활공: 1.2박 뒤에도 높이 ${g.hAt[7].toFixed(2)}칸 (안 누르면 이미 착지)`);
-  ok(g.landAt > 7.9 && g.landAt < 8.9, `활공은 최대 2박(5.8~7.8박): 다 쓰면 떨어져서 ${g.landAt.toFixed(2)}박에 착지`);
-  const up = jumpRun(lv, 5, 5.2, 5.7, 10);
-  ok(Math.abs(up.maxH - r.maxH) < 0.01, '올라가는 동안에는 활공을 눌러도 달라지지 않는다');
-  // 오르막에서 뛰면 더 높이
-  const hill = mk('tUp');
-  const u = jumpRun(hill, 4 + 1.25, 99, 99, 8);
-  ok(u.rise > r.rise + 0.3, `오르막에서 뛰면 더 높이 솟는다 (뛴 자리에서 ${u.rise.toFixed(2)}칸, 평지는 ${r.rise.toFixed(2)}칸)`);
-  // 공중에서 한 번 더
-  const d = Lg.spawnState(lv, -1), e3 = [];
-  while (d.step < 5.8 * 96) Lg.stepState(lv, d, d.step + 1 === 5 * 96, e3, false);
-  Lg.stepState(lv, d, true, e3, false);
-  for (let i = 0; i < 30; i++) Lg.stepState(lv, d, i === 10, e3, false);
-  ok(e3.filter(e => e.type === 'double').length === 1 && d.vy < 0, '공중에서 누르면 이단 점프, 한 번만');
-  // 화면에서 가로를 2배로 늘려 그리므로 공의 판정 폭은 절반: 덩어리 앞 0.06칸(화면으로 0.12칸)까지 다가가야 닿는다
-  lv = mk('tFlat'); lv.floorH[24] = 1;
-  const w = Lg.spawnState(lv, -1);
-  while (!w.dead && !w.won) Lg.stepState(lv, w, false, null, false);
-  ok(w.dead && w.mode === 'ride' && Math.abs(w.x - 23.95) < 0.03 && Lg.RIDE_STRETCH === 2, `질주 구간의 판정 폭은 절반 (덩어리 왼쪽 끝 24.0, 닿은 순간 공 중심 ${w.x.toFixed(2)})`);
-  delete Lg.PATTERNS.tFlat; delete Lg.PATTERNS.tUp;
+  let lv = mk('rTap3');                                  // 벽: 5, 6, 7박
+  const W = lv.walls.map(w => w.step);
+  let r = play(lv, []);
+  ok(r.s.dead && r.s.cause === 'crash' && r.s.step === W[0] + Lg.TAP_LATE + 1, `안 누르면 첫 벽에 부딪힌다 (벽 한가운데를 ${Lg.TAP_LATE}스텝 지난 뒤)`);
+  r = play(lv, W);
+  const sm = r.ev.filter(e => e.type === 'smash');
+  ok(!r.s.dead && sm.length === 3 && sm.every((e, i) => e.step === W[i]) && r.n('whiff') === 0, '박에 맞춰 탁 치면 그 순간 벽이 깨진다 (3개)');
+  ok(Math.abs(sm[0].h - Lg.RUSH_H) < 1e-9 && r.ev.every(e => e.type !== 'bounce' || e.step < 4 * B || e.step >= 8 * B), `돌파 구간에서는 튀지 않고 높이 ${Lg.RUSH_H}칸으로 곧게 난다`);
+  ok(r.ev.some(e => e.type === 'mode' && e.mode === 'rush' && e.step === 4 * B) && r.ev.some(e => e.type === 'mode' && e.mode === 'bounce' && e.step === 8 * B) && r.ev.some(e => e.type === 'bounce' && e.step <= 8 * B + 1 && e.step >= 8 * B), '관문: 마디 시작에 들어가고, 나오는 박에 바로 다시 튄다');
+  r = play(lv, [W[0] - Lg.TAP_EARLY, W[1] + Lg.TAP_LATE, W[2]]);
+  ok(!r.s.dead && r.n('smash') === 3, `일찍(${Lg.TAP_EARLY}스텝 전) 치거나 늦게(${Lg.TAP_LATE}스텝 뒤) 쳐도 깨진다`);
+  r = play(lv, [W[0] - Lg.TAP_EARLY - 3]);
+  ok(r.s.dead && r.n('whiff') === 1 && r.n('smash') === 0, '너무 일찍 치면 헛손질이 되고, 그 벽에 부딪힌다');
+  r = play(lv, [W[0] - 40, W[0] - 40 + Lg.TAP_EARLY + Lg.TAP_COOL + 2, W[1], W[2]]);
+  ok(!r.s.dead && r.n('whiff') === 1 && r.n('smash') === 3, '헛손질 뒤 빈틈이 지나면 다시 칠 수 있다');
+  r = play(lv, [W[0] - 40, W[0] - 40 + Lg.TAP_EARLY + 5, W[1], W[2]]);
+  ok(r.s.dead && r.n('smash') === 0, '헛손질 직후의 빈틈 동안에는 쳐도 듣지 않는다');
+  // 아무 때나 연타해서는 못 지나간다
+  const course = Lg.buildLevel(Lg.COURSE);
+  const sp = Lg.spawnState(course, 2);                   // 체크포인트 3 → 바로 돌파 구간
+  const upTo = course.rides[0][1];
+  let mashOk = 0;
+  for (const period of [5, 7, 9, 11, 13, 16, 19, 23]) for (const phase of [0, 3]) {
+    const s = { ...sp };
+    while (!s.dead && s.x < upTo) Lg.stepState(course, s, s.mode === 'rush' && (s.step + phase) % period === 0, null, false);
+    if (!s.dead) mashOk++;
+  }
+  ok(mashOk === 0, '일정한 빠르기로 연타만 해서는 돌파 구간을 지나지 못한다 (16가지 빠르기 모두 실패)');
+  // 꾹: 긴 덩어리
+  lv = mk('rEmpty', 'rDrill');                           // 덩어리: 8.5~9.5박, 벽: 10, 11박
+  const blk = lv.blocks[0], W2 = lv.walls.map(w => w.step);
+  ok(blk.a === 8.5 * B && blk.b === 9.5 * B, '긴 덩어리는 패턴에 적힌 구간(8.4~9.6박)보다 양 끝이 0.1박씩 짧다');
+  r = play(lv, W2, [[blk.a - 10, blk.b + 5]]);
+  ok(!r.s.dead && r.n('through') === 1 && r.n('drill') === 1, '꾹 누른 채로 지나가면 뚫린다');
+  r = play(lv, W2, []);
+  ok(r.s.dead && r.s.step === blk.a + Math.round(0.12 * B), '안 누르면 덩어리에 부딪힌다');
+  r = play(lv, W2, [[blk.a + 8, blk.b - 8]]);
+  ok(!r.s.dead, '조금 늦게 누르거나 조금 일찍 떼도 된다');
+  r = play(lv, W2, [[blk.a - 10, blk.b - 30]]);
+  ok(r.s.dead, '덩어리 안에서 손을 떼면 부딪힌다');
+  r = play(lv, W2, [[blk.a - Lg.DRILL_MAX + 20, blk.b + 5]]);
+  ok(r.s.dead, `계속 누르고만 있을 수는 없다: 한 번에 최대 ${Lg.DRILL_MAX / B}박`);
+  // 코스의 돌파 구간: 관문 가까이에는 벽을 두지 않는다
+  const ride = course.rides[0], first = course.walls[0].x - ride[0], last = ride[1] - course.walls[course.walls.length - 1].x;
+  ok(course.rides.length === 1 && first >= 4 && last >= 4, `코스: 들어가서 ${first / 4}박 뒤에 첫 벽, 마지막 벽 ${last / 4}박 뒤에 나온다 (벽 ${course.walls.length}개, 긴 덩어리 ${course.blocks.length}개)`);
 }
 
 console.log('== 코스 (키 패턴 → 장애물) ==');
@@ -170,15 +170,15 @@ ok(idle.s.dead && idle.s.cause === 'spike' && barOf(idle.s.x) === 2, '아무것�
 ok(L.fixed.length === 0, '패턴의 길과 겹쳐서 걷어 낸 장애물이 없다');
 const full = run(L, L.ref);
 const n = (t) => full.ev.filter(e => e.type === t).length;
-ok(full.s.won, `코스에 적힌 키 패턴대로 누르면 완주 (이단 점프 ${n('double')}번, 땅에서 점프 ${n('jump')}번, 멈춤 ${n('freeze')}번)`);
+ok(full.s.won, `코스에 적힌 키 패턴대로 누르면 완주 (이단 점프 ${n('double')}번, 땅에서 점프 ${n('jump')}번, 멈춤 ${n('freeze')}번, 깬 벽 ${n('smash')}개, 뚫은 덩어리 ${n('through')}개)`);
 ok(n('checkpoint') === L.cps.length && L.cps.length === 4, '체크포인트 4개를 모두 지난다');
 ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 12), '코스 내내 박자에 맞춰 튄다(늦어도 1/8박 이내)');
 {
   // 패턴 마디가 끝나면 다음 마디 첫 박에 땅에서 튀어야 한다(패턴끼리 어떤 순서로 이어 붙여도 되게)
   const bounceSteps = new Set(full.ev.filter(e => e.type === 'bounce' || e.type === 'pad').map(e => e.step));
   const bad = [];
-  Lg.COURSE.bars.forEach((name, b) => { if (b > 0 && b < Lg.COURSE.bars.length - 1 && !(Lg.PATTERNS[name] && Lg.PATTERNS[name].mode === 'ride') && ![0, 1, 2].some(d => bounceSteps.has(4 * b * Lg.SUB + d))) bad.push(b + ' ' + name); });
-  ok(bad.length === 0, '질주 구간을 뺀 모든 마디가 첫 박에 땅에서 튀며 시작한다(질주 구간이 끝난 다음 마디도)' + (bad.length ? ' — 어긋난 마디: ' + bad.join(', ') : ''));
+  Lg.COURSE.bars.forEach((name, b) => { if (b > 0 && b < Lg.COURSE.bars.length - 1 && !(Lg.PATTERNS[name] && Lg.PATTERNS[name].mode === 'rush') && ![0, 1, 2].some(d => bounceSteps.has(4 * b * Lg.SUB + d))) bad.push(b + ' ' + name); });
+  ok(bad.length === 0, '돌파 구간을 뺀 모든 마디가 첫 박에 땅에서 튀며 시작한다(돌파 구간이 끝난 다음 마디도)' + (bad.length ? ' — 어긋난 마디: ' + bad.join(', ') : ''));
 }
 for (const o of [{ grid: 12 }, { grid: 12, offset: 6 }]) {
   const r = Lg.solve(L, Lg.spawnState(L, -1), o);
@@ -207,7 +207,7 @@ for (const name of Object.keys(Lg.PATTERNS)) {
   if (!m.ok) { ok(false, `${name}: 패턴대로 눌러도 죽는다`); continue; }
   const f = (v) => (v >= 600 ? '600+' : v.toFixed(0));
   const width = Math.min(...m.inputs.map(i => i.early + i.late));
-  ok(pat.mode === 'ride' ? m.min >= 100 : m.min >= 60 && width >= 170, `${name}: 입력 여유 ${m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join(', ')}ms`);
+  ok(pat.mode === 'rush' ? m.min >= 90 : m.min >= 60 && width >= 170, `${name}: 입력 여유 ${m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join(', ')}ms`);
   ok(m.idleDies && m.needed.every(Boolean), `${name}: 안 누르면 죽고, 입력을 하나라도 빼먹으면 죽는다`);
 }
 console.log('실패 ' + fails + '건');

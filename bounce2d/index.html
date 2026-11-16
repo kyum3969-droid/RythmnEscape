@@ -191,7 +191,7 @@
     b:     { top: "#07203a", bottom: "#0f6b78", accent: "#b6ff5a", sun: "#ffe066" },
     c:     { top: "#2a0a2e", bottom: "#8c1c3a", accent: "#ffd166", sun: "#ff7b54" },
     d:     { top: "#0b0b2a", bottom: "#3d0f7a", accent: "#ff4fd8", sun: "#7df9ff" },
-    ride:  { top: "#0d1b2a", bottom: "#1b6ca8", accent: "#ffef5e", sun: "#ff7ac6" },
+    rush:  { top: "#0d1b2a", bottom: "#1b6ca8", accent: "#ffef5e", sun: "#ff7ac6" },
     outro: { top: "#101a3a", bottom: "#2a6f97", accent: "#ffffff", sun: "#ffe066" },
   };
   const SIL = "#07070f", DANGER = "#ff3b6b";
@@ -315,7 +315,7 @@
       if (s === 8) clap(0.28);
       if (s % 4 === 2) hat(0.08);
       if (s % 2 === 0) arp(ch.notes[[0, 2, 1, 2][(s / 2) % 4]] * 2, 0.03);
-    } else if (id === "ride") {             // 언덕 구간: 쿵-짝 리듬에 가벼운 소리
+    } else if (id === "rush") {             // 돌파 구간: 바탕은 가볍게, 벽 깨는 소리가 드럼이 된다
       if (s % 4 === 0) { kick(); bass(ch.root, SPB * 0.25); osc(bus, t, "triangle", ch.notes[0], 0.12, 0.07, { slide: ch.notes[0] * 1.5 }); }
       if (s === 4 || s === 12) clap(0.26);
       if (s % 4 === 2) { hat(0.12, true); bass(ch.root * 2, SPB * 0.3); }
@@ -338,7 +338,11 @@
     if (!A.ctx || fake.on) return;
     const t = A.ctx.currentTime + 0.005, m = A.master;
     if (kind === "jump") osc(m, t, "triangle", 520, 0.07, 0.07, { slide: 780 });
-    else if (kind === "shard") osc(m, t, "triangle", 660 * Math.pow(2, fx.shardChain / 12), 0.07, 0.07);
+    else if (kind === "smash") {               // 벽이 깨지는 소리: 쿵 + 유리 + 연달아 깰수록 올라가는 음
+      osc(m, t, "sine", 170, 0.16, 0.5, { slide: 48 }); noise(m, t, 0.16, 0.28, "highpass", 3500);
+      osc(m, t, "triangle", 440 * Math.pow(2, [0, 3, 5, 7, 10, 12, 15, 17][Math.min(7, fx.chain)] / 12), 0.16, 0.13);
+    } else if (kind === "whiff") osc(m, t, "square", 120, 0.09, 0.07, { slide: 80, lp: 600 });
+    else if (kind === "drill") { osc(m, t, "sawtooth", 110, 0.3, 0.12, { slide: 330, lp: 1800 }); noise(m, t, 0.3, 0.14, "bandpass", 2400, 2); }
     else if (kind === "double") { osc(m, t, "triangle", 660, 0.1, 0.1, { slide: 1320 }); noise(m, t, 0.07, 0.1, "highpass", 4000); }
     else if (kind === "break") { noise(m, t, 0.12, 0.3, "highpass", 5000); osc(m, t, "triangle", 1800, 0.08, 0.08, { slide: 900 }); }
     else if (kind === "die") { osc(m, t, "sawtooth", 220, 0.35, 0.2, { slide: 50, lp: 1200 }); noise(m, t, 0.2, 0.3, "lowpass", 1200); }
@@ -406,18 +410,16 @@
   const holding = () => holdPointers.size > 0 || keyHold;
   const broken = new Set();       // 화면에서 지울 깨진 대시벽
   const usedRings = new Set();    // 이미 지나간 충전 고리(칸 번호)
-  const gotShards = new Set();    // 이번 판에 부순 빛 조각
-  let shardPtr = 0;
+  const smashed = new Set();      // 이번 판에 깬 벽(번호)
   const ev = [];
-  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0, shardChain: 0 };
+  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9 };
 
   function begin(cp) {
     applySpeed();
     state = spawnState(L, cp);
     broken.clear(); usedRings.clear();
     fx.tail.length = 0; fx.particles.length = 0;
-    gotShards.clear(); fx.shardChain = 0;
-    shardPtr = 0; while (shardPtr < L.shards.length && L.shards[shardPtr].x <= state.x) shardPtr++;
+    smashed.clear(); fx.chain = 0;
     pressQueued = false;
     phase = "running";
     $("overlay").hidden = true;
@@ -516,14 +518,6 @@
       ev.length = 0;
       stepState(L, state, press, ev, holding() || (bot && bot.hold.has(state.step + 1)));
       if (ev.length) handleEvents();
-      while (shardPtr < L.shards.length && L.shards[shardPtr].x <= state.x + 0.05) {
-        const sh = L.shards[shardPtr];
-        if (state.x - sh.x < 0.3 && Math.abs((ROWS - 1 - state.y + HALF) - sh.h) < 0.75 && phase === "running") {
-          gotShards.add(shardPtr); fx.shardChain = Math.min(14, fx.shardChain + 1); sfx("shard");
-          burst(sh.x, ROWS - 1 - sh.h, 3, "accent", 5, true);
-        } else fx.shardChain = 0;
-        shardPtr++;
-      }
     }
   }
 
@@ -537,7 +531,15 @@
       else if (e.type === "freeze") { sfx("freeze"); muffle(true); }
       else if (e.type === "unfreeze") muffle(false);
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
-      else if (e.type === "mode") { setModeLabel(); toast(e.mode === "ride" ? "RUSH" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; }
+      else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "RUSH" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; fx.chain = 0; }
+      else if (e.type === "smash") {             // 벽을 깼다: 파편은 앞으로 튀고, 연달아 깰수록 커진다
+        smashed.add(e.i); sfx("smash"); fx.chain++; fx.smashAt = now;
+        const wx = L.walls[e.i].x + 0.3;
+        for (let k = 0; k < 3; k++) burst(wx, state.y - HALF - 0.9 + k * 0.9, 5 + Math.min(6, fx.chain), "accent", 13, true);
+        fx.shake = Math.max(fx.shake, 0.1); fx.flash = Math.max(fx.flash, 0.22);
+      } else if (e.type === "whiff") { fx.chain = 0; fx.whiffAt = now; sfx("whiff"); }
+      else if (e.type === "drill") sfx("drill");
+      else if (e.type === "through") { fx.chain++; fx.smashAt = now; sfx("smash"); burst(L.blocks[e.i].x1 + 0.3, state.y - HALF, 16, "accent", 14, true); fx.shake = Math.max(fx.shake, 0.12); }
       else if (e.type === "land") { fx.landAt = now; fx.ringChain = 0; puff(state.x, state.y, 4, 0.4); }
       else if (e.type === "double") { fx.jumpAt = now; sfx("double"); ring(state.x, state.y); }
       else if (e.type === "break") {
@@ -591,7 +593,7 @@
     view.px = w * (w > h ? 0.24 : 0.2);                       // 플레이어 기준 화면 x
   }
   const hash = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
-  // 질주 구간은 가로를 RIDE_STRETCH배로 늘려 그린다(같은 박자에 더 먼 거리 = 빠르게 보인다). 관문 앞뒤 1.5칸에서 서서히 바뀐다.
+  // 돌파 구간은 가로를 RUSH_STRETCH배로 늘려 그린다(같은 박자에 더 먼 거리 = 빠르게 보인다). 관문 앞뒤 1.5칸에서 서서히 바뀐다.
   // STRETCH[i] = 세계 x가 i/8칸일 때의 "늘린 x"
   const STRETCH = (() => {
     const n = L.cols * 8 + 9, S = new Float32Array(n);
@@ -600,7 +602,7 @@
       S[i] = acc;
       const x = (i + 0.5) / 8;
       let k = 1;
-      for (const r of L.rides) if (x >= r[0] && x < r[1]) k = 1 + (RIDE_STRETCH - 1) * Math.min(1, (x - r[0]) / 1.5, (r[1] - x) / 1.5);
+      for (const r of L.rides) if (x >= r[0] && x < r[1]) k = 1 + (RUSH_STRETCH - 1) * Math.min(1, (x - r[0]) / 1.5, (r[1] - x) / 1.5);
       acc += k / 8;
     }
     return S;
@@ -612,10 +614,10 @@
     const pal = paletteAt(beat);
     const pulse = phase === "running" || phase === "won" ? Math.pow(1 - (beat - Math.floor(beat)), 3) : 0;
     const camX = TPB * beat;                                   // 음악과 함께 흐르는 카메라
-    let round = 0;                                             // 0 = 기본 구간, 1 = 질주 구간(둥근 세계, 화면이 조금 물러난다)
+    let round = 0;                                             // 0 = 기본 구간, 1 = 돌파 구간
     for (const r of L.rides) round = Math.max(round, Math.min(1, (camX - r[0] + 3) / 3, (r[1] + 1 - camX) / 3));
     round = Math.max(0, round);
-    const T = BT * (1 - 0.2 * round), camS = sAt(camX);
+    const T = BT, camS = sAt(camX);
     const sx = (wx) => view.px + (sAt(wx) - camS) * T;
     const sy = (wy) => view.groundY + (wy - (ROWS - 1)) * T;
 
@@ -684,7 +686,7 @@
     for (let c = cA; c <= cB; c++) for (let r = 0; r < ROWS; r++) {
       if (tile(L, c, r) !== "#") continue;
       const x = sx(c), xr = sx(c + 1), y = sy(r), yb = r === ROWS - 1 ? h + 20 : y + T;
-      if (tile(L, c, r - 1) !== "#" && !(r === ROWS - 1 && inRide(L, c + 0.5))) { ctx.moveTo(x, y); ctx.lineTo(xr, y); }
+      if (tile(L, c, r - 1) !== "#") { ctx.moveTo(x, y); ctx.lineTo(xr, y); }
       if (tile(L, c - 1, r) !== "#") { ctx.moveTo(x, y); ctx.lineTo(x, yb); }
       if (tile(L, c + 1, r) !== "#") { ctx.moveTo(xr, y); ctx.lineTo(xr, yb); }
       if (r < ROWS - 1 && tile(L, c, r + 1) !== "#") { ctx.moveTo(x, y + T); ctx.lineTo(xr, y + T); }
@@ -769,18 +771,18 @@
       blockRuns(L.floorH, (v) => v > 0, view.groundY);
       blockRuns(L.ceilH, (v) => v < 90, -40);
     }
-    // 언덕: 둥근 땅. 장애물 뒤에 그려서 밑동을 덮는다.
+    // ---- 돌파 구간
     for (const r of L.rides) {
-      const xa = Math.max(r[0], cA), xb = Math.min(r[1], cB + 1);
-      if (xa >= xb) continue;
-      ctx.beginPath(); ctx.moveTo(sx(xa), h + 20);
-      for (let x = xa; x < xb; x += 0.125) ctx.lineTo(sx(x), sy(ROWS - 1 - terrainAt(L, x)));
-      ctx.lineTo(sx(xb), view.groundY); ctx.lineTo(sx(xb), h + 20); ctx.closePath();
-      ctx.shadowBlur = 0; ctx.fillStyle = SIL; ctx.fill();
-      ctx.beginPath();
-      for (let x = xa; x < xb; x += 0.125) ctx.lineTo(sx(x), sy(ROWS - 1 - terrainAt(L, x)));
-      ctx.lineTo(sx(xb), view.groundY);
-      ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5; ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 8 + 10 * pulse; ctx.stroke();
+      if (r[1] < cA || r[0] > cB) continue;
+      // 가까이서 스쳐 가는 것들: 머리 위의 갈비뼈 같은 기둥과 바닥의 점선(닿지 않는다. 속도감을 위한 것)
+      ctx.shadowBlur = 0;
+      for (let c = Math.max(r[0] + 1, cA); c < Math.min(r[1] - 1, cB + 1); c++) {
+        const x0 = sx(c + 0.2), x1 = sx(c + 0.55), yb = sy(ROWS - 1 - (3.5 + 0.9 * hash(c, 21)));
+        ctx.fillStyle = SIL; ctx.fillRect(x0, -30, x1 - x0, yb + 30);
+        ctx.fillStyle = css(pal.accent, 0.55); ctx.fillRect(x0, yb - 2, x1 - x0, 2);
+        ctx.fillStyle = css(pal.accent, 0.5);
+        for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), view.groundY + T * 0.16, sx(c + o + 0.22) - sx(c + o), 3);
+      }
       // 관문: 구간이 바뀌는 자리의 빛 커튼
       for (const [gx, label] of [[r[0], "RUSH"], [r[1], "BOUNCE"]]) {
         if (gx < cA || gx > cB) continue;
@@ -794,18 +796,39 @@
       }
       ctx.shadowBlur = 0;
     }
-    // 빛 조각: 질주 구간의 길잡이. 지나가며 부수면 소리가 난다.
-    if (L.shards.length) {
-      ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 10; ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.6));
+    // 수정 덩어리(꾹 눌러 뚫는다)와 수정 벽(박자에 맞춰 탁). 공의 앞머리가 닿는 순간이 정확히 그 박이다.
+    const crystal = (xa, xb, top, hot) => {
+      const g2 = ctx.createLinearGradient(0, top, 0, view.groundY);
+      g2.addColorStop(0, css(pal.accent, 0.0)); g2.addColorStop(0.18, css(pal.accent, hot ? 0.5 : 0.32)); g2.addColorStop(1, css(pal.accent, hot ? 0.62 : 0.4));
+      ctx.shadowBlur = 0; ctx.fillStyle = g2; ctx.fillRect(xa, top, xb - xa, view.groundY - top);
+      ctx.save(); ctx.beginPath(); ctx.rect(xa, top, xb - xa, view.groundY - top); ctx.clip();
+      ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = Math.max(2, T * 0.07);
       ctx.beginPath();
-      for (let i = 0; i < L.shards.length; i++) {
-        const sh = L.shards[i];
-        if (sh.x < cA || sh.x > cB || gotShards.has(i)) continue;
-        const x = sx(sh.x), y = sy(ROWS - 1 - sh.h), q = T * (0.11 + 0.03 * pulse);
-        ctx.moveTo(x, y - q * 1.5); ctx.lineTo(x + q, y); ctx.lineTo(x, y + q * 1.5); ctx.lineTo(x - q, y); ctx.closePath();
+      for (let x = xa - (view.groundY - top); x < xb; x += T * 0.8) { ctx.moveTo(x, view.groundY); ctx.lineTo(x + (view.groundY - top) * 0.6, top); }
+      ctx.stroke(); ctx.restore();
+      ctx.shadowColor = css(pal.accent); ctx.shadowBlur = hot ? 20 : 10;
+      ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.6), hot ? 1 : 0.75); ctx.lineWidth = hot ? 3 : 2;
+      ctx.beginPath(); ctx.moveTo(xa, top + T * 0.5); ctx.lineTo(xa, view.groundY); ctx.moveTo(xb, top + T * 0.5); ctx.lineTo(xb, view.groundY); ctx.stroke();
+      ctx.shadowBlur = 0;
+    };
+    const flyY = sy(ROWS - 1 - RUSH_H) - HALF * T;
+    L.blocks.forEach((b, i) => {
+      if (b.x1 < cA - 1 || b.x0 > cB) return;
+      const xa = sx(b.x0 + 0.2), xb = sx(b.x1 + 0.2), top = sy(ROWS - 1 - 3.3), done = state.bi > i && phase !== "title";
+      crystal(xa, xb, top, state.bi === i);
+      ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.5)); ctx.lineWidth = T * 0.07; ctx.lineCap = "round";
+      for (let k = 0; k < 2; k++) {              // 꾹 표시: 덩어리 앞머리의 세로 두 줄(II)
+        const x = xa + T * (0.26 + 0.18 * k); ctx.beginPath(); ctx.moveTo(x, flyY - T * 0.2); ctx.lineTo(x, flyY + T * 0.2); ctx.stroke();
       }
-      ctx.fill(); ctx.shadowBlur = 0;
-    }
+      const bored = done ? xb : state.bi === i && state.x > b.x0 ? Math.min(xb, sx(state.x)) : xa;   // 뚫고 지나간 자리
+      if (bored > xa) { ctx.fillStyle = css(mix(pal.bottom, [0, 0, 0], 0.55), 0.92); ctx.fillRect(xa - 1, flyY - T * 0.52, bored - xa + 1, T * 1.04); ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillRect(xa, flyY - T * 0.54, bored - xa, 2); ctx.fillRect(xa, flyY + T * 0.52, bored - xa, 2); }
+      else { ctx.setLineDash([T * 0.2, T * 0.2]); ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(xa, flyY); ctx.lineTo(xb, flyY); ctx.stroke(); ctx.setLineDash([]); }
+    });
+    L.walls.forEach((wl, i) => {
+      if (wl.x < cA - 1 || wl.x > cB || smashed.has(i)) return;
+      const next = state.wi === i && state.mode === "rush";
+      crystal(sx(wl.x + 0.2), sx(wl.x + 0.62), sy(ROWS - 1 - (next ? 3.4 : 3.1)), next);
+    });
     if (dev && REF_PATH) {                                         // 개발자 모드: 패턴대로 눌렀을 때의 길(멈춘 구간은 굵게)
       ctx.shadowBlur = 0;
       for (let i = 0; i < REF_PATH.length; i += 4) {
@@ -951,7 +974,14 @@
     // 플레이어: 빛나는 구슬 + 꼬리
     if (phase !== "dead") {
       const cx = sx(camX + state.lead), cy = sy(state.y) - HALF * T;
-      const dashing = state.dashing > 0;
+      const dashing = state.dashing > 0 || state.mode === "rush";
+      if (state.mode === "rush" && state.strike > 0) {            // 탁 친 순간: 앞으로 뻗는 쐐기
+        const k = state.strike / (TAP_EARLY + 1);
+        ctx.shadowColor = "#ffffff"; ctx.shadowBlur = 18; ctx.fillStyle = `rgba(255,255,255,${0.55 + 0.4 * k})`;
+        ctx.beginPath(); ctx.moveTo(cx + T * 0.2, cy - T * 0.55); ctx.lineTo(cx + T * (1.0 + 0.5 * k), cy); ctx.lineTo(cx + T * 0.2, cy + T * 0.55); ctx.closePath(); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      if (state.mode === "rush" && state.cool > 0) ctx.globalAlpha = 0.45;   // 헛손질 뒤의 빈틈
       if (fx.tail.length > 1) {
         ctx.lineCap = "round";
         for (let i = 1; i < fx.tail.length; i++) {
@@ -981,7 +1011,7 @@
       const R = T * HALF;
       if (state.frozen) {
         // 멈춘 동안: 공 색 자체가 바뀐다. 남은 멈춤 시간만큼 아래부터 밝게 차 있고, 줄어들수록 어두워진다.
-        const left = state.freeze / (state.mode === "ride" ? GLIDE_STEPS : FREEZE_STEPS);
+        const left = state.freeze / (state.mode === "rush" ? DRILL_MAX : FREEZE_STEPS);
         ctx.shadowColor = css(pal.sun); ctx.shadowBlur = 26;
         ctx.fillStyle = css(mix(pal.sun, [8, 8, 20], 0.74));
         ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
@@ -1005,6 +1035,7 @@
         ctx.beginPath(); ctx.arc(0, 0, T * 0.2, 0.3, 2.2); ctx.stroke();
       }
       ctx.restore();
+      ctx.globalAlpha = 1;
       if (state.djAvail && !state.onGround) {                   // 이단 점프가 남아 있으면 공 위에 작은 ▲
         ctx.fillStyle = "rgba(255,255,255,0.9)";
         ctx.beginPath(); ctx.moveTo(cx - T * 0.12, cy - T * 0.58); ctx.lineTo(cx, cy - T * 0.76); ctx.lineTo(cx + T * 0.12, cy - T * 0.58); ctx.closePath(); ctx.fill();
@@ -1019,7 +1050,7 @@
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
     glideLow: "왼쪽 누르고 있기 = 공중에서 멈춤", glideHigh: "꼭대기에서 멈춰서 건너가기", peak: "오른쪽 누르기 = 공중에서 한 번 더 점프!",
-    rFree: "질주 구간 (장애물 없음 · 컨셉 다시 짜는 중)", rHop: "질주 구간: 저절로 안 튀어요. 오른쪽 = 점프", rSoar: "왼쪽 누르고 있기 = 활공", rLeap: "공중에서 한 번 더!", rGlide: "뛰고 나서 활공",
+    rTap3: "돌파 구간! 벽에 닿는 순간 오른쪽 탁", rDrill: "긴 덩어리는 왼쪽을 꾹 누른 채로",
     weave: "멈춤 → 이단 점프 → 멈춤", skyGlide: "이단 점프 꼭대기에서 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];
@@ -1099,7 +1130,11 @@
     else if (phase === "dead" && performance.now() / 1000 - deadAt > 0.15) respawn();   // 기다리지 않고 바로 재도전
   }
   const setZones = () => { $("zoneL").classList.toggle("on", holding()); };
-  function setModeLabel() { $("zoneL").querySelector("span").textContent = state.mode === "ride" ? "누르고 있기 = 활공" : "누르고 있기 = 멈춤"; }
+  function setModeLabel() {
+    const rush = state.mode === "rush";
+    $("zoneL").querySelector("span").textContent = rush ? "꾹 누르기 = 긴 덩어리 뚫기" : "누르고 있기 = 멈춤";
+    $("zoneR").querySelector("span").textContent = rush ? "탁 = 벽 깨기" : "누르기 = 점프 · 공중에선 이단 점프";
+  }
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     const r = canvas.getBoundingClientRect();
@@ -1143,8 +1178,10 @@
       scheduleAudio();
       advanceTo(Math.floor(songBeat() * SUB));
       if (phase === "running") {
-        fx.tail.push({ x: state.x, y: state.y - HALF, d: state.dashing > 0 });
-        if (fx.tail.length > 16) fx.tail.shift();
+        const rush = state.mode === "rush";
+        fx.tail.push({ x: state.x, y: state.y - HALF, d: state.dashing > 0 || rush });
+        while (fx.tail.length > (rush ? 26 + 2 * Math.min(8, fx.chain) : 16)) fx.tail.shift();
+        if (rush && state.frozen) { burst(state.x + 0.25, state.y - HALF, 2, "accent", 9, true); fx.shake = Math.max(fx.shake, 0.05); }   // 뚫는 동안 계속 튀는 파편
         refreshHud();
       }
     } else if (phase === "dead" && !fake.on && now - deadAt > 0.55) respawn();
@@ -1161,7 +1198,7 @@
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
     press, startFresh, respawn, pause, view, devJump, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
-    get shards() { return { got: gotShards.size, passed: shardPtr, total: L.shards.length }; },
+    get smashed() { return smashed.size; },
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },
     loadTrackPCM(samples, sr, name) { const b = new AudioBuffer({ length: samples.length, sampleRate: sr, numberOfChannels: 1 }); b.copyToChannel(samples, 0); return setTrackBuffer(b, name, null).ok; },
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },

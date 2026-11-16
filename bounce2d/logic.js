@@ -43,14 +43,15 @@ const PATTERNS = {
   lowThenUp: { holds: [[0.88, 1.3], [2.1, 2.6]], presses: [1.32] },
   // 굴러가다 땅에서 점프 → 공중에서 멈춤
   roller:    { holds: [[2.25, 2.95]], presses: [0.5, 1.75], mF: 0.1 },
-  // ---- 질주 모드. terrain = 반 박마다의 땅 높이 8개(첫 값 0, 마디 끝에서 다시 0). 입력은 박에 맞춰 큼직하게, 여유(tol)는 넓게.
-  rFree:     { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [] },   // 빈 길
-  rHop:      { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [1.0], tol: 0.18 },
-  rHop2:     { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [0.5, 2.25], tol: 0.18 },
-  rRamp:     { mode: "ride", terrain: [0, 0.1, 0.5, 1.2, 2.0, 0, 0, 0], holds: [], presses: [], tol: 0.18 },
-  rSoar:     { mode: "ride", terrain: [0, 0.1, 0.5, 1.2, 2.0, 0, 0, 0], holds: [[2.25, 3.4]], presses: [], tol: 0.18 },
-  rLeap:     { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [0.5, 1.25], tol: 0.18 },
-  rGlide:    { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [[1.25, 2.75]], presses: [0.5], tol: 0.18 },
+  // ---- 돌파 구간(rush). 공은 한 줄로 날아간다. presses = 얇은 벽이 서는 박(그 순간에 탁), holds = 꾹 눌러 뚫는 긴 덩어리(양 끝 0.1박씩은 여유)
+  rEmpty:    { mode: "rush", holds: [], presses: [] },
+  rTap3:     { mode: "rush", holds: [], presses: [1, 2, 3] },
+  rTap4:     { mode: "rush", holds: [], presses: [0, 1, 2, 3] },
+  rSync:     { mode: "rush", holds: [], presses: [0, 1, 2, 2.5, 3] },
+  rDrill:    { mode: "rush", holds: [[0.4, 1.6]], presses: [2, 3] },
+  rGallop:   { mode: "rush", holds: [], presses: [0, 0.5, 1, 2, 2.5, 3] },
+  rDrillTap: { mode: "rush", holds: [[0, 1.2]], presses: [1.5, 2, 2.5, 3] },
+  rRoll:     { mode: "rush", holds: [], presses: [0, 0.5, 1, 1.5, 2, 2.5, 3] },
 };
 
 const COURSE = {
@@ -60,25 +61,26 @@ const COURSE = {
     "glideLow", "idle", "glideHigh", "idle", "glideLow", "glideHigh", "peak", "cp",
     "weave", "idle", "weave", "skyGlide", "idle", "lowThenUp", "weave", "cp",
     "roller", "peak", "lowThenUp", "idle", "skyGlide", "weave", "roller", "cp",
-    "rFree", "rFree", "rFree", "rFree", "rFree", "rFree", "rFree", "cp",            // 질주 모드: 컨셉을 다시 짜는 중이라 장애물 없이 비워 둠
+    "rTap3", "rTap4", "rSync", "rDrill", "rGallop", "rDrillTap", "rRoll", "cp",     // 돌파 구간
     "roller", "weave", "lowThenUp", "peak", "glideLow", "skyGlide", "weave", "goal",
     "flat",
   ],
   sections: [
-    { bar: 0, id: "intro" }, { bar: 2, id: "a" }, { bar: 10, id: "b" }, { bar: 18, id: "c" }, { bar: 26, id: "ride" }, { bar: 34, id: "d" }, { bar: 41, id: "outro" },
+    { bar: 0, id: "intro" }, { bar: 2, id: "a" }, { bar: 10, id: "b" }, { bar: 18, id: "c" }, { bar: 26, id: "rush" }, { bar: 34, id: "d" }, { bar: 41, id: "outro" },
   ],
 };
 
-// ---- 질주 모드(ride): 빠르게 달리며 크게 뛰는 구간. 저절로 튀지 않는다.
-// 속도: 물리는 다른 구간과 똑같이 한 박에 4칸이고, 화면에서 이 구간의 가로를 RIDE_STRETCH배로 늘려 그린다
-// → 눈에는 2배로 달리고 장애물도 2배로 길어지지만, 박자(음악)와는 그대로 맞는다. 공은 늘리지 않으므로 판정 폭을 절반으로 쓴다.
-const RIDE_STRETCH = 2;
-const HALF_RIDE = HALF / RIDE_STRETCH;
-const G_RIDE = 9;                 // 중력은 기본 모드의 절반(칸/박²)
-const V_RIDE = 6.4;               // 점프 속도: 평지에서 높이 약 2.25칸(기본 모드와 같다), 1.4박 = 화면으로 11칸 넘게 난다
-const RIDE_UPHILL = 0.4;          // 오르막에서 뛰면 올라가던 속도의 이만큼이 더해진다
-const GLIDE_STEPS = 2 * SUB;      // 활공은 한 번 뜰 때마다 최대 2박
-const GLIDE_FALL = 0.35;          // 활공: 내려가는 속도가 한 박에 약 0.6칸으로 잦아든다(거의 수평). 올라가는 동안에는 영향 없음
+// ---- 돌파 구간(rush): 피하던 것을 이제는 부순다. 공은 한 줄로 날아가고, 박자 위에 선 수정 벽을 탁 쳐서 깨고 긴 덩어리는 꾹 눌러 뚫는다.
+// 속도: 물리는 다른 구간과 똑같이 한 박에 4칸이고, 화면에서 이 구간의 가로를 RUSH_STRETCH배로 늘려 그린다 → 눈에는 2배로 달리지만 박자(음악)와는 그대로 맞는다.
+const RUSH_STRETCH = 2;
+const RUSH_H = 1.1;                         // 날아가는 높이(공 바닥 기준, 칸)
+const RUSH_RAMP = 2;                        // 관문 앞뒤로 이만큼(칸)에 걸쳐 떠오르고 내려앉는다
+const TAP_EARLY = Math.round(0.2 * SUB);    // 탁: 벽에 닿기 이만큼 전부터 눌러도 된다(96 BPM에서 약 125ms)
+const TAP_LATE = Math.round(0.15 * SUB);    //     벽 한가운데를 이만큼 지나서까지 봐준다(약 94ms). 그때까지 안 누르면 부딪힌다
+const TAP_COOL = Math.round(0.25 * SUB);    //     헛손질하면 이만큼 동안 다시 칠 수 없다(아무 때나 연타하는 것 방지)
+const DRILL_MAX = 2 * SUB;                  // 꾹: 한 번에 최대 2박. 손을 떼면 바로 가득 찬다
+const DRILL_EDGE = Math.round(0.1 * SUB);   //     덩어리는 패턴에 적힌 구간보다 양 끝이 0.1박씩 짧다
+const DRILL_GRACE = Math.round(0.12 * SUB); //     들어갈 때 이만큼 늦어도, 나올 때 이만큼 일찍 떼도 된다
 const HAZ_MAX_H = 4;       // 바닥에서 솟는 장애물의 최대 높이(칸)
 const WRONG_SHIFT = [-0.3, 0.3];   // "크게 어긋난 입력"으로 치는 박자 차이
 const BLOCK_GROW = 1;      // 막는 칸에서 양옆으로 넓히는 칸 수
@@ -100,21 +102,21 @@ function emptyLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill(r === ROWS - 1 ? "#" : "."));
-  const cps = [], rides = [];
-  const terrain = new Float32Array(course.bars.length * 8 + 4);   // 반 박(2칸)마다의 언덕 높이
+  const cps = [], rides = [], walls = [], blocks = [];
   let goalX = cols - 8;
   course.bars.forEach((name, b) => {
     const p = PATTERNS[name];
-    if (p && p.mode === "ride") {
-      if (p.terrain.length !== 8 || p.terrain[0] !== 0) throw new Error("언덕은 반 박마다 8개, 첫 값은 0: " + name);
-      p.terrain.forEach((h, i) => { terrain[b * 8 + i] = h; });
+    if (p && p.mode === "rush") {
       if (rides.length && rides[rides.length - 1][1] === b * 16) rides[rides.length - 1][1] = b * 16 + 16; else rides.push([b * 16, b * 16 + 16]);
+      for (const t of p.presses) walls.push({ step: Math.round((4 * b + t) * SUB), x: TPB * (4 * b + t) });
+      for (const [a, z] of p.holds) { const A = Math.round((4 * b + a) * SUB) + DRILL_EDGE, Z = Math.round((4 * b + z) * SUB) - DRILL_EDGE; blocks.push({ a: A, b: Z, x0: TPB * A / SUB, x1: TPB * Z / SUB }); }
     }
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
     else if (name === "goal") goalX = b * 16 + 8;
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
-  return { grid, cols, cps, rides, terrain, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  walls.sort((u, v) => u.step - v.step); blocks.sort((u, v) => u.a - v.a);
+  return { grid, cols, cps, rides, walls, blocks, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 // 패턴대로 달린 공의 자취(스텝마다 위치·상태)
@@ -133,7 +135,7 @@ function traceRun(L, plan) {
 
 // 공이 닿은 패턴 장애물: { c, kind: "floor" | "ceil" }. 없으면 null. (판정은 그림보다 조금 작다)
 function hazardAt(L, s) {
-  const half = s.mode === "ride" ? HALF_RIDE : HALF, grace = half * 0.2;
+  const half = HALF, grace = 0.08;
   const c0 = Math.floor(s.x - half + 0.03), c1 = Math.floor(s.x + half - 0.03), fh = (ROWS - 1) - s.y;
   for (let c = c0; c <= c1; c++) {
     if (c < 0 || c >= L.cols || !(s.x + half - grace > c + 0.1 && s.x - half + grace < c + 0.9)) continue;
@@ -158,7 +160,7 @@ function buildLevel(course) {
   const env = [];                                      // 칸마다 통로: 공 바닥 높이의 범위와 땅에 닿는지
   for (let c = 0; c < L.cols; c++) env.push({ lo: 99, hi: -99, ground: false });
   const sweep = (s) => {
-    const h = (ROWS - 1) - s.y, half = s.mode === "ride" ? HALF_RIDE : HALF;
+    const h = (ROWS - 1) - s.y, half = HALF;
     for (let c = Math.max(0, Math.ceil(s.x - 1 - half + 1e-9)); c <= Math.floor(s.x + half - 1e-9) && c < L.cols; c++) {
       const k = env[c];
       if (s.onGround) k.ground = true;
@@ -174,13 +176,6 @@ function buildLevel(course) {
       stepState(L, s, base.press.has(s.step + 1), null, base.hold.has(s.step + 1));
       sweep(s);
     } }
-  // 질주 구간: 패턴대로 달린 길 위에 반의 반 박마다 빛 조각을 놓는다(길잡이 겸 손맛. 판정에는 영향 없음)
-  L.shards = [];
-  { const s = spawnState(L, -1);
-    while (!s.dead && !s.won) {
-      stepState(L, s, base.press.has(s.step + 1), null, base.hold.has(s.step + 1));
-      if (s.mode === "ride" && s.step % (SUB / 4) === 0) L.shards.push({ x: s.x, h: (ROWS - 1) - s.y + HALF, air: !s.onGround });
-    } }
   // b번 마디의 입력만 acts로 바꿔서 달린다(다른 마디는 패턴대로)
   const runBar = (b, acts, extraBeats, onStep) => {
     const lo = b * BAR, hi = lo + BAR, end = hi + extraBeats * SUB;
@@ -195,7 +190,7 @@ function buildLevel(course) {
     return s;
   };
   const patternBars = [];
-  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && (p.holds.length || p.presses.length) && snaps[b]) patternBars.push([b, p]); });
+  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.mode !== "rush" && (p.holds.length || p.presses.length) && snaps[b]) patternBars.push([b, p]); });   // 돌파 구간은 벽·덩어리가 패턴에서 바로 나온다
 
   // 1) 통로
   for (const [b, p] of patternBars) {
@@ -209,8 +204,8 @@ function buildLevel(course) {
     for (let c = b * 16; c < b * 16 + 16; c++) {
       const k = env[c];
       if (k.lo > 90) continue;
-      const base = terrainTop(L, c), fh = Math.min(base + HAZ_MAX_H, Math.floor((k.lo - mF) * 4) / 4);
-      if (!k.ground && fh - base >= 0.5) L.floorH[c] = fh;
+      const fh = Math.min(HAZ_MAX_H, Math.floor((k.lo - mF) * 4) / 4);
+      if (!k.ground && fh >= 0.5) L.floorH[c] = fh;
       const ch = Math.ceil((k.hi + SIZE + mC) * 4) / 4;
       if (ch <= CEIL_MAX_H) L.ceilH[c] = ch;
     }
@@ -276,48 +271,37 @@ function drawBar(L, b) {
   return rows.map((r) => r.join("")).join("\n") + "\n################";
 }
 
-// 언덕의 높이. 반 박(2칸)마다 놓은 점을 부드럽게 잇는다. 마디가 바뀌는 점에서는 기울기 0(마디마다 독립된 모양이 되게).
 const inRide = (L, x) => { for (const r of L.rides) if (x >= r[0] && x < r[1]) return true; return false; };
-function terrainAt(L, x) {
-  if (!L.rides.length || !inRide(L, x)) return 0;
-  const P = L.terrain, i = Math.floor(x / 2), u = x / 2 - i;
-  const p1 = P[i] || 0, p2 = P[i + 1] || 0;
-  const m1 = i % 8 === 0 ? 0 : (p2 - (P[i - 1] || 0)) / 2, m2 = (i + 1) % 8 === 0 ? 0 : ((P[i + 2] || 0) - p1) / 2;
-  const u2 = u * u, u3 = u2 * u;
-  return Math.max(0, (2 * u3 - 3 * u2 + 1) * p1 + (u3 - 2 * u2 + u) * m1 + (-2 * u3 + 3 * u2) * p2 + (u3 - u2) * m2);
+// 돌파 구간에서 공이 나는 높이: 관문을 지나며 떠오르고, 끝나기 전에 내려앉는다
+function rushHeight(L, x) {
+  for (const r of L.rides) if (x >= r[0] && x < r[1]) {
+    const k = Math.min(1, (x - r[0]) / RUSH_RAMP, (r[1] - x) / RUSH_RAMP);
+    return RUSH_H * k * k * (3 - 2 * k);
+  }
+  return 0;
 }
-// 한 칸 안에서 언덕이 가장 높은 곳
-function terrainTop(L, c) { let m = 0; for (let k = 0; k <= 4; k++) m = Math.max(m, terrainAt(L, c + k / 4 - (k === 4 ? 1e-6 : 0))); return m; }
-
-// 언덕 모드의 한 스텝. 땅에 붙어 있으면 언덕을 따라가고, 언덕이 중력보다 빨리 꺼지면 저절로 뜬다.
-function rideStep(L, s, ev, hold) {
-  const gy = (ROWS - 1) - terrainAt(L, s.x);                    // 지금 x에서 땅의 y
-  const takeoff = () => { s.onGround = false; s.djAvail = true; s.freeze = GLIDE_STEPS; };
-  if (s.onGround) {
-    if (s.jbuf > 0) {                                           // 점프: 오르막에서는 올라가던 속도만큼 더 높이
-      s.vy = Math.min(s.vy, 0) * RIDE_UPHILL - V_RIDE; s.jbuf = 0; takeoff();
-      if (ev) ev.push({ type: "jump" });
-    } else {
-      const vFree = s.vy + G_RIDE * DT, yFree = s.y + vFree * DT;
-      if (yFree < gy - 1e-9) { s.vy = vFree; s.y = yFree; takeoff(); if (ev) ev.push({ type: "lift" }); return; }
-      s.vy = (gy - s.y) / DT; s.y = gy;
-      return;
-    }
-  } else if (s.jbuf > 0 && s.djAvail) {
-    s.vy = -V_RIDE; s.djAvail = false; s.jbuf = 0;
-    if (ev) ev.push({ type: "double" });
-  }
-  const glide = !!hold && s.freeze > 0;
-  if (glide !== s.frozen) { s.frozen = glide; if (ev) ev.push({ type: glide ? "freeze" : "unfreeze" }); }
-  s.vy += G_RIDE * DT;
-  if (glide) { s.freeze--; if (s.vy > GLIDE_FALL) s.vy += (GLIDE_FALL - s.vy) * 0.3; }
-  s.y += s.vy * DT;
-  if (s.y >= gy) {                                              // 착지: 그 자리 언덕의 속도를 이어받는다
-    s.y = gy; s.onGround = true; s.djAvail = false;
-    s.vy = (terrainAt(L, s.x - TPB * DT) - terrainAt(L, s.x)) / DT;
-    if (s.frozen) { s.frozen = false; if (ev) ev.push({ type: "unfreeze" }); }
-    if (ev) ev.push({ type: "land" });
-  }
+// 돌파 구간의 한 스텝. s.wi = 다음에 깰 벽, s.bi = 다음에 뚫을 덩어리, s.strike = 탁 친 힘이 남은 스텝, s.cool = 헛손질 뒤 쉬는 스텝
+function rushStep(L, s, press, ev, hold) {
+  s.y = (ROWS - 1) - rushHeight(L, s.x); s.vy = 0; s.onGround = false; s.djAvail = false;
+  const st = s.step;
+  // 탁
+  if (s.cool > 0) s.cool--;
+  else if (press && s.strike === 0) { s.strike = TAP_EARLY + 1; if (ev) ev.push({ type: "strike" }); }
+  const w = L.walls[s.wi];
+  if (w && s.strike > 0 && st >= w.step) {                       // 친 힘이 남은 채로 벽에 닿음(또는 벽 속에서 침) → 깨짐
+    s.wi++; s.strike = 0;
+    if (ev) ev.push({ type: "smash", i: s.wi - 1 });
+  } else if (w && st > w.step + TAP_LATE) return die(s, "crash", ev);
+  else if (s.strike > 0 && --s.strike === 0 && !(w && w.step - st <= 0)) { s.cool = TAP_COOL; if (ev) ev.push({ type: "whiff" }); }
+  // 꾹
+  const drilling = !!hold && s.freeze > 0;
+  if (drilling) s.freeze--; else if (!hold) s.freeze = DRILL_MAX;
+  const b = L.blocks[s.bi];
+  const inside = !!b && st >= b.a && st <= b.b;
+  if (b && st >= b.a + DRILL_GRACE && st <= b.b - DRILL_GRACE && !drilling) return die(s, "crash", ev);
+  if (b && st > b.b) { s.bi++; if (ev) ev.push({ type: "through", i: s.bi - 1 }); }
+  const on = drilling && inside;
+  if (on !== s.frozen) { s.frozen = on; if (ev) ev.push({ type: on ? "drill" : "drillEnd" }); }
 }
 
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);
@@ -342,6 +326,7 @@ function spawnState(L, cp = -1) {
   const x = TPB * step / SUB;
   return {
     mode: "bounce", step, x, lead: 0, dashing: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
+    strike: 0, cool: 0, wi: 0, bi: 0,
     djAvail: false, jbuf: 0, ring: -1,
     freeze: 0, frozen: false,
     cp, dead: false, cause: "", won: false,
@@ -370,17 +355,21 @@ function stepState(L, s, press, ev, hold) {
   s.step++;
   if (press) s.jbuf = JUMP_BUF_STEPS;
   const ride = L.rides.length > 0 && inRide(L, TPB * s.step / SUB);
-  if (ride !== (s.mode === "ride")) {                 // 모드 관문을 지남
-    s.mode = ride ? "ride" : "bounce";
-    if (s.frozen) { s.frozen = false; if (ev) ev.push({ type: "unfreeze" }); }
-    if (s.onGround) { s.y = ROWS - 1; s.vy = 0; }
-    else s.freeze = ride ? GLIDE_STEPS : Math.min(s.freeze, FREEZE_STEPS);
+  if (ride !== (s.mode === "rush")) {                 // 관문을 지남
+    s.mode = ride ? "rush" : "bounce";
+    if (s.frozen) { s.frozen = false; if (ev) ev.push({ type: "drillEnd" }); }
+    s.strike = 0; s.cool = 0; s.jbuf = 0;
+    if (ride) {
+      s.freeze = DRILL_MAX;
+      while (s.wi < L.walls.length && L.walls[s.wi].step < s.step) s.wi++;
+      while (s.bi < L.blocks.length && L.blocks[s.bi].b < s.step) s.bi++;
+    } else { s.y = ROWS - 1; s.vy = 0; s.onGround = true; s.djAvail = false; s.freeze = 0; }   // 내려앉아서, 바로 이 박에 다시 튄다
     if (ev) ev.push({ type: "mode", mode: s.mode });
   }
   if (ride) {
     s.x = TPB * s.step / SUB;
-    rideStep(L, s, ev, hold);
-    if (s.jbuf > 0) s.jbuf--;
+    rushStep(L, s, press, ev, hold);
+    if (s.dead) return;
   } else {
   if (s.onGround) {
     if (s.jbuf > 0) launch(s, "jump", ev);            // 굴러가는 중에 누르면 그 자리에서 점프
@@ -480,7 +469,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < (opts.offset || 0); i++) stepState(L, s0, false, null, false);
   if (s0.dead) return { plan: null, best: s0.x };
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}|${Math.ceil(s.freeze / 8)}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}|${Math.ceil(s.freeze / 8)}|${s.strike}|${s.cool}|${s.wi}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {
@@ -495,8 +484,11 @@ function solve(L, start, opts = {}) {
     seen.add(k);
     if (s.x > best) best = s.x;
     const options = [];
-    if (!opts.noJump && (s.onGround ? !opts.noGroundJump && (s.mode === "ride" || s.step % SUB > BOUNCE_TOL) : s.djAvail)) options.push("j");
-    if (!s.onGround && s.freeze > 0 && !opts.noFreeze) options.push("h");
+    if (s.mode === "rush") { if (s.strike === 0 && s.cool === 0) options.push("j"); if (s.freeze > 0) options.push("h"); }   // 돌파 구간은 탁/꾹이 따로라 막지 않는다
+    else {
+      if (!opts.noJump && (s.onGround ? !opts.noGroundJump && s.step % SUB > BOUNCE_TOL : s.djAvail)) options.push("j");
+      if (!s.onGround && s.freeze > 0 && !opts.noFreeze) options.push("h");
+    }
     options.push("");                                  // 스택이라 마지막에 넣은 것(아무것도 안 함)을 먼저 시도
     for (const a of options) {
       const n = { ...s };
@@ -516,4 +508,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, terrainAt, terrainTop, inRide, GLIDE_STEPS, RIDE_STRETCH, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, inRide, rushHeight, RUSH_STRETCH, RUSH_H, TAP_EARLY, TAP_LATE, TAP_COOL, DRILL_MAX, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };

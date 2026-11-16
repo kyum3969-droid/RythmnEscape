@@ -80,19 +80,19 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 코스에 적힌 키 패턴대로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(g.L.ref); g.startFresh(); });
-  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller', 103.75: 'rush_gate', 110: 'rush_empty', 131.5: 'rush_exit' };
+  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller', 103.75: 'rush_gate', 106.25: 'rush_tap', 116.75: 'rush_drill', 121.25: 'rush_gallop', 124.5: 'rush_drilltap', 130.25: 'rush_roll', 131.75: 'rush_exit' };
   const modeSeen = {}; let shardsSeen = null;
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
-    if (beat === 112) shardsSeen = await G(() => [...document.querySelectorAll('canvas')].length && window.__game.shards);
-    if (beat === 100 || beat === 110 || beat === 134) modeSeen[beat] = await G(() => window.__game.state.mode + ':' + document.querySelector('#zoneL span').textContent);
+    if (beat === 112) shardsSeen = await G(() => window.__game.smashed);
+    if (beat === 100 || beat === 110 || beat === 134) modeSeen[beat] = await G(() => window.__game.state.mode + ':' + document.querySelector('#zoneL span').textContent + ' / ' + document.querySelector('#zoneR span').textContent);
     if (await G(() => window.__game.phase) !== 'running') break;
   }
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cause: window.__game.state.cause, x: window.__game.state.x }));
   ok(st.phase === 'won' && st.cp === 3, '패턴대로 누르면 완주, 체크포인트 4개 통과' + (st.phase === 'won' ? '' : ` (${st.cause} @마디 ${Math.floor(st.x / 16)})`));
-  ok(modeSeen[100] === 'bounce:누르고 있기 = 멈춤' && modeSeen[110] === 'ride:누르고 있기 = 활공' && modeSeen[134] === 'bounce:누르고 있기 = 멈춤', `질주 구간(마디 26~32)에서는 모드와 조작 안내가 바뀐다 (${Object.values(modeSeen).join(' → ')})`);
-  ok(shardsSeen && shardsSeen.got >= 20 && shardsSeen.got === shardsSeen.passed, `패턴대로 달리면 길 위의 빛 조각을 전부 부순다 (마디 28 시작까지 ${shardsSeen && shardsSeen.got}/${shardsSeen && shardsSeen.passed}개)`);
+  ok(modeSeen[100].startsWith('bounce:누르고 있기 = 멈춤') && modeSeen[110] === 'rush:꾹 누르기 = 긴 덩어리 뚫기 / 탁 = 벽 깨기' && modeSeen[134] === modeSeen[100], `돌파 구간(마디 26~32)에서는 모드와 조작 안내가 바뀐다 (${modeSeen[110]})`);
+  ok(shardsSeen === 8, `돌파 구간 셋째 마디 첫 박까지 벽 8개를 깼다 (${shardsSeen}개)`);
   await p.waitForTimeout(200);
   ok((await p.textContent('#ovTitle')).includes('CLEAR') && (await p.textContent('#pct')) === '100%', '완주 화면, 진행률 100%');
 
@@ -113,6 +113,30 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok(v.ahead >= 8 && v.rows >= 6.5 && v.scroll && v.zone, `${name} ${w}x${h}: 앞쪽 ${v.ahead.toFixed(1)}칸 보임, 위쪽 ${v.rows.toFixed(1)}칸, 조작 안내는 바닥 아래쪽`);
     await p.screenshot({ path: out + name + '.png' });
   }
+  console.log('== 돌파 구간을 실제 터치로 ==');
+  {
+    await p.setViewportSize({ width: 844, height: 390 });
+    await G(() => { const g = window.__game; g.setBot(null); g.devJump(2); });     // 체크포인트 3 = 돌파 구간 바로 앞
+    const walls = await G(() => window.__game.L.walls.map(w => w.step / 96));
+    const blk = await G(() => { const b = window.__game.L.blocks[0]; return [b.a / 96, b.b / 96]; });
+    let beat = await G(() => window.__game.state.step / 96);
+    const go = async (to) => { for (; beat < to; beat = Math.min(to, beat + 0.125)) await tick(beat); await tick(to); beat = to; };
+    await go(walls[0] - 0.05); await p.mouse.click(700, 200); await go(walls[0] + 0.05);
+    ok(await G(() => window.__game.smashed) === 1 && await G(() => window.__game.phase) === 'running', '벽에 닿는 순간 오른쪽을 탁 누르면 깨진다');
+    await p.waitForTimeout(60); await p.screenshot({ path: out + 'rush_smash.png' });
+    for (const w of walls.filter(w => w > walls[0] && w < blk[0])) { await go(w - 0.03); await p.mouse.click(700, 200); }
+    await go(blk[0] - 0.1); await p.mouse.move(150, 200); await p.mouse.down();
+    await go((blk[0] + blk[1]) / 2);
+    st = await G(() => ({ f: window.__game.state.frozen, phase: window.__game.phase, n: window.__game.smashed }));
+    ok(st.f && st.phase === 'running' && st.n === walls.filter(w => w < blk[0]).length, `긴 덩어리는 왼쪽을 꾹 누른 채로 뚫는다 (그 전까지 벽 ${st.n}개)`);
+    await p.waitForTimeout(60); await p.screenshot({ path: out + 'rush_drilling.png' });
+    await go(blk[1] + 0.05); await p.mouse.up();
+    const nextWall = walls.find(w => w > blk[1]);
+    await go(nextWall + 0.3);
+    st = await G(() => ({ phase: window.__game.phase, cause: window.__game.state.cause }));
+    ok(st.phase === 'dead' && st.cause === 'crash', '다음 벽을 안 치면 부딪혀 죽는다');
+    await p.waitForTimeout(80); await p.screenshot({ path: out + 'rush_crash.png' });
+  }
   console.log('== 곡 넣기 ==');
   {
     // 100 BPM, 첫 박 0.3초짜리 곡을 wav 파일로 만들어 실제 파일 선택으로 넣는다
@@ -129,7 +153,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     for (let i = 0; i < x.length; i++) wav.writeInt16LE(Math.round(Math.max(-1, Math.min(1, x[i])) * 32767), 44 + i * 2);
     fs.writeFileSync(out + 'test-100bpm.wav', wav);
     await p.setViewportSize({ width: 844, height: 390 });
-    await G(() => { const g = window.__game; g.pause(); g.fake.on = false; g.setBot(null); });
+    await G(() => { const g = window.__game; g.startFresh(); g.pause(); g.fake.on = false; g.setBot(null); });
     await p.setInputFiles('#trackFile', out + 'test-100bpm.wav');
     await p.waitForFunction(() => window.__game.track, null, { timeout: 15000 });
     let tr = await G(() => ({ bpm: window.__game.track.bpm, zero: window.__game.trackZero, wob: window.__game.track.wobbleMs, info: document.getElementById('trackInfo').textContent, speed: document.getElementById('speedBtn').textContent, dis: document.getElementById('speedBtn').disabled }));
