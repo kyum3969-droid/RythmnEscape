@@ -336,7 +336,6 @@
     if (!A.ctx || fake.on) return;
     const t = A.ctx.currentTime + 0.005, m = A.master;
     if (kind === "jump") osc(m, t, "triangle", 520, 0.07, 0.07, { slide: 780 });
-    else if (kind === "gem") osc(m, t, "triangle", 523.25 * Math.pow(2, [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24][Math.min(10, fx.chain >> 1)] / 12), 0.09, 0.08);   // 수정을 뚫을 때: 이어질수록 음이 올라간다
     else if (kind === "flip") { osc(m, t, "triangle", 880, 0.08, 0.1, { slide: 440 }); noise(m, t, 0.05, 0.08, "highpass", 5000); }
     else if (kind === "rebound") osc(m, t, "sine", 170, 0.1, 0.42, { slide: 60 });
     else if (kind === "double") { osc(m, t, "triangle", 660, 0.1, 0.1, { slide: 1320 }); noise(m, t, 0.07, 0.1, "highpass", 4000); }
@@ -531,7 +530,7 @@
       while (gemPtr < L.gems.length && L.gems[gemPtr].x <= state.x) {       // 길 위의 수정: 지나가며 뚫는다
         const gm = L.gems[gemPtr];
         if (phase === "running" && Math.abs((ROWS - 1 - state.y + HALF) - gm.h) < 0.7) {
-          gotGems.add(gemPtr); fx.chain++; sfx("gem");
+          gotGems.add(gemPtr); fx.chain++;                  // 소리는 내지 않는다(곡과 어울리지 않았다). 파편만 튄다
           const big = gm.flip || gm.hold;
           burst(gm.x + 0.1, ROWS - 1 - gm.h, big ? 9 : 3, "accent", big ? 13 : 8, true);
           if (big && state.mode === "rush") fx.shake = Math.max(fx.shake, 0.06);
