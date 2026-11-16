@@ -224,7 +224,7 @@ for (const C of Lg.COURSES) {
         if (e3.some(e => e.type === 'land') && 9 - s3.y >= 0.99) { landBars.add(Math.floor(s3.x / 16)); if (boxBars.includes(Math.floor(s3.x / 16))) lands++; }
       }
       const clean = allBox.filter(b => !Lg.PATTERNS[bars3[b]].tall).every(b => bounceAt[b * 384] < 0.2 && bounceAt[(b + 1) * 384] < 0.2);
-      if (boxBars.length) ok(boxBars.length >= 3 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
+      if (boxBars.length) ok(lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
       let died = 0, rnd3 = 11;
       const rand = () => (rnd3 = (rnd3 * 1103515245 + 12345) % 2147483648) / 2147483648;
       for (const b of boxBars) for (let n = 0; n < 40; n++) {
@@ -290,14 +290,20 @@ for (const C of Lg.COURSES) {
       for (const b of trapBars) for (const t of Lg.PATTERNS[C.bars[b]].traps) {
         total++;
         const p8 = Lg.PATTERNS[C.bars[b]], lo = b * 384, hi = lo + 384;
-        const press = new Set([...p8.presses, ...(t.presses || [])].map(v => lo + Math.round(v * 96))), holds = (t.holds || p8.holds).map(([a, z]) => [lo + Math.round(a * 96), lo + Math.round(z * 96)]);
+        const press = new Set((t.full ? t.full.presses : [...p8.presses, ...(t.presses || [])]).map(v => lo + Math.round(v * 96))), holds = (t.full ? t.full.holds : t.holds || p8.holds).map(([a, z]) => [lo + Math.round(a * 96), lo + Math.round(z * 96)]);   // full = 앞 마디의 입력을 통째로
         const s8 = Lg.spawnState(lv, -1);
         while (!s8.dead && !s8.won && s8.step < hi + 96) { const st = s8.step + 1, inBar = st >= lo && st < hi; Lg.stepState(lv, s8, inBar ? press.has(st) : inp8.press.has(st), null, inBar ? holds.some(h => st >= h[0] && st < h[1]) : inp8.hold.has(st)); }
         if (s8.dead && s8.x >= b * 16 && s8.x < b * 16 + 16.5) caught++;
       }
       ok(caught === total, `[${tag}] 함정 마디(${trapBars.join(', ')}): 버릇대로 누르면 그 마디에서 죽는다 (${caught}/${total})`);
-      const hang = trapBars.filter(b => { const p9 = Lg.PATTERNS[C.bars[b]]; for (const t of p9.traps) for (const v of t.presses || []) { const c = b * 16 + Math.round(v * 4); for (let k = c - 1; k <= c + 3; k++) if (lv.ceilH[k] < 90) return true; } return false; });
-      ok(hang.length === trapBars.length && trapBars.every(b => !Lg.PATTERNS[C.bars[b]].sneaky), `[${tag}] 함정 자리마다 바로 위에 빨간 덩어리가 매달려 있다(한 번 더 뛰면 거기에 부딪힌다) — ${hang.length}/${trapBars.length}`);
+      // 한 번 더 누르면 죽는 함정(뚝)은 그 자리 바로 위에 빨간 덩어리가 매달려 있다
+      const stopBars = trapBars.filter(b => Lg.PATTERNS[C.bars[b]].traps.some(t => !t.full && t.presses));
+      const hang = stopBars.filter(b => { const p9 = Lg.PATTERNS[C.bars[b]]; for (const t of p9.traps) for (const v of t.presses || []) { const c = b * 16 + Math.round(v * 4); for (let k = c - 1; k <= c + 3; k++) if (lv.ceilH[k] < 90) return true; } return false; });
+      ok(hang.length === stopBars.length && trapBars.every(b => !Lg.PATTERNS[C.bars[b]].sneaky), `[${tag}] "한 번 더 누르면 죽는" 함정 자리마다 바로 위에 빨간 덩어리가 매달려 있다 — ${hang.length}/${stopBars.length}`);
+      // 도구가 뽑은 함정: 같은 마디를 두 번 한 바로 다음에 오고, 그 마디의 입력과 한 군데만 다르다
+      const gen = trapBars.filter(b => Lg.PATTERNS[C.bars[b]].traps[0].full);
+      const same = (u, v) => JSON.stringify(u) === JSON.stringify(v);
+      ok(gen.every(b => { const f = Lg.PATTERNS[C.bars[b]].traps[0].full, pv = Lg.PATTERNS[C.bars[b - 1]]; return C.bars[b - 1] === C.bars[b - 2] && same(pv.presses, f.presses) && same(pv.holds, f.holds); }), `[${tag}] 뽑은 함정 ${gen.length}곳: 같은 마디를 두 번 한 바로 다음에 오고, 버릇(앞 마디의 입력 그대로)이 통하지 않는다`);
       const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1], prev2 = C.bars[b - 2]; return n === 'goStop' ? prev === 'peak' && prev2 === 'peak' : n === 'ringStop' ? prev === 'ringRun' : n === 'holdStop' ? (prev === 'mix' && prev2 === 'mix') || (prev === 'glideHigh' && prev2 === 'glideHigh') : n === 'stopGo' ? prev === 'peak' : true; });
       ok(follows, `[${tag}] "뚝" 함정은 같은 손을 이어서 친 마디들 바로 다음에 온다(오른쪽 다섯 번 → 뚝, 왼·오 다섯 번 → 뚝, 고리 연타 → 뚝)`);
       // 손이 바뀌는 함정: 같은 손만 이어지다가 다른 손. 그 자리에서 버릇대로(같은 손으로) 누르면 죽는다
@@ -310,9 +316,10 @@ for (const C of Lg.COURSES) {
         while (!s9.dead && !s9.won && s9.step < hi + 96) { const st = s9.step + 1, inBar = st >= lo && st < hi; Lg.stepState(lv, s9, inBar ? press.has(st) : inp8.press.has(st), null, inBar ? holds.some(h => st >= h[0] && st < h[1]) : inp8.hold.has(st)); }
         if (s9.dead && s9.x >= b * 16 && s9.x < b * 16 + 16.5) swapDead++;
       }
-      ok(swaps.length >= 1 && swapDead === swaps.length, `[${tag}] 같은 손으로 이어 치다가 어긋나는 자리 ${swaps.length}곳(오른쪽만 치다가 왼쪽, 왼쪽만 치다가 뚝, 고리 연타 뒤 왼쪽): 버릇대로 같은 손으로 누르면 그 마디에서 죽는다 (${swapDead}/${swaps.length})`);
-      const streams = (joined.match(/w5,w5,w8|w5,w8/g) || []).length + (joined.match(/z5,z4|z5,z7/g) || []).length;
-      ok(streams >= 2, `[${tag}] 피버의 연타 → 뚝: 매 박 누르다 끊기(z5 → z4·z7), 반 박마다 다섯 번 누르다 세 번에서 끊기(w5 → w8) — 모두 ${streams}곳`);
+      ok(swaps.length + gen.length >= 1 && swapDead === swaps.length, `[${tag}] 같은 손으로 이어 치다가 어긋나는 자리 ${swaps.length}곳(오른쪽만 치다가 왼쪽, 왼쪽만 치다가 뚝, 고리 연타 뒤 왼쪽): 버릇대로 같은 손으로 누르면 그 마디에서 죽는다 (${swapDead}/${swaps.length})`);
+      let streams = 0;                                 // 피버: 앞 마디와 같은 글자로 가다가, 누르던 자리(F)가 누르면 안 되는 자리(S)로 바뀌는 마디
+      C.bars.forEach((n, b) => { const u = Lg.PATTERNS[C.bars[b - 1]], v = Lg.PATTERNS[n]; if (!u || !v || u.mode !== 'rush' || v.mode !== 'rush' || !!u.wide !== !!v.wide || u.free || v.free) return; let k = 0; while (k < 8 && u.nodes[k] === v.nodes[k]) k++; if (k >= 2 && k < 7 && u.nodes[k] === 'F' && v.nodes[k] === 'S') streams++; });
+      ok(streams >= 2, `[${tag}] 피버의 "뚝": 앞 마디와 똑같이 가다가 누르던 자리에서 끊기는 마디 — ${streams}곳`);
     }
   }
   if (lv.freeBars.size) {
@@ -342,7 +349,7 @@ for (const C of Lg.COURSES) {
       }
       const seq = (name, want) => { const b = bars2.indexOf(name); return b >= 0 && want.every((l, k) => Math.abs(at2[b * 4 * 96 + k * 48] - l * Lg.ZIG_STEP) < 0.15); };    // 누른 지점에서는 곧바로 꺾이므로 아주 조금 못 미친다
       ok(seq('wUp', [0, 1, 2, 1, 2, 3, 2, 3, 4]) && seq('wDn', [4, 3, 2, 3, 2, 1, 2, 1, 0]), `[${tag}] 넓은 통로로는 파란 계단을 타닥타닥 튕기며 올라가고, 같은 식으로 내려온다`);
-      ok(seq('w5', [4, 3, 2, 3, 2, 3, 2, 3, 4]), `[${tag}] 넓은 통로의 연타(w5): 천장에서 내려와 가운데 두 단계 사이를 반 박마다 오가고(다섯 번 누름) 천장으로 돌아간다`);
+      if (bars2.includes('w5')) ok(seq('w5', [4, 3, 2, 3, 2, 3, 2, 3, 4]), `[${tag}] 넓은 통로의 연타(w5): 천장에서 내려와 가운데 두 단계 사이를 반 박마다 오가고(다섯 번 누름) 천장으로 돌아간다`);
       ok(s2.won && inside && steps >= 8 && lv.stairLo.size > 0 && lv.stairHi.size > 0, `[${tag}] 파란 발판은 닿아도 죽지 않고 튕기기만 한다(${steps}번 닿음). 공이 발판 속으로 들어가는 일은 없다`);
       ok([...lv.stairLo.keys(), ...lv.stairHi.keys()].every(n => lv.freeBars.has(Math.floor(n / 8))), `[${tag}] 파란 발판은 장애물이 없는 연출 마디에만 있다`);
       ok(lv.reds.every(q => { const sp = Lg.hazardSpan(q, 0); return q.kind === 'floor' ? sp[0] === 0 && Math.abs(sp[1] - q.tip) < 1e-9 : q.kind === 'ceil' ? Math.abs(sp[0] - q.tip) < 1e-9 : (Math.abs(sp[1] - sp[0] - 3.2) < 1e-6 || Math.abs(sp[1] - sp[0] - 2.7) < 1e-6) && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-6; }), `[${tag}] 장애물 모양: 이빨은 삼각형, 떠 있는 것은 길이 3.2칸(연타 패턴에서는 2.7칸)의 마름모(양 끝이 뾰족)`);
