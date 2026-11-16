@@ -34,6 +34,11 @@ const PATTERNS = {
   box:       { holds: [], presses: [], boxes: [[3, 9, 1]] },                       // 한 단: 올라타서 한 번 튀고 내려온다
   twin:      { holds: [], presses: [], boxes: [[3, 5, 1], [7, 9, 1]] },            // 박스 둘: 하나를 밟고 다음 박스로 건너뛴다
   stairs:    { holds: [], presses: [], boxes: [[3, 6, 1], [7, 10, 2]] },           // 두 단 계단: 타닥 타닥 올라가서 뛰어내린다
+  // ---- 빨간 바닥과 파란 섬: 박스를 써야 지나가는 마디. lava = [[첫 칸, 끝 칸], ...]의 땅은 닿으면 죽고, 그 위의 파란 박스만 디딜 수 있다.
+  //   그냥 튀면 빨간 바닥에 떨어진다. 박스에서는 박자에 맞춰 저절로 다시 튀어 빨간 바닥 밖으로 나간다.
+  lavaHop:   { holds: [[0.5, 1.0]], presses: [], tol: 0.18, boxes: [[5, 8, 1]], lava: [[1, 4], [9, 10]] },     // 꼭대기에서 멈춰 빨간 바닥을 건너 박스 섬에 내려앉는다
+  lavaLeap:  { holds: [], presses: [0.5], tol: 0.18, boxes: [[5, 8, 2]], lava: [[1, 4], [9, 10]] },            // 이단 점프로 높은 박스 섬에 올라탄다
+  lavaGlide: { holds: [[1.5, 2.375]], presses: [], tol: 0.18, boxes: [[3, 5, 1]], lava: [[6, 9]] },            // 박스를 밟고 튀어, 꼭대기에서 멈춰 빨간 바닥을 건넌다
   // 누르는 시각은 모두 1/8박 단위다(곡의 음 단위). 누르는 순간이 곡의 소리와 겹치게 하려는 것.
   // tol = 통로를 만들 때 봐주는 타이밍 오차(박). 곡이 빨라서(한 박 0.39초) 넓게 잡았다. 너무 넓히면 장애물이 그 입력을 요구하지 못하게 되므로 패턴마다 다르다.
   // ---- 쉬운 동작(입력 한두 번, 모두 엇박). 라운드 1의 바탕.
@@ -137,7 +142,7 @@ const ROUND1 = {
 // 라운드 2: "Terminal Pursuit". 분당 152박(1라운드와 같다), 첫 박 0.281초, 72마디이고 73번째 마디 첫 박에 끝맺는 한 방.
 // 곡의 구간(마디): 0~7 도입(끝 두 마디는 조용) / 8~22 첫 큰 구간(16부터 멜로디) / 23 채움 / 24~31 밝고 가벼운 구간 / 32~39 쉬어 감
 //                / 40~54 두 번째 큰 구간(48부터 더 밝게) / 55 채움 / 56~63 절정 / 64~71 가장 센 절정
-// 1라운드와 같은 동작만 쓴다. 쉬는 마디가 조금 줄고, 피버가 두 번 나오며, 피버 안에 장애물 없이 연출만 있는 마디(파란 발판·계단, 조여드는 통로)가 있다.
+// 1라운드와 같은 동작에, 후반부터 "빨간 바닥과 파란 섬"이 더해진다. 쉬는 마디가 조금 줄고, 피버가 두 번 나오며, 피버 안에 장애물 없이 연출만 있는 마디(파란 발판·계단, 조여드는 통로)가 있다.
 const ROUND2 = {
   name: "ROUND 2 · Terminal Pursuit",
   bpm: 151.9867,
@@ -151,12 +156,13 @@ const ROUND2 = {
     // 밝고 가벼운 구간: 첫 피버. 파란 발판 → 좁은 통로 → 계단으로 올라가 넓은 통로(가운데에 떠 있는 장애물) → 계단으로 내려와 다시 좁은 통로
     "zT", "z1", "z1", "wUp",   "w3", "w1", "wDn", "z3",
     // 쉬어 감
-    "stairs", "hA", "box", "dj2",   "mix", "twin", "idle", "cp",
+    // (여기서 새 장치를 가르친다: 빨간 바닥과 파란 섬. 쉬는 마디를 끼고 하나씩)
+    "stairs", "lavaHop", "box", "lavaLeap",   "idle", "lavaGlide", "twin", "cp",
     // 두 번째 큰 구간
-    "mix", "mix2", "glideHigh", "box",   "peak", "skyGlide", "mix", "stairs",
-    "mix2", "skyGlide", "peak", "twin",   "glideHigh", "mix", "skyGlide", "cp",
+    "mix", "mix2", "lavaHop", "box",   "peak", "lavaLeap", "mix", "stairs",
+    "mix2", "lavaGlide", "peak", "twin",   "glideHigh", "mix", "skyGlide", "cp",
     // 절정: 쉬는 마디 하나만 두고 이어 붙인다
-    "mix", "mix2", "skyGlide", "glideHigh",   "box", "peak", "mix2", "cp",
+    "mix", "lavaLeap", "skyGlide", "lavaGlide",   "box", "peak", "mix2", "cp",
     // 가장 센 절정: 마지막 피버. 들어서자마자 계단으로 넓은 통로에 올라간다. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다
     "wUp", "w4", "w2", "w1",   "wDn", "z5", "zS1", "zS2",
     "goal", "flat", "flat",
@@ -181,6 +187,7 @@ const TOOTH_W = 1.1;                         // 이빨의 반 너비(칸). 끝�
 const TOOTH_H = ZIG_TOP - ZIG_GAP;           // 이빨의 길이(칸)
 const KITE_W = 0.85;                         // 떠 있는 장애물(마름모)의 반 너비
 const WIDE_TOP = 4;                          // 넓은 통로의 맨 위 단계(보통 통로는 2)
+const LAVA_H = 0.375;       // 빨간 바닥의 두께(칸)
 const HAZ_MAX_H = 4;       // 바닥에서 솟는 장애물의 최대 높이(칸)
 const WRONG_SHIFT = [-0.3, 0.3];   // "크게 어긋난 입력"으로 치는 박자 차이
 const BLOCK_GROW = 1;      // 막는 칸에서 양옆으로 넓히는 칸 수
@@ -362,7 +369,7 @@ function buildLevel(course) {
       const k = env[c];
       if (k.lo > 90) continue;
       const fh = Math.min(HAZ_MAX_H, Math.floor((k.lo - mF) * 4) / 4);
-      if (!k.ground && fh >= 0.5) L.floorH[c] = fh;
+      if (!k.ground && fh >= 0.5 && !isSolid(L, c, ROWS - 2)) L.floorH[c] = fh;      // 파란 박스가 있는 칸에는 빨간 덩어리를 세우지 않는다
       const ch = Math.ceil((k.hi + SIZE + mC) * 4) / 4;
       if (ch <= CEIL_MAX_H) L.ceilH[c] = ch;
     }
@@ -400,6 +407,11 @@ function buildLevel(course) {
     if (outC[c] < 90 && outC[c - 1] < 90 && Math.abs(outC[c] - outC[c - 1]) <= 0.25) { const v = Math.max(outC[c], outC[c - 1]); for (let k = c; k >= 0 && outC[k] < 90 && v - outC[k] <= 0.25 && outC[k] !== v; k--) outC[k] = v; outC[c] = v; }
   }
   L.floorH = outF; L.ceilH = outC;
+  // 빨간 바닥(lava): 패턴에 적힌 칸의 땅은 닿으면 죽는다. 그 위에 놓인 파란 박스만 디딜 수 있다.
+  course.bars.forEach((name, b) => {
+    const p = PATTERNS[name];
+    if (p && p.lava) for (const [a, z] of p.lava) for (let c = b * 16 + a; c <= b * 16 + z; c++) if (!isSolid(L, c, ROWS - 2)) L.floorH[c] = Math.max(L.floorH[c], LAVA_H);
+  });
   // 패턴대로 달려 죽는 곳이 있으면 그 둘레의 장애물을 걷어 낸다(드물게 생긴다)
   L.fixed = [];
   for (let guard = 0; guard < 60; guard++) {
