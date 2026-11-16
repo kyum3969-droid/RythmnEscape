@@ -191,7 +191,7 @@
     b:     { top: "#07203a", bottom: "#0f6b78", accent: "#b6ff5a", sun: "#ffe066" },
     c:     { top: "#2a0a2e", bottom: "#8c1c3a", accent: "#ffd166", sun: "#ff7b54" },
     d:     { top: "#0b0b2a", bottom: "#3d0f7a", accent: "#ff4fd8", sun: "#7df9ff" },
-    bounce: { top: "#0d1b2a", bottom: "#1b6ca8", accent: "#ffef5e", sun: "#ff7ac6" },
+    ride:  { top: "#0d1b2a", bottom: "#1b6ca8", accent: "#ffef5e", sun: "#ff7ac6" },
     outro: { top: "#101a3a", bottom: "#2a6f97", accent: "#ffffff", sun: "#ffe066" },
   };
   const SIL = "#07070f", DANGER = "#ff3b6b";
@@ -315,7 +315,7 @@
       if (s === 8) clap(0.28);
       if (s % 4 === 2) hat(0.08);
       if (s % 2 === 0) arp(ch.notes[[0, 2, 1, 2][(s / 2) % 4]] * 2, 0.03);
-    } else if (id === "bounce") {           // 킥마다 구슬이 튄다: 쿵-짝 리듬
+    } else if (id === "ride") {             // 언덕 구간: 쿵-짝 리듬에 가벼운 소리
       if (s % 4 === 0) { kick(); bass(ch.root, SPB * 0.25); osc(bus, t, "triangle", ch.notes[0], 0.12, 0.07, { slide: ch.notes[0] * 1.5 }); }
       if (s === 4 || s === 12) clap(0.26);
       if (s % 4 === 2) { hat(0.12, true); bass(ch.root * 2, SPB * 0.3); }
@@ -417,6 +417,7 @@
     phase = "running";
     $("overlay").hidden = true;
     startClock(state.step / SUB);
+    setModeLabel();
     refreshHud();
   }
   function startFresh() { tries = 1; devRun = false; begin(-1); }
@@ -523,6 +524,7 @@
       else if (e.type === "freeze") { sfx("freeze"); muffle(true); }
       else if (e.type === "unfreeze") muffle(false);
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
+      else if (e.type === "mode") { setModeLabel(); toast(e.mode === "ride" ? "RIDE" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; }
       else if (e.type === "land") { fx.landAt = now; fx.ringChain = 0; puff(state.x, state.y, 4, 0.4); }
       else if (e.type === "double") { fx.jumpAt = now; sfx("double"); ring(state.x, state.y); }
       else if (e.type === "break") {
@@ -604,14 +606,31 @@
       ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1.1 + p * 2.6), 0, Math.PI * 2); ctx.stroke();
     }
 
-    // 이퀄라이저 막대 모양의 먼 풍경 (2겹, 박자에 맞춰 들썩임)
+    // 먼 풍경 (2겹, 박자에 맞춰 들썩임): 평소엔 이퀄라이저 막대, 언덕 구간에서는 둥근 능선으로 바뀐다
+    let round = 0;                                             // 0 = 각진 세계, 1 = 둥근 세계
+    for (const r of L.rides) round = Math.max(round, Math.min(1, (camX - r[0] + 5) / 5, (r[1] + 1 - camX) / 5));
+    round = Math.max(0, round);
     for (const [layer, bw, par, dark, amp] of [[1, T * 1.7, 0.18, 0.45, 3.6], [2, T * 1.0, 0.42, 0.68, 2.4]]) {
       ctx.fillStyle = css(mix(pal.bottom, [0, 0, 0], dark));
       const off = camX * T * par, i0 = Math.floor(off / bw);
-      for (let i = i0; i * bw - off < w + bw; i++) {
-        const hh = (0.6 + amp * hash(i, layer)) * T * (1 + 0.22 * pulse * hash(i, layer + 9));
-        ctx.fillRect(i * bw - off, view.groundY - hh, bw - 3, hh + h);
+      if (round < 1) {
+        ctx.globalAlpha = 1 - round;
+        for (let i = i0; i * bw - off < w + bw; i++) {
+          const hh = (0.6 + amp * hash(i, layer)) * T * (1 + 0.22 * pulse * hash(i, layer + 9));
+          ctx.fillRect(i * bw - off, view.groundY - hh, bw - 3, hh + h);
+        }
       }
+      if (round > 0) {
+        ctx.globalAlpha = round;
+        ctx.beginPath(); ctx.moveTo(-20, h + 20);
+        for (let x = -20; x <= w + 20; x += 10) {
+          const u = (x + off) / T;
+          const hh = (0.9 + amp * 0.5 * (1 + 0.6 * Math.sin(u * 0.33 + layer * 2.1) + 0.4 * Math.sin(u * 0.71 + layer))) * T * (1 + 0.05 * pulse);
+          ctx.lineTo(x, view.groundY - hh);
+        }
+        ctx.lineTo(w + 20, h + 20); ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
 
     // 지형
@@ -625,7 +644,7 @@
     for (let c = cA; c <= cB; c++) for (let r = 0; r < ROWS; r++) {
       if (tile(L, c, r) !== "#") continue;
       const x = sx(c), y = sy(r), yb = r === ROWS - 1 ? h + 20 : y + T;
-      if (tile(L, c, r - 1) !== "#") { ctx.moveTo(x, y); ctx.lineTo(x + T, y); }
+      if (tile(L, c, r - 1) !== "#" && !(r === ROWS - 1 && inRide(L, c + 0.5))) { ctx.moveTo(x, y); ctx.lineTo(x + T, y); }
       if (tile(L, c - 1, r) !== "#") { ctx.moveTo(x, y); ctx.lineTo(x, yb); }
       if (tile(L, c + 1, r) !== "#") { ctx.moveTo(x + T, y); ctx.lineTo(x + T, yb); }
       if (r < ROWS - 1 && tile(L, c, r + 1) !== "#") { ctx.moveTo(x, y + T); ctx.lineTo(x + T, y + T); }
@@ -664,21 +683,33 @@
     ctx.lineJoin = "round";
 
     // 패턴 장애물: 바닥에서 솟은 덩어리와 위에 매달린 덩어리. 이웃한 칸은 한 덩어리로 이어 그린다. (판정은 그림보다 조금 작다)
-    const blockRuns = (arr, has, yOf, yBase) => {
+    // 언덕 구간에서는 모서리를 둥글린다.
+    const blockRuns = (arr, has, yBase) => {
       for (let c = Math.max(0, cA); c <= cB && c < L.cols; c++) {
         if (!has(arr[c])) continue;
         let a = c, e = c;
         while (a > 0 && has(arr[a - 1])) a--;
         while (e + 1 < L.cols && has(arr[e + 1])) e++;
-        const x0 = sx(a) + T * 0.06, x1 = sx(e + 1) - T * 0.06;
-        let yMin = Infinity, yMax = -Infinity;
-        ctx.beginPath(); ctx.moveTo(x0, yBase);
+        const x0 = sx(a) + T * 0.06, x1 = sx(e + 1) - T * 0.06, soft = inRide(L, a + 0.5) ? T * 0.34 : 0;
+        const pts = [[x0, yBase]];
+        let yMin = yBase, yMax = yBase;
         for (let k = a; k <= e; k++) {
-          const y = yOf(arr[k]);
-          yMin = Math.min(yMin, y, yBase); yMax = Math.max(yMax, y, yBase);
-          ctx.lineTo(k === a ? x0 : sx(k), y); ctx.lineTo(k === e ? x1 : sx(k + 1), y);
+          const y = sy(ROWS - 1 - arr[k]), xl = k === a ? x0 : sx(k), xr = k === e ? x1 : sx(k + 1);
+          yMin = Math.min(yMin, y); yMax = Math.max(yMax, y);
+          if (pts[pts.length - 1][1] !== y) pts.push([xl, y]);
+          if (k === e || arr[k + 1] !== arr[k]) pts.push([xr, y]);
         }
-        ctx.lineTo(x1, yBase); ctx.closePath();
+        pts.push([x1, yBase]);
+        const trace = () => {
+          ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+          for (let i = 1; i < pts.length - 1; i++) {
+            const p = pts[i], q = pts[i - 1], n = pts[i + 1];
+            const rr = Math.min(soft, Math.hypot(p[0] - q[0], p[1] - q[1]) / 2, Math.hypot(n[0] - p[0], n[1] - p[1]) / 2);
+            if (rr > 1) ctx.arcTo(p[0], p[1], n[0], n[1], rr); else ctx.lineTo(p[0], p[1]);
+          }
+          ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+        };
+        trace(); ctx.closePath();
         const bg = ctx.createLinearGradient(0, yBase, 0, yBase < yMax ? yMax : yMin);
         bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#6d1236");
         ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fill();
@@ -686,19 +717,42 @@
         ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2;
         ctx.beginPath();
         const span = yMax - yMin, gap = T * 0.36;
-        for (let x = Math.floor((x0 - span) / gap) * gap + ((camX * T) % gap) * -1; x < x1; x += gap) { ctx.moveTo(x, yMax); ctx.lineTo(x + span, yMin); }
+        for (let x = Math.floor((x0 - span) / gap) * gap - ((camX * T) % gap); x < x1; x += gap) { ctx.moveTo(x, yMax); ctx.lineTo(x + span, yMin); }
         ctx.stroke(); ctx.restore();
-        ctx.beginPath(); ctx.moveTo(x0, yBase);
-        for (let k = a; k <= e; k++) { const y = yOf(arr[k]); ctx.lineTo(k === a ? x0 : sx(k), y); ctx.lineTo(k === e ? x1 : sx(k + 1), y); }
-        ctx.lineTo(x1, yBase);
+        trace();
         ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; ctx.shadowBlur = 9 + 8 * pulse; ctx.stroke();
         ctx.lineJoin = "round"; ctx.shadowBlur = 0;
         c = e;
       }
     };
     if (L.floorH) {
-      blockRuns(L.floorH, (v) => v > 0, (v) => sy(ROWS - 1 - v), view.groundY);
-      blockRuns(L.ceilH, (v) => v < 90, (v) => sy(ROWS - 1 - v), -40);
+      blockRuns(L.floorH, (v) => v > 0, view.groundY);
+      blockRuns(L.ceilH, (v) => v < 90, -40);
+    }
+    // 언덕: 둥근 땅. 장애물 뒤에 그려서 밑동을 덮는다.
+    for (const r of L.rides) {
+      const xa = Math.max(r[0], cA), xb = Math.min(r[1], cB + 1);
+      if (xa >= xb) continue;
+      ctx.beginPath(); ctx.moveTo(sx(xa), h + 20);
+      for (let x = xa; x < xb; x += 0.125) ctx.lineTo(sx(x), sy(ROWS - 1 - terrainAt(L, x)));
+      ctx.lineTo(sx(xb), view.groundY); ctx.lineTo(sx(xb), h + 20); ctx.closePath();
+      ctx.shadowBlur = 0; ctx.fillStyle = SIL; ctx.fill();
+      ctx.beginPath();
+      for (let x = xa; x < xb; x += 0.125) ctx.lineTo(sx(x), sy(ROWS - 1 - terrainAt(L, x)));
+      ctx.lineTo(sx(xb), view.groundY);
+      ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5; ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 8 + 10 * pulse; ctx.stroke();
+      // 관문: 구간이 바뀌는 자리의 빛 커튼
+      for (const [gx, label] of [[r[0], "RIDE"], [r[1], "BOUNCE"]]) {
+        if (gx < cA || gx > cB) continue;
+        const x = sx(gx), gw = T * 0.9;
+        const gg = ctx.createLinearGradient(x - gw, 0, x + gw, 0);
+        gg.addColorStop(0, css(pal.accent, 0)); gg.addColorStop(0.5, css(pal.accent, 0.28 + 0.12 * pulse)); gg.addColorStop(1, css(pal.accent, 0));
+        ctx.shadowBlur = 0; ctx.fillStyle = gg; ctx.fillRect(x - gw, -30, gw * 2, view.groundY + 30);
+        ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.fillRect(x - 1, -30, 2, view.groundY + 30);
+        ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 10; ctx.fillStyle = css(pal.accent); ctx.font = `700 ${T * 0.5}px "Chakra Petch", sans-serif`; ctx.textAlign = "center";
+        ctx.fillText(label, x, view.groundY - T * 5.4);
+      }
+      ctx.shadowBlur = 0;
     }
     if (dev && REF_PATH) {                                         // 개발자 모드: 패턴대로 눌렀을 때의 길(멈춘 구간은 굵게)
       ctx.shadowBlur = 0;
@@ -792,7 +846,7 @@
     ctx.shadowBlur = 0;
     ctx.fillStyle = css(pal.accent, 0.3);
     for (let c = Math.ceil(cA / 4) * 4; c <= cB; c += 4) {
-      if (!(isSolid(L, c, groundY(L, c)) && isSolid(L, c - 1, groundY(L, c))) || (L.floorH && (L.floorH[c] > 0 || L.floorH[c - 1] > 0))) continue;
+      if (!(isSolid(L, c, groundY(L, c)) && isSolid(L, c - 1, groundY(L, c))) || (L.floorH && (L.floorH[c] > 0 || L.floorH[c - 1] > 0)) || inRide(L, c)) continue;
       const x = sx(c), y = sy(groundY(L, c)) + T * 0.2;
       ctx.beginPath(); ctx.moveTo(x - T * 0.16, y); ctx.lineTo(x, y + T * 0.16); ctx.lineTo(x + T * 0.16, y); ctx.lineTo(x, y - T * 0.06); ctx.closePath(); ctx.fill();
     }
@@ -913,6 +967,7 @@
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
     glideLow: "왼쪽 누르고 있기 = 공중에서 멈춤", glideHigh: "꼭대기에서 멈춰서 건너가기", peak: "오른쪽 누르기 = 공중에서 한 번 더 점프!",
+    rHop: "언덕 구간: 저절로 안 튀어요. 오른쪽 = 점프", rCrest: "왼쪽 누르고 있기 = 활공", rLeap: "공중에서 한 번 더 점프", rWeave: "점프 → 활공 → 이단 점프",
     weave: "멈춤 → 이단 점프 → 멈춤", skyGlide: "이단 점프 꼭대기에서 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];
@@ -992,6 +1047,7 @@
     else if (phase === "dead" && performance.now() / 1000 - deadAt > 0.15) respawn();   // 기다리지 않고 바로 재도전
   }
   const setZones = () => { $("zoneL").classList.toggle("on", holding()); };
+  function setModeLabel() { $("zoneL").querySelector("span").textContent = state.mode === "ride" ? "누르고 있기 = 활공" : "누르고 있기 = 멈춤"; }
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     const r = canvas.getBoundingClientRect();

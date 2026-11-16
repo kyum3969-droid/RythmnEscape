@@ -43,6 +43,12 @@ const PATTERNS = {
   lowThenUp: { holds: [[0.88, 1.3], [2.1, 2.6]], presses: [1.32] },
   // 굴러가다 땅에서 점프 → 공중에서 멈춤
   roller:    { holds: [[2.25, 2.95]], presses: [0.5, 1.75], mF: 0.1 },
+  // ---- 언덕 모드. terrain = 반 박마다의 언덕 높이 8개(첫 값 0, 마디 끝에서 다시 0으로 내려온다)
+  rHop:      { mode: "ride", terrain: [0, 0.3, 0.7, 0.6, 0.3, 0, 0, 0], holds: [], presses: [1.5] },
+  rCrest:    { mode: "ride", terrain: [0, 0, 0.8, 1.8, 0.6, 0, 0, 0], holds: [[1.7, 2.9]], presses: [] },
+  rRoll:     { mode: "ride", terrain: [0, 0.5, 1.3, 0.7, 0.2, 0.9, 0.5, 0.1], holds: [], presses: [] },
+  rLeap:     { mode: "ride", terrain: [0, 0.2, 0.5, 0.3, 0, 0, 0, 0], holds: [], presses: [0.75, 1.6] },
+  rWeave:    { mode: "ride", terrain: [0, 0, 0.3, 0.6, 0.3, 0, 0, 0], holds: [[1.2, 1.85]], presses: [0.5, 1.9] },
 };
 
 const COURSE = {
@@ -52,15 +58,21 @@ const COURSE = {
     "glideLow", "idle", "glideHigh", "idle", "glideLow", "glideHigh", "peak", "cp",
     "weave", "idle", "weave", "skyGlide", "idle", "lowThenUp", "weave", "cp",
     "roller", "peak", "lowThenUp", "idle", "skyGlide", "weave", "roller", "cp",
-    "weave", "glideHigh", "peak", "lowThenUp", "idle", "skyGlide", "weave", "cp",
+    "rHop", "rCrest", "rRoll", "rLeap", "rCrest", "rWeave", "rLeap", "cp",          // 언덕 모드(곡의 조용한 구간)
     "roller", "weave", "lowThenUp", "peak", "glideLow", "skyGlide", "weave", "goal",
     "flat",
   ],
   sections: [
-    { bar: 0, id: "intro" }, { bar: 2, id: "a" }, { bar: 10, id: "b" }, { bar: 18, id: "c" }, { bar: 26, id: "bounce" }, { bar: 34, id: "d" }, { bar: 41, id: "outro" },
+    { bar: 0, id: "intro" }, { bar: 2, id: "a" }, { bar: 10, id: "b" }, { bar: 18, id: "c" }, { bar: 26, id: "ride" }, { bar: 34, id: "d" }, { bar: 41, id: "outro" },
   ],
 };
 
+// ---- 언덕 모드(ride): 둥근 언덕을 타고 흐른다. 저절로 튀지 않고, 앞으로 가는 속도는 그대로(박자에 묶임).
+const G_RIDE = 7;                 // 중력이 약해서 오래 뜬다(칸/박²)
+const V_RIDE = 5.6;               // 점프 속도: 평지에서 높이 약 2.25칸(기본 모드와 같다), 1.6박 동안 뜬다
+const RIDE_UPHILL = 0.4;          // 오르막에서 뛰면 올라가던 속도의 이만큼이 더해진다
+const GLIDE_STEPS = 2 * SUB;      // 활공은 한 번 뜰 때마다 최대 2박
+const GLIDE_FALL = 0.35;          // 활공: 내려가는 속도가 한 박에 약 0.6칸으로 잦아든다(거의 수평). 올라가는 동안에는 영향 없음
 const HAZ_MAX_H = 4;       // 바닥에서 솟는 장애물의 최대 높이(칸)
 const WRONG_SHIFT = [-0.3, 0.3];   // "크게 어긋난 입력"으로 치는 박자 차이
 const BLOCK_GROW = 1;      // 막는 칸에서 양옆으로 넓히는 칸 수
@@ -82,14 +94,21 @@ function emptyLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill(r === ROWS - 1 ? "#" : "."));
-  const cps = [];
+  const cps = [], rides = [];
+  const terrain = new Float32Array(course.bars.length * 8 + 4);   // 반 박(2칸)마다의 언덕 높이
   let goalX = cols - 8;
   course.bars.forEach((name, b) => {
+    const p = PATTERNS[name];
+    if (p && p.mode === "ride") {
+      if (p.terrain.length !== 8 || p.terrain[0] !== 0) throw new Error("언덕은 반 박마다 8개, 첫 값은 0: " + name);
+      p.terrain.forEach((h, i) => { terrain[b * 8 + i] = h; });
+      if (rides.length && rides[rides.length - 1][1] === b * 16) rides[rides.length - 1][1] = b * 16 + 16; else rides.push([b * 16, b * 16 + 16]);
+    }
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
     else if (name === "goal") goalX = b * 16 + 8;
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
-  return { grid, cols, cps, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  return { grid, cols, cps, rides, terrain, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 // 패턴대로 달린 공의 자취(스텝마다 위치·상태)
@@ -132,7 +151,7 @@ function buildLevel(course) {
   const env = [];                                      // 칸마다 통로: 공 바닥 높이의 범위와 땅에 닿는지
   for (let c = 0; c < L.cols; c++) env.push({ lo: 99, hi: -99, ground: false });
   const sweep = (s) => {
-    const h = s.onGround ? 0 : (ROWS - 1) - s.y;
+    const h = (ROWS - 1) - s.y;
     for (let c = Math.max(0, Math.ceil(s.x - 1.4 + 1e-9)); c <= Math.floor(s.x + 0.4 - 1e-9) && c < L.cols; c++) {
       const k = env[c];
       if (s.onGround) k.ground = true;
@@ -176,8 +195,8 @@ function buildLevel(course) {
     for (let c = b * 16; c < b * 16 + 16; c++) {
       const k = env[c];
       if (k.lo > 90) continue;
-      const fh = Math.min(HAZ_MAX_H, Math.floor((k.lo - mF) * 4) / 4);
-      if (!k.ground && fh >= 0.5) L.floorH[c] = fh;
+      const base = terrainTop(L, c), fh = Math.min(base + HAZ_MAX_H, Math.floor((k.lo - mF) * 4) / 4);
+      if (!k.ground && fh - base >= 0.5) L.floorH[c] = fh;
       const ch = Math.ceil((k.hi + SIZE + mC) * 4) / 4;
       if (ch <= CEIL_MAX_H) L.ceilH[c] = ch;
     }
@@ -243,6 +262,50 @@ function drawBar(L, b) {
   return rows.map((r) => r.join("")).join("\n") + "\n################";
 }
 
+// 언덕의 높이. 반 박(2칸)마다 놓은 점을 부드럽게 잇는다. 마디가 바뀌는 점에서는 기울기 0(마디마다 독립된 모양이 되게).
+const inRide = (L, x) => { for (const r of L.rides) if (x >= r[0] && x < r[1]) return true; return false; };
+function terrainAt(L, x) {
+  if (!L.rides.length || !inRide(L, x)) return 0;
+  const P = L.terrain, i = Math.floor(x / 2), u = x / 2 - i;
+  const p1 = P[i] || 0, p2 = P[i + 1] || 0;
+  const m1 = i % 8 === 0 ? 0 : (p2 - (P[i - 1] || 0)) / 2, m2 = (i + 1) % 8 === 0 ? 0 : ((P[i + 2] || 0) - p1) / 2;
+  const u2 = u * u, u3 = u2 * u;
+  return Math.max(0, (2 * u3 - 3 * u2 + 1) * p1 + (u3 - 2 * u2 + u) * m1 + (-2 * u3 + 3 * u2) * p2 + (u3 - u2) * m2);
+}
+// 한 칸 안에서 언덕이 가장 높은 곳
+function terrainTop(L, c) { let m = 0; for (let k = 0; k <= 4; k++) m = Math.max(m, terrainAt(L, c + k / 4 - (k === 4 ? 1e-6 : 0))); return m; }
+
+// 언덕 모드의 한 스텝. 땅에 붙어 있으면 언덕을 따라가고, 언덕이 중력보다 빨리 꺼지면 저절로 뜬다.
+function rideStep(L, s, ev, hold) {
+  const gy = (ROWS - 1) - terrainAt(L, s.x);                    // 지금 x에서 땅의 y
+  const takeoff = () => { s.onGround = false; s.djAvail = true; s.freeze = GLIDE_STEPS; };
+  if (s.onGround) {
+    if (s.jbuf > 0) {                                           // 점프: 오르막에서는 올라가던 속도만큼 더 높이
+      s.vy = Math.min(s.vy, 0) * RIDE_UPHILL - V_RIDE; s.jbuf = 0; takeoff();
+      if (ev) ev.push({ type: "jump" });
+    } else {
+      const vFree = s.vy + G_RIDE * DT, yFree = s.y + vFree * DT;
+      if (yFree < gy - 1e-9) { s.vy = vFree; s.y = yFree; takeoff(); if (ev) ev.push({ type: "lift" }); return; }
+      s.vy = (gy - s.y) / DT; s.y = gy;
+      return;
+    }
+  } else if (s.jbuf > 0 && s.djAvail) {
+    s.vy = -V_RIDE; s.djAvail = false; s.jbuf = 0;
+    if (ev) ev.push({ type: "double" });
+  }
+  const glide = !!hold && s.freeze > 0;
+  if (glide !== s.frozen) { s.frozen = glide; if (ev) ev.push({ type: glide ? "freeze" : "unfreeze" }); }
+  s.vy += G_RIDE * DT;
+  if (glide) { s.freeze--; if (s.vy > GLIDE_FALL) s.vy += (GLIDE_FALL - s.vy) * 0.3; }
+  s.y += s.vy * DT;
+  if (s.y >= gy) {                                              // 착지: 그 자리 언덕의 속도를 이어받는다
+    s.y = gy; s.onGround = true; s.djAvail = false;
+    s.vy = (terrainAt(L, s.x - TPB * DT) - terrainAt(L, s.x)) / DT;
+    if (s.frozen) { s.frozen = false; if (ev) ev.push({ type: "unfreeze" }); }
+    if (ev) ev.push({ type: "land" });
+  }
+}
+
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);
 const isSolid = (L, c, r) => tile(L, c, r) === "#";
 
@@ -292,6 +355,19 @@ function stepState(L, s, press, ev, hold) {
   if (s.dead || s.won) return;
   s.step++;
   if (press) s.jbuf = JUMP_BUF_STEPS;
+  const ride = L.rides.length > 0 && inRide(L, TPB * s.step / SUB);
+  if (ride !== (s.mode === "ride")) {                 // 모드 관문을 지남
+    s.mode = ride ? "ride" : "bounce";
+    if (s.frozen) { s.frozen = false; if (ev) ev.push({ type: "unfreeze" }); }
+    if (s.onGround) { s.y = ROWS - 1; s.vy = 0; }
+    else s.freeze = ride ? GLIDE_STEPS : Math.min(s.freeze, FREEZE_STEPS);
+    if (ev) ev.push({ type: "mode", mode: s.mode });
+  }
+  if (ride) {
+    s.x = TPB * s.step / SUB;
+    rideStep(L, s, ev, hold);
+    if (s.jbuf > 0) s.jbuf--;
+  } else {
   if (s.onGround) {
     if (s.jbuf > 0) launch(s, "jump", ev);            // 굴러가는 중에 누르면 그 자리에서 점프
     else tryBounce(L, s, ev);
@@ -363,6 +439,8 @@ function stepState(L, s, press, ev, hold) {
       if (s.x + HALF - 0.08 > hx0 && s.x - HALF + 0.08 < hx1 && s.y - 0.08 > hy0 && top + 0.08 < hy1) die(s, "spike", ev);
     }
   }
+  }
+  const top = s.y - SIZE, c0 = Math.floor(s.x - HALF + 0.03), c1 = Math.floor(s.x + HALF - 0.03);
   if (L.floorH && hazardAt(L, s)) die(s, "spike", ev);   // 패턴 통로의 장애물(바닥에서 솟은 덩어리와 매달린 덩어리)
   for (let c = c0 - 1; c <= c1 + 1 && !s.dead; c++) {
     const list = L.sawCols.get(c);
@@ -403,7 +481,7 @@ function solve(L, start, opts = {}) {
     seen.add(k);
     if (s.x > best) best = s.x;
     const options = [];
-    if (!opts.noJump && (s.onGround ? !opts.noGroundJump && s.step % SUB > BOUNCE_TOL : s.djAvail)) options.push("j");
+    if (!opts.noJump && (s.onGround ? !opts.noGroundJump && (s.mode === "ride" || s.step % SUB > BOUNCE_TOL) : s.djAvail)) options.push("j");
     if (!s.onGround && s.freeze > 0 && !opts.noFreeze) options.push("h");
     options.push("");                                  // 스택이라 마지막에 넣은 것(아무것도 안 함)을 먼저 시도
     for (const a of options) {
@@ -424,4 +502,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, terrainAt, terrainTop, inRide, GLIDE_STEPS, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };

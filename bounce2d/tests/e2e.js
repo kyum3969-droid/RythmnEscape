@@ -80,14 +80,17 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 코스에 적힌 키 패턴대로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(g.L.ref); g.startFresh(); });
-  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller' };
+  const shots = { 9.25: 'p_glideLow', 16.75: 'p_glideHigh', 32.75: 'p_peak', 40.5: 'p_weave1', 42: 'p_weave2', 53.25: 'p_skyGlide', 61.25: 'p_lowThenUp', 74.5: 'p_roller', 103.75: 'ride_gate', 106.25: 'ride_hop', 110.25: 'ride_crest', 113: 'ride_roll', 118.25: 'ride_leap', 126.25: 'ride_weave', 132.5: 'ride_exit' };
+  const modeSeen = {};
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
+    if (beat === 100 || beat === 110 || beat === 134) modeSeen[beat] = await G(() => window.__game.state.mode + ':' + document.querySelector('#zoneL span').textContent);
     if (await G(() => window.__game.phase) !== 'running') break;
   }
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cause: window.__game.state.cause, x: window.__game.state.x }));
   ok(st.phase === 'won' && st.cp === 3, '패턴대로 누르면 완주, 체크포인트 4개 통과' + (st.phase === 'won' ? '' : ` (${st.cause} @마디 ${Math.floor(st.x / 16)})`));
+  ok(modeSeen[100] === 'bounce:누르고 있기 = 멈춤' && modeSeen[110] === 'ride:누르고 있기 = 활공' && modeSeen[134] === 'bounce:누르고 있기 = 멈춤', `언덕 구간(마디 26~32)에서는 모드와 조작 안내가 바뀐다 (${Object.values(modeSeen).join(' → ')})`);
   await p.waitForTimeout(200);
   ok((await p.textContent('#ovTitle')).includes('CLEAR') && (await p.textContent('#pct')) === '100%', '완주 화면, 진행률 100%');
 
