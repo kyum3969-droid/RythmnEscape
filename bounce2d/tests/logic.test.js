@@ -388,5 +388,23 @@ for (const name of Object.keys(Lg.PATTERNS)) {
   ok(pat.mode === 'rush' ? m.min >= 100 : m.min >= 60 && width >= 170, `${name}: 입력 여유 ${m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join(', ')}ms`);
   ok(m.idleDies && m.needed.every(Boolean), `${name}: 안 누르면 죽고, 입력을 하나라도 빼먹으면 죽는다`);
 }
+console.log('== 구간 모음(sections.js): 어디에 놓아도 되는 구간들 ==');
+{
+  const { SECTIONS, registerSections } = require('../sections.js');
+  registerSections(Lg.PATTERNS);
+  let pass = 0, clean = 0;
+  for (const sec of SECTIONS) {
+    const lvS = Lg.buildLevel({ name: 't', bpm: 152, bars: ['flat', 'flat', ...sec.bars, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+    const inpS = Lg.planInput(lvS.ref), sS = Lg.spawnState(lvS, -1), bS = new Set();
+    while (!sS.dead && !sS.won) { const e = []; Lg.stepState(lvS, sS, inpS.press.has(sS.step + 1), e, inpS.hold.has(sS.step + 1)); if (e.some(x => x.type === 'bounce')) bS.add(sS.step); }
+    if (sS.won && lvS.fixed.length === 0) pass++;
+    if (bS.has((2 + sec.len) * 384) && (sec.kind === 'fever' || bS.has(2 * 384))) clean++;
+  }
+  const lens = [...new Set(SECTIONS.map(s => s.len))].sort((a, b) => a - b), grades = [1, 2, 3, 4, 5].map(g => SECTIONS.filter(s => s.diff.grade === g).length);
+  ok(SECTIONS.length === 50 && pass === 50, `구간 ${SECTIONS.length}개 모두, 평지 사이에 놓고 패턴대로 달리면 지나간다 (${pass}/50)`);
+  ok(clean === 50, `모든 구간이 땅에서 박자에 맞춰 튀며 끝난다(바운스 구간은 들어올 때도) — 그래서 어떤 순서로든 이어 붙일 수 있다 (${clean}/50)`);
+  ok(lens.length >= 5 && grades.every(n => n >= 3), `길이 ${lens.join('·')}마디, 등급별 개수 ${grades.join(' / ')} (쉬움 → 어려움)`);
+  ok(SECTIONS.every(s => s.diff.minWin >= 60 && s.diff.s50 >= 30), `가장 좁은 입력의 여유도 ±60ms 이상이다 (최소 ±${Math.min(...SECTIONS.map(s => s.diff.minWin))}ms)`);
+}
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);
