@@ -65,22 +65,43 @@ const full = run(L, sol);
 const n = (t) => full.ev.filter(e => e.type === t).length;
 ok(full.s.won, `풀이를 그대로 재생하면 완주 (대시 ${n('dash')}번, 멈춤 ${n('freeze')}번, 고리 ${n('ring')}번, 점프대 ${n('pad')}번)`);
 ok(n('checkpoint') === L.cps.length && L.cps.length === 4, '체크포인트 4개를 모두 지난다');
-ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 8), '코스 내내 박자에 맞춰 튄다(40ms 이내)');
+ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 12), '코스 내내 박자에 맞춰 튄다(늦어도 1/8박 이내, 늦은 만큼 낮게 튀어 다음 박자에 맞춤)');
 L.cps.forEach((cp, i) => ok(!!Lg.solve(L, Lg.spawnState(L, i), { grid: 12 }).plan, `체크포인트 ${i + 1}에서 다시 시작해도 완주 가능`));
 {
   const nf = Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noFreeze: true });
   ok(!nf.plan, `멈춤 없이는 못 깬다 (마디 ${barOf(nf.best)} ${Lg.COURSE.bars[barOf(nf.best)]}에서 막힘)`);
   const nd = Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noDash: true });
-  ok(!nd.plan && barOf(nd.best) === 10, `대시 없이는 첫 벽(마디 10)에서 막힌다`);
+  ok(!nd.plan, `대시 없이는 못 깬다 (마디 ${barOf(nd.best)} ${Lg.COURSE.bars[barOf(nd.best)]}에서 막힘)`);
 }
+console.log('== 수직 함정 / 계단 ==');
+{
+  const mk = (bars) => Lg.buildLevel({ name: 't', bpm: 96, bars, sections: [{ bar: 0, id: 'a' }] });
+  const holdRun = (lv, fromX, toX, untilX) => { const s = Lg.spawnState(lv, -1), ev = []; let maxH = 0; while (!s.dead && !s.won && s.x < untilX) { Lg.stepState(lv, s, false, ev, s.x >= fromX && s.x < toX); maxH = Math.max(maxH, 9 - s.y); } return { s, ev, maxH }; };
+  let lv = mk(['flat', 'col2', 'flat', 'goal']);
+  ok(holdRun(lv, 99, 99, 30).s.cause === 'spike', '가시 기둥: 그냥 튀면 닿는다');
+  ok(!holdRun(lv, 16 + 5.6, 16 + 7.6, 30).s.dead, '가시 기둥: 꼭대기 근처에서 멈추면 넘어간다');
+  ok(holdRun(lv, 16 + 4.3, 16 + 7.6, 30).s.cause === 'spike', '가시 기둥: 너무 낮을 때 멈추면 닿는다');
+  lv = mk(['flat', 'gate', 'flat', 'goal']);
+  ok(!holdRun(lv, 99, 99, 30).s.dead, '위아래 기둥 사이의 틈: 아무것도 안 눌러도 지나간다');
+  lv = mk(['flat', 'up', 'hi', 'down', 'flat', 'goal']);
+  const r = holdRun(lv, 999, 999, 16 * 5);
+  const climbs = r.ev.filter(e => e.type === 'climb').length;
+  ok(!r.s.dead && climbs >= 2 && r.maxH > 4, `계단: 아무것도 안 눌러도 저절로 올라갔다 내려온다 (턱 ${climbs}번, 최고 높이 ${r.maxH.toFixed(1)}칸)`);
+  const b = r.ev.filter(e => e.type === 'bounce').length;
+  ok(b >= 18, `계단을 오르내리는 5마디 동안 ${b}번 튄다(거의 매 박자)`);
+  lv = mk(['flat', 'hi', 'flat', 'goal']);
+  ok(holdRun(lv, 99, 99, 30).s.cause === 'crash', '2칸 높이 벽은 저절로 못 올라간다(부딪힘)');
+}
+
 console.log('== 조각별: 꼭 필요한 입력마다의 여유 (96 BPM 기준) ==');
-const { measure } = require('./windows.js');
+const { measure, context } = require('./windows.js');
+const FREE = ['over', 'gate', 'up', 'hi', 'down'];        // 아무것도 안 눌러도 지나가는 마디
 for (const name of Object.keys(Lg.CHUNKS)) {
   if (['flat', 'cp', 'goal'].includes(name)) continue;
-  const lv = Lg.buildLevel({ name, bpm: 96, bars: ['flat', name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const lv = Lg.buildLevel({ name, bpm: 96, bars: context(name).bars, sections: [{ bar: 0, id: 'a' }] });
   const m = measure(name, 96);
   const idleDies = run(lv, null).s.dead;
-  if (name === 'over') { ok(!idleDies && m.solvable && m.inputs.length === 0, 'over: 아무것도 안 눌러도 지나간다(쉬어 가는 마디)'); continue; }
+  if (FREE.includes(name)) { ok(!idleDies && m.solvable && m.inputs.length === 0, `${name}: 아무것도 안 눌러도 지나간다`); continue; }
   const list = m.solvable && m.inputs ? m.inputs.map(i => `${i.label} ${i.ms >= 600 ? '600+' : i.ms.toFixed(0)}`).join(', ') : '풀 수 없음';
   ok(idleDies && m.solvable && m.inputs && m.min >= 140, `${name}: 아무것도 안 하면 죽고, 입력 여유 ${list}ms`);
 }

@@ -440,6 +440,7 @@
       else if (e.type === "bounce") { fx.jumpAt = now; puff(state.x, state.y, 6, 0.7); }
       else if (e.type === "freeze") { sfx("freeze"); muffle(true); }
       else if (e.type === "unfreeze") muffle(false);
+      else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
       else if (e.type === "land") { fx.landAt = now; fx.ringChain = 0; puff(state.x, state.y, 4, 0.4); }
       else if (e.type === "dash") { fx.dashAt = now; fx.shake = 0.16; sfx("dash"); }
       else if (e.type === "break") {
@@ -577,6 +578,36 @@
     for (const [x, base, dir] of spikes) { ctx.beginPath(); ctx.arc(x + 0.5 * T, base + dir * 0.86 * T, 1.6, 0, Math.PI * 2); ctx.fill(); }
     ctx.lineJoin = "round";
 
+    // 가시 기둥: 세로로 이어진 칸을 결정 기둥 하나로 그린다. 옆으로 잔가시가 돋고, 열린 끝은 뾰족하다.
+    for (let c = cA; c <= cB; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        if (tile(L, c, r) !== "X") continue;
+        let r2 = r;
+        while (tile(L, c, r2 + 1) === "X") r2++;
+        const fromSky = r === 0, onFloor = tile(L, c, r2 + 1) === "#";
+        const x0 = sx(c) + T * 0.16, x1 = sx(c + 1) - T * 0.16, mx = (x0 + x1) / 2;
+        const y0 = fromSky ? -30 : sy(r), y1 = sy(r2 + 1), tip = T * 0.5, barb = T * 0.13;
+        ctx.beginPath();
+        if (fromSky) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); } else { ctx.moveTo(x0, y0 + tip); ctx.lineTo(mx, y0); ctx.lineTo(x1, y0 + tip); }
+        const top = fromSky ? Math.max(y0, 0) : y0 + tip, bot = onFloor ? y1 : y1 - tip;
+        for (let y = top; y + T * 0.5 <= bot + 1; y += T * 0.5) { ctx.lineTo(x1, y); ctx.lineTo(x1 + barb, y + T * 0.25); ctx.lineTo(x1, y + T * 0.5); }
+        if (onFloor) { ctx.lineTo(x1, y1); ctx.lineTo(x0, y1); } else { ctx.lineTo(x1, bot); ctx.lineTo(mx, y1); ctx.lineTo(x0, bot); }
+        for (let y = bot; y - T * 0.5 >= top - 1; y -= T * 0.5) { ctx.lineTo(x0, y); ctx.lineTo(x0 - barb, y - T * 0.25); ctx.lineTo(x0, y - T * 0.5); }
+        ctx.closePath();
+        const cg = ctx.createLinearGradient(x0 - barb, 0, x1 + barb, 0);
+        cg.addColorStop(0, "#8a1640"); cg.addColorStop(0.5, "#14060f"); cg.addColorStop(1, "#8a1640");
+        ctx.shadowBlur = 0; ctx.fillStyle = cg; ctx.fill();
+        ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 1.5; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; ctx.shadowBlur = 9; ctx.stroke();
+        ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,107,144,0.45)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(mx, top + T * 0.1); ctx.lineTo(mx, bot - T * 0.1); ctx.stroke();           // 가운데 결
+        ctx.fillStyle = "#ffffff";
+        if (!fromSky) { ctx.beginPath(); ctx.arc(mx, y0, 1.8, 0, Math.PI * 2); ctx.fill(); }
+        if (!onFloor) { ctx.beginPath(); ctx.arc(mx, y1, 1.8, 0, Math.PI * 2); ctx.fill(); }
+        ctx.lineJoin = "round";
+        r = r2;
+      }
+    }
+
     // 톱날: 박자에 맞춰 돌고, 움직이는 것은 점선 길을 따라 오르내린다
     for (const w of L.saws) {
       if (w.c < cA - 1 || w.c > cB + 1) continue;
@@ -655,41 +686,27 @@
     }
     ctx.shadowBlur = 0;
 
-    // 바운스 구간: 박자마다 구슬이 닿는 자리를 바닥에 표시
-    ctx.fillStyle = css(pal.accent, 0.55 + 0.45 * pulse);
+    // 착지 자리 표시: 평소엔 옅게, 지금 이 점프로 닿을 자리 하나만 밝게
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = css(pal.accent, 0.3);
     for (let c = Math.ceil(cA / 4) * 4; c <= cB; c += 4) {
-      if (modeAtCol(c) !== "bounce" || !(isSolid(L, c, groundY(L, c)) && isSolid(L, c - 1, groundY(L, c)))) continue;
+      if (!(isSolid(L, c, groundY(L, c)) && isSolid(L, c - 1, groundY(L, c)))) continue;
       const x = sx(c), y = sy(groundY(L, c)) + T * 0.2;
       ctx.beginPath(); ctx.moveTo(x - T * 0.16, y); ctx.lineTo(x, y + T * 0.16); ctx.lineTo(x + T * 0.16, y); ctx.lineTo(x, y - T * 0.06); ctx.closePath(); ctx.fill();
     }
-
-    // 점프대와 대시 충전 고리
-    ctx.lineJoin = "round"; ctx.lineCap = "round";
-    for (let c = cA; c <= cB; c++) for (let r = 0; r < ROWS; r++) {
-      const t = tile(L, c, r);
-      if (t === "J") {
-        const x = sx(c), y = sy(r + 1);
-        ctx.shadowColor = css(pal.sun); ctx.shadowBlur = 12;
-        ctx.fillStyle = css(pal.sun); ctx.fillRect(x + T * 0.06, y - T * 0.16, T * 0.88, T * 0.16);
-        ctx.strokeStyle = css(pal.sun, 0.9); ctx.lineWidth = 3;
-        ctx.beginPath();
-        for (const k of [0, 1]) {
-          const yy = y - T * (0.36 + 0.26 * k + 0.12 * pulse);
-          ctx.moveTo(x + T * 0.28, yy); ctx.lineTo(x + T * 0.5, yy - T * 0.16); ctx.lineTo(x + T * 0.72, yy);
-        }
-        ctx.stroke();
-      } else if (t === "O" && !usedRings.has(c)) {
-        const x = sx(c + 0.5), y = sy(r + 0.5), R = T * (0.36 + 0.03 * pulse);
-        ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 14;
-        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3.5;
-        ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
-        ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        for (const o of [-0.1, 0.08]) { ctx.moveTo(x + T * (o - 0.06), y - T * 0.12); ctx.lineTo(x + T * (o + 0.06), y); ctx.lineTo(x + T * (o - 0.06), y + T * 0.12); }
-        ctx.stroke();
-      }
+    const land = phase === "running" ? predictLanding() : null;
+    if (land) {
+      const x = sx(land.x), y = sy(land.y);
+      ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 16; ctx.lineCap = "round";
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(x - T * 0.45, y); ctx.lineTo(x + T * 0.45, y); ctx.stroke();        // 바닥 선
+      ctx.strokeStyle = css(pal.accent, 0.9); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x, y - T * 0.12); ctx.lineTo(x, y - T * 0.6); ctx.stroke();          // 세로 선
+      ctx.fillStyle = "#ffffff";
+      const yy = y + T * 0.22;
+      ctx.beginPath(); ctx.moveTo(x - T * 0.24, yy); ctx.lineTo(x, yy + T * 0.22); ctx.lineTo(x + T * 0.24, yy); ctx.lineTo(x, yy - T * 0.09); ctx.closePath(); ctx.fill();
+      ctx.shadowBlur = 0;
     }
-    ctx.shadowBlur = 0;
 
     // 체크포인트와 결승선: 빛기둥
     const beam = (col, on, label) => {
@@ -752,33 +769,33 @@
       ctx.save();
       ctx.translate(cx, cy + (1 - stretchY) * HALF * T);
       ctx.scale(stretchX, stretchY);
-      ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 22 + 10 * pulse;
-      const og = ctx.createRadialGradient(-T * 0.1, -T * 0.12, T * 0.05, 0, 0, T * HALF);
-      og.addColorStop(0, "#ffffff"); og.addColorStop(0.55, css(mix(pal.accent, [255, 255, 255], 0.35))); og.addColorStop(1, css(pal.accent));
-      ctx.fillStyle = og;
-      ctx.beginPath(); ctx.arc(0, 0, T * HALF, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
-      if (!state.frozen) {
+      const R = T * HALF;
+      if (state.frozen) {
+        // 멈춘 동안: 공 색 자체가 바뀐다. 남은 멈춤 시간만큼 아래부터 밝게 차 있고, 줄어들수록 어두워진다.
+        const left = state.freeze / FREEZE_STEPS;
+        ctx.shadowColor = css(pal.sun); ctx.shadowBlur = 26;
+        ctx.fillStyle = css(mix(pal.sun, [8, 8, 20], 0.74));
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.clip();
+        const fg = ctx.createLinearGradient(0, -R, 0, R);
+        fg.addColorStop(0, "#ffffff"); fg.addColorStop(1, css(pal.sun));
+        ctx.fillStyle = fg;
+        ctx.fillRect(-R, R - 2 * R * left, 2 * R, 2 * R);
+        ctx.restore();
+      } else {
+        ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 22 + 10 * pulse;
+        const og = ctx.createRadialGradient(-T * 0.1, -T * 0.12, T * 0.05, 0, 0, R);
+        og.addColorStop(0, "#ffffff"); og.addColorStop(0.55, css(mix(pal.accent, [255, 255, 255], 0.35))); og.addColorStop(1, css(pal.accent));
+        ctx.fillStyle = og;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.rotate(camX * 1.6);                                 // 구르는 느낌의 안쪽 무늬
         ctx.strokeStyle = "rgba(7,7,15,0.75)"; ctx.lineWidth = T * 0.09; ctx.lineCap = "round";
         ctx.beginPath(); ctx.arc(0, 0, T * 0.2, 0.3, 2.2); ctx.stroke();
       }
       ctx.restore();
-      if (!state.onGround) {                                    // 멈춤 게이지: 남은 만큼 고리가 채워져 있다
-        const left = state.freeze / FREEZE_STEPS;
-        ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.arc(cx, cy, T * 0.6, 0, Math.PI * 2); ctx.stroke();
-        if (left > 0) {
-          ctx.strokeStyle = state.frozen ? "#ffffff" : css(pal.sun, 0.95); ctx.lineWidth = 4; ctx.lineCap = "round";
-          ctx.shadowColor = css(pal.sun); ctx.shadowBlur = state.frozen ? 14 : 0;
-          ctx.beginPath(); ctx.arc(cx, cy, T * 0.6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); ctx.stroke();
-          ctx.shadowBlur = 0;
-        }
-      }
-      if (state.frozen) {                                       // 멈춘 동안: 일시정지 표시
-        ctx.fillStyle = "rgba(7,7,15,0.85)";
-        ctx.fillRect(cx - T * 0.13, cy - T * 0.15, T * 0.09, T * 0.3); ctx.fillRect(cx + T * 0.04, cy - T * 0.15, T * 0.09, T * 0.3);
-      }
       if (state.dashAvail && !state.onGround && !dashing) {     // 대시 가능 표시: 앞쪽의 작은 »
         ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
         ctx.beginPath();
@@ -795,12 +812,24 @@
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
     fz1: "왼쪽 누르고 있기 = 공중에서 멈춤", over: "이런 가시는 그냥 넘어가요", fz2: "넓은 가시밭은 꼭대기에서 길게 멈추기",
-    wall1: "오른쪽 누르기 = 대시! 벽 깨기", wallfield: "대시한 뒤 바로 멈춰서 넘기", ringchain: "고리를 지나면 대시 충전!", long: "멈춤 + 대시 둘 다 쓰기",
+    col2: "가시 기둥은 높은 곳에서 멈춰 넘기", gate: "틈은 그냥 튀면 지나가요", up: "계단은 저절로 올라가요",
+    long: "오른쪽 누르기 = 대시! 멈춤에 이어 쓰기", ringchain: "고리를 지나면 대시 충전!", colpair: "멈춘 높이 그대로 대시",
   };
   const HINTS = [];
   for (const [name, text] of Object.entries(HINT_TEXT)) { const b = COURSE.bars.indexOf(name); if (b >= 0) HINTS.push([b * 16 + 2.5, text]); }
   const GATES = new Map(L.switches.map((sw) => [sw.col, sw.mode]));
-  const modeAtCol = () => "bounce";     // 이 버전은 처음부터 끝까지 바운스
+  // 지금 손을 떼고 아무것도 안 하면 공이 닿을 자리. 그 전에 죽는다면 없음.
+  function predictLanding() {
+    if (state.onGround || state.dead || state.won) return null;
+    const n = { ...state }, pev = [];
+    for (let i = 0; i < 260; i++) {
+      stepState(L, n, false, pev, false);
+      if (n.dead) return null;
+      if (pev.some((e) => e.type === "land" || e.type === "climb")) return { x: n.x, y: n.y };
+      pev.length = 0;
+    }
+    return null;
+  }
 
   // ---------------------------------------------------------------- HUD / 안내
   function buildTicks() {

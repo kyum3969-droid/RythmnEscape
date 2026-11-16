@@ -4,8 +4,17 @@
 // 사용: node bounce2d/tests/windows.js [BPM]
 const Lg = require('../logic.js');
 
-function measure(name, bpm = 96, level) {
-  const lv = level || Lg.buildLevel({ name, bpm, bars: ['flat', name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+// 높은 길(hi_*)과 계단은 앞뒤에 계단을 붙여야 실제 코스와 같은 상황이 된다
+function context(name) {
+  if (name.startsWith('hi')) return { bars: ['flat', 'up', name, 'down', 'flat', 'flat', 'goal'], at: 2 };
+  if (name === 'down') return { bars: ['flat', 'up', 'down', 'flat', 'flat', 'goal'], at: 2 };
+  if (name === 'up') return { bars: ['flat', 'up', 'down', 'flat', 'flat', 'goal'], at: 1 };
+  return { bars: ['flat', name, 'flat', 'flat', 'goal'], at: 1 };
+}
+
+function measure(name, bpm = 96) {
+  const ctx = context(name);
+  const lv = Lg.buildLevel({ name, bpm, bars: ctx.bars, sections: [{ bar: 0, id: 'a' }] });
   const ms = 60000 / bpm / Lg.SUB;
   const r = Lg.solve(lv, Lg.spawnState(lv, -1), { grid: 6 });
   if (!r.plan) return { name, solvable: false };
@@ -13,7 +22,7 @@ function measure(name, bpm = 96, level) {
   const acts = [];
   for (const [a, b] of r.plan.holds) { const last = acts[acts.length - 1]; if (last && last.type === 'hold' && last.end === a) last.end = b; else acts.push({ type: 'hold', start: a, end: b }); }
   for (const d of r.plan.dashes) acts.push({ type: 'dash', step: d });
-  const endX = 16 * 2 + 8;
+  const endX = 16 * (ctx.bars.length - 2) + 8;
   const alive = () => {
     const s = Lg.spawnState(lv, -1), dash = new Set(acts.filter(a => a.type === 'dash').map(a => a.step));
     const holds = acts.filter(a => a.type === 'hold');
@@ -42,7 +51,7 @@ function measure(name, bpm = 96, level) {
   return { name, solvable: true, inputs: out, min: Math.min(...out.map(o => o.ms)) };
 }
 
-module.exports = { measure };
+module.exports = { measure, context };
 
 if (require.main === module) {
   const bpm = +process.argv[2] || Lg.COURSE.bpm;

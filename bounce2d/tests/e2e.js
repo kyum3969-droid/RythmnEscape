@@ -71,7 +71,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 자동 풀이로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).plan); g.startFresh(); });
-  const shots = { 10: 'a_fz1', 13.5: 'a_over', 25.75: 'a_sawland', 29.5: 'a_fz2', 41.5: 'b_wall', 57.5: 'b_walldouble', 73.5: 'c_long', 118.5: 'd_padwall' };
+  const shots = { 10: 'a_fz1', 25.5: 'a_col2', 29.5: 'a_fz2', 41.5: 'b_gate', 50.5: 'b_up', 54.5: 'b_hi', 62: 'b_down', 66.5: 'b_padcol', 73.5: 'c_long', 81.5: 'c_colpair', 110: 'e_hicol' };
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
