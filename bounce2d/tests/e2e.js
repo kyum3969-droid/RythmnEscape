@@ -9,7 +9,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
   const p = await b.newPage({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2 });
   const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
-  await p.goto(FILE); await p.waitForTimeout(900);
+  await p.goto(FILE); await p.evaluate(() => localStorage.setItem('pulsebounce.fever', '"hop"')); await p.reload(); await p.waitForTimeout(900);
   const G = (fn, arg) => p.evaluate(fn, arg);
   const tick = (beat) => G((bt) => window.__game.tickTo(bt), beat);
   ok(await G(() => window.__game.phase) === 'title' && (await p.textContent('#ovTitle')).includes('BOUNCE'), '타이틀 화면');
@@ -144,12 +144,14 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok((await p.textContent('#feverBtn')).includes('2 · 바닥과 천장'), '버튼을 누르면 2번으로 바뀌어 다시 열린다');
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(null); g.devJump(2); });
     fb = await G(() => window.__game.state.step / 96);
-    await go(feverStart + 0.25); await p.mouse.click(150, 200);                   // 첫 반 박 안에 화면 왼쪽을 누름
-    await go(feverStart + 0.45);
+    await go(feverStart + 0.5);
     const before = await G(() => window.__game.state.zdir);
-    await go(feverStart + 0.7);
-    st = await G(() => ({ d: window.__game.state.zdir, h: 9 - window.__game.state.y, label: document.querySelector('#zoneL span').textContent }));
-    ok(before === 1 && st.d === -1 && st.h < 1.9 && st.label.includes('방향이 바뀐다'), '누르면 다음 반 박 지점(가운데 높이)에서 방향이 뒤집힌다');
+    await p.mouse.click(150, 200);                                                // 가운데 높이를 지나는 박에 화면 왼쪽을 누름
+    await go(feverStart + 0.5 + 2 / 96);
+    st = await G(() => ({ d: window.__game.state.zdir, label: document.querySelector('#zoneR span').textContent }));
+    ok(before === 1 && st.d === -1 && st.label.includes('즉시'), '누르는 즉시 방향이 뒤집힌다');
+    await go(feverStart + 1);
+    ok(await G(() => 9 - window.__game.state.y) < 0.01, '박에 맞춰 눌렀으면 반 박 뒤에 바닥에 닿는다');
     await p.waitForTimeout(60); await p.screenshot({ path: out + 'fever2_touch.png' });
     await G(() => { const g = window.__game; g.setBot(g.L.ref); g.startFresh(); });
     const shots2 = { 106.25: 'fever2_a', 113.25: 'fever2_b', 121.25: 'fever2_c', 131.75: 'fever2_exit' };

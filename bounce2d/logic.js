@@ -53,8 +53,9 @@ const PATTERNS = {
   h5: { mode: "rush", kind: "hop", slots: "HHHLHLLH" },
   h6: { mode: "rush", kind: "hop", slots: "LHLHHLHH" },
   h7: { mode: "rush", kind: "hop", slots: "HLHLHHH." },
-  // 방식 2 "zig": 바닥과 천장 사이를 비스듬히 튕긴다. 누르면 다음 반 박 지점에서 위아래 방향이 뒤집힌다(가운데 높이에 있을 때만).
-  //   nodes = 반 박 지점 8개(마디 안 0.5박, 1박, …, 4박): F 여기서 뒤집어야 함 / S 뒤집으면 안 됨 / . 상관없음. 마디는 바닥에서 시작해 바닥에서 끝나야 한다(뒤집기는 짝수 번).
+  // 방식 2 "zig": 바닥과 천장 사이를 비스듬히 튕긴다. 누르는 즉시 위아래 방향이 뒤집힌다.
+  //   nodes = 반 박 지점 8개(마디 안 0.5박, 1박, …, 4박): F 이 박에 뒤집어야 함 / S 뒤집으면 안 됨 / . 상관없음. F·S는 공이 가운데 높이를 지나는 지점에만 쓴다.
+  //   마디는 바닥에서 시작해 바닥에서 끝나야 한다(뒤집기는 짝수 번).
   zE: { mode: "rush", kind: "zig", nodes: "........" },
   z1: { mode: "rush", kind: "zig", nodes: "..S.F.F." },
   z2: { mode: "rush", kind: "zig", nodes: "F.S.F.S." },
@@ -71,7 +72,7 @@ for (const p of Object.values(PATTERNS)) {
   p.holds = []; p.presses = [];
   if (p.kind === "hop") {                    // 크게 튈 칸이 이어지는 동안 누르고 있는다(튀는 순간보다 0.2박 먼저 누르고, 마지막으로 튄 뒤 0.28박에 뗀다)
     for (let i = 0; i < 8; i++) if (p.slots[i] === "H") { let j = i; while (j + 1 < 8 && p.slots[j + 1] === "H") j++; p.holds.push([i * 0.5 - 0.2, j * 0.5 + 0.28]); i = j; }
-  } else for (let k = 1; k <= 8; k++) if (p.nodes[k - 1] === "F") p.presses.push(k * 0.5 - 0.2);   // 뒤집을 지점보다 0.2박 먼저 누른다
+  } else for (let k = 1; k <= 8; k++) if (p.nodes[k - 1] === "F") p.presses.push(k * 0.5);          // 뒤집을 지점(가운데 높이를 지나는 박)에 맞춰 누른다
 }
 const FEVER_BARS = { hop: ["h1", "h2", "h3", "h4", "h5", "h6", "h7"], zig: ["z1", "z2", "z3", "z4", "z5", "z6", "z7"] };
 
@@ -108,7 +109,7 @@ const HOP_LO = 0.9, HOP_HI = 2.6;            // hop: 낮게 / 크게 튈 때의 
 const HOP_LATE = 8;                          //      튄 직후 이만큼(스텝, 약 50ms)까지는 누르거나 뗀 것을 반영한다
 const ZIG_TOP = 4.6;                         // zig: 천장 높이(칸)
 const ZIG_STEP = (ZIG_TOP - SIZE) / 2;       //      반 박에 오르내리는 높이. 바닥·가운데·천장 세 높이를 오간다
-const RED_T = 1.3;                           // 틀린 길을 막는 빨간 덩어리의 두께(칸)
+const ZIG_GAP = 1.8;                         //      벽의 구멍 높이(공은 0.8칸)
 const HAZ_MAX_H = 4;       // 바닥에서 솟는 장애물의 최대 높이(칸)
 const WRONG_SHIFT = [-0.3, 0.3];   // "크게 어긋난 입력"으로 치는 박자 차이
 const BLOCK_GROW = 1;      // 막는 칸에서 양옆으로 넓히는 칸 수
@@ -154,8 +155,9 @@ function emptyLevel(course) {
           if (zl === 0 || zl === 2) { if (c !== ".") throw new Error(`바닥·천장에서는 고를 수 없다: ${name}의 ${k}번째 지점`); zd = -zd; continue; }
           const wrong = c === "F" ? zl + zd : c === "S" ? zl - zd : -1;       // 틀리게 갔을 때 다음 지점에서 닿는 곳(0 바닥 / 2 천장)
           if (c === "F") zd = -zd;
-          if (wrong === 0) reds.push({ x0: xk + 2 - 0.6, x1: xk + 2 + 0.6, lo: 0, hi: RED_T, kind: "floor" });
-          else if (wrong === 2) reds.push({ x0: xk + 2 - 0.6, x1: xk + 2 + 0.6, lo: ZIG_TOP - RED_T, hi: ZIG_TOP, kind: "ceil" });
+          // 다음 지점(바닥이나 천장에 닿는 곳)에 벽을 세운다. 맞는 쪽에만 구멍(ZIG_GAP)이 뚫려 있다 → 틀린 쪽으로 가도, 가운데에 떠 있어도 걸린다
+          if (wrong === 0) reds.push({ x0: xk + 2 - 0.15, x1: xk + 2 + 0.45, lo: 0, hi: ZIG_TOP - ZIG_GAP, kind: "floor" });
+          else if (wrong === 2) reds.push({ x0: xk + 2 - 0.15, x1: xk + 2 + 0.45, lo: ZIG_GAP, hi: ZIG_TOP, kind: "ceil" });
         }
         if (zl !== 0) throw new Error("zig 마디는 바닥에서 끝나야 한다(뒤집기는 짝수 번): " + name);
       }
@@ -335,15 +337,25 @@ function rushStep(L, s, press, ev, hold, r) {
     }
     s.hopA += (s.hopT - s.hopA) * 0.4;
     h = s.hopA * 4 * u * (1 - u);
-  } else {                                               // 바닥과 천장 사이를 튕긴다. 누르면 다음 지점에서 뒤집힌다(가운데 높이에서만).
-    if (press) s.zflip = 1;
-    if (node && local > 0) {
-      s.zlev += s.zdir;
-      if (s.zlev <= 0 || s.zlev >= 2) { s.zdir = -s.zdir; if (ev) ev.push({ type: "rebound", top: s.zlev >= 2 }); }
-      else if (s.zflip) { s.zdir = -s.zdir; if (ev) ev.push({ type: "flip" }); }
-      s.zflip = 0;
+  } else {
+    // 바닥과 천장 사이를 튕긴다. 누르는 즉시 위아래 방향이 뒤집힌다.
+    // 다만 바닥·천장에는 언제나 반 박 지점에 닿도록 속도를 맞춘다(누른 시각에서 가장 가까운 반 박 지점 + 반 박 뒤에 도착).
+    // → 조금 일찍 누르면 천천히, 조금 늦게 누르면 빠르게 가서 같은 박에 닿는다. 타이밍 오차가 다음으로 넘어가지 않는다.
+    const ZMAX = ZIG_TOP - SIZE;
+    if (local > 0) s.zh = Math.max(0, Math.min(ZMAX, s.zh + s.zdir * s.zv * DT));
+    if (s.step >= s.zarr) {                                // 바닥·천장에 닿음(항상 반 박 지점) → 튕겨서 한 박 뒤 반대쪽에 닿는다
+      s.zh = s.zdir > 0 ? ZMAX : 0; s.zdir = -s.zdir; s.zv = ZMAX; s.zarr = s.step + 2 * SLOT;
+      if (ev) ev.push({ type: "rebound", top: s.zdir < 0 });
     }
-    h = (s.zlev + s.zdir * u) * ZIG_STEP;
+    if (press) {
+      s.zdir = -s.zdir;
+      const dist = s.zdir > 0 ? ZMAX - s.zh : s.zh;
+      let arrive = (Math.round(local / SLOT) + 1) * SLOT;
+      if (arrive - local < 8) arrive += SLOT;
+      s.zarr = s.step - local + arrive; s.zv = dist / ((arrive - local) / SUB);
+      if (ev) ev.push({ type: "flip" });
+    }
+    h = s.zh;
   }
   s.y = (ROWS - 1) - h;
   const xa = s.x - HALF_RUSH * 0.8, xb = s.x + HALF_RUSH * 0.8, lo = h + 0.06, hi = h + SIZE - 0.06;
@@ -372,7 +384,7 @@ function spawnState(L, cp = -1) {
   const x = TPB * step / SUB;
   return {
     mode: "bounce", step, x, lead: 0, dashing: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
-    zlev: 0, zdir: 1, zflip: 0, hopA: 0, hopT: 0,
+    zh: 0, zdir: 1, zv: 0, zarr: 0, hopA: 0, hopT: 0,
     djAvail: false, jbuf: 0, ring: -1,
     freeze: 0, frozen: false,
     cp, dead: false, cause: "", won: false,
@@ -405,8 +417,10 @@ function stepState(L, s, press, ev, hold) {
     s.mode = ride ? "rush" : "bounce";
     if (s.frozen) { s.frozen = false; if (ev) ev.push({ type: "unfreeze" }); }
     s.jbuf = 0; s.freeze = 0;
-    s.zlev = 0; s.zdir = 1; s.zflip = 0; s.hopA = s.hopT = HOP_LO;
-    if (!ride) { s.y = ROWS - 1; s.vy = 0; s.onGround = true; s.djAvail = false; }   // 바닥에 닿은 채로 나오고, 바로 이 박에 다시 튄다
+    s.hopA = s.hopT = HOP_LO;
+    if (ride) { s.zh = 0; s.zdir = 1; s.zv = ZIG_TOP - SIZE; s.zarr = s.step + 2 * SLOT; }
+    else if (s.y > ROWS - 1 - 0.3) { s.y = ROWS - 1; s.vy = 0; s.onGround = true; s.djAvail = false; }   // 바닥에 닿은 채로 나오면 바로 이 박에 다시 튄다
+    else { s.vy = 0; s.onGround = false; s.djAvail = false; }                                              // 공중에서 나오면 그대로 떨어진다
     if (ev) ev.push({ type: "mode", mode: s.mode, kind: ride ? ride[2] : null });
   }
   if (ride) {
@@ -512,7 +526,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < (opts.offset || 0); i++) stepState(L, s0, false, null, false);
   if (s0.dead) return { plan: null, best: s0.x };
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}|${Math.ceil(s.freeze / 8)}|${s.zlev}${s.zdir}${s.zflip}|${s.hopT}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}|${Math.ceil(s.freeze / 8)}|${s.zdir}|${s.zarr}|${s.hopT}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {

@@ -145,21 +145,29 @@ console.log('== 피버 구간 (원버튼, 두 가지 방식) ==');
   // ---- 방식 2: 바닥과 천장 사이 튕기기
   lv = mk('zE', 'zE');
   r = play(lv, []);
-  const lev = [0, 1, 2, 1, 0, 1, 2, 1, 0].map(k => k * Lg.ZIG_STEP);
-  ok(!r.s.dead && lev.every((h, k) => Math.abs(r.at[g0 + k * SL] - h) < 1e-9) && r.n('rebound') === 7, `방식 2: 안 누르면 바닥(0)과 천장(공 바닥 ${lev[2].toFixed(1)}칸) 사이를 한 박에 한 번씩 튕긴다`);
-  r = play(lv, [[g0 + 20, g0 + 26]]);                      // 첫 반 박 안에 누름 → 가운데 높이 지점(0.5박)에서 뒤집힌다
-  ok(r.n('flip') === 1 && r.ev.find(e => e.type === 'flip').step === g0 + SL && Math.abs(r.at[g0 + 30] - 30 / SL * Lg.ZIG_STEP) < 1e-9 && r.at[g0 + 2 * SL] < 1e-9,
-    '누르면 바로가 아니라 다음 반 박 지점(가운데 높이)에서 뒤집힌다 → 누르는 타이밍 여유가 반 박');
-  r = play(lv, [[g0 + 5, g0 + 9], [g0 + 30, g0 + 34]]);
-  ok(r.n('flip') === 1, '같은 반 박 안에 여러 번 눌러도 한 번만 뒤집힌다');
-  r = play(lv, [[g0 + SL + 10, g0 + SL + 14]]);            // 다음 지점이 천장 → 무시
-  ok(r.n('flip') === 0 && Math.abs(r.at[g0 + 3 * SL] - lev[3]) < 1e-9, '바닥·천장에 닿는 지점을 앞두고 누른 것은 무시된다(거기서는 그냥 튕긴다)');
+  const lev = [0, 1, 2, 1, 0, 1, 2, 1, 0].map(k => k * Lg.ZIG_STEP), ZM = 2 * Lg.ZIG_STEP;
+  ok(!r.s.dead && lev.every((h, k) => Math.abs(r.at[g0 + k * SL] - h) < 1e-6) && r.n('rebound') === 7, `방식 2: 안 누르면 바닥(0)과 천장(공 바닥 ${lev[2].toFixed(1)}칸) 사이를 한 박에 한 번씩 튕긴다`);
+  r = play(lv, [[g0 + SL, g0 + SL + 6]]);                  // 가운데 높이를 지나는 박(0.5박)에 딱 맞춰 누름
+  const fl = r.ev.find(e => e.type === 'flip');
+  ok(fl.step === g0 + SL && r.at[g0 + SL + 5] < r.at[g0 + SL] && r.at[g0 + 2 * SL] < 1e-6, '누르는 즉시 뒤집힌다(지연 없음). 박에 맞춰 누르면 반 박 뒤에 바닥에 닿는다');
+  const early = play(lv, [[g0 + SL - 14, g0 + SL - 8]]), late = play(lv, [[g0 + SL + 14, g0 + SL + 20]]);
+  const onGrid = (run2) => run2.ev.filter(e => e.type === 'rebound').every(e => (e.step - g0) % SL === 0);
+  ok(early.at[g0 + SL - 10] < early.at[g0 + SL - 15] && early.at[g0 + 2 * SL] < 1e-6 && late.at[g0 + SL + 13] > lev[1] && late.at[g0 + 2 * SL] < 1e-6 && onGrid(early) && onGrid(late),
+    '조금 일찍(약 90ms) 누르면 천천히, 조금 늦게 누르면 빠르게 내려가서 똑같이 그 박에 바닥에 닿는다');
+  const sameAfter = [3, 4, 6, 8].every(k => Math.abs(early.at[g0 + k * SL] - late.at[g0 + k * SL]) < 1e-6);
+  ok(sameAfter, '그래서 타이밍 오차가 다음으로 넘어가지 않는다(일찍 누른 길과 늦게 누른 길이 그 뒤로 똑같다)');
+  r = play(lv, [[g0 + 30, g0 + 34], [g0 + 40, g0 + 44]]);
+  ok(r.n('flip') === 2 && Math.abs(r.at[g0 + 2 * SL] - ZM) < 1e-6, '두 번 누르면 다시 원래 방향으로 간다');
+  let rnd = 7, wild = [];
+  for (let st = g0 + 3; st < g0 + 8 * B - 10; st += 5 + (rnd = (rnd * 1103515245 + 12345) % 2147483648) % 60) wild.push([st, st + 3]);
+  r = play(lv, wild);
+  ok(!r.s.dead && r.n('flip') === wild.length && onGrid(r) && Object.keys(r.at).every(k => r.at[k] > -1e-9 && r.at[k] < ZM + 1e-9), `아무 때나 ${wild.length}번을 눌러도 바닥·천장에는 언제나 반 박 지점에 닿는다(박자와 어긋나지 않는다)`);
   lv = mk('zE', 'z2');                                     // F.S.F.S.
   r = play(lv, []);
   ok(r.s.dead && r.s.cause === 'spike', '뒤집어야 하는 곳에서 안 뒤집으면 빨간 덩어리에 걸린다');
   r = play(lv, lv.ref.presses.map(p => [p, p + 6]));
   ok(!r.s.dead && r.n('flip') === 2, '패턴대로 누르면 지나간다');
-  r = play(lv, [...lv.ref.presses.map(p => [p, p + 6]), [8 * B + 1.25 * B, 8 * B + 1.25 * B + 6]]);
+  r = play(lv, [...lv.ref.presses.map(p => [p, p + 6]), [8 * B + 1.5 * B, 8 * B + 1.5 * B + 6]]);
   ok(r.s.dead, '뒤집으면 안 되는 곳(S)에서 뒤집어도 걸린다');
 
   // ---- 두 방식의 코스
