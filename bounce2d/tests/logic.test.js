@@ -229,11 +229,19 @@ for (const C of Lg.COURSES) {
       const floats = lv.reds.filter(q => q.kind === 'float');
       ok(kinds.join(',') === 'ceil,float,floor' && floats.every(q => lv.wideBars.has(Math.floor((q.xt - 0.01) / 16))), `[${tag}] 넓은 통로 마디(${[...lv.wideBars].join(', ')})에는 바닥·천장 이빨 말고 가운데에 떠 있는 장애물도 나온다 (${floats.length}개)`);
       ok(Math.abs(Lg.ceilAt(lv, wb * 16 + 1) - (4 * Lg.ZIG_STEP + 0.8)) < 1e-9 && Math.abs(Lg.ceilAt(lv, lv.rides[0][0] + 1) - Lg.ZIG_TOP) < 1e-9, `[${tag}] 넓은 통로의 천장은 ${Lg.ceilAt(lv, wb * 16 + 1).toFixed(1)}칸(보통 ${Lg.ZIG_TOP}칸)`);
-      // 넓은 통로에서 안 누르면 바닥에서 천장까지 두 박에 오른다
-      const s2 = Lg.spawnState(lv, -1), inp2 = Lg.planInput(lv.ref), at2 = {};
-      while (!s2.dead && !s2.won && s2.x < wb * 16 + 17) { const st = s2.step + 1; Lg.stepState(lv, s2, inp2.press.has(st), null, inp2.hold.has(st)); at2[s2.step] = 9 - s2.y; }
-      const b0 = wb * 4 * 96, w1bar = lv.name && Lg.COURSES.find(c => c.name === lv.name).bars[wb];
-      ok(w1bar === 'w1' && [0, 1, 2, 3, 4, 3, 2, 1, 0].every((lv2, k) => Math.abs(at2[b0 + k * 48] - lv2 * Lg.ZIG_STEP) < 1e-6), `[${tag}] 넓은 통로(w1)에서 그대로 가면 반 박마다 한 단계씩, 두 박 만에 천장에 닿고 두 박 만에 내려온다`);
+      // 넓은 통로로는 파란 계단을 튕기며 올라가고(wUp), 안에서는 천장에서 시작해 천장에서 끝나며(w1: 바닥까지 갔다 온다), 계단으로 내려온다(wDn)
+      const s2 = Lg.spawnState(lv, -1), inp2 = Lg.planInput(lv.ref), at2 = {}, bars2 = Lg.COURSES.find(c => c.name === lv.name).bars;
+      let inside = true, steps = 0;
+      while (!s2.dead && !s2.won) {
+        const st = s2.step + 1, e3 = []; Lg.stepState(lv, s2, inp2.press.has(st), e3, inp2.hold.has(st)); at2[s2.step] = 9 - s2.y;
+        steps += e3.filter(e => e.type === 'rebound' && e.step).length;
+        if (s2.mode === 'rush') for (const dx of [-0.25, 0, 0.25]) if (9 - s2.y < Lg.stairFloor(lv, s2.x + dx) - 1e-6 || 9 - s2.y + 0.8 > Lg.stairCeil(lv, s2.x + dx) + 1e-6) inside = false;
+      }
+      const seq = (name, want) => { const b = bars2.indexOf(name); return b >= 0 && want.every((l, k) => Math.abs(at2[b * 4 * 96 + k * 48] - l * Lg.ZIG_STEP) < 1e-6); };
+      ok(seq('wUp', [0, 1, 2, 1, 2, 3, 2, 3, 4]) && seq('wDn', [4, 3, 2, 3, 2, 1, 2, 1, 0]), `[${tag}] 넓은 통로로는 파란 계단을 타닥타닥 튕기며 올라가고, 같은 식으로 내려온다`);
+      ok(seq('w1', [4, 3, 2, 1, 0, 1, 2, 3, 4]), `[${tag}] 넓은 통로(w1)에서 그대로 가면 반 박마다 한 단계씩, 두 박 만에 바닥에 닿고 두 박 만에 천장으로 돌아온다`);
+      ok(s2.won && inside && steps >= 8 && lv.stairLo.size > 0 && lv.stairHi.size > 0, `[${tag}] 파란 발판은 닿아도 죽지 않고 튕기기만 한다(${steps}번 닿음). 공이 발판 속으로 들어가는 일은 없다`);
+      ok([...lv.stairLo.keys(), ...lv.stairHi.keys()].every(n => lv.freeBars.has(Math.floor(n / 8))), `[${tag}] 파란 발판은 장애물이 없는 연출 마디에만 있다`);
       ok(lv.reds.every(q => { const sp = Lg.hazardSpan(q, 0); return q.kind === 'floor' ? sp[0] === 0 && Math.abs(sp[1] - q.tip) < 1e-9 : q.kind === 'ceil' ? Math.abs(sp[0] - q.tip) < 1e-9 : Math.abs(sp[1] - sp[0] - 3.2) < 1e-6 && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-6; }), `[${tag}] 장애물 모양: 이빨은 삼각형, 떠 있는 것은 길이 3.2칸의 마름모(양 끝이 뾰족)`);
     }
     if (lv.squeezes.length) {

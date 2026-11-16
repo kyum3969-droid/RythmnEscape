@@ -198,13 +198,25 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     const after = await G(() => window.__game.state.zdir);
     for (let beat = f0 + 1.375; beat <= f0 + 4; beat += 0.125) await tick(beat);
     ok(before.d === after && await G(() => window.__game.phase) === 'running', '연출 마디에서는 눌러도 방향이 바뀌지 않고, 아무것도 안 해도 지나간다');
-    // 넓은 통로: 천장이 두 배로 물러나고, 화면도 물러나서 통로 전체가 보인다. 가운데에는 떠 있는 장애물.
+    // 넓은 통로: 파란 계단을 튕기며 올라간다. 그 계단 마디(장애물 없음)에서 화면이 "확" 물러나고, 내려오는 계단에서 다시 다가온다.
     await G(() => { const g = window.__game; g.setBot(g.L.ref); g.devJump(1); });
-    for (let beat = await G(() => window.__game.state.step / 96); beat <= f0 + 18; beat += 0.125) await tick(beat);
+    const zAt = {}, shotsW = { 12.2: 'r2_zoom_out', 13.5: 'r2_stairs_up', 25.5: 'r2_stairs_down', 27: 'r2_zoom_in' };
+    const runTo = async (to) => {
+      for (let beat = await G(() => window.__game.state.step / 96) + 0.125; beat <= f0 + to + 1e-6; beat += 0.125) {
+        await tick(beat);
+        const rel = Math.round((beat - f0) * 1000) / 1000;
+        if ([11.75, 12.75, 26.5, 27.75].includes(rel)) { await p.waitForTimeout(50); zAt[rel] = await G(() => window.__game.view.zT / window.__game.view.T); }
+        if (shotsW[rel]) { await p.waitForTimeout(50); await p.screenshot({ path: out + shotsW[rel] + '.png' }); }
+      }
+    };
+    await runTo(18);
     await p.waitForTimeout(60);
-    const wv = await G(() => { const g = window.__game, v = g.view; return { T: v.zT, top: v.groundY - (g.L.wideBars.size ? 8.4 : 0) * v.zT, mode: g.state.mode, phase: g.phase, floats: g.L.reds.filter((q) => q.kind === 'float').length, lev: g.state.zlk }; });
-    ok(wv.phase === 'running' && wv.mode === 'rush' && wv.top >= 0 && wv.floats >= 8, `넓은 통로에서는 화면이 물러나 천장까지 보인다 (천장 y=${wv.top.toFixed(0)}px, 한 칸 ${wv.T.toFixed(1)}px, 떠 있는 장애물 ${wv.floats}개)`);
+    const wv = await G(() => { const g = window.__game, v = g.view; return { T: v.zT, top: v.groundY - (g.L.wideBars.size ? 8.4 : 0) * v.zT, mode: g.state.mode, phase: g.phase, floats: g.L.reds.filter((q) => q.kind === 'float').length, steps: g.L.stairLo.size + g.L.stairHi.size }; });
+    ok(wv.phase === 'running' && wv.mode === 'rush' && wv.top >= 0 && wv.floats >= 8 && wv.steps > 20, `넓은 통로에서는 화면이 물러나 천장까지 보인다 (천장 y=${wv.top.toFixed(0)}px, 한 칸 ${wv.T.toFixed(1)}px, 떠 있는 장애물 ${wv.floats}개)`);
+    ok(Math.abs(zAt[11.75] - 1) < 0.005 && zAt[12.75] < 0.8, `화면은 올라가는 계단 마디에 들어서며 한 박 안에 "확" 물러난다 (직전 ${zAt[11.75].toFixed(2)}배 → 0.75박 뒤 ${zAt[12.75].toFixed(2)}배)`);
     await p.screenshot({ path: out + 'r2_wide.png' });
+    await runTo(28);
+    ok(zAt[26.5] < 0.8 && Math.abs(zAt[27.75] - 1) < 0.02 && await G(() => window.__game.phase) === 'running', `내려오는 계단 마디의 끝에서 다시 다가온다 (${zAt[26.5].toFixed(2)}배 → ${zAt[27.75].toFixed(2)}배)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');

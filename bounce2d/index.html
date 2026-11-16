@@ -405,7 +405,11 @@
   const gotGems = new Set();      // 이번 판에 뚫고 지나간 수정(번호)
   let gemPtr = 0;
   const ev = [];
-  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9 };
+  // 넓은 통로가 이어지는 구간들 [시작 x, 끝 x]. 끝나기 WIDE_IN칸 앞(내려오는 계단의 뒤쪽)에서 화면이 다시 다가온다.
+  const WIDE_RUNS = [], WIDE_IN = 5;
+  for (const b of [...L.wideBars].sort((u, v) => u - v)) { const last = WIDE_RUNS[WIDE_RUNS.length - 1]; if (last && last[1] === b * 16) last[1] += 16; else WIDE_RUNS.push([b * 16, b * 16 + 16]); }
+  const wideZone = (x) => WIDE_RUNS.some(([xs, xe]) => x >= xs && x < xe - WIDE_IN);
+  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, punchAt: -9, punchDir: 1, stepAt: -9, wideOn: false, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9 };
 
   function begin(cp) {
     if (songLoading && !fake.on) { ensureAudio(); pendingStart = cp; $("ovStat").textContent = "곡을 불러오는 중…"; return; }   // 누른 순간에 소리 권한은 받아 두고, 곡이 준비되면 시작
@@ -413,7 +417,7 @@
     state = spawnState(L, cp);
     broken.clear(); usedRings.clear();
     fx.tail.length = 0; fx.particles.length = 0;
-    gotGems.clear(); fx.chain = 0;
+    gotGems.clear(); fx.chain = 0; fx.wideOn = wideZone(state.x); fx.punchAt = -9;
     gemPtr = 0; while (gemPtr < L.gems.length && L.gems[gemPtr].x <= state.x) gemPtr++;
     pressQueued = false;
     phase = "running";
@@ -534,6 +538,11 @@
         const bar = Math.floor(state.x / 16), now2 = L.freeBars.has(bar), was = L.freeBars.has(bar - 1) && inRide(L, state.x - 1);
         if (now2 !== was) { setModeLabel(); toast(now2 ? "FREE RUN" : "FEVER"); }
       }
+      if (wideZone(state.x) !== fx.wideOn && phase === "running") {          // 넓은 통로로 들어가거나 나오는 순간: 화면이 "확" 바뀐다
+        fx.wideOn = !fx.wideOn; fx.punchAt = performance.now() / 1000; fx.punchDir = fx.wideOn ? 1 : -1;
+        fx.flash = 0.7; fx.shake = Math.max(fx.shake, 0.2);
+        for (let k = 0; k < 3; k++) burst(state.x, state.y - HALF, 10, k % 2 ? "white" : "blue", 15, true);
+      }
       while (gemPtr < L.gems.length && L.gems[gemPtr].x <= state.x) {       // 길 위의 수정: 지나가며 뚫는다
         const gm = L.gems[gemPtr];
         if (phase === "running" && Math.abs((ROWS - 1 - state.y + HALF) - gm.h) < 0.7) {
@@ -570,7 +579,10 @@
         if (g >= 0.3) fx.jumpAt = now;
         fx.shake = Math.max(fx.shake, g < 0.3 ? 0.22 : g < 1 ? 0.1 : 0.05);
       }
-      else if (e.type === "rebound") { fx.jumpAt = now; puff(state.x, e.top ? ROWS - 1 - ceilAt(L, state.x) : ROWS - 1, 6, 0.8); }
+      else if (e.type === "rebound") {
+        fx.jumpAt = now; puff(state.x, e.top ? state.y - SIZE : state.y, 6, 0.8);
+        if (e.step) { fx.stepAt = now; burst(state.x, e.top ? state.y - SIZE : state.y, 5, "blue", 7, true); }     // 파란 발판에 닿음: 발판이 번쩍
+      }
       else if (e.type === "break") {
         if (!broken.has(e.c + "," + e.r)) {          // 닿은 순간 그 벽 전체가 깨진다
           for (let r = 0; r < ROWS; r++) if (tile(L, e.c, r) === "D") { broken.add(e.c + "," + r); burst(e.c + 0.5, r + 0.5, 6, "accent", 10, true); }
@@ -646,11 +658,16 @@
     let round = 0;                                             // 0 = 기본 구간, 1 = 돌파 구간
     for (const r of L.rides) round = Math.max(round, Math.min(1, (camX - r[0] + 3) / 3, (r[1] + 1 - camX) / 3));
     round = Math.max(0, round);
-    // 넓은 통로(천장이 두 배)에서는 화면이 물러나 통로 전체가 보이게 한다(화면이 충분히 높으면 그대로)
+    // 넓은 통로(천장이 두 배)에서는 화면이 물러나 통로 전체가 보이게 한다(화면이 충분히 높으면 그대로).
+    // 물러나고 다가오는 것은 장애물이 없는 계단 마디에서 "확" 한 번에: 반 박 남짓, 살짝 지나쳤다가 제자리로.
     let wide = 0;
-    for (const b of L.wideBars) wide = Math.max(wide, Math.min(1, (camX - (b * 16 - 9)) / 6, ((b + 1) * 16 + 3 - camX) / 6));
+    for (const [xs, xe] of WIDE_RUNS) {
+      if (camX < xs - 1 || camX > xe) continue;
+      const back = (p) => { p = Math.max(0, Math.min(1, p)); return 1 + 2.4 * Math.pow(p - 1, 3) + 1.4 * Math.pow(p - 1, 2); };   // 0 → 1, 끝에서 살짝 넘친다
+      wide = Math.min(back((camX - (xs - 0.4)) / 2.6), 1 - back((camX - (xe - WIDE_IN)) / 2.6));
+    }
     const zoomMin = Math.min(1, (view.groundY / BT - 1.5) / (WIDE_TOP * ZIG_STEP + SIZE + 0.3));
-    const T = BT * (1 - (1 - zoomMin) * Math.max(0, wide)), camS = sAt(camX);
+    const T = BT * (1 - (1 - zoomMin) * wide), camS = sAt(camX);
     view.zT = T;
     const sx = (wx) => view.px + (sAt(wx) - camS) * T;
     const sy = (wy) => view.groundY + (wy - (ROWS - 1)) * T;
@@ -819,6 +836,35 @@
         ctx.beginPath();
         for (let c = Math.floor(ca / 16) * 16; c < cb; c += 16) { const y = sy(ROWS - 1 - ceilAt(L, c + 1)); ctx.lineTo(sx(Math.max(c, ca)), y); ctx.lineTo(sx(Math.min(c + 16, cb)), y); }
         ctx.stroke(); ctx.shadowBlur = 0;
+      }
+      // 파란 발판·계단: 닿아도 죽지 않고 튕기기만 한다. 바닥에서 솟은 것과 천장에 매달린 것.
+      if (L.stairLo.size || L.stairHi.size) {
+        const i0 = Math.max(r[0], cA), i1 = Math.min(r[1], cB + 1), hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25);
+        const baseY = (i, up) => (up ? sy(ROWS - 1 - ceilAt(L, i + 0.5)) : view.groundY);
+        const edgeY = (i, up) => sy(ROWS - 1 - (up ? stairCeil(L, i + 0.5) : stairFloor(L, i + 0.5)));
+        for (const up of [false, true]) for (let i = i0; i < i1; i++) {
+          if (Math.abs(edgeY(i, up) - baseY(i, up)) < 0.5) continue;
+          let e = i; while (e + 1 < i1 && Math.abs(edgeY(e + 1, up) - baseY(e + 1, up)) >= 0.5) e++;
+          const edge = [[sx(i), baseY(i, up)]];                                 // 공이 닿는 쪽의 테두리(계단 모양)
+          for (let k = i; k <= e; k++) { const y = edgeY(k, up); if (edge[edge.length - 1][1] !== y) edge.push([sx(k), y]); if (k === e || edgeY(k + 1, up) !== y) edge.push([sx(k + 1), y]); }
+          edge.push([sx(e + 1), baseY(e, up)]);
+          ctx.beginPath(); ctx.moveTo(edge[0][0], edge[0][1]);
+          for (const q of edge) ctx.lineTo(q[0], q[1]);
+          for (let k = e; k >= i; k--) { ctx.lineTo(sx(k + 1), baseY(k, up)); ctx.lineTo(sx(k), baseY(k, up)); }
+          ctx.closePath();
+          const ys = edge.map((q) => q[1]), far = up ? Math.max(...ys) : Math.min(...ys), near = up ? Math.min(...ys) : Math.max(...ys);
+          const bg = ctx.createLinearGradient(0, near, 0, far);
+          bg.addColorStop(0, "#081a3d"); bg.addColorStop(1, hit > 0 ? `rgb(${40 + 60 * hit},${110 + 80 * hit},255)` : "#1f6ee0");
+          ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fill();
+          ctx.save(); ctx.clip();                                               // 가로 줄무늬(빨간 장애물의 빗금과 다르게)
+          ctx.strokeStyle = "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath();
+          for (let y = view.groundY - T * 0.48; y > far - T; y -= T * 0.48) { ctx.moveTo(edge[0][0], y); ctx.lineTo(edge[edge.length - 1][0], y); }
+          ctx.stroke(); ctx.restore();
+          ctx.beginPath(); ctx.moveTo(edge[0][0], edge[0][1]);
+          for (const q of edge) ctx.lineTo(q[0], q[1]);
+          ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; ctx.shadowBlur = 10 + 8 * pulse + 16 * hit; ctx.stroke(); ctx.shadowBlur = 0;
+          i = e;
+        }
       }
       // 가까이서 스쳐 가는 것들(닿지 않는다. 속도감을 위한 것): 바닥과 천장의 점선
       for (let c = Math.max(r[0] + 1, cA); c < Math.min(r[1] - 1, cB + 1); c++) {
@@ -1035,7 +1081,7 @@
     // 입자
     for (const p of fx.particles) {
       const a = p.life / p.max;
-      ctx.fillStyle = p.color === "accent" ? css(pal.accent, a) : `rgba(255,255,255,${a * 0.7})`;
+      ctx.fillStyle = p.color === "accent" ? css(pal.accent, a) : p.color === "blue" ? `rgba(120,200,255,${a * 0.9})` : `rgba(255,255,255,${a * 0.7})`;
       const s = p.size * T;
       ctx.save(); ctx.translate(sx(p.x), sy(p.y)); if (p.rot) ctx.rotate(p.rot + p.life * 8);
       if (p.shard) { ctx.beginPath(); ctx.moveTo(-s * 0.6, s * 0.5); ctx.lineTo(0, -s * 0.8); ctx.lineTo(s * 0.7, s * 0.35); ctx.closePath(); ctx.fill(); }
@@ -1111,6 +1157,24 @@
     }
     ctx.restore();
 
+    {                                                  // 화면이 "확" 바뀌는 순간: 공에서 퍼지는 충격 고리와 바깥으로 뻗는 빛줄기
+      const sp = (now - fx.punchAt) / 0.45;
+      if (sp >= 0 && sp < 1) {
+        const cx = sx(camX + state.lead), cy = sy(state.y) - HALF * T, R = Math.hypot(w, h), e = 1 - Math.pow(1 - sp, 3);
+        const k = fx.punchDir > 0 ? e : 1 - e;           // 넓어질 때는 밖으로 퍼지고, 좁아질 때는 안으로 모인다
+        ctx.save(); ctx.globalCompositeOperation = "lighter";
+        for (const [f, a] of [[1, 0.5], [0.72, 0.3]]) {
+          ctx.beginPath(); ctx.arc(cx, cy, Math.max(1, R * 0.75 * k * f), 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(150,215,255,${a * (1 - sp)})`; ctx.lineWidth = 10 * (1 - sp) + 2; ctx.stroke();
+        }
+        ctx.strokeStyle = `rgba(200,235,255,${0.35 * (1 - sp)})`; ctx.lineWidth = 2.5; ctx.beginPath();
+        for (let i = 0; i < 28; i++) {
+          const a = i * 2.399 + 0.3, r1 = R * (0.12 + 0.6 * k) * (0.7 + 0.3 * ((i * 7) % 5) / 4), r2 = r1 + R * 0.16;
+          ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
+        }
+        ctx.stroke(); ctx.restore();
+      }
+    }
     if (fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${fx.flash * 0.5})`; ctx.fillRect(0, 0, w, h); }
     const since = now - fx.cpFlash;
     if (since < 0.4) { ctx.fillStyle = css(pal.accent, (1 - since / 0.4) * 0.22); ctx.fillRect(0, 0, w, h); }
@@ -1119,7 +1183,7 @@
   const HINT_TEXT = {
     hA: "II 표시에서 왼쪽을 누르고 있기 = 공중에서 멈춤", glideHigh: "두 번 이어서 멈춤", dj1: "▲ 표시에서 오른쪽 누르기 = 공중에서 한 번 더 점프", peak: "두 번 이어서 점프",
     mix: "멈춤, 그다음 점프", mix2: "점프, 그다음 멈춤", skyGlide: "점프하고, 그 꼭대기에서 멈춤",
-    zF: "장애물이 없는 구간 · 저절로 달려요", w1: "넓은 통로 · 떠 있는 장애물은 비켜 가요", zS1: "통로가 조여들어요 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
+    zF: "장애물이 없는 구간 · 저절로 달려요", zT: "파란 발판은 닿아도 괜찮아요 · 튕기기만 해요", w3: "넓은 통로 · 떠 있는 장애물은 비켜 가요", zS1: "통로가 조여들어요 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
     glideLow: "떨어지다 낮은 곳에서 멈춤", weave: "멈춤 → 이단 점프 → 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];

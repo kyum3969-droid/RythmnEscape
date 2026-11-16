@@ -58,15 +58,23 @@ const PATTERNS = {
   roller:    { holds: [[2.25, 3.0]], presses: [0.5, 1.75], mF: 0.1 },
   // ---- 피버 구간(rush). 원버튼(화면 어디든). 공이 바닥과 천장 사이를 비스듬히 튕기고, 누르는 즉시 위아래 방향이 뒤집힌다.
   //   nodes = 반 박 지점 8개(마디 안 0.5박, 1박, …, 4박): F 이 박에 뒤집어야 함 / S 뒤집으면 안 됨 / . 상관없음. F·S는 공이 가운데 높이를 지나는 지점에만 쓴다.
-  //   마디는 바닥에서 시작해 바닥에서 끝나야 한다(뒤집기는 짝수 번).
+  //   좁은 통로의 마디는 바닥에서 시작해 바닥에서 끝난다(뒤집기는 짝수 번). 넓은 통로의 마디는 천장에서 시작해 천장에서 끝난다(계단으로 올라가서 시작한다).
   zE: { mode: "rush", nodes: "........" },
   // 연출만 있는 마디: 장애물이 없고, 공이 저절로 바닥과 천장을 오간다. 눌러도 길은 바뀌지 않는다(다음 마디와 박자가 어긋나지 않게).
   zF: { mode: "rush", nodes: "........", free: true },
+  // 파란 발판·계단: 닿아도 죽지 않고 튕기기만 한다. 연출 마디가 비어 보이지 않게 채운다.
+  //   lo/hi = 반 박 지점(마디 안 0박, 0.5박, …, 3.5박)마다 바닥 쪽·천장 쪽 발판의 높이 단계. 공은 그 사이에서 튕긴다.
+  zT: { mode: "rush", nodes: "........", free: true, lo: "00000110", hi: "21122222" },                // 천장에 매달린 발판 밑을 낮게, 이어서 바닥 발판 위를 높게
+  // 넓은 통로로 들어가는 계단: 바닥 계단과 천장 계단 사이를 타닥타닥 튕기며 천장까지 올라간다. 화면이 여기서 "확" 물러난다.
+  wUp: { mode: "rush", nodes: "........", free: true, wide: true, start: 0, lo: "00111222", hi: "22223334" },
+  // 넓은 통로에서 나오는 계단: 천장에서 바닥까지 같은 식으로 내려온다. 화면이 여기서 다시 다가온다.
+  wDn: { mode: "rush", nodes: "........", free: true, wide: true, lo: "22221110", hi: "44333222" },
   // 넓은 통로(wide): 천장이 두 배 높이로 물러나, 높이가 다섯 단계(바닥 0 ~ 천장 4)가 된다. 바닥에서 천장까지 두 박.
   //   가운데 단계(1~3)에서 뒤집을 수 있고, 틀린 쪽이 공중이면 거기에 떠 있는 장애물(마름모)이 놓인다.
-  w1: { mode: "rush", wide: true, nodes: ".S...S.." },     // 크게 한 번 오르내린다(안 누름). 가운데 장애물은 위·아래로 비켜 간다
-  w2: { mode: "rush", wide: true, nodes: ".F...F.." },     // 가운데까지만 올라갔다 내려오기를 두 번. 장애물이 머리 위에 떠 있다
-  w3: { mode: "rush", wide: true, nodes: "..F...F." },     // 천장 바로 밑에서 꺾어 바닥까지 내려오고, 다시 뜨자마자 눌러 낮게 지나간다
+  w1: { mode: "rush", wide: true, nodes: ".S...S.." },     // 바닥까지 크게 내려갔다 올라온다(안 누름). 천장과 바닥의 이빨 사이를 지난다
+  w2: { mode: "rush", wide: true, nodes: ".F...F.." },     // 천장으로 한 번 되돌아간 뒤 깊이 내려갔다가, 바닥 직전에 눌러 올라온다
+  w3: { mode: "rush", wide: true, nodes: "..F...F." },     // 통로 위쪽 절반에서만 오르내린다. 아래에 떠 있는 장애물 위를 지난다
+  w4: { mode: "rush", wide: true, nodes: "F.F.F.F." },     // 천장을 스치듯: 한 박마다 눌러 천장으로 되돌아간다. 바로 밑에 장애물이 줄지어 떠 있다
   // 조여드는 통로(연출): 바닥과 천장이 가운데로 모여들어, 공이 닿는 간격이 한 박 → 반 박 → … → 1/32박까지 빨라진다("타다다다닥" → "드르르륵").
   // squeeze = 닿는 간격(박)을 차례로 적은 것. 한 마디에 4박어치. 피버의 맨 끝에만 쓴다(통로가 좁아진 채로 끝난다).
   zS1: { mode: "rush", nodes: "........", free: true, squeeze: [1, 1, 0.5, 0.5, 0.5, 0.5] },
@@ -124,7 +132,7 @@ const ROUND1 = {
 // 라운드 2: "Terminal Pursuit". 분당 152박(1라운드와 같다), 첫 박 0.281초, 72마디이고 73번째 마디 첫 박에 끝맺는 한 방.
 // 곡의 구간(마디): 0~7 도입(끝 두 마디는 조용) / 8~22 첫 큰 구간(16부터 멜로디) / 23 채움 / 24~31 밝고 가벼운 구간 / 32~39 쉬어 감
 //                / 40~54 두 번째 큰 구간(48부터 더 밝게) / 55 채움 / 56~63 절정 / 64~71 가장 센 절정
-// 1라운드와 같은 동작만 쓴다. 쉬는 마디가 조금 줄고, 피버가 두 번 나오며, 피버 안에 장애물 없이 연출만 있는 마디(zF)가 있다.
+// 1라운드와 같은 동작만 쓴다. 쉬는 마디가 조금 줄고, 피버가 두 번 나오며, 피버 안에 장애물 없이 연출만 있는 마디(파란 발판·계단, 조여드는 통로)가 있다.
 const ROUND2 = {
   name: "ROUND 2 · Terminal Pursuit",
   bpm: 151.9867,
@@ -135,8 +143,8 @@ const ROUND2 = {
     // 첫 큰 구간
     "mix", "mix2", "idle", "glideHigh",   "peak", "idle", "skyGlide", "idle",
     "mix", "mix2", "skyGlide", "idle",   "glideHigh", "peak", "mix", "cp",
-    // 밝고 가벼운 구간: 첫 피버. 좁은 통로 → 넓은 통로(가운데에 떠 있는 장애물) → 다시 좁은 통로
-    "zF", "z1", "z1", "w1",   "w2", "w2", "z3", "zF",
+    // 밝고 가벼운 구간: 첫 피버. 파란 발판 → 좁은 통로 → 계단으로 올라가 넓은 통로(가운데에 떠 있는 장애물) → 계단으로 내려와 다시 좁은 통로
+    "zT", "z1", "z1", "wUp",   "w3", "w1", "wDn", "z3",
     // 쉬어 감
     "idle", "hA", "idle", "dj2",   "mix", "idle", "idle", "cp",
     // 두 번째 큰 구간
@@ -144,8 +152,8 @@ const ROUND2 = {
     "mix2", "skyGlide", "peak", "idle",   "glideHigh", "mix", "skyGlide", "cp",
     // 절정: 쉬는 마디 하나만 두고 이어 붙인다
     "mix", "mix2", "skyGlide", "glideHigh",   "idle", "peak", "mix2", "cp",
-    // 가장 센 절정: 마지막 피버. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다
-    "zF", "z2", "w1", "w2",   "w3", "z5", "zS1", "zS2",
+    // 가장 센 절정: 마지막 피버. 들어서자마자 계단으로 넓은 통로에 올라간다. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다
+    "wUp", "w4", "w2", "w1",   "wDn", "z5", "zS1", "zS2",
     "goal", "flat", "flat",
   ],
   sections: [
@@ -209,6 +217,7 @@ function emptyLevel(course) {
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill(r === ROWS - 1 ? "#" : "."));
   const cps = [], rides = [], reds = [], gems = [], freeBars = new Set(), wideBars = new Set(), squeezes = [];
+  const stairLo = new Map(), stairHi = new Map();       // 파란 발판: 반 박 지점 번호(x / 2) → 바닥 쪽·천장 쪽 높이 단계
   let goalX = cols - 8;
   let zl = 0, zin = -1;                                 // 피버: 패턴대로 갈 때, 반 박 지점에서의 높이 단계(0 = 바닥)와 거기로 들어온 방향
   course.bars.forEach((name, b) => {
@@ -233,17 +242,24 @@ function emptyLevel(course) {
       } else if (squeezes.length && squeezes[squeezes.length - 1].x1 === x0) throw new Error("조여드는 통로 뒤에는 피버가 끝나야 한다: " + name);
       else {
         const top = p.wide ? WIDE_TOP : 2;
+        if (zl !== (p.start ?? (p.wide ? WIDE_TOP : 0))) throw new Error("이 마디가 시작하는 높이가 앞 마디와 맞지 않는다: " + name);
+        if ((p.lo || p.hi) && !p.free) throw new Error("파란 발판은 연출 마디에만 쓴다: " + name);
         for (let k = 0; k < 8; k++) {                   // k번째 반 박 지점에서 어디로 갈지 정한다
-          const c = k ? p.nodes[k - 1] : ".", xk = x0 + 2 * k, surface = zl <= 0 || zl >= top;
+          const lo = p.lo ? +p.lo[k] : 0, hi = p.hi ? +p.hi[k] : top;
+          if (lo > 0) stairLo.set(x0 / 2 + k, lo);
+          if (hi < top) stairHi.set(x0 / 2 + k, hi);
+          if (zl < lo || zl > hi) throw new Error(`공이 발판 속에 있다: ${name}의 ${k}번째 지점`);
+          const c = k ? p.nodes[k - 1] : ".", xk = x0 + 2 * k, surface = zl <= lo || zl >= hi;
           if (surface && c !== ".") throw new Error(`바닥·천장에서는 고를 수 없다: ${name}의 ${k}번째 지점`);
-          const nat = zl <= 0 ? 1 : zl >= top ? -1 : zin, dir = c === "F" ? -nat : nat;
+          const nat = zl <= lo ? 1 : zl >= hi ? -1 : zin, dir = c === "F" ? -nat : nat;
           if (k) gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? dir : 0 });      // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
           gems.push({ x: xk + 1, h: (zl + dir / 2) * ZIG_STEP + HALF });
           if (c === "F" || c === "S") reds.push(hazard(xk + 2, zl + dir, zl - dir, top));       // 다음 지점의 틀린 쪽을 막는다
           zl += dir; zin = dir;
         }
-        if (p.nodes[7] !== "." || zl !== 0) throw new Error("피버 마디는 바닥에서 끝나야 한다: " + name);
-        gems.push({ x: x0 + 16, h: HALF });
+        const next = PATTERNS[course.bars[b + 1]];
+        if (p.nodes[7] !== "." || zl !== (next && next.mode === "rush" ? next.start ?? (next.wide ? WIDE_TOP : 0) : 0)) throw new Error("피버 마디는 바닥에서(넓은 통로로 이어지면 천장에서) 끝나야 한다: " + name);
+        gems.push({ x: x0 + 16, h: zl * ZIG_STEP + HALF });
       }
     }
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
@@ -251,7 +267,7 @@ function emptyLevel(course) {
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
   for (const sq of squeezes) { const e = sq.pts[sq.pts.length - 1]; sq.pts.push({ step: Math.round(sq.x1 / TPB * SUB), x: sq.x1, g: e.g, top: !e.top }); }   // 끝에서 한 번 더 닿는다
-  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, squeezes, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, squeezes, stairLo, stairHi, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 // 패턴대로 달린 공의 자취(스텝마다 위치·상태)
@@ -427,6 +443,10 @@ const rideAt = (L, x) => { for (const r of L.rides) if (x >= r[0] && x < r[1]) r
 const inRide = (L, x) => !!rideAt(L, x);
 // x 지점의 피버 천장 높이(칸). 넓은 통로 마디는 두 배.
 const ceilAt = (L, x) => (L.wideBars.has(Math.floor(x / 16)) ? WIDE_TOP : 2) * ZIG_STEP + SIZE;
+// 파란 발판의 높이(칸). 반 박 지점마다 앞뒤 한 칸씩을 그 지점의 발판이 차지한다(마디 선은 넘지 않는다). 발판이 없으면 바닥 0 / 천장 그대로.
+const stairNode = (x) => { const b = Math.floor(x / 16), t = x - 16 * b; return 8 * b + (t >= 15 ? 7 : Math.floor((t + 1) / 2)); };
+const stairFloor = (L, x) => (L.stairLo.get(stairNode(x)) || 0) * ZIG_STEP;
+const stairCeil = (L, x) => { const v = L.stairHi.get(stairNode(x)); return v === undefined ? ceilAt(L, x) : Math.min(ceilAt(L, x), v * ZIG_STEP + SIZE); };
 // 조여드는 통로에서 x 지점의 통로 폭(공이 오르내리는 거리). 통로 밖이면 null.
 function squeezeGap(L, x) {
   for (const sq of L.squeezes) if (x >= sq.x0 && x <= sq.x1) {
@@ -460,24 +480,27 @@ function rushStep(L, s, press, ev, hold, r) {
     // 누르면 "가장 가까운 지점에서 갈 방향"이 뒤집힌다(그 지점 앞뒤 1/4박 안에 누른 것). 반응은 즉시:
     //   지점에 닿기 전에 누르면 그 자리에서 바로 돌아서 천천히, 지난 뒤에 누르면 바로 꺾어서 빠르게 — 어느 쪽이든 다음 지점에는 같은 높이에 닿는다.
     // 그래서 타이밍 오차가 다음으로 넘어가지 않는다. 한 번 더 누르면 원래대로 돌아간다.
-    const topAt = (k) => (L.wideBars.has(Math.floor((r[0] + 2 * k) / 16)) ? WIDE_TOP : 2);
-    const dirAt = (lev, zin, tog, top) => (lev <= 0 ? 1 : lev >= top ? -1 : tog ? -zin : zin);
+    // 파란 발판이 있는 지점에서는 바닥·천장 대신 그 발판에서 튕긴다.
+    const n0 = r[0] / 2;
+    const botAt = (k) => L.stairLo.get(n0 + k) || 0;
+    const topAt = (k) => { const v = L.stairHi.get(n0 + k); return v === undefined ? (L.wideBars.has(Math.floor((r[0] + 2 * k) / 16)) ? WIDE_TOP : 2) : v; };
+    const dirAt = (lev, zin, tog, k) => (lev <= botAt(k) ? 1 : lev >= topAt(k) ? -1 : tog ? -zin : zin);
     while (local >= s.zk * SLOT + SLOT / 2) {              // 지난 지점의 선택을 굳히고, 다음 지점으로 넘어간다
-      const d = dirAt(s.zlk, s.zin, s.ztog, topAt(s.zk));
+      const d = dirAt(s.zlk, s.zin, s.ztog, s.zk);
       s.zlk += d; s.zin = d; s.zk++; s.ztog = 0;
     }
-    const tk = s.zk * SLOT, top = topAt(s.zk);
+    const tk = s.zk * SLOT, top = topAt(s.zk), bot = botAt(s.zk);
     if (press) {
-      if (!L.freeBars.has(Math.floor(s.x / 16)) && s.zlk > 0 && s.zlk < top) { s.ztog ^= 1; if (ev) ev.push({ type: "flip" }); }
+      if (!L.freeBars.has(Math.floor(s.x / 16)) && s.zlk > bot && s.zlk < top) { s.ztog ^= 1; if (ev) ev.push({ type: "flip" }); }
       else if (ev) ev.push({ type: "spark" });               // 연출 마디, 또는 바닥·천장에 닿는 지점: 길은 그대로(불꽃만 튄다)
     }
     const toNode = local <= tk && !s.ztog;                   // 지점을 향해 가는 중인가, 지점 다음 높이를 향해 가는 중인가
-    const wpStep = toNode ? tk : tk + SLOT, wpH = (toNode ? s.zlk : s.zlk + dirAt(s.zlk, s.zin, s.ztog, top)) * ZIG_STEP;
+    const wpStep = toNode ? tk : tk + SLOT, wpH = (toNode ? s.zlk : s.zlk + dirAt(s.zlk, s.zin, s.ztog, s.zk)) * ZIG_STEP;
     const prev = s.zh;
-    s.zh = local === 0 ? 0 : wpStep - local <= 0 ? wpH : prev + (wpH - prev) / (wpStep - local + 1);
+    s.zh = local === 0 ? s.zlk * ZIG_STEP : wpStep - local <= 0 ? wpH : prev + (wpH - prev) / (wpStep - local + 1);
     s.zv = Math.abs(s.zh - prev) * SUB;
     if (s.zh !== prev) s.zdir = s.zh > prev ? 1 : -1;
-    if (local === tk && local > 0 && (s.zlk <= 0 || s.zlk >= top) && ev) ev.push({ type: "rebound", top: s.zlk > 0 });
+    if (local === tk && local > 0 && (s.zlk <= bot || s.zlk >= top) && ev) ev.push({ type: "rebound", top: s.zlk > bot, step: s.zlk > bot ? L.stairHi.has(n0 + s.zk) : bot > 0 });   // step = 파란 발판에 닿았다
     h = s.zh;
     if (h + SIZE > ceilAt(L, s.x) + 0.3) return die(s, "crash", ev);     // 넓은 통로에서 좁은 통로로 넘어갈 때 천장보다 높이 있으면 부딪힌다
   }
@@ -692,4 +715,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
