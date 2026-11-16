@@ -59,21 +59,22 @@ const PATTERNS = {
   // ---- 피버 구간(rush). 원버튼(화면 어디든). 공이 바닥과 천장 사이를 비스듬히 튕기고, 누르는 즉시 위아래 방향이 뒤집힌다.
   //   nodes = 반 박 지점 8개(마디 안 0.5박, 1박, …, 4박): F 이 박에 뒤집어야 함 / S 뒤집으면 안 됨 / . 상관없음. F·S는 공이 가운데 높이를 지나는 지점에만 쓴다.
   //   마디는 바닥에서 시작해 바닥에서 끝나야 한다(뒤집기는 짝수 번).
+  //   teeth = 그 마디의 이빨 모양: tooth 넓은 삼각 이빨 / needle 가는 바늘 / crown 세 갈래 왕관. 닿는 범위는 모두 넓은 이빨 안쪽이라 타이밍 여유는 같거나 더 넉넉하다.
   zE: { mode: "rush", nodes: "........" },
-  // 연출만 있는 마디: 장애물이 없고, 공이 저절로 바닥과 천장을 오가며 수정 판을 깨고 지나간다. 눌러도 길은 바뀌지 않는다(다음 마디와 박자가 어긋나지 않게).
+  // 연출만 있는 마디: 장애물이 없고, 공이 저절로 바닥과 천장을 오간다. 눌러도 길은 바뀌지 않는다(다음 마디와 박자가 어긋나지 않게).
   zF: { mode: "rush", nodes: "........", free: true },
   // 조여드는 통로(연출): 바닥과 천장이 가운데로 모여들어, 공이 닿는 간격이 한 박 → 반 박 → … → 1/32박까지 빨라진다("타다다다닥" → "드르르륵").
   // squeeze = 닿는 간격(박)을 차례로 적은 것. 한 마디에 4박어치. 피버의 맨 끝에만 쓴다(통로가 좁아진 채로 끝난다).
   zS1: { mode: "rush", nodes: "........", free: true, squeeze: [1, 1, 0.5, 0.5, 0.5, 0.5] },
   // 둘째 마디: 한 박마다 간격을 반으로. 마지막 박에는 1/32박(약 12ms)마다 닿아 통로가 공 크기와 거의 같아진다(폭 0.92칸, 공 0.8칸)
   zS2: { mode: "rush", nodes: "........", free: true, squeeze: [...Array(4).fill(1 / 4), ...Array(8).fill(1 / 8), ...Array(16).fill(1 / 16), ...Array(32).fill(1 / 32)] },
-  z1: { mode: "rush", nodes: "..S.F.F." },
-  z2: { mode: "rush", nodes: "F.S.F.S." },
-  z3: { mode: "rush", nodes: "S.F.S.F." },
-  z4: { mode: "rush", nodes: "F.F.S.S." },
-  z5: { mode: "rush", nodes: "F.F.F.F." },
-  z6: { mode: "rush", nodes: "S.F.F.S." },
-  z7: { mode: "rush", nodes: "F.F.S.S." },
+  z1: { mode: "rush", nodes: "..S.F.F.", teeth: "tooth" },
+  z2: { mode: "rush", nodes: "F.S.F.S.", teeth: "needle" },
+  z3: { mode: "rush", nodes: "S.F.S.F.", teeth: "crown" },
+  z4: { mode: "rush", nodes: "F.F.S.S.", teeth: "tooth" },
+  z5: { mode: "rush", nodes: "F.F.F.F.", teeth: "crown" },
+  z6: { mode: "rush", nodes: "S.F.F.S.", teeth: "needle" },
+  z7: { mode: "rush", nodes: "F.F.S.S.", teeth: "crown" },
 };
 
 // 피버 패턴에 적힌 칸을 "어떻게 누르는가"(holds/presses)로 풀어 둔다. 다른 패턴과 같은 도구로 재고 검사할 수 있게.
@@ -177,6 +178,16 @@ function coursePlan(course) {
   return { presses, holds };
 }
 
+// 이빨 하나: 삼각형 조각(parts)들의 묶음. 조각마다 { xt 끝의 x, w 반 너비, tip 끝의 높이 }.
+// 어떤 모양이든 가운데 조각은 끝이 맞은편 면에서 ZIG_GAP만큼 떨어져 있고, 모든 조각은 넓은 이빨(tooth) 안쪽에 들어간다.
+function tooth(xt, kind, style) {
+  const tip = kind === "floor" ? ZIG_TOP - ZIG_GAP : ZIG_GAP, side = kind === "floor" ? tip - 1.9 : tip + 1.9;
+  const parts = style === "needle" ? [{ xt, w: 0.32, tip }]
+    : style === "crown" ? [{ xt, w: 0.42, tip }, { xt: xt - 0.68, w: 0.42, tip: side }, { xt: xt + 0.68, w: 0.42, tip: side }]
+    : [{ xt, w: TOOTH_W, tip }];
+  return { kind, style, xt, tip, parts, x0: Math.min(...parts.map((q) => q.xt - q.w)), x1: Math.max(...parts.map((q) => q.xt + q.w)) };
+}
+
 function emptyLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
@@ -208,14 +219,13 @@ function emptyLevel(course) {
           const from = zl; zl += zd;
           const c = p.nodes[k - 1], xk = x0 + 2 * k;
           gems.push({ x: xk - 1, h: (from + zl) / 2 * ZIG_STEP + HALF });
-          gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? -zd : 0, pane: !!p.free && zl === 1 });   // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜). pane = 연출 마디의 수정 판
+          gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? -zd : 0 });        // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
           if (zl === 0 || zl === 2) { if (c !== ".") throw new Error(`바닥·천장에서는 고를 수 없다: ${name}의 ${k}번째 지점`); zd = -zd; continue; }
           const wrong = c === "F" ? zl + zd : c === "S" ? zl - zd : -1;       // 틀리게 갔을 때 다음 지점에서 닿는 곳(0 바닥 / 2 천장)
           if (c === "F") zd = -zd;
           // 다음 지점(바닥이나 천장에 닿는 곳)의 틀린 쪽 면에 삼각 이빨을 세운다. 이빨 끝은 맞은편 면에서 ZIG_GAP만큼 떨어져 있다.
           // → 틀린 쪽으로 가도, 가운데에 떠 있어도 걸린다. 이빨들 사이로 열린 길이 공이 가는 지그재그 모양 그대로다.
-          if (wrong === 0) reds.push({ x0: xk + 2 - TOOTH_W, xt: xk + 2, x1: xk + 2 + TOOTH_W, kind: "floor", tip: ZIG_TOP - ZIG_GAP });
-          else if (wrong === 2) reds.push({ x0: xk + 2 - TOOTH_W, xt: xk + 2, x1: xk + 2 + TOOTH_W, kind: "ceil", tip: ZIG_GAP });
+          if (wrong === 0 || wrong === 2) reds.push(tooth(xk + 2, wrong === 0 ? "floor" : "ceil", p.teeth || "tooth"));
         }
         if (zl !== 0) throw new Error("zig 마디는 바닥에서 끝나야 한다(뒤집기는 짝수 번): " + name);
       }
@@ -452,8 +462,11 @@ function rushStep(L, s, press, ev, hold, r) {
   const xa = s.x - HALF_RUSH * 0.8, xb = s.x + HALF_RUSH * 0.8, lo = h + 0.06, hi = h + SIZE - 0.06;
   for (const q of L.reds) {
     if (xb <= q.x0 || xa >= q.x1) continue;
-    const near = Math.abs(Math.max(xa, Math.min(q.xt, xb)) - q.xt) / TOOTH_W;      // 공에서 이빨 끝에 가장 가까운 x까지(0 = 끝, 1 = 밑동)
-    if (q.kind === "ceil" ? hi > q.tip + (ZIG_TOP - q.tip) * near : lo < q.tip * (1 - near)) return die(s, "spike", ev);
+    for (const t of q.parts) {
+      if (xb <= t.xt - t.w || xa >= t.xt + t.w) continue;
+      const near = Math.abs(Math.max(xa, Math.min(t.xt, xb)) - t.xt) / t.w;        // 공에서 조각의 끝에 가장 가까운 x까지(0 = 끝, 1 = 밑동)
+      if (q.kind === "ceil" ? hi > t.tip + (ZIG_TOP - t.tip) * near : lo < t.tip * (1 - near)) return die(s, "spike", ev);
+    }
   }
 }
 

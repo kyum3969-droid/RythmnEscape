@@ -224,7 +224,9 @@ for (const C of Lg.COURSES) {
     const sparks = ev.filter(e => e.type === 'spark').length;
     ok(s.won && sparks > 20 && noReds, `[${tag}] 연출 마디(${[...lv.freeBars].join(', ')})에서는 마구 눌러도(${sparks}번) 길이 그대로라 완주한다`);
     const sqBars = C.bars.filter(n => Lg.PATTERNS[n] && Lg.PATTERNS[n].squeeze).length;
-    ok(lv.gems.filter(g => g.pane).length === (lv.freeBars.size - sqBars) * 4, `[${tag}] 연출 마디마다 깨고 지나갈 수정 판이 4장(조여드는 통로 ${sqBars}마디는 빼고)`);
+    const styles = [...new Set(lv.reds.map(q => q.style))].sort();
+    ok(styles.join(',') === 'crown,needle,tooth' && lv.reds.every(q => q.parts.every(t => t.xt - t.w >= q.xt - Lg.TOOTH_W - 1e-9 && t.xt + t.w <= q.xt + Lg.TOOTH_W + 1e-9) && q.parts[0].tip === q.tip),
+      `[${tag}] 이빨 모양 세 가지(${styles.join(', ')})가 나오고, 모두 넓은 이빨 안쪽에 들어간다(가운데 끝의 높이는 같다)`);
     if (lv.squeezes.length) {
       // 조여드는 통로: 닿는 간격이 1박에서 1/32박까지 반씩 줄고, 통로 폭도 그만큼 좁아진다(끝에서는 공 크기와 거의 같다)
       const sq = lv.squeezes[0], hits = ev.filter(e => e.type === 'rebound' && e.tight).length;
