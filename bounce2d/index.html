@@ -68,6 +68,9 @@
   #zoneL { left: 0; border-right: 1px dashed rgba(255, 255, 255, 0.12); }
   #app.one #zoneL { border-right-color: transparent; }
   #app.one .zone.on { color: var(--text); }
+  #app.nozones .zone { visibility: hidden; }          /* 개발자 기능: 아래쪽 버튼 안내 끄기(누르는 것은 그대로 된다) */
+  #devOpts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #devOpts .btn.small { color: var(--text); }
   #zoneR { right: 0; }
   #toast {
     position: absolute; left: 0; right: 0; top: 19%; text-align: center; pointer-events: none;
@@ -160,6 +163,10 @@
       </div>
       <div id="dev">
         <button class="btn small" id="devToggle">개발자 모드: 꺼짐</button>
+        <div id="devOpts" hidden>
+          <button class="btn small" id="devMarks">길 위의 누르는 표시: 켜짐</button>
+          <button class="btn small" id="devZones">아래쪽 버튼 안내: 켜짐</button>
+        </div>
         <div id="devJumps" hidden></div>
       </div>
     </div>
@@ -189,6 +196,9 @@
   let best = store.get("best" + round, round === 0 ? store.get("best", 0) : 0);
   let dev = store.get("dev", false);     // 개발자 모드: 체크포인트로 바로 이동
   let devRun = false;                    // 건너뛰어 시작한 판은 최고 기록에 넣지 않는다
+  // 개발자 기능: 안내 없이 해 보기. 길 위의 누르는 표시(II, ▲, 피버의 화살표)와 화면 아래쪽의 버튼 안내를 따로 끌 수 있다(개발자 모드일 때만 적용된다)
+  let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true);
+  const showMarks = () => !dev || devMarks;
 
   // ---------------------------------------------------------------- 색 (구간마다 바뀜)
   const PAL = {
@@ -513,6 +523,10 @@
   function renderDev() {
     $("devToggle").textContent = "개발자 모드: " + (dev ? "켜짐" : "꺼짐");
     $("devTag").hidden = !dev;
+    $("devOpts").hidden = !dev;
+    $("devMarks").textContent = "길 위의 누르는 표시: " + (devMarks ? "켜짐" : "꺼짐");
+    $("devZones").textContent = "아래쪽 버튼 안내: " + (devZones ? "켜짐" : "꺼짐");
+    $("app").classList.toggle("nozones", dev && !devZones);
     const box = $("devJumps");
     box.hidden = !dev;
     box.innerHTML = "";
@@ -963,12 +977,13 @@
         if (gm.x < cA || gm.x > cB || gotGems.has(i)) continue;
         const x = sx(gm.x), y = sy(ROWS - 1 - gm.h);
         ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 12;
-        if (gm.hold) {                       // 누르고 있기 시작하는 자리: 고리 + II
+        const marks = showMarks();           // 꺼 두면 누르는 자리도 보통 수정처럼 그린다
+        if (gm.hold && marks) {              // 누르고 있기 시작하는 자리: 고리 + II
           const R = T * (0.42 + 0.06 * pulse);
           ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
           ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.3));
           ctx.fillRect(x - R * 0.42, y - R * 0.5, R * 0.28, R); ctx.fillRect(x + R * 0.14, y - R * 0.5, R * 0.28, R);
-        } else if (gm.flip) {                       // 누르는 자리: 고리 + 화살표(위/아래)
+        } else if (gm.flip && marks) {              // 누르는 자리: 고리 + 화살표(위/아래)
           const R = T * (0.42 + 0.06 * pulse), d = -gm.flip;       // 화면에서는 위가 -
           ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
           ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.3));
@@ -981,7 +996,7 @@
       }
       ctx.shadowBlur = 0;
     }
-    if (dev && REF_PATH) {                                         // 개발자 모드: 패턴대로 눌렀을 때의 길(멈춘 구간은 굵게)
+    if (dev && REF_PATH && showMarks()) {                                         // 개발자 모드: 패턴대로 눌렀을 때의 길(멈춘 구간은 굵게)
       ctx.shadowBlur = 0;
       for (let i = 0; i < REF_PATH.length; i += 4) {
         const t = REF_PATH[i];
@@ -1349,6 +1364,8 @@
   window.addEventListener("blur", () => { keyHold = false; holdPointers.clear(); setZones(); });
   $("pauseBtn").addEventListener("click", pause);
   $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); renderDev(); });
+  $("devMarks").addEventListener("click", () => { devMarks = !devMarks; store.set("devMarks", devMarks); renderDev(); });
+  $("devZones").addEventListener("click", () => { devZones = !devZones; store.set("devZones", devZones); renderDev(); });
   applySpeed(); renderSpeed();
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   new ResizeObserver(resize).observe(canvas);
