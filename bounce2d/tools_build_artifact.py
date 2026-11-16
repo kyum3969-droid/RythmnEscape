@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""아티팩트 게시용 파일 만들기: logic.js를 index.html 안에 넣고 문서 뼈대(doctype/head/body)를 뺀다.
-사용: python3 runner2d/tools_build_artifact.py 출력파일.html"""
+"""아티팩트 게시용 파일 만들기: logic.js와 track.js를 index.html 안에 넣고 문서 뼈대(doctype/head/body)를 뺀다.
+사용: python3 bounce2d/tools_build_artifact.py 출력파일.html"""
 import re, sys, pathlib
 here = pathlib.Path(__file__).parent
 s = (here / "index.html").read_text(encoding="utf-8")
-logic = (here / "logic.js").read_text(encoding="utf-8")
-tag = '<script src="logic.js"></script>'
-assert s.count(tag) == 1
-s = s.replace(tag, "<script>\n" + logic + "</script>")
+for name in ["logic.js", "track.js"]:
+    tag = '<script src="%s"></script>' % name
+    assert s.count(tag) == 1
+    s = s.replace(tag, "<script>\n" + (here / name).read_text(encoding="utf-8") + "</script>")
 s = s.replace('<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n', "")
 s = re.sub(r'<meta name="viewport"[^>]*>\n', "", s, count=1)
 s = s.replace("</style>\n</head>\n<body>\n", "</style>\n").replace("</script>\n</body>\n</html>\n", "</script>\n")

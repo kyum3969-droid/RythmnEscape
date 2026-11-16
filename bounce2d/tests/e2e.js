@@ -108,6 +108,44 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok(v.ahead >= 8 && v.rows >= 6.5 && v.scroll && v.zone, `${name} ${w}x${h}: 앞쪽 ${v.ahead.toFixed(1)}칸 보임, 위쪽 ${v.rows.toFixed(1)}칸, 조작 안내는 바닥 아래쪽`);
     await p.screenshot({ path: out + name + '.png' });
   }
+  console.log('== 곡 넣기 ==');
+  {
+    // 100 BPM, 첫 박 0.3초짜리 곡을 wav 파일로 만들어 실제 파일 선택으로 넣는다
+    const sr = 22050, secs = 30, bpm = 100, off = 0.3, x = new Float32Array(sr * secs);
+    for (let k = 0; off + k * 60 / bpm < secs; k++) {
+      const i0 = Math.round((off + k * 60 / bpm) * sr);
+      for (let i = 0; i < sr * 0.2 && i0 + i < x.length; i++) { const u = i / sr; x[i0 + i] += 0.8 * Math.exp(-u * 18) * Math.sin(2 * Math.PI * (45 * u + 95 * (1 - Math.exp(-u * 30)) / 30)); }
+      const h0 = Math.round((off + (k + 0.5) * 60 / bpm) * sr);
+      for (let i = 0; i < sr * 0.03 && h0 + i < x.length; i++) x[h0 + i] += 0.15 * (Math.random() * 2 - 1) * Math.exp(-i / sr * 90);
+    }
+    const wav = Buffer.alloc(44 + x.length * 2);
+    wav.write('RIFF', 0); wav.writeUInt32LE(36 + x.length * 2, 4); wav.write('WAVEfmt ', 8); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(sr, 24); wav.writeUInt32LE(sr * 2, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(x.length * 2, 40);
+    for (let i = 0; i < x.length; i++) wav.writeInt16LE(Math.round(Math.max(-1, Math.min(1, x[i])) * 32767), 44 + i * 2);
+    fs.writeFileSync(out + 'test-100bpm.wav', wav);
+    await p.setViewportSize({ width: 844, height: 390 });
+    await G(() => { const g = window.__game; g.pause(); g.fake.on = false; g.setBot(null); });
+    await p.setInputFiles('#trackFile', out + 'test-100bpm.wav');
+    await p.waitForFunction(() => window.__game.track, null, { timeout: 15000 });
+    let tr = await G(() => ({ bpm: window.__game.track.bpm, zero: window.__game.trackZero, wob: window.__game.track.wobbleMs, info: document.getElementById('trackInfo').textContent, speed: document.getElementById('speedBtn').textContent, dis: document.getElementById('speedBtn').disabled }));
+    ok(Math.abs(tr.bpm - 100) < 0.03 && Math.abs(tr.zero - 0.3) < 0.01 && tr.wob < 6, `wav 파일을 넣으면 템포와 첫 박을 잰다 (${tr.bpm.toFixed(2)} BPM, 첫 박 ${tr.zero.toFixed(3)}초, 흔들림 ${tr.wob.toFixed(1)}ms)`);
+    ok(tr.info.includes('100.0') && tr.speed.includes('곡 템포 100.0') && tr.dis, '곡 정보가 보이고, 속도 버튼은 곡 템포로 고정된다');
+    await p.waitForTimeout(80); await p.screenshot({ path: out + 'track.png' });
+    await p.click('[data-adj="shift"][data-d="1"]'); await p.click('[data-adj="nudge"][data-d="10"]');
+    tr = await G(() => window.__game.trackZero);
+    ok(Math.abs(tr - (0.3 + 0.6 - 0.01)) < 0.01, `첫 박 ▶ / 소리 ▶ 10ms: 한 박 뒤, 10ms 늦게 (곡 속 0박 = ${tr.toFixed(3)}초)`);
+    await G(() => window.__game.startFresh()); await p.waitForTimeout(1500);
+    st = await G(() => ({ step: window.__game.state.step, bpm: window.__game.bpm, phase: window.__game.phase }));
+    const want = 1.4 / 0.6 * 96;
+    ok(st.bpm > 99.9 && st.bpm < 100.1 && st.step > want * 0.7 && st.step < want * 1.2, `그 곡의 템포로 달린다 (1.5초 뒤 약 ${Math.round(want)}스텝, 실제 ${st.step})`);
+    await p.reload(); await p.waitForFunction(() => window.__game && window.__game.track, null, { timeout: 15000 });
+    tr = await G(() => ({ bpm: window.__game.track.bpm, zero: window.__game.trackZero }));
+    ok(Math.abs(tr.bpm - 100) < 0.03 && Math.abs(tr.zero - 0.89) < 0.01, '새로고침해도 곡과 보정값이 남아 있다');
+    await p.click('[data-adj="remove"]'); await p.waitForTimeout(50);
+    ok(await G(() => !window.__game.track && !document.getElementById('speedBtn').disabled) && (await p.textContent('#trackBtn')) === '곡 넣기', '곡 빼기: 임시 음악과 속도 단계로 돌아간다');
+    await p.reload(); await p.waitForTimeout(700);
+    ok(await G(() => !window.__game.track), '뺀 곡은 새로고침해도 돌아오지 않는다');
+  }
   console.log('콘솔/페이지 오류:', errs.length ? errs : '없음');
   console.log('실패 ' + fails + '건');
   await b.close();

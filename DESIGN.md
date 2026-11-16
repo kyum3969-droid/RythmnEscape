@@ -85,12 +85,38 @@
 음악과 맞추려면 누르는 시각을 **반 박, 반의 반 박 단위(0, 0.25, 0.5, 0.75)** 로 옮겨서, 누르는 순간이 곡의 소리와 겹치게 해야 한다.
 패턴 숫자만 고치면 장애물은 다시 만들어진다.
 
+### Gemini에 넣는 프롬프트 (신스웨이브로 정함)
+```
+Instrumental synthwave / retrowave track for a rhythm game. Exactly 96 BPM, 4/4 time,
+perfectly steady tempo from start to finish: no tempo changes, no swing, no rubato.
+
+Drums: punchy kick drum on every beat (four-on-the-floor) through the whole track,
+snare/clap on beats 2 and 4, crisp off-beat 8th-note hi-hats.
+Driving 16th-note arpeggiated analog bass, bright lead synth, wide warm pads.
+
+Structure, with a clear change every 8 bars:
+- 2-bar intro: kick and bass start immediately on the first beat (no silence, no fade-in)
+- Section A (8 bars): light — drums, bass, arpeggio
+- Section B (8 bars): lead melody enters
+- Section C (8 bars): bigger, fuller chords
+- Section D (8 bars): breakdown — thinner and tense, but the kick keeps going
+- Section E (8 bars): final drop, highest energy
+- 1-bar ending: one hard hit on the downbeat, then stop. No fade-out.
+
+Total length about 1 minute 48 seconds. No vocals, no spoken words.
+Mood: neon night drive, energetic and tense.
+```
+지금 코스(인트로 2마디 + 8마디 × 5 + 끝 1마디 = 43마디)에 맞춘 구성이다.
+
 ### 기술적으로 필요한 것
-- 곡 파일 재생, 게임 시계를 곡의 재생 시각에 맞추기
-- 곡 분석 도구 (템포, 첫 박, 흔들림). 흔들리는 곡은 "박마다의 실제 시각" 표를 만들어 보정
-- 체크포인트에서 다시 시작할 때 그 구간 처음으로 곡을 되감기
-- 소리 지연 보정 설정 (폰, 특히 블루투스 이어폰은 소리가 늦게 난다)
-- 속도 옵션을 남길지 결정 (실제 곡은 템포가 곡에 묶인다. 느린 연습 모드는 재생 속도를 낮춰서 가능)
+- [x] 곡 파일 재생, 게임 시계를 곡의 재생 시각에 맞추기 (`곡 넣기`)
+- [x] 곡 분석 도구: 템포, 첫 박, 흔들림 (`bounce2d/track.js`). 만든 곡으로만 검증했고 실제 곡으로는 아직 못 해 봤다
+- [x] 체크포인트에서 다시 시작할 때 곡도 그 자리부터
+- [x] 소리 지연 보정 (10ms 단위), 첫 박 한 박씩 밀기
+- [ ] 템포가 흔들리는 곡을 "박마다의 실제 시각" 표로 보정
+- [ ] 곡의 구간 지도 만들기 → 패턴 배치
+- [ ] 패턴의 누르는 시각을 반 박·반의 반 박 단위로 옮기기
+- [ ] 속도 옵션을 남길지 결정 (실제 곡은 템포가 곡에 묶인다. 느린 연습 모드는 재생 속도를 낮춰서 가능)
 
 ### 확인할 것
 - Gemini로 만든 곡을 광고 수익이 나는 게임에 써도 되는지. 출시 전에 Google 약관을 직접 확인한다.

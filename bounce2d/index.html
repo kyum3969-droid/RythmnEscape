@@ -94,6 +94,9 @@
   #opts { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
   #opts .btn.small { color: var(--text); }
   #opts small { color: var(--muted); font-size: 12px; }
+  #trackInfo { color: var(--muted); font-size: 12px; line-height: 1.45; white-space: pre-line; font-variant-numeric: tabular-nums; }
+  #trackAdj { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; }
+  #trackAdj[hidden] { display: none; }
   #devJumps { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
   .btn.small { font-size: 13px; font-weight: 500; padding: 8px 10px; color: var(--muted); }
   #devJumps .btn.small { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -139,7 +142,17 @@
       <div class="buttons" id="ovButtons"></div>
       <div id="opts">
         <button class="btn small" id="speedBtn"></button>
-        <small>누를 때마다 바뀌고, 다음에 달리기 시작할 때 적용돼요.</small>
+        <small id="speedNote">누를 때마다 바뀌고, 다음에 달리기 시작할 때 적용돼요.</small>
+        <button class="btn small" id="trackBtn">곡 넣기</button>
+        <input type="file" id="trackFile" accept="audio/*" hidden>
+        <div id="trackInfo">곡 파일을 넣으면 템포와 첫 박을 재서 그 곡에 맞춰 달려요.</div>
+        <div id="trackAdj" hidden>
+          <button class="btn small" data-adj="shift" data-d="-1">첫 박 ◀</button>
+          <button class="btn small" data-adj="shift" data-d="1">첫 박 ▶</button>
+          <button class="btn small" data-adj="nudge" data-d="-10">소리 ◀ 10ms</button>
+          <button class="btn small" data-adj="nudge" data-d="10">소리 ▶ 10ms</button>
+          <button class="btn small" data-adj="remove">곡 빼기</button>
+        </div>
       </div>
       <div id="dev">
         <button class="btn small" id="devToggle">개발자 모드: 꺼짐</button>
@@ -150,6 +163,7 @@
 </div>
 
 <script src="logic.js"></script>
+<script src="track.js"></script>
 <script>
 // ===================== 화면 · 음악 · 입력 =====================
 (() => {
@@ -222,7 +236,9 @@
     }
     if (A.ctx.state === "suspended") A.ctx.resume();
   }
+  function stopTrack() { if (A.src) { try { A.src.stop(A.ctx.currentTime + 0.06); } catch (e) { /* 이미 끝남 */ } A.src = null; } }
   function newBus() {           // 죽으면 예약된 음을 한꺼번에 끊기 위해 판마다 새 버스를 쓴다
+    stopTrack();
     if (A.bus) { const b = A.bus; b.gain.setTargetAtTime(0, A.ctx.currentTime, 0.012); setTimeout(() => b.disconnect(), 250); }
     A.bus = A.ctx.createGain();
     A.bus.connect(A.master);
@@ -349,6 +365,14 @@
     newBus();
     clock.t0 = A.ctx.currentTime + 0.06;
     clock.next16 = Math.ceil(beat0 * 4 - 1e-6);
+    if (track) {                                  // 넣은 곡: 이 박에 해당하는 자리부터 튼다
+      const src = A.ctx.createBufferSource(), g = A.ctx.createGain();
+      src.buffer = track.buffer; g.gain.value = 1.5;
+      src.connect(g); g.connect(A.bus);
+      const at = trackZero() + beat0 * SPB;
+      if (at >= 0) src.start(clock.t0, Math.min(at, track.duration)); else src.start(clock.t0 - at, 0);
+      A.src = src;
+    }
   }
   function muffle(on) {
     if (!A.lp || fake.on) return;
@@ -359,10 +383,10 @@
     muffle(false);
     clock.frozen = songBeat();
     clock.running = false;
-    if (cut && A.bus) { A.bus.gain.setTargetAtTime(0, A.ctx.currentTime, 0.012); }
+    if (cut && A.bus) { A.bus.gain.setTargetAtTime(0, A.ctx.currentTime, 0.012); stopTrack(); }
   }
   function scheduleAudio() {
-    if (fake.on || !clock.running) return;
+    if (fake.on || !clock.running || track) return;
     const horizon = A.ctx.currentTime + 0.14;
     while (clock.next16 < TOTAL_BEATS * 4) {
       const t = clock.t0 + (clock.next16 / 4 - clock.beat0) * SPB;
@@ -398,11 +422,69 @@
   function startFresh() { tries = 1; devRun = false; begin(-1); }
   function devJump(cp) { if (!dev) return; tries = 1; devRun = cp >= 0; begin(cp); }
   let speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, store.get("speed", 1)));
-  function applySpeed() { L.bpm = SPEEDS[speedIdx].bpm; SPB = 60 / L.bpm; }
+  function applySpeed() { L.bpm = track ? track.bpm : SPEEDS[speedIdx].bpm; SPB = 60 / L.bpm; }
   function renderSpeed() {
     const sp = SPEEDS[speedIdx];
-    $("speedBtn").textContent = `속도: ${sp.name} · 한 번 튀는 데 ${(60 / sp.bpm).toFixed(2)}초`;
+    $("speedBtn").disabled = !!track; $("speedNote").hidden = !!track;
+    $("speedBtn").textContent = track ? `속도: 곡 템포 ${track.bpm.toFixed(1)} BPM · 한 번 튀는 데 ${(60 / track.bpm).toFixed(2)}초` : `속도: ${sp.name} · 한 번 튀는 데 ${(60 / sp.bpm).toFixed(2)}초`;
   }
+
+  // ---------------------------------------------------------------- 넣은 곡 (Gemini 등으로 만든 파일). 템포와 첫 박은 track.js가 잰다.
+  // shift = 첫 박을 몇 박 뒤로 볼지, nudge = 소리를 몇 ms 늦출지(기기·이어폰 지연 보정)
+  let track = null;
+  const trackZero = () => track.offset + track.shift * track.period - track.nudge / 1000;   // 게임의 0박에 해당하는 곡 속 시각(초)
+  const idb = (mode, fn) => new Promise((res) => {
+    try {
+      const open = indexedDB.open("pulsebounce", 1);
+      open.onupgradeneeded = () => open.result.createObjectStore("kv");
+      open.onerror = () => res(null);
+      open.onsuccess = () => { const rq = fn(open.result.transaction("kv", mode).objectStore("kv")); rq.onsuccess = () => res(rq.result); rq.onerror = () => res(null); };
+    } catch (e) { res(null); }
+  });
+  function setTrackBuffer(buffer, name, adj) {
+    const mono = new Float32Array(buffer.length);
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) { const d = buffer.getChannelData(ch); for (let i = 0; i < d.length; i++) mono[i] += d[i] / buffer.numberOfChannels; }
+    const r = analyzeTrack(mono, buffer.sampleRate, { hintBpm: 96 });
+    track = r.ok ? { name, buffer, ...r, shift: (adj && adj.shift) || 0, nudge: (adj && adj.nudge) || 0 } : null;
+    applySpeed(); renderSpeed(); renderTrack(r.ok ? "" : `${name}: ${r.reason}`);
+    return r;
+  }
+  async function loadTrackFile(data, name, adj) {
+    renderTrack("곡을 읽는 중…");
+    try {
+      const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext, ctx = new OAC(2, 1, 44100);
+      const buffer = await new Promise((res, rej) => { const pr = ctx.decodeAudioData(data.slice(0), res, rej); if (pr && pr.catch) pr.catch(rej); });
+      return setTrackBuffer(buffer, name, adj);
+    } catch (e) { track = null; applySpeed(); renderSpeed(); renderTrack(`${name}: 이 파일은 읽을 수 없어요(mp3, wav, m4a를 넣어 주세요).`); return { ok: false }; }
+  }
+  function renderTrack(msg) {
+    $("trackAdj").hidden = !track;
+    $("trackBtn").textContent = track ? "다른 곡 넣기" : "곡 넣기";
+    if (msg || !track) { $("trackInfo").textContent = msg || "곡 파일을 넣으면 템포와 첫 박을 재서 그 곡에 맞춰 달려요."; return; }
+    const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+    const bars = (track.duration - trackZero()) / track.period / 4;
+    const w = track.wobbleMs, wob = w < 12 ? "좋음" : w < 25 ? "조금 흔들림" : "많이 흔들림 — 뒤로 갈수록 박이 어긋날 수 있어요";
+    $("trackInfo").textContent = `${track.name} · ${mmss(track.duration)}\n템포 ${track.bpm.toFixed(2)} BPM · 첫 박 ${trackZero().toFixed(2)}초${track.nudge ? ` (소리 ${track.nudge > 0 ? "+" : ""}${track.nudge}ms)` : ""}\n`
+      + `템포 흔들림 ±${w.toFixed(0)}ms (${wob})${track.coverage < 0.6 ? " · 킥이 잘 안 잡혀요" : ""}\n곡 ${bars.toFixed(1)}마디 / 코스 ${L.bars}마디 · 바꾼 값은 다음에 달릴 때 적용`;
+  }
+  $("trackBtn").addEventListener("click", () => $("trackFile").click());
+  $("trackFile").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    const data = await f.arrayBuffer();
+    const r = await loadTrackFile(data, f.name, null);
+    if (r.ok) { idb("readwrite", (st) => st.put({ name: f.name, data }, "track")); store.set("trackAdj", { shift: 0, nudge: 0 }); }
+  });
+  $("trackAdj").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b || !track) return;
+    if (b.dataset.adj === "remove") { track = null; idb("readwrite", (st) => st.delete("track")); applySpeed(); renderSpeed(); renderTrack(); return; }
+    track[b.dataset.adj] += +b.dataset.d;
+    store.set("trackAdj", { shift: track.shift, nudge: track.nudge });
+    renderTrack();
+  });
+  idb("readonly", (st) => st.get("track")).then((saved) => { if (saved && saved.data && !track) loadTrackFile(saved.data, saved.name, store.get("trackAdj", null)); });
   function renderDev() {
     $("devToggle").textContent = "개발자 모드: " + (dev ? "켜짐" : "꺼짐");
     $("devTag").hidden = !dev;
@@ -971,6 +1053,8 @@
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
     press, startFresh, respawn, pause, view, devJump, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
+    get track() { return track; }, get trackZero() { return track ? trackZero() : null; },
+    loadTrackPCM(samples, sr, name) { const b = new AudioBuffer({ length: samples.length, sampleRate: sr, numberOfChannels: 1 }); b.copyToChannel(samples, 0); return setTrackBuffer(b, name, null).ok; },
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },
   };
 
