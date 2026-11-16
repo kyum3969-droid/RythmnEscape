@@ -111,6 +111,18 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   {
     await p.setViewportSize({ width: 844, height: 390 });
     const feverStart = await G(() => window.__game.L.rides[0][0] / 4);
+    {
+      // 바운스 구간의 파란 박스(쉬는 마디): 밟고 튄다. 죽지 않는다.
+      await G(() => { const g = window.__game; g.setBot(g.L.ref); g.devJump(0); });         // 체크포인트 1(마디 15). 마디 17에 박스가 있다
+      let bb = await G(() => window.__game.state.step / 96);
+      for (; bb < 69; bb += 0.125) await tick(bb);
+      await tick(69);
+      const onBox = await G(() => ({ y: window.__game.state.y, phase: window.__game.phase }));
+      await tick(69.4); await p.waitForTimeout(60); await p.screenshot({ path: out + 'box.png' });
+      for (bb = 69.5; bb <= 72; bb += 0.125) await tick(bb);
+      const after = await G(() => ({ y: window.__game.state.y, phase: window.__game.phase }));
+      ok(onBox.phase === 'running' && Math.abs(onBox.y - 8) < 0.15 && after.phase === 'running' && after.y > 8.5, `바운스 구간의 파란 박스: 박에 맞춰 박스 위(한 칸 높이)에서 튀고, 내려와서 다음 마디로 이어진다`);
+    }
     await G(() => { const g = window.__game; g.setBot(null); g.devJump(1); });     // 체크포인트 2 = 피버 바로 앞
     let fb = await G(() => window.__game.state.step / 96);
     const go = async (to) => { for (; fb < to; fb = Math.min(to, fb + 0.125)) await tick(fb); await tick(to); fb = to; };

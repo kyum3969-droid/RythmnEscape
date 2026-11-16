@@ -212,6 +212,31 @@ for (const C of Lg.COURSES) {
   ok(idleRun.s.dead && barOf(idleRun.s.x) <= 3, `[${tag}] 아무것도 안 누르면 마디 ${barOf(idleRun.s.x)}에서 죽는다`);
   const hard = C.bars.filter(n => ['weave', 'roller', 'lowThenUp', 'glideLow'].includes(n));
   ok(hard.length === 0, `[${tag}] 어려운 엮기 동작은 쓰지 않는다`);
+    {
+      // 바운스 구간의 파란 박스(쉬는 마디): 밟고 튄다. 박자가 밀리지 않고, 뭘 눌러도 그 마디 안에서는 죽지 않는다.
+      const bars3 = Lg.COURSES.find(c => c.name === lv.name).bars, boxBars = bars3.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].boxes ? b : -1)).filter(b => b >= 0);
+      const s3 = Lg.spawnState(lv, -1), inp3 = Lg.planInput(lv.ref), bounceAt = {}, snap = {};
+      let lands = 0;
+      while (!s3.dead && !s3.won) {
+        if (s3.step % 384 === 0) snap[s3.step / 384] = { ...s3 };
+        const e3 = []; Lg.stepState(lv, s3, inp3.press.has(s3.step + 1), e3, inp3.hold.has(s3.step + 1));
+        if (e3.some(e => e.type === 'bounce')) bounceAt[s3.step] = 9 - s3.y;
+        if (e3.some(e => e.type === 'land') && 9 - s3.y >= 0.99) lands++;
+      }
+      const clean = boxBars.every(b => bounceAt[b * 384] < 0.2 && bounceAt[(b + 1) * 384] < 0.2);
+      ok(boxBars.length >= 8 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
+      let died = 0, rnd3 = 11;
+      const rand = () => (rnd3 = (rnd3 * 1103515245 + 12345) % 2147483648) / 2147483648;
+      for (const b of boxBars) for (let n = 0; n < 40; n++) {
+        const s4 = { ...snap[b] }; let hold = false;
+        while (!s4.dead && s4.step < (b + 1) * 384 - 12) {      // 마디 끝 반 칸은 뺀다(거기서는 다음 마디의 장애물에 닿을 수 있다. 쉬는 마디도 마찬가지)
+          if (rand() < 0.03) hold = !hold; Lg.stepState(lv, s4, rand() < 0.02, null, hold); }
+        if (s4.dead) died++;
+      }
+      ok(died === 0, `[${tag}] 파란 박스 마디에서는 아무렇게나 눌러도 죽지 않는다 (마디마다 40번씩 마구 눌러 봄)`);
+      const risers = boxBars.every(b => { for (let c = b * 16; c < b * 16 + 16; c++) { const hgt = (cc) => { let k = 0; while (lv.grid[8 - k][cc] === '#') k++; return k; }; if (hgt(c) - hgt(c - 1) > 1) return false; } return true; });
+      ok(risers, `[${tag}] 박스의 왼쪽 턱은 한 칸씩만 높아진다(부딪히면 저절로 올라탈 수 있게)`);
+    }
   if (lv.freeBars.size) {
     // 연출 마디: 장애물이 없고, 아무리 눌러도 길이 바뀌지 않는다(그래서 다음 마디와 어긋나지 않는다)
     const noReds = lv.reds.every(q => !lv.freeBars.has(Math.floor(q.xt / 16)) || !lv.freeBars.has(Math.floor((q.xt - 2.1) / 16)));

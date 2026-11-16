@@ -13,7 +13,6 @@ const V_PAD = G * 1.5 / 2;     // 점프대: 체공 1.5박자, 높이 약 5칸
 const JUMP_BUF_STEPS = 30;     // 점프할 수 없을 때 누른 입력을 기억하는 시간(약 1/3박). 착지 직전·고리 직전에 눌러도 이어진다
 const FREEZE_STEPS = SUB;      // 한 번 튈 때마다 멈출 수 있는 시간: 1박자
 const BOUNCE_TOL = 12;         // 박자 직후 이 스텝(1/8박) 안에 땅에 닿으면 바로 튄다. 늦은 만큼 낮게 튀어 다음 박자에 맞춰 착지한다
-const CLIMB = 1.05;            // 이 높이(한 칸) 이하의 턱은 부딪혀도 저절로 올라탄다 → 계단
 const SAW_R = 0.4, SAW_TRAVEL = 2.2;
 const SIZE = 0.8, HALF = 0.4;
 const ROWS = 10;               // row 0 = 맨 위, row 9 = 바닥
@@ -29,6 +28,12 @@ const STEP_UP = 0.22;
 // 공은 박자마다(0·1·2·3박) 저절로 튀고, 한 번 튀면 1박자 뒤 4칸 앞에 착지한다. 꼭대기는 0.5박, 높이 2.25칸.
 const PATTERNS = {
   idle:      { holds: [], presses: [] },
+  // ---- 파란 박스가 있는 쉬는 마디. 파란 박스는 닿아도 죽지 않는다: 위에 내려앉아 박자에 맞춰 다시 튀고, 옆에서 부딪히면 저절로 올라탄다.
+  //   boxes = [[첫 칸, 끝 칸, 높이(칸)], ...] (마디 안의 칸 0~15). 누를 것은 없다. 쉬는 마디가 비어 보이지 않게 하려는 것.
+  //   마디가 끝날 때는 공이 땅에서 박자에 맞춰 튀고 있어야 한다(다음 마디의 패턴이 그대로 맞도록) — 테스트가 확인한다.
+  box:       { holds: [], presses: [], boxes: [[3, 9, 1]] },                       // 한 단: 올라타서 한 번 튀고 내려온다
+  twin:      { holds: [], presses: [], boxes: [[3, 5, 1], [7, 9, 1]] },            // 박스 둘: 하나를 밟고 다음 박스로 건너뛴다
+  stairs:    { holds: [], presses: [], boxes: [[3, 6, 1], [7, 10, 2]] },           // 두 단 계단: 타닥 타닥 올라가서 뛰어내린다
   // 누르는 시각은 모두 1/8박 단위다(곡의 음 단위). 누르는 순간이 곡의 소리와 겹치게 하려는 것.
   // tol = 통로를 만들 때 봐주는 타이밍 오차(박). 곡이 빨라서(한 박 0.39초) 넓게 잡았다. 너무 넓히면 장애물이 그 입력을 요구하지 못하게 되므로 패턴마다 다르다.
   // ---- 쉬운 동작(입력 한두 번, 모두 엇박). 라운드 1의 바탕.
@@ -111,17 +116,17 @@ const ROUND1 = {
   //  - 어려운 엮기(weave, roller, lowThenUp)는 쓰지 않는다. 쉬운 동작을 이어 붙여 흐름을 만든다.
   bars: [
     // 도입(조용함): 멈춤만 → 이단 점프만
-    "flat", "flat", "hA", "idle",   "hA", "idle", "hB", "idle",   "glideHigh", "idle", "dj1", "idle",   "dj2", "idle", "peak", "cp",
+    "flat", "flat", "hA", "idle",   "hA", "idle", "hB", "box",   "glideHigh", "idle", "dj1", "twin",   "dj2", "stairs", "peak", "cp",
     // 첫 큰 구간: 둘을 섞는다
-    "mix", "idle", "mix", "idle",   "mix2", "idle", "glideHigh", "peak",   "idle", "mix", "skyGlide", "cp",
+    "mix", "box", "mix", "stairs",   "mix2", "idle", "glideHigh", "peak",   "twin", "mix", "skyGlide", "cp",
     // 가장 센 구간: 피버. 같은 마디를 두 번씩(한 번 보고, 한 번 더)
     "z1", "z1", "z2", "z2",   "z3", "z3", "z4", "z4",   "z6", "z5", "z2", "cp",
     // 쉬어 감
-    "idle", "hA", "idle", "dj2",
+    "stairs", "hA", "box", "dj2",
     // 다시 쌓음: 쉬는 마디를 줄인다
-    "mix", "mix2", "idle", "glideHigh",   "peak", "idle", "skyGlide", "cp",
+    "mix", "mix2", "twin", "glideHigh",   "peak", "stairs", "skyGlide", "cp",
     // 마지막 절정: 배운 것을 세 마디씩 이어 붙인다
-    "mix", "mix2", "skyGlide", "idle",   "glideHigh", "peak", "mix", "idle",   "mix2", "skyGlide", "peak", "glideHigh",
+    "mix", "mix2", "skyGlide", "box",   "glideHigh", "peak", "mix", "stairs",   "mix2", "skyGlide", "peak", "glideHigh",
     "goal", "flat", "flat",
   ],
   sections: [
@@ -139,19 +144,19 @@ const ROUND2 = {
   track: { file: "music/terminal_pursuit.mp3", offset: 0.2809 },
   bars: [
     // 도입: 1라운드에서 배운 것을 한 번씩 짚는다. 끝 두 마디는 곡이 잠깐 빠진다
-    "flat", "flat", "hA", "dj1",   "mix", "idle", "idle", "cp",
+    "flat", "flat", "hA", "dj1",   "mix", "box", "idle", "cp",
     // 첫 큰 구간
-    "mix", "mix2", "idle", "glideHigh",   "peak", "idle", "skyGlide", "idle",
-    "mix", "mix2", "skyGlide", "idle",   "glideHigh", "peak", "mix", "cp",
+    "mix", "mix2", "stairs", "glideHigh",   "peak", "box", "skyGlide", "twin",
+    "mix", "mix2", "skyGlide", "stairs",   "glideHigh", "peak", "mix", "cp",
     // 밝고 가벼운 구간: 첫 피버. 파란 발판 → 좁은 통로 → 계단으로 올라가 넓은 통로(가운데에 떠 있는 장애물) → 계단으로 내려와 다시 좁은 통로
     "zT", "z1", "z1", "wUp",   "w3", "w1", "wDn", "z3",
     // 쉬어 감
-    "idle", "hA", "idle", "dj2",   "mix", "idle", "idle", "cp",
+    "stairs", "hA", "box", "dj2",   "mix", "twin", "idle", "cp",
     // 두 번째 큰 구간
-    "mix", "mix2", "glideHigh", "idle",   "peak", "skyGlide", "mix", "idle",
-    "mix2", "skyGlide", "peak", "idle",   "glideHigh", "mix", "skyGlide", "cp",
+    "mix", "mix2", "glideHigh", "box",   "peak", "skyGlide", "mix", "stairs",
+    "mix2", "skyGlide", "peak", "twin",   "glideHigh", "mix", "skyGlide", "cp",
     // 절정: 쉬는 마디 하나만 두고 이어 붙인다
-    "mix", "mix2", "skyGlide", "glideHigh",   "idle", "peak", "mix2", "cp",
+    "mix", "mix2", "skyGlide", "glideHigh",   "box", "peak", "mix2", "cp",
     // 가장 센 절정: 마지막 피버. 들어서자마자 계단으로 넓은 통로에 올라간다. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다
     "wUp", "w4", "w2", "w1",   "wDn", "z5", "zS1", "zS2",
     "goal", "flat", "flat",
@@ -262,6 +267,7 @@ function emptyLevel(course) {
         gems.push({ x: x0 + 16, h: zl * ZIG_STEP + HALF });
       }
     }
+    if (p && p.boxes) for (const [a, z, hh] of p.boxes) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "#";
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
     else if (name === "goal") goalX = b * 16 + 8;
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
@@ -627,7 +633,7 @@ function stepState(L, s, press, ev, hold) {
     if (t === "#") {
       let rt = r;
       while (isSolid(L, c, rt - 1)) rt--;                 // 그 블록 기둥의 꼭대기
-      if (s.y - rt <= CLIMB) {                           // 한 칸짜리 턱: 저절로 올라탄다
+      {                                                  // 파란 박스의 옆면: 죽지 않고 저절로 올라탄다(박스는 한 칸씩만 높아지게 놓는다)
         s.y = rt;
         if (!frozen && !s.onGround) {
           s.vy = 0; s.onGround = true; s.djAvail = false;
@@ -636,7 +642,7 @@ function stepState(L, s, press, ev, hold) {
         }
         if (ev) ev.push({ type: "climb" });
         r = r1 + 1; break;                                // 높이가 바뀌었으니 이번 스텝의 나머지 검사는 건너뛴다
-      } else die(s, "crash", ev);
+      }
     } else if (t === "X") {
       if (s.x + HALF - 0.08 > c + 0.12 && s.x - HALF + 0.08 < c + 0.88 && s.y - 0.08 > r && top + 0.08 < r + 1) die(s, "spike", ev);
     } else if (t === "J") {
