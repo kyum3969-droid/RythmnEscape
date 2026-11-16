@@ -73,7 +73,9 @@ const COURSE = {
 // ---- 돌파 구간(rush): 피하던 것을 이제는 부순다. 공은 한 줄로 날아가고, 박자 위에 선 수정 벽을 탁 쳐서 깨고 긴 덩어리는 꾹 눌러 뚫는다.
 // 속도: 물리는 다른 구간과 똑같이 한 박에 4칸이고, 화면에서 이 구간의 가로를 RUSH_STRETCH배로 늘려 그린다 → 눈에는 2배로 달리지만 박자(음악)와는 그대로 맞는다.
 const RUSH_STRETCH = 2;
-const RUSH_H = 1.1;                         // 날아가는 높이(공 바닥 기준, 칸)
+const RUSH_H = 1.4;                         // 날아가는 높이의 가운데(공 바닥 기준, 칸)
+const RUSH_WAVE = 0.8;                      // 위아래로 물결치는 폭(칸). 2박에 한 번 오르내리고, 박마다 꼭대기와 바닥에 번갈아 닿는다
+const DRILL_LEAD = Math.round(0.4 * SUB);   // 원버튼: 긴 덩어리가 이만큼 앞에 와 있으면, 누르는 것은 "탁"이 아니라 "꾹"의 시작으로 본다
 const RUSH_RAMP = 2;                        // 관문 앞뒤로 이만큼(칸)에 걸쳐 떠오르고 내려앉는다
 const TAP_EARLY = Math.round(0.2 * SUB);    // 탁: 벽에 닿기 이만큼 전부터 눌러도 된다(96 BPM에서 약 125ms)
 const TAP_LATE = Math.round(0.15 * SUB);    //     벽 한가운데를 이만큼 지나서까지 봐준다(약 94ms). 그때까지 안 누르면 부딪힌다
@@ -275,19 +277,21 @@ const inRide = (L, x) => { for (const r of L.rides) if (x >= r[0] && x < r[1]) r
 // 돌파 구간에서 공이 나는 높이: 관문을 지나며 떠오르고, 끝나기 전에 내려앉는다
 function rushHeight(L, x) {
   for (const r of L.rides) if (x >= r[0] && x < r[1]) {
-    const k = Math.min(1, (x - r[0]) / RUSH_RAMP, (r[1] - x) / RUSH_RAMP);
-    return RUSH_H * k * k * (3 - 2 * k);
+    const k0 = Math.min(1, (x - r[0]) / RUSH_RAMP, (r[1] - x) / RUSH_RAMP), k = k0 * k0 * (3 - 2 * k0);
+    return (RUSH_H + RUSH_WAVE * Math.cos(Math.PI * x / TPB)) * k;
   }
   return 0;
 }
+// 원버튼: 화면 어디든 누르는 순간이 press, 누르고 있는 동안이 hold다. 그래서 "꾹"을 시작할 때도 press가 함께 들어온다.
 // 돌파 구간의 한 스텝. s.wi = 다음에 깰 벽, s.bi = 다음에 뚫을 덩어리, s.strike = 탁 친 힘이 남은 스텝, s.cool = 헛손질 뒤 쉬는 스텝
 function rushStep(L, s, press, ev, hold) {
   s.y = (ROWS - 1) - rushHeight(L, s.x); s.vy = 0; s.onGround = false; s.djAvail = false;
   const st = s.step;
   // 탁
+  const w = L.walls[s.wi], nb = L.blocks[s.bi];
+  const forDrill = !!nb && nb.a - st <= DRILL_LEAD && st <= nb.b && (!w || nb.a < w.step);   // 이 누름은 긴 덩어리를 뚫으려는 것
   if (s.cool > 0) s.cool--;
-  else if (press && s.strike === 0) { s.strike = TAP_EARLY + 1; if (ev) ev.push({ type: "strike" }); }
-  const w = L.walls[s.wi];
+  else if (press && s.strike === 0 && !forDrill) { s.strike = TAP_EARLY + 1; if (ev) ev.push({ type: "strike" }); }
   if (w && s.strike > 0 && st >= w.step) {                       // 친 힘이 남은 채로 벽에 닿음(또는 벽 속에서 침) → 깨짐
     s.wi++; s.strike = 0;
     if (ev) ev.push({ type: "smash", i: s.wi - 1 });
@@ -508,4 +512,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, inRide, rushHeight, RUSH_STRETCH, RUSH_H, TAP_EARLY, TAP_LATE, TAP_COOL, DRILL_MAX, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, inRide, rushHeight, RUSH_STRETCH, RUSH_H, RUSH_WAVE, DRILL_LEAD, TAP_EARLY, TAP_LATE, TAP_COOL, DRILL_MAX, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };

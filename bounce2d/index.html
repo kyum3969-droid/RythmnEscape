@@ -66,6 +66,8 @@
   .zone b { font-size: 26px; font-weight: 700; line-height: 1; }
   .zone.on { color: var(--text); text-shadow: 0 0 14px var(--accent); }
   #zoneL { left: 0; border-right: 1px dashed rgba(255, 255, 255, 0.12); }
+  #app.one #zoneL { border-right-color: transparent; }
+  #app.one .zone.on { color: var(--text); }
   #zoneR { right: 0; }
   #toast {
     position: absolute; left: 0; right: 0; top: 19%; text-align: center; pointer-events: none;
@@ -406,7 +408,7 @@
   let phase = "title";            // title | running | dead | paused | won
   let tries = 1, pressQueued = false, bot = null, deadAt = 0;
   const holdPointers = new Set();   // 왼쪽을 누르고 있는 손가락들
-  let keyHold = false;
+  let keyHold = false, rushKey = null;
   const holding = () => holdPointers.size > 0 || keyHold;
   const broken = new Set();       // 화면에서 지울 깨진 대시벽
   const usedRings = new Set();    // 이미 지나간 충전 고리(칸 번호)
@@ -531,7 +533,8 @@
       else if (e.type === "freeze") { sfx("freeze"); muffle(true); }
       else if (e.type === "unfreeze") muffle(false);
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
-      else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "RUSH" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; fx.chain = 0; }
+      else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "FEVER" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; fx.chain = 0;
+        if (e.mode !== "rush") { holdPointers.clear(); keyHold = false; setZones(); } }   // 피버가 끝나면 누르고 있던 손은 뗀 것으로 본다
       else if (e.type === "smash") {             // 벽을 깼다: 파편은 앞으로 튀고, 연달아 깰수록 커진다
         smashed.add(e.i); sfx("smash"); fx.chain++; fx.smashAt = now;
         const wx = L.walls[e.i].x + 0.3;
@@ -784,7 +787,7 @@
         for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), view.groundY + T * 0.16, sx(c + o + 0.22) - sx(c + o), 3);
       }
       // 관문: 구간이 바뀌는 자리의 빛 커튼
-      for (const [gx, label] of [[r[0], "RUSH"], [r[1], "BOUNCE"]]) {
+      for (const [gx, label] of [[r[0], "FEVER"], [r[1], "BOUNCE"]]) {
         if (gx < cA || gx > cB) continue;
         const x = sx(gx), gw = T * 0.9;
         const gg = ctx.createLinearGradient(x - gw, 0, x + gw, 0);
@@ -811,18 +814,31 @@
       ctx.beginPath(); ctx.moveTo(xa, top + T * 0.5); ctx.lineTo(xa, view.groundY); ctx.moveTo(xb, top + T * 0.5); ctx.lineTo(xb, view.groundY); ctx.stroke();
       ctx.shadowBlur = 0;
     };
-    const flyY = sy(ROWS - 1 - RUSH_H) - HALF * T;
+    const flyY = (wx) => sy(ROWS - 1 - rushHeight(L, wx)) - HALF * T;      // 공이 x를 지날 때의 화면 높이(물결)
+    const wavePath = (xa, xb, dy) => { ctx.beginPath(); for (let x = xa; x <= xb + 1e-6; x += 0.125) ctx.lineTo(sx(x), flyY(x) + dy); };
+    for (const r of L.rides) {                   // 공이 갈 길: 옅은 물결 점선
+      const xa = Math.max(r[0], cA), xb = Math.min(r[1], cB + 1);
+      if (xa >= xb) continue;
+      ctx.shadowBlur = 0; ctx.setLineDash([T * 0.12, T * 0.3]); ctx.strokeStyle = css(pal.accent, 0.35); ctx.lineWidth = 2;
+      wavePath(xa, xb, 0); ctx.stroke(); ctx.setLineDash([]);
+    }
     L.blocks.forEach((b, i) => {
       if (b.x1 < cA - 1 || b.x0 > cB) return;
-      const xa = sx(b.x0 + 0.2), xb = sx(b.x1 + 0.2), top = sy(ROWS - 1 - 3.3), done = state.bi > i && phase !== "title";
+      const xa = sx(b.x0 + 0.2), xb = sx(b.x1 + 0.2), top = sy(ROWS - 1 - 3.6), done = state.bi > i && phase !== "title";
       crystal(xa, xb, top, state.bi === i);
       ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.5)); ctx.lineWidth = T * 0.07; ctx.lineCap = "round";
       for (let k = 0; k < 2; k++) {              // 꾹 표시: 덩어리 앞머리의 세로 두 줄(II)
-        const x = xa + T * (0.26 + 0.18 * k); ctx.beginPath(); ctx.moveTo(x, flyY - T * 0.2); ctx.lineTo(x, flyY + T * 0.2); ctx.stroke();
+        const x = xa + T * (0.26 + 0.18 * k), y = flyY(b.x0 + 0.3); ctx.beginPath(); ctx.moveTo(x, y - T * 0.2); ctx.lineTo(x, y + T * 0.2); ctx.stroke();
       }
-      const bored = done ? xb : state.bi === i && state.x > b.x0 ? Math.min(xb, sx(state.x)) : xa;   // 뚫고 지나간 자리
-      if (bored > xa) { ctx.fillStyle = css(mix(pal.bottom, [0, 0, 0], 0.55), 0.92); ctx.fillRect(xa - 1, flyY - T * 0.52, bored - xa + 1, T * 1.04); ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillRect(xa, flyY - T * 0.54, bored - xa, 2); ctx.fillRect(xa, flyY + T * 0.52, bored - xa, 2); }
-      else { ctx.setLineDash([T * 0.2, T * 0.2]); ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(xa, flyY); ctx.lineTo(xb, flyY); ctx.stroke(); ctx.setLineDash([]); }
+      const upTo = done ? b.x1 + 0.2 : state.bi === i && state.x > b.x0 ? Math.min(b.x1 + 0.2, state.x) : b.x0;   // 뚫고 지나간 자리(물결 모양 굴)
+      if (upTo > b.x0 + 0.2) {
+        ctx.save(); ctx.beginPath(); ctx.rect(xa, top, xb - xa, view.groundY - top); ctx.clip();
+        ctx.lineCap = "butt"; ctx.lineJoin = "round";
+        ctx.strokeStyle = css(mix(pal.bottom, [0, 0, 0], 0.55), 0.94); ctx.lineWidth = T * 1.04; wavePath(b.x0 + 0.1, upTo, 0); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
+        wavePath(b.x0 + 0.1, upTo, -T * 0.53); ctx.stroke(); wavePath(b.x0 + 0.1, upTo, T * 0.53); ctx.stroke();
+        ctx.restore();
+      }
     });
     L.walls.forEach((wl, i) => {
       if (wl.x < cA - 1 || wl.x > cB || smashed.has(i)) return;
@@ -1007,6 +1023,7 @@
       else if (sinceLand < 0.1 && state.onGround) { stretchX = 1.22; stretchY = 0.8; }
       ctx.save();
       ctx.translate(cx, cy + (1 - stretchY) * HALF * T);
+      if (state.mode === "rush") ctx.rotate(Math.atan2(sy(ROWS - 1 - rushHeight(L, state.x + 0.1)) - sy(ROWS - 1 - rushHeight(L, state.x - 0.1)), sx(state.x + 0.1) - sx(state.x - 0.1)));   // 물결을 따라 기운다
       ctx.scale(stretchX, stretchY);
       const R = T * HALF;
       if (state.frozen) {
@@ -1050,7 +1067,7 @@
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
     glideLow: "왼쪽 누르고 있기 = 공중에서 멈춤", glideHigh: "꼭대기에서 멈춰서 건너가기", peak: "오른쪽 누르기 = 공중에서 한 번 더 점프!",
-    rTap3: "돌파 구간! 벽에 닿는 순간 오른쪽 탁", rDrill: "긴 덩어리는 왼쪽을 꾹 누른 채로",
+    rTap3: "피버! 화면 어디든, 벽에 닿는 순간 탁", rDrill: "긴 덩어리는 꾹 누른 채로",
     weave: "멈춤 → 이단 점프 → 멈춤", skyGlide: "이단 점프 꼭대기에서 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];
@@ -1132,13 +1149,20 @@
   const setZones = () => { $("zoneL").classList.toggle("on", holding()); };
   function setModeLabel() {
     const rush = state.mode === "rush";
-    $("zoneL").querySelector("span").textContent = rush ? "꾹 누르기 = 긴 덩어리 뚫기" : "누르고 있기 = 멈춤";
-    $("zoneR").querySelector("span").textContent = rush ? "탁 = 벽 깨기" : "누르기 = 점프 · 공중에선 이단 점프";
+    $("app").classList.toggle("one", rush);        // 피버 모드는 원버튼: 화면 어디든
+    $("zoneL").querySelector("span").textContent = rush ? "어디든 탁 = 벽 깨기" : "누르고 있기 = 멈춤";
+    $("zoneR").querySelector("span").textContent = rush ? "어디든 꾹 = 긴 덩어리 뚫기" : "누르기 = 점프 · 공중에선 이단 점프";
   }
+  const oneButton = () => phase === "running" && state.mode === "rush";
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     const r = canvas.getBoundingClientRect();
-    if (e.clientX - r.left < r.width / 2) {
+    if (oneButton()) {                             // 누르는 순간 = 탁, 누르고 있으면 = 꾹
+      press();
+      holdPointers.add(e.pointerId);
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 일부 브라우저 */ }
+      setZones();
+    } else if (e.clientX - r.left < r.width / 2) {
       if (phase === "dead") { press(); return; }
       holdPointers.add(e.pointerId);
       try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 일부 브라우저 */ }
@@ -1155,12 +1179,13 @@
   const HOLD_KEYS = new Set(["ArrowLeft", "a", "A", "Shift"]), DASH_KEYS = new Set(["ArrowRight", "ArrowUp", "d", "D", "w", "W", " "]);
   window.addEventListener("keydown", (e) => {
     if (e.repeat) { if (HOLD_KEYS.has(e.key) || DASH_KEYS.has(e.key)) e.preventDefault(); return; }
-    if (HOLD_KEYS.has(e.key)) { e.preventDefault(); if (phase === "dead") press(); else { keyHold = true; setZones(); } }
+    if (oneButton() && (HOLD_KEYS.has(e.key) || DASH_KEYS.has(e.key))) { e.preventDefault(); press(); keyHold = true; rushKey = e.key; setZones(); }
+    else if (HOLD_KEYS.has(e.key)) { e.preventDefault(); if (phase === "dead") press(); else { keyHold = true; setZones(); } }
     else if (DASH_KEYS.has(e.key)) { e.preventDefault(); if (phase === "title") startFresh(); else press(); }
     else if (e.key === "Escape") pause();
     else if (dev && /^[0-9]$/.test(e.key) && +e.key <= L.cps.length) devJump(+e.key - 1);   // 0 = 처음, 1~ = 체크포인트
   });
-  window.addEventListener("keyup", (e) => { if (HOLD_KEYS.has(e.key)) { keyHold = false; setZones(); } });
+  window.addEventListener("keyup", (e) => { if (HOLD_KEYS.has(e.key) || e.key === rushKey) { keyHold = false; rushKey = null; setZones(); } });
   window.addEventListener("blur", () => { keyHold = false; holdPointers.clear(); setZones(); });
   $("pauseBtn").addEventListener("click", pause);
   $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); renderDev(); });

@@ -124,7 +124,8 @@ console.log('== 돌파 구간 ==');
   r = play(lv, W);
   const sm = r.ev.filter(e => e.type === 'smash');
   ok(!r.s.dead && sm.length === 3 && sm.every((e, i) => e.step === W[i]) && r.n('whiff') === 0, '박에 맞춰 탁 치면 그 순간 벽이 깨진다 (3개)');
-  ok(Math.abs(sm[0].h - Lg.RUSH_H) < 1e-9 && r.ev.every(e => e.type !== 'bounce' || e.step < 4 * B || e.step >= 8 * B), `돌파 구간에서는 튀지 않고 높이 ${Lg.RUSH_H}칸으로 곧게 난다`);
+  ok(Math.abs(sm[0].h - (Lg.RUSH_H - Lg.RUSH_WAVE)) < 1e-6 && Math.abs(sm[1].h - (Lg.RUSH_H + Lg.RUSH_WAVE)) < 1e-6 && r.ev.every(e => e.type !== 'bounce' || e.step < 4 * B || e.step >= 8 * B),
+    `튀지 않고 위아래로 물결치며 난다: 박마다 바닥(${sm[0].h.toFixed(1)}칸)과 꼭대기(${sm[1].h.toFixed(1)}칸)에 번갈아 닿는다`);
   ok(r.ev.some(e => e.type === 'mode' && e.mode === 'rush' && e.step === 4 * B) && r.ev.some(e => e.type === 'mode' && e.mode === 'bounce' && e.step === 8 * B) && r.ev.some(e => e.type === 'bounce' && e.step <= 8 * B + 1 && e.step >= 8 * B), '관문: 마디 시작에 들어가고, 나오는 박에 바로 다시 튄다');
   r = play(lv, [W[0] - Lg.TAP_EARLY, W[1] + Lg.TAP_LATE, W[2]]);
   ok(!r.s.dead && r.n('smash') === 3, `일찍(${Lg.TAP_EARLY}스텝 전) 치거나 늦게(${Lg.TAP_LATE}스텝 뒤) 쳐도 깨진다`);
@@ -159,6 +160,26 @@ console.log('== 돌파 구간 ==');
   ok(r.s.dead, '덩어리 안에서 손을 떼면 부딪힌다');
   r = play(lv, W2, [[blk.a - Lg.DRILL_MAX + 20, blk.b + 5]]);
   ok(r.s.dead, `계속 누르고만 있을 수는 없다: 한 번에 최대 ${Lg.DRILL_MAX / B}박`);
+  // 원버튼: 손가락 하나로 누르는 순간이 탁, 누르고 있으면 꾹. (탁도 손가락이 6스텝쯤 붙어 있고, 꾹도 누르는 순간이 함께 들어온다)
+  {
+    const finger = (lvl, downs) => {                       // downs = [누른 스텝, 뗀 스텝]들
+      const s = Lg.spawnState(lvl, lvl.cps.length ? 2 : -1), ev = [];
+      const end = lvl.rides[0][1] + 8;
+      while (!s.dead && !s.won && s.x < end) {
+        const st = s.step + 1, e2 = [];
+        Lg.stepState(lvl, s, downs.some(d => d[0] === st), e2, downs.some(d => st >= d[0] && st < d[1]));
+        ev.push(...e2);
+      }
+      return { s, n: (t) => ev.filter(e => e.type === t).length };
+    };
+    const downs = [...course.walls.map(w => [w.step, w.step + 6]), ...course.blocks.map(b => [b.a - 12, b.b + 6])];
+    let f = finger(course, downs);
+    ok(!f.s.dead && f.n('smash') === course.walls.length && f.n('through') === course.blocks.length && f.n('whiff') === 0, `원버튼으로 피버 구간 전체를 지난다 (탁 ${f.n('smash')}번, 꾹 ${f.n('through')}번, 헛손질 0번)`);
+    const early = downs.map(d => d.slice());
+    early[course.walls.length][0] = course.blocks[0].a - Lg.DRILL_LEAD - 10;       // 첫 덩어리를 한참 전부터 누른다
+    f = finger(course, early);
+    ok(!f.s.dead && f.n('whiff') === 1 && f.n('through') === course.blocks.length, '긴 덩어리를 너무 일찍부터 누르면 헛손질 한 번으로 치지만, 누르고 있으면 뚫린다');
+  }
   // 코스의 돌파 구간: 관문 가까이에는 벽을 두지 않는다
   const ride = course.rides[0], first = course.walls[0].x - ride[0], last = ride[1] - course.walls[course.walls.length - 1].x;
   ok(course.rides.length === 1 && first >= 4 && last >= 4, `코스: 들어가서 ${first / 4}박 뒤에 첫 벽, 마지막 벽 ${last / 4}박 뒤에 나온다 (벽 ${course.walls.length}개, 긴 덩어리 ${course.blocks.length}개)`);
