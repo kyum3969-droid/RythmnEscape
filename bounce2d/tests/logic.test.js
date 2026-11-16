@@ -289,7 +289,7 @@ for (const C of Lg.COURSES) {
       }
       ok(caught === total, `[${tag}] 함정 마디(${trapBars.join(', ')}): 버릇대로 누르면 그 마디에서 죽는다 (${caught}/${total})`);
       const hang = trapBars.filter(b => { const p9 = Lg.PATTERNS[C.bars[b]]; for (const t of p9.traps) for (const v of t.presses || []) { const c = b * 16 + Math.round(v * 4); for (let k = c - 1; k <= c + 3; k++) if (lv.ceilH[k] < 90) return true; } return false; });
-      ok(hang.length === 0, `[${tag}] 누르면 안 되는 자리 위에 매달린 빨간 덩어리는 없다(함정은 미리 알려 주지 않는다. 뛰면 빨간 바닥에 떨어진다)`);
+      ok(hang.length === trapBars.length && trapBars.every(b => !Lg.PATTERNS[C.bars[b]].sneaky), `[${tag}] 함정 자리마다 바로 위에 빨간 덩어리가 매달려 있다(한 번 더 뛰면 거기에 부딪힌다) — ${hang.length}/${trapBars.length}`);
       const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1], prev2 = C.bars[b - 2]; return n === 'goStop' ? prev === 'peak' && prev2 === 'peak' : n === 'ringStop' ? prev === 'ringRun' : n === 'holdStop' ? (prev === 'mix' && prev2 === 'mix') || (prev === 'glideHigh' && prev2 === 'glideHigh') : n === 'stopGo' ? prev === 'peak' : true; });
       ok(follows, `[${tag}] "뚝" 함정은 같은 손을 이어서 친 마디들 바로 다음에 온다(오른쪽 다섯 번 → 뚝, 왼·오 다섯 번 → 뚝, 고리 연타 → 뚝)`);
       // 손이 바뀌는 함정: 같은 손만 이어지다가 다른 손. 그 자리에서 버릇대로(같은 손으로) 누르면 죽는다
@@ -352,6 +352,15 @@ for (const C of Lg.COURSES) {
   }
 }
 
+console.log('== 이후 라운드용으로 보관한 함정(매달린 덩어리 없이, 착지 자리의 빨간 바닥으로 죽는다) ==');
+for (const [name, lead] of [['goStopB', 'peak'], ['stopGoB', 'peak'], ['holdStopB', 'mix'], ['ringFake', 'ringWave'], ['ringStopB', 'ringRun']]) {
+  const p10 = Lg.PATTERNS[name], lvB = Lg.buildLevel({ name: 't', bpm: 152, bars: ['flat', lead, name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const inpB = Lg.planInput(lvB.ref), lo = 2 * 384, extra = new Set(p10.traps[0].presses.map(v => lo + Math.round(v * 96)));
+  const runB = (trap) => { const sB = Lg.spawnState(lvB, -1); while (!sB.dead && !sB.won && sB.step < lo + 384 + 96) { const st = sB.step + 1; Lg.stepState(lvB, sB, inpB.press.has(st) || (trap && extra.has(st)), null, inpB.hold.has(st)); } return sB; };
+  const ref = runB(false), tr = runB(true);
+  let hangB = false; for (const v of p10.traps[0].presses) for (let k = 32 + Math.round(v * 4) - 1; k <= 32 + Math.round(v * 4) + 3; k++) if (lvB.ceilH[k] < 90) hangB = true;
+  ok(!ref.dead && tr.dead && tr.cause === 'spike' && 9 - tr.y < 0.5 && !hangB && !Lg.COURSES.some(c => c.bars.includes(name)), `${name}: 패턴대로 가면 지나가고, 한 번 더 누르면 빨간 바닥에 떨어져 죽는다. 그 자리 위에 덩어리는 없다. 지금 코스에서는 쓰지 않는다`);
+}
 console.log('== 패턴별: 입력마다의 여유와, 장애물이 그 입력을 정말 요구하는지 (96 BPM 기준) ==');
 const { measure } = require('./windows.js');
 for (const name of Object.keys(Lg.PATTERNS)) {

@@ -29,14 +29,19 @@ const STEP_UP = 0.22;
 const PATTERNS = {
   idle:      { holds: [], presses: [] },
   // ---- 함정 마디: 앞의 마디들과 똑같이 누르면 죽는다. "연속으로 치다가 뚝 끊기".
-  //   traps = [{ presses: 더 누르면 죽어야 하는 시각들 }, ...] (테스트가 "버릇대로 누르면 그 마디에서 죽는다"를 확인한다)
-  //   죽는 까닭은 따로 세운 장애물이 아니라 코스의 흐름이다: 버릇대로 한 번 더 뛰면 멀리 날아가 빨간 바닥(lava)에 떨어진다.
-  //   누르면 안 되는 자리에 ✕ 표시를 두거나 머리 위에 빨간 덩어리를 매달아 봤는데, 둘 다 너무 친절해서 뺐다.
-  goStop:    { holds: [], presses: [0.5], tol: 0.18, lava: [[13, 14]], traps: [{ presses: [2.5] }] },          // peak의 앞 절반만: 탁, (뚝)
-  stopGo:    { holds: [], presses: [2.5], tol: 0.18, lava: [[5, 6]], traps: [{ presses: [0.5] }] },            // 뒤 절반만: (뚝), 탁
-  holdStop:  { holds: [[0.5, 1.375]], presses: [], tol: 0.18, lava: [[13, 14]], traps: [{ presses: [2.5] }] }, // mix의 앞 절반만: 멈춤, (뚝)
-  // 가짜 고리: 고리 둘 가운데 뒤의 것은 미끼. 거기서 누르면 멀리 날아가 빨간 바닥에 떨어진다
-  ringFake:  { holds: [], presses: [0.5, 1.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2]], lava: [[2, 8], [14, 14]], traps: [{ presses: [2.375] }] },
+  //   traps = [{ presses: 더 누르면 죽어야 하는 시각들 }, ...]. 코스를 만들 때 이 "버릇대로 누른 달리기"도 틀린 달리기에 넣어서,
+  //   그걸 막는 빨간 덩어리가 남는다: 누르면 안 되는 자리 바로 위에 매달린 덩어리. 한 번 더 뛰면 거기에 부딪힌다(죽는 까닭이 그 자리에서 바로 보인다).
+  //   그 자리에 ✕ 표시를 두는 것은 너무 친절해서 뺐다.
+  goStop:    { holds: [], presses: [0.5], tol: 0.18, traps: [{ presses: [2.5] }] },                 // peak의 앞 절반만: 탁, (뚝)
+  stopGo:    { holds: [], presses: [2.5], tol: 0.18, traps: [{ presses: [0.5] }] },                 // 뒤 절반만: (뚝), 탁
+  // mix·glideHigh의 앞 절반만: 멈춤, (뚝). 뒤에서 오른쪽을 눌러도, 왼쪽(멈춤)을 눌러도 죽는다(뜬 공이 내려앉을 자리에 낮은 덩어리가 하나 더 놓인다)
+  holdStop:  { holds: [[0.5, 1.375]], presses: [], tol: 0.18, traps: [{ presses: [2.5] }, { holds: [[0.5, 1.375], [2.5, 3.25]] }] },
+  // ---- 이후 라운드용으로 보관(지금 코스에서는 쓰지 않는다): 매달린 덩어리가 없는 함정. sneaky: true = 함정을 막는 덩어리를 세우지 않는다.
+  //   버릇대로 한 번 더 뛰면 멀리 날아가서 착지할 자리의 빨간 바닥(lava)에 떨어진다. 죽는 것이 한 박쯤 늦게 와서 더 어렵고, 미리 알아채기도 어렵다.
+  goStopB:   { holds: [], presses: [0.5], tol: 0.18, sneaky: true, lava: [[13, 14]], traps: [{ presses: [2.5] }] },
+  stopGoB:   { holds: [], presses: [2.5], tol: 0.18, sneaky: true, lava: [[5, 6]], traps: [{ presses: [0.5] }] },
+  holdStopB: { holds: [[0.5, 1.375]], presses: [], tol: 0.18, sneaky: true, lava: [[13, 14]], traps: [{ presses: [2.5] }] },
+  ringFake:  { holds: [], presses: [0.5, 1.375], tol: 0.18, sneaky: true, rings: [[6, 1], [6, 2], [10, 1], [10, 2]], lava: [[2, 8], [14, 14]], traps: [{ presses: [2.375] }] },   // 고리 둘 가운데 뒤의 것은 미끼
   // ---- 파란 박스가 있는 쉬는 마디. 파란 박스는 닿아도 죽지 않는다: 위에 내려앉아 박자에 맞춰 다시 튀고, 옆에서 부딪히면 저절로 올라탄다.
   //   boxes = [[첫 칸, 끝 칸, 높이(칸)], ...] (마디 안의 칸 0~15). 누를 것은 없다. 쉬는 마디가 비어 보이지 않게 하려는 것.
   //   마디가 끝날 때는 공이 땅에서 박자에 맞춰 튀고 있어야 한다(다음 마디의 패턴이 그대로 맞도록) — 테스트가 확인한다.
@@ -83,8 +88,9 @@ const PATTERNS = {
   ringWave:  { holds: [], presses: [0.5, 1.375, 2.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2]], lava: [[2, 12]] },   // 고리 둘: 탁, 탁, 탁으로 물결치듯 건넌다
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
-  // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 멀리 날아가 빨간 바닥에 떨어진다
-  ringStop:  { holds: [], presses: [], after: "ringRun", rings: [[2, 1], [2, 2]], lava: [[0, 1], [5, 6]], traps: [{ presses: [0.375] }] },
+  // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 바로 위의 빨간 덩어리에 부딪힌다
+  ringStop:  { holds: [], presses: [], after: "ringRun", rings: [[2, 1], [2, 2]], lava: [[0, 1]], traps: [{ presses: [0.375] }] },
+  ringStopB: { holds: [], presses: [], after: "ringRun", sneaky: true, rings: [[2, 1], [2, 2]], lava: [[0, 1], [5, 6]], traps: [{ presses: [0.375] }] },   // (보관) 누르면 멀리 날아가 빨간 바닥에 떨어진다
   // 연타 끝의 함정 ②(왼쪽): 다음 고리가 두 배로 멀다. 오른쪽을 한 번 더 누르면 헛손질이고, 왼쪽(멈춤)으로 떠서 건너가야 닿는다
   ringGlide: { holds: [[0.0, 1.0]], presses: [1.375], tol: 0.18, after: "ringRun", rings: [[6, 1], [6, 2]], lava: [[0, 8]] },
   // ---- 계단으로 박자 틀기(3라운드, 시험): 박스 한 칸을 오를 때마다 1/8박씩 일찍 닿아, 네 칸을 오르면 반 박이 당겨진다(엇박).
@@ -434,7 +440,7 @@ function buildLevel(course) {
     return s;
   };
   const patternBars = [];
-  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.mode !== "rush" && (p.holds.length || p.presses.length) && snaps[b]) patternBars.push([b, p]); });   // 피버 구간의 장애물은 패턴에서 바로 나온다
+  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.mode !== "rush" && (p.holds.length || p.presses.length || (p.traps && !p.sneaky)) && snaps[b]) patternBars.push([b, p]); });   // 피버 구간의 장애물은 패턴에서 바로 나온다
 
   // 1) 통로
   for (const [b, p] of patternBars) {
@@ -478,6 +484,8 @@ function buildLevel(course) {
       wrong.push({ presses: p.presses, holds: rest }, { presses: [...p.presses, h[0]], holds: rest });
       for (const k of WRONG_SHIFT) wrong.push({ presses: p.presses, holds: [...rest, [h[0] + k, h[1] + k]] });
     });
+    // 함정: 버릇대로 한 번 더 누른 달리기. 이것을 막는 덩어리(누르면 안 되는 자리 위에 매달린 것)를 남긴다
+    if (!p.sneaky) for (const t of p.traps || []) wrong.push({ presses: [...p.presses, ...(t.presses || [])], holds: t.holds || p.holds });
     for (const w of wrong) {
       const s = runBar(b, w, 2);
       const hit = s.dead ? hazardAt(L, s) : null;
