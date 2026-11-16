@@ -173,7 +173,7 @@ const full = run(L, L.ref);
 const n = (t) => full.ev.filter(e => e.type === t).length;
 ok(full.s.won, `코스에 적힌 키 패턴대로 누르면 완주 (이단 점프 ${n('double')}번, 땅에서 점프 ${n('jump')}번, 멈춤 ${n('freeze')}번)`);
 ok(n('checkpoint') === L.cps.length && L.cps.length === 4, '체크포인트 4개를 모두 지난다');
-ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 12), '코스 내내 박자에 맞춰 튄다(늦어도 1/8박 이내)');
+ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % 12 === 0 || e.step % Lg.SUB <= 12), '코스 내내 박자 눈금에 맞춰 튄다(땅에서는 박자에, 박스 위에서는 1/8박 눈금에. 늦어도 1/8박 이내)');
 {
   // 패턴 마디가 끝나면 다음 마디 첫 박에 땅에서 튀어야 한다(패턴끼리 어떤 순서로 이어 붙여도 되게)
   const bounceSteps = new Set(full.ev.filter(e => e.type === 'bounce' || e.type === 'pad').map(e => e.step));
@@ -214,7 +214,7 @@ for (const C of Lg.COURSES) {
   ok(hard.length === 0, `[${tag}] 어려운 엮기 동작은 쓰지 않는다`);
     {
       // 바운스 구간의 파란 박스(쉬는 마디): 밟고 튄다. 박자가 밀리지 않고, 뭘 눌러도 그 마디 안에서는 죽지 않는다.
-      const bars3 = Lg.COURSES.find(c => c.name === lv.name).bars, allBox = bars3.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].boxes ? b : -1)).filter(b => b >= 0), boxBars = allBox.filter(b => !Lg.PATTERNS[bars3[b]].lava), lavaBars = allBox.filter(b => Lg.PATTERNS[bars3[b]].lava);
+      const bars3 = Lg.COURSES.find(c => c.name === lv.name).bars, allBox = bars3.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].boxes ? b : -1)).filter(b => b >= 0), boxBars = allBox.filter(b => !Lg.PATTERNS[bars3[b]].lava && !Lg.PATTERNS[bars3[b]].tall), lavaBars = allBox.filter(b => Lg.PATTERNS[bars3[b]].lava);
       const s3 = Lg.spawnState(lv, -1), inp3 = Lg.planInput(lv.ref), bounceAt = {}, snap = {};
       let lands = 0; const landBars = new Set();
       while (!s3.dead && !s3.won) {
@@ -223,7 +223,7 @@ for (const C of Lg.COURSES) {
         if (e3.some(e => e.type === 'bounce')) bounceAt[s3.step] = 9 - s3.y;
         if (e3.some(e => e.type === 'land') && 9 - s3.y >= 0.99) { landBars.add(Math.floor(s3.x / 16)); if (boxBars.includes(Math.floor(s3.x / 16))) lands++; }
       }
-      const clean = allBox.every(b => bounceAt[b * 384] < 0.2 && bounceAt[(b + 1) * 384] < 0.2);
+      const clean = allBox.filter(b => !Lg.PATTERNS[bars3[b]].tall).every(b => bounceAt[b * 384] < 0.2 && bounceAt[(b + 1) * 384] < 0.2);
       ok(boxBars.length >= 5 && lands >= 2 * boxBars.length && clean, `[${tag}] 파란 박스 마디(${boxBars.join(', ')}): 박스를 ${lands}번 밟고, 마디가 끝날 때는 땅에서 박자에 맞춰 튄다`);
       let died = 0, rnd3 = 11;
       const rand = () => (rnd3 = (rnd3 * 1103515245 + 12345) % 2147483648) / 2147483648;
@@ -250,22 +250,27 @@ for (const C of Lg.COURSES) {
       }
     }
   {
-    // 충전 고리와 엇박 길(3라운드)
-    const bars4 = C.bars, ringBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].rings ? b : -1)).filter(b => b >= 0), roadBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].road ? b : -1)).filter(b => b >= 0);
-    if (ringBars.length || roadBars.length) {
+    // 충전 고리와 계단으로 박자 틀기(3라운드)
+    const bars4 = C.bars, ringBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].rings ? b : -1)).filter(b => b >= 0), tallBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].tall ? b : -1)).filter(b => b >= 0);
+    if (ringBars.length || tallBars.length) {
       const s7 = Lg.spawnState(lv, -1), inp7 = Lg.planInput(lv.ref), rings = new Set(), bounces = [];
       let groundInRing = 0;
       while (!s7.dead && !s7.won) {
         const e7 = []; Lg.stepState(lv, s7, inp7.press.has(s7.step + 1), e7, inp7.hold.has(s7.step + 1));
-        for (const e of e7) { if (e.type === 'ring') rings.add(e.c); if (e.type === 'bounce' && s7.mode === 'bounce') bounces.push({ step: s7.step, road: lv.grid[Math.ceil(s7.y - 1e-6)][Math.floor(s7.x)] === 'B' }); }
-        if (s7.onGround && ringBars.includes(Math.floor(s7.x / 16)) && s7.x % 16 > 2 && s7.x % 16 < 10) groundInRing++;
+        for (const e of e7) { if (e.type === 'ring') rings.add(e.c); if (e.type === 'bounce' && s7.mode === 'bounce') bounces.push({ step: s7.step, h: Math.round(9 - s7.y - 0.09), bar: Math.floor(s7.x / 16) }); }
+        const pb = Lg.PATTERNS[bars4[Math.floor(s7.x / 16)]];
+        if (s7.onGround && pb && pb.rings && pb.presses.length >= 2 && !pb.after && s7.x % 16 > 2 && s7.x % 16 < 10) groundInRing++;
       }
       const ringCols = new Set(); ringBars.forEach(b => Lg.PATTERNS[bars4[b]].rings.forEach(([c]) => ringCols.add(b * 16 + c)));
-      ok(ringBars.length >= 5 && rings.size === ringCols.size && groundInRing === 0, `[${tag}] 충전 고리 마디(${ringBars.join(', ')}): 고리 ${ringCols.size}개를 모두 지나며, 고리 구간에서는 땅에 닿지 않는다`);
-      const onRoad = bounces.filter(b => b.road), offRoad = bounces.filter(b => !b.road);
-      ok(roadBars.length >= 8 && onRoad.length >= 20 && onRoad.every(b => b.step % 96 === 48) && offRoad.every(b => b.step % 96 <= 12), `[${tag}] 엇박 길 마디(${roadBars.join(', ')}): 길 위에서는 언제나 엇박(반 박 지점)에 튀고(${onRoad.length}번), 땅에서는 정박에 튄다`);
-      const outs = bars4.map((n, b) => (n === 'obOut' ? b : -1)).filter(b => b >= 0);
-      ok(outs.length >= 2 && outs.every(b => bounces.some(x => x.step === (b + 1) * 384 && !x.road)), `[${tag}] 엇박 길에서 내려오면 그 마디 안에 정박으로 돌아온다(다음 마디 첫 박에 땅에서 튄다)`);
+      ok(ringBars.length >= 5 && rings.size === ringCols.size && groundInRing === 0, `[${tag}] 충전 고리 마디(${ringBars.join(', ')}): 고리 ${ringCols.size}개를 모두 지나며, 고리로 건너는 구간에서는 땅에 닿지 않는다`);
+      // 높이가 튀는 박을 정한다: h칸 높이에서는 h/8박 이른 박에 튄다
+      ok(bounces.length > 100 && bounces.every(b => (b.step + b.h * 12) % 96 <= 12), `[${tag}] 어느 높이에서든 그 높이의 박에 튄다: 땅은 정박, 한 칸 높을 때마다 1/8박씩 이르게 (${bounces.length}번 확인)`);
+      const up = bars4.indexOf('upStairs'), at = (b, t) => bounces.find(x => x.step === b * 384 + Math.round(t * 96));
+      ok(up >= 0 && [[0, 0], [0.875, 1], [1.75, 2], [2.625, 3], [3.5, 4]].every(([t, h]) => { const x = at(up, t); return x && x.h === h; }), `[${tag}] 계단을 오르면 0.875박마다 튄다(0 → 0.875 → 1.75 → 2.625 → 3.5박): 한 박보다 조금씩 빨라져, 네 단 위에서는 반 박이 당겨진다`);
+      const sky = bounces.filter(b => b.h === 4), down = bars4.indexOf('downStairs');
+      ok(sky.length >= 12 && sky.every(b => b.step % 96 === 48), `[${tag}] 네 칸 높이의 꼭대기에서는 언제나 엇박(반 박 지점)에 튄다 (${sky.length}번)`);
+      ok(down >= 0 && [[0.5, 4], [1.625, 3], [2.75, 2], [3.875, 1], [5, 0]].every(([t, h]) => { const x = at(down, t); return x && x.h === h; }), `[${tag}] 내려올 때는 1.125박마다 튄다(0.5 → 1.625 → 2.75 → 3.875박). 땅에 닿으면 다음 마디 둘째 박부터 정박`);
+      ok(tallBars.every(b => lv.tallBars.has(b)) && bars4.every((n, b) => !(Lg.PATTERNS[n] && Lg.PATTERNS[n].after) || bars4[b - 1] === Lg.PATTERNS[n].after) && bars4.every((n, b) => n !== 'ringRun' || (Lg.PATTERNS[bars4[b + 1]] || {}).after === 'ringRun'), `[${tag}] 이어 붙여야 하는 마디들이 제자리에 있다(고리 연타 뒤에는 ringStop·ringGlide)`);
     }
   }
   {
@@ -285,8 +290,21 @@ for (const C of Lg.COURSES) {
       ok(caught === total, `[${tag}] 함정 마디(${trapBars.join(', ')}): 버릇대로 누르면 그 마디에서 죽는다 (${caught}/${total})`);
       const hang = trapBars.filter(b => { const p9 = Lg.PATTERNS[C.bars[b]]; for (const t of p9.traps) for (const v of t.presses || []) { const c = b * 16 + Math.round(v * 4); for (let k = c - 1; k <= c + 3; k++) if (lv.ceilH[k] < 90) return true; } return false; });
       ok(hang.length === 0, `[${tag}] 누르면 안 되는 자리 위에 매달린 빨간 덩어리는 없다(함정은 미리 알려 주지 않는다. 뛰면 빨간 바닥에 떨어진다)`);
-      const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1]; return n === 'goStop' ? prev === 'peak' : n === 'ringFake' ? prev === 'ringWave' : n === 'holdStop' ? prev === 'mix' : n === 'stopGo' ? prev === 'peak' : true; });
-      ok(follows, `[${tag}] 함정은 닮은 마디 바로 다음에 온다(연속으로 치다가 끊기도록)`);
+      const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1], prev2 = C.bars[b - 2]; return n === 'goStop' ? prev === 'peak' && prev2 === 'peak' : n === 'ringStop' ? prev === 'ringRun' : n === 'holdStop' ? (prev === 'mix' && prev2 === 'mix') || (prev === 'glideHigh' && prev2 === 'glideHigh') : n === 'stopGo' ? prev === 'peak' : true; });
+      ok(follows, `[${tag}] "뚝" 함정은 같은 손을 이어서 친 마디들 바로 다음에 온다(오른쪽 다섯 번 → 뚝, 왼·오 다섯 번 → 뚝, 고리 연타 → 뚝)`);
+      // 손이 바뀌는 함정: 같은 손만 이어지다가 다른 손. 그 자리에서 버릇대로(같은 손으로) 누르면 죽는다
+      const joined = C.bars.join(','), swaps = [];
+      C.bars.forEach((n, b) => { if (n === 'mix2' && C.bars[b - 1] === 'peak' && C.bars[b - 2] === 'peak') swaps.push([b, { presses: [0.5, 2.5], holds: [] }]); if (n === 'holdStop' && C.bars[b - 1] === 'glideHigh') swaps.push([b, { presses: [], holds: [[0.5, 1.375], [2.5, 3.25]] }]); if (n === 'ringGlide') swaps.push([b, { presses: [0.375, 1.375], holds: [] }]); });
+      let swapDead = 0;
+      for (const [b, w] of swaps) {
+        const lo = b * 384, hi = lo + 384, press = new Set(w.presses.map(v => lo + Math.round(v * 96))), holds = w.holds.map(([a, z]) => [lo + Math.round(a * 96), lo + Math.round(z * 96)]);
+        const s9 = Lg.spawnState(lv, -1);
+        while (!s9.dead && !s9.won && s9.step < hi + 96) { const st = s9.step + 1, inBar = st >= lo && st < hi; Lg.stepState(lv, s9, inBar ? press.has(st) : inp8.press.has(st), null, inBar ? holds.some(h => st >= h[0] && st < h[1]) : inp8.hold.has(st)); }
+        if (s9.dead && s9.x >= b * 16 && s9.x < b * 16 + 16.5) swapDead++;
+      }
+      ok(swaps.length >= 1 && swapDead === swaps.length, `[${tag}] 같은 손으로 이어 치다가 어긋나는 자리 ${swaps.length}곳(오른쪽만 치다가 왼쪽, 왼쪽만 치다가 뚝, 고리 연타 뒤 왼쪽): 버릇대로 같은 손으로 누르면 그 마디에서 죽는다 (${swapDead}/${swaps.length})`);
+      const streams = (joined.match(/w5,w5,w8|w5,w8/g) || []).length + (joined.match(/z5,z4|z5,z7/g) || []).length;
+      ok(streams >= 2, `[${tag}] 피버의 연타 → 뚝: 매 박 누르다 끊기(z5 → z4·z7), 반 박마다 다섯 번 누르다 세 번에서 끊기(w5 → w8) — 모두 ${streams}곳`);
     }
   }
   if (lv.freeBars.size) {
@@ -314,12 +332,12 @@ for (const C of Lg.COURSES) {
         steps += e3.filter(e => e.type === 'rebound' && e.step).length;
         if (s2.mode === 'rush') for (const dx of [-0.25, 0, 0.25]) if (9 - s2.y < Lg.stairFloor(lv, s2.x + dx) - 1e-6 || 9 - s2.y + 0.8 > Lg.stairCeil(lv, s2.x + dx) + 1e-6) inside = false;
       }
-      const seq = (name, want) => { const b = bars2.indexOf(name); return b >= 0 && want.every((l, k) => Math.abs(at2[b * 4 * 96 + k * 48] - l * Lg.ZIG_STEP) < 1e-6); };
+      const seq = (name, want) => { const b = bars2.indexOf(name); return b >= 0 && want.every((l, k) => Math.abs(at2[b * 4 * 96 + k * 48] - l * Lg.ZIG_STEP) < 0.15); };    // 누른 지점에서는 곧바로 꺾이므로 아주 조금 못 미친다
       ok(seq('wUp', [0, 1, 2, 1, 2, 3, 2, 3, 4]) && seq('wDn', [4, 3, 2, 3, 2, 1, 2, 1, 0]), `[${tag}] 넓은 통로로는 파란 계단을 타닥타닥 튕기며 올라가고, 같은 식으로 내려온다`);
-      ok(seq('w1', [4, 3, 2, 1, 0, 1, 2, 3, 4]), `[${tag}] 넓은 통로(w1)에서 그대로 가면 반 박마다 한 단계씩, 두 박 만에 바닥에 닿고 두 박 만에 천장으로 돌아온다`);
+      ok(seq('w5', [4, 3, 2, 3, 2, 3, 2, 3, 4]), `[${tag}] 넓은 통로의 연타(w5): 천장에서 내려와 가운데 두 단계 사이를 반 박마다 오가고(다섯 번 누름) 천장으로 돌아간다`);
       ok(s2.won && inside && steps >= 8 && lv.stairLo.size > 0 && lv.stairHi.size > 0, `[${tag}] 파란 발판은 닿아도 죽지 않고 튕기기만 한다(${steps}번 닿음). 공이 발판 속으로 들어가는 일은 없다`);
       ok([...lv.stairLo.keys(), ...lv.stairHi.keys()].every(n => lv.freeBars.has(Math.floor(n / 8))), `[${tag}] 파란 발판은 장애물이 없는 연출 마디에만 있다`);
-      ok(lv.reds.every(q => { const sp = Lg.hazardSpan(q, 0); return q.kind === 'floor' ? sp[0] === 0 && Math.abs(sp[1] - q.tip) < 1e-9 : q.kind === 'ceil' ? Math.abs(sp[0] - q.tip) < 1e-9 : Math.abs(sp[1] - sp[0] - 3.2) < 1e-6 && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-6; }), `[${tag}] 장애물 모양: 이빨은 삼각형, 떠 있는 것은 길이 3.2칸의 마름모(양 끝이 뾰족)`);
+      ok(lv.reds.every(q => { const sp = Lg.hazardSpan(q, 0); return q.kind === 'floor' ? sp[0] === 0 && Math.abs(sp[1] - q.tip) < 1e-9 : q.kind === 'ceil' ? Math.abs(sp[0] - q.tip) < 1e-9 : (Math.abs(sp[1] - sp[0] - 3.2) < 1e-6 || Math.abs(sp[1] - sp[0] - 2.7) < 1e-6) && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-6; }), `[${tag}] 장애물 모양: 이빨은 삼각형, 떠 있는 것은 길이 3.2칸(연타 패턴에서는 2.7칸)의 마름모(양 끝이 뾰족)`);
     }
     if (lv.squeezes.length) {
       // 조여드는 통로: 닿는 간격이 1박에서 1/32박까지 반씩 줄고, 통로 폭도 그만큼 좁아진다(끝에서는 공 크기와 거의 같다)

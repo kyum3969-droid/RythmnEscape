@@ -115,13 +115,13 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
       // 바운스 구간의 파란 박스(쉬는 마디): 밟고 튄다. 죽지 않는다.
       await G(() => { const g = window.__game; g.setBot(g.L.ref); g.devJump(0); });         // 체크포인트 1(마디 15). 마디 17에 박스가 있다
       let bb = await G(() => window.__game.state.step / 96);
-      for (; bb < 69; bb += 0.125) await tick(bb);
-      await tick(69);
+      for (; bb < 68.875; bb += 0.125) await tick(bb);
+      await tick(68.875);                                                                   // 박스는 한 칸 높아서 1/8박 일찍 닿고, 닿자마자 튄다
       const onBox = await G(() => ({ y: window.__game.state.y, phase: window.__game.phase }));
       await tick(69.4); await p.waitForTimeout(60); await p.screenshot({ path: out + 'box.png' });
       for (bb = 69.5; bb <= 72; bb += 0.125) await tick(bb);
       const after = await G(() => ({ y: window.__game.state.y, phase: window.__game.phase }));
-      ok(onBox.phase === 'running' && Math.abs(onBox.y - 8) < 0.15 && after.phase === 'running' && after.y > 8.5, `바운스 구간의 파란 박스: 박에 맞춰 박스 위(한 칸 높이)에서 튀고, 내려와서 다음 마디로 이어진다`);
+      ok(onBox.phase === 'running' && Math.abs(onBox.y - 8) < 0.15 && after.phase === 'running' && after.y > 8.5, `바운스 구간의 파란 박스: 박보다 1/8박 일찍 박스 위(한 칸 높이)에 닿아 바로 튀고, 내려와서 다음 마디로 이어진다`);
     }
     await G(() => { const g = window.__game; g.setBot(null); g.devJump(1); });     // 체크포인트 2 = 피버 바로 앞
     let fb = await G(() => window.__game.state.step / 96);
@@ -235,17 +235,17 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length }; });
     ok(st.round === 2 && st.name.includes('Chasing the Gold Token') && Math.abs(st.bpm - 151.9965) < 0.01 && st.off === 0.0659 && st.cps === 6, `3라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개)`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots3 = { 33.5: 'r3_ring', 50.25: 'r3_ringwave', 73.5: 'r3_lava', 165.5: 'r3_offbeat_in', 172.25: 'r3_offbeat_hold', 181.25: 'r3_offbeat_dj', 186.75: 'r3_offbeat_out', 241.5: 'r3_fever', 303.5: 'r3_squeeze' };
+    const shots3 = { 33.5: 'r3_ring', 50.25: 'r3_ringwave', 97.5: 'r3_ringrun', 100.5: 'r3_ringstop', 131.25: 'r3_fever_stream', 166.25: 'r3_stairs_up', 172.25: 'r3_sky_hold', 181.5: 'r3_stairs_down', 199.0: 'r3_ringglide', 241.5: 'r3_fever', 303.5: 'r3_squeeze' };
     let offY = null;
     for (let beat = 0; beat <= 316; beat += 0.25) {
       await tick(beat);
       if (shots3[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots3[beat] + '.png' }); }
-      if (beat === 169.5) offY = await G(() => window.__game.state.y);       // 엇박 길(마디 42) 위에서 엇박(1.5박)에 길을 딛고 있다
+      if (beat === 169.5) offY = await G(() => window.__game.state.y);       // 계단 꼭대기(마디 42, 네 칸 높이)에서는 엇박(1.5박)에 닿는다
       if (await G(() => window.__game.phase) !== 'running') break;
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === 5 && st.gems.got === st.gems.total, `3라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
-    ok(offY !== null && Math.abs(offY - 8) < 0.15, `엇박 길 위에서는 박자와 박자 사이에 길을 딛는다 (엇박 순간의 높이 ${(9 - offY).toFixed(2)}칸)`);
+    ok(offY !== null && Math.abs(offY - 5) < 0.15, `네 단 계단을 오르면 반 박이 당겨져서, 꼭대기에서는 박자와 박자 사이에 닿는다 (엇박 순간의 높이 ${(9 - offY).toFixed(2)}칸)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');

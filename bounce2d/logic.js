@@ -45,9 +45,9 @@ const PATTERNS = {
   stairs:    { holds: [], presses: [], boxes: [[3, 6, 1], [7, 10, 2]] },           // 두 단 계단: 타닥 타닥 올라가서 뛰어내린다
   // ---- 빨간 바닥과 파란 섬: 박스를 써야 지나가는 마디. lava = [[첫 칸, 끝 칸], ...]의 땅은 닿으면 죽고, 그 위의 파란 박스만 디딜 수 있다.
   //   그냥 튀면 빨간 바닥에 떨어진다. 박스에서는 박자에 맞춰 저절로 다시 튀어 빨간 바닥 밖으로 나간다.
-  lavaHop:   { holds: [[0.5, 1.0]], presses: [], tol: 0.18, boxes: [[5, 8, 1]], lava: [[1, 4], [9, 10]] },     // 꼭대기에서 멈춰 빨간 바닥을 건너 박스 섬에 내려앉는다
-  lavaLeap:  { holds: [], presses: [0.5], tol: 0.18, boxes: [[5, 8, 2]], lava: [[1, 4], [9, 10]] },            // 이단 점프로 높은 박스 섬에 올라탄다
-  lavaGlide: { holds: [[1.5, 2.375]], presses: [], tol: 0.18, boxes: [[3, 5, 1]], lava: [[6, 9]] },            // 박스를 밟고 튀어, 꼭대기에서 멈춰 빨간 바닥을 건넌다
+  lavaHop:   { holds: [[0.5, 1.0]], presses: [], tol: 0.18, boxes: [[5, 9, 1]], lava: [[1, 4]] },               // 꼭대기에서 멈춰 빨간 바닥을 건너 박스 섬에 내려앉는다
+  lavaLeap:  { holds: [], presses: [0.5], tol: 0.18, boxes: [[5, 9, 2]], lava: [[1, 4]] },                      // 이단 점프로 높은 박스 섬에 올라탄다
+  lavaGlide: { holds: [[1.375, 2.25]], presses: [], tol: 0.18, boxes: [[3, 5, 1]], lava: [[6, 9]] },            // 박스를 밟고 튀어, 꼭대기에서 멈춰 빨간 바닥을 건넌다
   // 누르는 시각은 모두 1/8박 단위다(곡의 음 단위). 누르는 순간이 곡의 소리와 겹치게 하려는 것.
   // tol = 통로를 만들 때 봐주는 타이밍 오차(박). 곡이 빨라서(한 박 0.39초) 넓게 잡았다. 너무 넓히면 장애물이 그 입력을 요구하지 못하게 되므로 패턴마다 다르다.
   // ---- 쉬운 동작(입력 한두 번, 모두 엇박). 라운드 1의 바탕.
@@ -81,14 +81,20 @@ const PATTERNS = {
   //   조금 일찍 눌러도 고리에서 뛰고, 늦게 눌러도 빨간 바닥에 닿기 전이면 된다(처음엔 고리를 지난 뒤에 누르게 했더니 늦는 쪽 여유가 60ms뿐이었다).
   ring1:     { holds: [], presses: [0.5, 1.375], tol: 0.18, rings: [[6, 1], [6, 2]], lava: [[2, 8]] },                             // 이단 점프 → 고리에서 한 번 더
   ringWave:  { holds: [], presses: [0.5, 1.375, 2.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2]], lava: [[2, 12]] },   // 고리 둘: 탁, 탁, 탁으로 물결치듯 건넌다
-  // ---- 엇박 길(3라운드, 시험): 하늘색 길 위에서는 박자와 박자 사이(엇박)에 튄다. 길에 있는 동안 누르는 자리도 반 박 밀려 정박(킥)에 온다.
-  //   road = [[첫 칸, 끝 칸, 높이], ...]. 엇박 길의 마디들은 이어 붙여 쓴다: obIn(들어감) … obOut(나옴). ob: true = 길 한가운데의 마디.
-  obIn:      { holds: [], presses: [], road: [[3, 15, 1]] },                        // 올라타서 잠깐 구르다가 엇박(1.5박)부터 튄다
-  obRun:     { holds: [], presses: [], ob: true, road: [[0, 15, 1]] },              // 그냥 엇박으로 튀며 간다
-  obOut:     { holds: [], presses: [], ob: true, road: [[0, 7, 1]] },               // 길이 끝나면 땅에 내려와 잠깐 구르다가 정박에 다시 튄다
-  obHold:    { holds: [[1.0, 1.875]], presses: [], tol: 0.18, ob: true, road: [[0, 15, 1]] },     // 엇박 길에서 꼭대기(정박)에 멈춰 건너가기
-  obDj:      { holds: [], presses: [1.0], tol: 0.18, ob: true, road: [[0, 15, 1]] },              // 엇박 길에서 꼭대기(정박)에 이단 점프
-  obMix:     { holds: [[1.0, 1.875]], presses: [3.0], tol: 0.18, ob: true, road: [[0, 15, 1]] },  // 멈춤 → 이단 점프
+  // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
+  ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
+  // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 멀리 날아가 빨간 바닥에 떨어진다
+  ringStop:  { holds: [], presses: [], after: "ringRun", rings: [[2, 1], [2, 2]], lava: [[0, 1], [5, 6]], traps: [{ presses: [0.375] }] },
+  // 연타 끝의 함정 ②(왼쪽): 다음 고리가 두 배로 멀다. 오른쪽을 한 번 더 누르면 헛손질이고, 왼쪽(멈춤)으로 떠서 건너가야 닿는다
+  ringGlide: { holds: [[0.0, 1.0]], presses: [1.375], tol: 0.18, after: "ringRun", rings: [[6, 1], [6, 2]], lava: [[0, 8]] },
+  // ---- 계단으로 박자 틀기(3라운드, 시험): 박스 한 칸을 오를 때마다 1/8박씩 일찍 닿아, 네 칸을 오르면 반 박이 당겨진다(엇박).
+  //   꼭대기(네 칸 높이)에 있는 동안은 공이 박자와 박자 사이에 닿는다. 내려올 때는 한 칸에 1/8박씩 늦어져 정박으로 돌아온다.
+  //   tall: true = 화면이 물러나야 다 보이는 마디. 이어 붙여 쓴다: upStairs … downStairs, 그리고 그다음 마디는 첫 박을 건너뛰고 둘째 박부터 튄다.
+  upStairs:   { holds: [], presses: [], tall: true, boxes: [[3, 6, 1], [7, 9, 2], [10, 13, 3], [14, 15, 4]] },    // 타 닥 닥 닥: 한 박보다 조금씩 빠르게 네 단을 오른다
+  skyRun:     { holds: [], presses: [], tall: true, sky: true, boxes: [[0, 15, 4]] },                              // 꼭대기: 엇박으로 튀며 간다
+  skyHold:    { holds: [[1.0, 1.875]], presses: [], tol: 0.18, tall: true, sky: true, boxes: [[0, 15, 4]] },       // 꼭대기에서 멈춰 건너가기(누르는 자리가 정박에 온다)
+  skyDj:      { holds: [], presses: [1.0], tol: 0.18, tall: true, sky: true, boxes: [[0, 15, 4]] },                // 꼭대기에서 이단 점프
+  downStairs: { holds: [], presses: [], tall: true, sky: true, boxes: [[0, 3, 4], [4, 8, 3], [9, 13, 2], [14, 15, 1]] },   // 한 박보다 조금씩 느리게 네 단을 내려온다
   // ---- 피버 구간(rush). 원버튼(화면 어디든). 공이 바닥과 천장 사이를 비스듬히 튕기고, 누르는 즉시 위아래 방향이 뒤집힌다.
   //   nodes = 반 박 지점 8개(마디 안 0.5박, 1박, …, 4박): F 이 박에 뒤집어야 함 / S 뒤집으면 안 됨 / . 상관없음. F·S는 공이 가운데 높이를 지나는 지점에만 쓴다.
   //   좁은 통로의 마디는 바닥에서 시작해 바닥에서 끝난다(뒤집기는 짝수 번). 넓은 통로의 마디는 천장에서 시작해 천장에서 끝난다(계단으로 올라가서 시작한다).
@@ -107,6 +113,12 @@ const PATTERNS = {
   w1: { mode: "rush", wide: true, nodes: ".S...S.." },     // 바닥까지 크게 내려갔다 올라온다(안 누름). 천장과 바닥의 이빨 사이를 지난다
   w2: { mode: "rush", wide: true, nodes: ".F...F.." },     // 천장으로 한 번 되돌아간 뒤 깊이 내려갔다가, 바닥 직전에 눌러 올라온다
   w3: { mode: "rush", wide: true, nodes: "..F...F." },     // 통로 위쪽 절반에서만 오르내린다. 아래에 떠 있는 장애물 위를 지난다
+  // 연타(넓은 통로 가운데에서 반 박마다 누른다)와 그 끝의 "뚝". 장애물을 공에서 1.5칸 띄운다(1칸이면 다음 것을 조금 일찍 누를 때 앞의 장애물에 걸려서 일찍 쪽 여유가 62ms뿐이었다).
+  // 누르지 말아야 할 자리에서 한 번 더 누르면 장애물 쪽으로 꺾인다.
+  w5: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFFFFS." },     // 다섯 번 연타, 그리고 뚝
+  w6: { mode: "rush", wide: true, gap: 1.5, nodes: "SSFFFSS." },     // 깊이 내려가서 세 번 연타
+  w7: { mode: "rush", wide: true, gap: 1.5, nodes: "F.SFFFS." },     // 한 번, 쉬고, 세 번, 뚝
+  w8: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFFS.F." },     // 세 번에서 뚝(w5 다음에 놓는다: 다섯 번을 치던 손이 세 번에서 멈춰야 한다), 그리고 한 번
   w4: { mode: "rush", wide: true, nodes: "F.F.F.F." },     // 천장을 스치듯: 한 박마다 눌러 천장으로 되돌아간다. 바로 밑에 장애물이 줄지어 떠 있다
   // 조여드는 통로(연출): 바닥과 천장이 가운데로 모여들어, 공이 닿는 간격이 한 박 → 반 박 → … → 1/32박까지 빨라진다("타다다다닥" → "드르르륵").
   // squeeze = 닿는 간격(박)을 차례로 적은 것. 한 마디에 4박어치. 피버의 맨 끝에만 쓴다(통로가 좁아진 채로 끝난다).
@@ -177,18 +189,19 @@ const ROUND2 = {
     "mix", "mix2", "stairs", "glideHigh",   "peak", "box", "skyGlide", "twin",
     "mix", "mix2", "skyGlide", "stairs",   "glideHigh", "peak", "mix", "cp",
     // 밝고 가벼운 구간: 첫 피버. 파란 발판 → 좁은 통로 → 계단으로 올라가 넓은 통로(가운데에 떠 있는 장애물) → 계단으로 내려와 다시 좁은 통로
-    "zT", "z1", "z1", "wUp",   "w3", "w1", "wDn", "z3",
+    "zT", "z5", "z4", "wUp",   "w3", "w5", "wDn", "z3",
     // 쉬어 감
     // (여기서 새 장치를 가르친다: 빨간 바닥과 파란 섬. 쉬는 마디를 끼고 하나씩)
     "stairs", "lavaHop", "box", "lavaLeap",   "idle", "lavaGlide", "twin", "cp",
-    // 두 번째 큰 구간
-    "mix", "mix2", "lavaHop", "box",   "peak", "lavaLeap", "mix", "stairs",
-    // (함정이 처음 나온다: peak 다음에 앞 절반만 같은 goStop, mix 다음에 앞 절반만 같은 holdStop)
-    "mix2", "lavaGlide", "peak", "goStop",   "glideHigh", "mix", "holdStop", "cp",
-    // 절정: 쉬는 마디 하나만 두고 이어 붙인다
-    "mix", "lavaLeap", "skyGlide", "lavaGlide",   "box", "peak", "stopGo", "cp",
+    // 두 번째 큰 구간: 같은 손이 이어지다가 어긋난다. 오른쪽만 다섯 번 → 왼쪽 / 왼쪽만 다섯 번 → 뚝
+    // (왼쪽만 치다가 오른쪽으로 바꾸는 것은 함정이 못 된다: 그 자리는 왼쪽으로 떠서 넘어가도 살아남는다)
+    "peak", "peak", "mix2", "box",   "glideHigh", "glideHigh", "holdStop", "stairs",
+    // 오른쪽만 다섯 번 → 뚝(여섯 번째는 누르지 않는다)
+    "lavaHop", "lavaGlide", "peak", "peak",   "goStop", "twin", "lavaLeap", "cp",
+    // 절정: 왼·오·왼·오·왼 → 뚝, 그리고 뚝 → 오
+    "mix", "mix", "holdStop", "lavaGlide",   "box", "peak", "stopGo", "cp",
     // 가장 센 절정: 마지막 피버. 들어서자마자 계단으로 넓은 통로에 올라간다. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다
-    "wUp", "w4", "w2", "w1",   "wDn", "z5", "zS1", "zS2",
+    "wUp", "w5", "w5", "w8",   "wDn", "z5", "zS1", "zS2",
     "goal", "flat", "flat",
   ],
   sections: [
@@ -198,7 +211,7 @@ const ROUND2 = {
 // 라운드 3: "Chasing the Gold Token". 분당 152박(앞의 두 라운드와 같다), 첫 박 0.066초, 76마디이고 77번째 마디 첫 박에 끝맺는 한 방.
 // 곡의 구간(마디): 0~3 조용한 도입 / 4~7 쌓아 올림 / 8~23 첫 큰 구간 / 24~27 넘어가는 자리(26~27은 킥이 듬성) / 28~39 첫 절정
 //                / 40~46 가라앉음(킥은 계속) / 47 채움 / 48~55 두 번째 큰 구간 / 56~59 조용히 올라감 / 60~71 마지막 절정 / 72~75 끝맺음
-// 새 요소 둘: 충전 고리(첫 큰 구간에서 가르친다)와 엇박 길(가라앉는 구간에서 시험한다).
+// 새 요소 둘: 충전 고리(첫 큰 구간에서 가르친다)와 계단으로 박자 틀기(가라앉는 구간에서 시험한다).
 const ROUND3 = {
   name: "ROUND 3 · Chasing the Gold Token",
   bpm: 151.9965,
@@ -216,19 +229,19 @@ const ROUND3 = {
     "flat", "flat", "hA", "dj1",   "mix", "box", "idle", "cp",
     // 첫 큰 구간: 충전 고리를 가르친다(쉬는 마디를 끼고 하나 → 둘)
     "ring1", "box", "ring1", "idle",   "ringWave", "stairs", "ringWave", "twin",   "mix", "cp",
-    // 고리를 아는 동작과 섞는다. 고리 둘(ringWave) 바로 다음에 가짜 고리(ringFake: 뒤의 고리에서는 누르면 안 된다). 26은 킥이 빠지는 자리라 쉰다
-    "lavaHop", "ring1", "box", "skyGlide",   "lavaLeap", "ringWave", "ringFake", "mix2",   "idle", "cp",
-    // 첫 절정: 피버. 좁은 통로 → 계단으로 넓은 통로 → 다시 좁은 통로
-    "zT", "z1", "z2", "wUp",   "w3", "w4", "w1", "wDn",   "z3", "z6", "z5", "z2",
+    // 고리를 아는 동작과 섞고, 고리 연타가 나온다: 탁탁탁(ringWave) → 탁탁탁탁(ringRun) → 뚝(ringStop: 다음 고리는 미끼)
+    "lavaHop", "ring1", "box", "skyGlide",   "lavaLeap", "ringWave", "ringRun", "ringStop",   "idle", "cp",
+    // 첫 절정: 피버. 매 박 누르다 뚝(z5 → z4), 넓은 통로에서 다섯 번 연타 두 번 뒤 세 번에서 뚝(w5, w5 → w8)
+    "zT", "z5", "z4", "wUp",   "w5", "w5", "w8", "wDn",   "z6", "z5", "z5", "z7",
     "cp",
-    // 가라앉는 구간: 엇박 길(시험). 올라타서 그냥 가 보고 → 멈춤 → 쉬고 → 이단 점프 → 내려온다
-    "obIn", "obRun", "obHold", "obRun",   "obDj", "obOut", "cp",
-    // 두 번째 큰 구간: 전부 섞는다. 엇박 길이 한 번 더 나온다(쉬는 마디 없이)
-    "ringWave", "ringFake", "obIn", "obHold",   "obDj", "obOut", "lavaLeap", "peak",
-    // 조용히 올라감(peak 다음의 goStop: 앞 절반만 같다)
-    "goStop", "ring1", "idle", "cp",
+    // 가라앉는 구간: 계단으로 박자 틀기(시험). 네 단을 오르면 엇박 → 꼭대기에서 그냥 가 보고 → 멈춤 → 이단 점프 → 네 단을 내려오면 정박
+    "upStairs", "skyRun", "skyHold", "skyDj",   "downStairs", "idle", "cp",
+    // 두 번째 큰 구간: 고리 연타 끝에서 이번엔 왼쪽(ringGlide: 다음 고리가 두 배로 멀다). 그리고 계단을 한 번 더
+    "ringWave", "ringRun", "ringGlide", "upStairs",   "skyHold", "downStairs", "idle", "peak",
+    // 조용히 올라감: 오른쪽만 다섯 번 → 뚝
+    "peak", "goStop", "idle", "cp",
     // 마지막 절정: 피버. 들어서자마자 넓은 통로. 끝맺는 네 마디는 연출 — 통로가 조여들다 끝맺는 한 방에 터져 나온다
-    "wUp", "w4", "w2", "w1",   "w3", "wDn", "z5", "z4",   "z6", "z2", "z5", "z7",
+    "wUp", "w4", "w6", "w5",   "w8", "wDn", "z5", "z5",   "z4", "z2", "z5", "z7",
     "zT", "zT", "zS1", "zS2",
     "goal", "flat", "flat",
   ],
@@ -274,9 +287,9 @@ function coursePlan(course) {
 //  - bad가 바닥·천장이면 그 면에서 뻗은 삼각 이빨(floor / ceil)
 //  - bad가 공중이면 떠 있는 마름모(float). 뾰족한 끝(tip)이 지나가는 쪽을 향한다
 // tip은 언제나 지나가는 공에서 1칸 떨어져 있고, 그쪽 비탈의 기울기도 이빨과 같아서 타이밍 여유는 어떤 장애물이든 같다.
-function hazard(xt, ok, bad, top) {
+function hazard(xt, ok, bad, top, gap = 1) {       // gap = 지나가는 공과 뾰족한 끝 사이의 거리(칸). 연타 패턴은 조금 더 띄운다
   const up = bad > ok;                                              // 틀린 쪽이 위
-  const tip = up ? ok * ZIG_STEP + SIZE + 1 : ok * ZIG_STEP - 1;
+  const tip = up ? ok * ZIG_STEP + SIZE + gap : ok * ZIG_STEP - gap;
   if (bad === 0) return { kind: "floor", xt, tip, far: 0, w: TOOTH_W, x0: xt - TOOTH_W, x1: xt + TOOTH_W };
   if (bad === top) return { kind: "ceil", xt, tip, far: top * ZIG_STEP + SIZE, w: TOOTH_W, x0: xt - TOOTH_W, x1: xt + TOOTH_W };
   return { kind: "float", xt, tip, far: up ? bad * ZIG_STEP + SIZE + 0.4 : bad * ZIG_STEP - 0.4, w: KITE_W, x0: xt - KITE_W, x1: xt + KITE_W };
@@ -293,7 +306,7 @@ function emptyLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill(r === ROWS - 1 ? "#" : "."));
-  const cps = [], rides = [], reds = [], gems = [], freeBars = new Set(), wideBars = new Set(), squeezes = [];
+  const cps = [], rides = [], reds = [], gems = [], freeBars = new Set(), wideBars = new Set(), tallBars = new Set(), squeezes = [];
   const stairLo = new Map(), stairHi = new Map();       // 파란 발판: 반 박 지점 번호(x / 2) → 바닥 쪽·천장 쪽 높이 단계
   let goalX = cols - 8;
   let zl = 0, zin = -1;                                 // 피버: 패턴대로 갈 때, 반 박 지점에서의 높이 단계(0 = 바닥)와 거기로 들어온 방향
@@ -331,7 +344,7 @@ function emptyLevel(course) {
           const nat = zl <= lo ? 1 : zl >= hi ? -1 : zin, dir = c === "F" ? -nat : nat;
           if (k) gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? dir : 0 });      // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
           gems.push({ x: xk + 1, h: (zl + dir / 2) * ZIG_STEP + HALF });
-          if (c === "F" || c === "S") reds.push(hazard(xk + 2, zl + dir, zl - dir, top));       // 다음 지점의 틀린 쪽을 막는다
+          if (c === "F" || c === "S") reds.push(hazard(xk + 2, zl + dir, zl - dir, top, p.gap));       // 다음 지점의 틀린 쪽을 막는다
           zl += dir; zin = dir;
         }
         const next = PATTERNS[course.bars[b + 1]];
@@ -339,15 +352,15 @@ function emptyLevel(course) {
         gems.push({ x: x0 + 16, h: zl * ZIG_STEP + HALF });
       }
     }
+    if (p && p.tall) tallBars.add(b);
     if (p && p.boxes) for (const [a, z, hh] of p.boxes) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "#";
-    if (p && p.road) for (const [a, z, hh] of p.road) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "B";
     if (p && p.rings) for (const [c, hh] of p.rings) grid[ROWS - 2 - hh][x0 + c] = "O";
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
     else if (name === "goal") goalX = b * 16 + 8;
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
   for (const sq of squeezes) { const e = sq.pts[sq.pts.length - 1]; sq.pts.push({ step: Math.round(sq.x1 / TPB * SUB), x: sq.x1, g: e.g, top: !e.top }); }   // 끝에서 한 번 더 닿는다
-  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, squeezes, stairLo, stairHi, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, tallBars, squeezes, stairLo, stairHi, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 // 패턴대로 달린 공의 자취(스텝마다 위치·상태)
@@ -436,9 +449,10 @@ function buildLevel(course) {
       const k = env[c];
       if (k.lo > 90) continue;
       const fh = Math.min(HAZ_MAX_H, Math.floor((k.lo - mF) * 4) / 4);
-      // 파란 박스가 있는 칸에는 빨간 덩어리를 세우지 않는다. 엇박 길 위에는 세운다(길 위로 반 칸 넘게 솟을 때만).
+      // 파란 박스가 있는 칸에는, 박스 위로 반 칸 넘게 솟을 때만 빨간 덩어리를 세운다(박스 위에 얹힌 덩어리가 된다)
       let bh = 0; while (isSolid(L, c, ROWS - 2 - bh)) bh++;
-      if (!k.ground && fh >= 0.5 && (bh === 0 || (tile(L, c, ROWS - 2) === "B" && fh >= bh + 0.5))) L.floorH[c] = fh;
+      const fh2 = Math.min(HAZ_MAX_H + bh, Math.floor((k.lo - mF) * 4) / 4);
+      if (!k.ground && fh2 >= bh + 0.5) L.floorH[c] = fh2;
       const ch = Math.ceil((k.hi + SIZE + mC) * 4) / 4;
       if (ch <= CEIL_MAX_H) L.ceilH[c] = ch;
     }
@@ -601,7 +615,7 @@ function rushStep(L, s, press, ev, hold, r) {
 }
 
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);
-const isSolid = (L, c, r) => { const t = tile(L, c, r); return t === "#" || t === "B"; };   // B = 엇박 길(그 위에서는 엇박에 튄다)
+const isSolid = (L, c, r) => tile(L, c, r) === "#";
 
 function sawY(w, beat) {
   const low = w.r + 0.5;
@@ -638,10 +652,14 @@ function launch(s, kind, ev, late = 0) {
 }
 
 // 박자에 맞춰 땅에 있으면 저절로 튄다
-// 엇박 길(B) 위에서는 박자와 박자 사이(반 박 지점)에 튄다. 그 위에 있는 동안은 계속 엇박이고, 땅에 내려오면 다시 정박으로 돌아온다.
-const onOffbeat = (L, s) => { const c0 = Math.floor(s.x - HALF + 0.03), c1 = Math.floor(s.x + HALF - 0.03); for (let c = c0; c <= c1; c++) if (tile(L, c, s.y) === "B") return true; return false; };
+// 딛고 있는 곳의 높이가 튀는 박을 정한다. 땅에서는 박자에, 파란 박스 위에서는 한 칸 높을 때마다 1/8박씩 이른 박에 튄다.
+// 공은 한 칸 높은 곳에 약 1/8박 일찍 닿으므로(한 칸 낮은 곳에는 그만큼 늦게), 계단을 오르내릴 때는 닿자마자 튀게 된다:
+// 오를 때는 한 박보다 조금씩 빠르게, 내려올 때는 조금씩 느리게. 네 칸 높이에서는 반 박이 당겨져 엇박에 튄다. 높이가 박자를 바꾼다.
+// (닿는 대로 무조건 바로 튀게 하면 멈춤·이단 점프를 한 뒤의 박이 누른 타이밍마다 달라져서, 높이마다 정해진 박에 맞춘다.)
+const BOX_GRID = SUB / 8;
+const bouncePhase = (s) => (((ROWS - 1) - s.y) * BOX_GRID) % SUB;    // 이 높이에서 튀는 박이 정박보다 얼마나 이른가(스텝)
 function tryBounce(L, s, ev) {
-  const late = (s.step + (onOffbeat(L, s) ? SUB / 2 : 0)) % SUB;
+  const late = (s.step + bouncePhase(s)) % SUB;
   if (late > BOUNCE_TOL) return;
   launch(s, tile(L, Math.floor(s.x), s.y - 1) === "J" ? "pad" : "bounce", ev, late);
 }
@@ -714,7 +732,7 @@ function stepState(L, s, press, ev, hold) {
   for (let r = r0; r <= r1 && !s.dead; r++) for (let c = c0; c <= c1 && !s.dead; c++) {
     const t = tile(L, c, r);
     if (t === ".") continue;
-    if (t === "#" || t === "B") {
+    if (t === "#") {
       let rt = r;
       while (isSolid(L, c, rt - 1)) rt--;                 // 그 블록 기둥의 꼭대기
       {                                                  // 파란 박스의 옆면: 죽지 않고 저절로 올라탄다(박스는 한 칸씩만 높아지게 놓는다)
