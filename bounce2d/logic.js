@@ -29,19 +29,20 @@ const STEP_UP = 0.22;
 // 공은 박자마다(0·1·2·3박) 저절로 튀고, 한 번 튀면 1박자 뒤 4칸 앞에 착지한다. 꼭대기는 0.5박, 높이 2.25칸.
 const PATTERNS = {
   idle:      { holds: [], presses: [] },
-  // 누르는 시각은 모두 1/8박 단위다(이 곡에서는 16분음표 하나). 누르는 순간이 곡의 소리와 겹치게 하려는 것.
+  // 누르는 시각은 모두 1/8박 단위다(곡의 음 단위). 누르는 순간이 곡의 소리와 겹치게 하려는 것.
+  // tol = 통로를 만들 때 봐주는 타이밍 오차(박). 곡이 빨라서(한 박 0.39초) 넓게 잡았다. 너무 넓히면 장애물이 그 입력을 요구하지 못하게 되므로 패턴마다 다르다.
   // 떨어지는 길에 낮게 멈춰 미끄러지기 → 착지 → 그냥 튀기
-  glideLow:  { holds: [[0.875, 1.75]], presses: [] },
+  glideLow:  { holds: [[0.875, 1.75]], presses: [], tol: 0.14 },
   // 꼭대기에서 멈춰 넘어가기를 두 번
-  glideHigh: { holds: [[0.5, 1.375], [2.5, 3.25]], presses: [] },
+  glideHigh: { holds: [[0.5, 1.375], [2.5, 3.25]], presses: [], tol: 0.18 },
   // 꼭대기에서 이단 점프로 높은 기둥 넘기를 두 번
-  peak:      { holds: [], presses: [0.5, 2.5] },
+  peak:      { holds: [], presses: [0.5, 2.5], tol: 0.18 },
   // 그림의 패턴: 올라가다 낮게 멈춤 → 놓고 솟아오름 → 이단 점프로 기둥 넘기 → 내려오다 중간 높이에서 멈춰 틈 지나가기
-  weave:     { holds: [[0.125, 0.5], [1.875, 2.5]], presses: [0.875] },
+  weave:     { holds: [[0.125, 0.5], [1.875, 2.5]], presses: [0.875], tol: 0.12 },
   // 이단 점프한 꼭대기에서 길게 멈춰 높은 곳으로 지나가기
-  skyGlide:  { holds: [[1.0, 1.875]], presses: [0.5] },
+  skyGlide:  { holds: [[1.0, 1.875]], presses: [0.5], tol: 0.18 },
   // 낮게 멈췄다가 놓자마자 이단 점프, 내려오다 한 번 더 멈춤
-  lowThenUp: { holds: [[0.875, 1.25], [2.125, 2.625]], presses: [1.375] },
+  lowThenUp: { holds: [[0.875, 1.25], [2.125, 2.625]], presses: [1.375], tol: 0.14 },
   // 이단 점프 → 굴러가다 땅에서 점프 → 공중에서 멈춤
   roller:    { holds: [[2.25, 3.0]], presses: [0.5, 1.75], mF: 0.1 },
   // ---- 피버 구간(rush). 원버튼(화면 어디든). 공이 바닥과 천장 사이를 비스듬히 튕기고, 누르는 즉시 위아래 방향이 뒤집힌다.
@@ -65,31 +66,38 @@ for (const p of Object.values(PATTERNS)) {
 }
 
 // 코스: "Octane Horizon" (Gemini로 만든 곡)에 맞춰 짰다.
-// 곡은 분당 152박(킥이 매 박)이고, 게임의 한 박은 곡의 두 박이다 → 공은 킥 두 번에 한 번 땅에 닿고, 그 사이 킥에 꼭대기에 있다.
-// 게임 한 마디(4박) = 곡 두 마디 = 약 3.16초. 곡은 32마디이고 33번째 마디 첫 박에 끝맺는 한 방이 있다.
-// 곡의 구간(게임 마디 기준): 0~7 조용한 도입 / 8~13 첫 큰 구간 / 14~19 가장 밝고 센 구간 / 20~21 쉬어 감 / 22~25 다시 쌓음 / 26~31 마지막 절정
+// 곡은 분당 152박(킥이 매 박)이고, 공은 매 박(킥)마다 땅에 닿는다. 한 번 튀는 데 0.39초.
+// (처음에는 두 박에 한 번 튀게 했는데 너무 느려서 바꿨다.)
+// 한 마디(4박) = 약 1.58초. 곡은 64마디이고 65번째 마디 첫 박에 끝맺는 한 방이 있다.
+// 곡의 구간(마디): 0~15 조용한 도입 / 16~27 첫 큰 구간 / 28~39 가장 밝고 센 구간 / 40~43 쉬어 감 / 44~51 다시 쌓음 / 52~63 마지막 절정
 const COURSE = {
   name: "Octane Horizon",
-  bpm: 152.0285 / 2,                             // 곡에서 잰 값(킥 256개를 직선에 맞춤). 템포 흔들림은 ±11ms 안쪽
+  bpm: 152.0285,                                 // 곡에서 잰 값(킥 256개를 직선에 맞춤). 구간별 어긋남은 ±12ms 안쪽
   track: { file: "music/octane_horizon.mp3", offset: 0.8689 },   // offset = 첫 박이 나오는 곡 속 시각(초)
   bars: [
-    "flat", "flat", "glideLow", "idle", "glideHigh", "peak", "glideLow", "cp",                 // 도입: 멈춤과 이단 점프를 하나씩 배운다
-    "glideHigh", "skyGlide", "weave", "idle", "lowThenUp", "cp",                               // 첫 큰 구간: 엮기 시작
-    "z1", "z2", "z3", "z4", "z5", "cp",                                                       // 가장 센 구간: 피버
-    "idle", "glideLow",                                                                         // 쉬어 감
-    "peak", "roller", "weave", "cp",                                                           // 다시 쌓음
-    "weave", "lowThenUp", "roller", "skyGlide", "weave", "roller",                             // 마지막 절정: 쉬는 마디 없이
-    "goal", "flat",
+    // 도입: 멈춤과 이단 점프를 하나씩, 사이사이 쉬는 마디
+    "flat", "flat", "glideLow", "idle", "glideLow", "idle", "glideHigh", "idle", "glideHigh", "idle", "peak", "idle", "peak", "idle", "glideLow", "cp",
+    // 첫 큰 구간: 엮기 시작
+    "glideHigh", "idle", "skyGlide", "idle", "weave", "idle", "skyGlide", "idle", "lowThenUp", "idle", "weave", "cp",
+    // 가장 센 구간: 피버
+    "z1", "z2", "z3", "z4", "z2", "z5", "z6", "z3", "z7", "z5", "z4", "cp",
+    // 쉬어 감
+    "idle", "glideLow", "idle", "glideHigh",
+    // 다시 쌓음
+    "peak", "idle", "roller", "idle", "weave", "idle", "lowThenUp", "cp",
+    // 마지막 절정: 두 마디씩 이어 붙이고 한 마디 쉰다
+    "weave", "lowThenUp", "idle", "roller", "skyGlide", "idle", "weave", "roller", "idle", "lowThenUp", "weave", "peak",
+    "goal", "flat", "flat",
   ],
   sections: [
-    { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 14, id: "rush" }, { bar: 20, id: "c" }, { bar: 22, id: "b" }, { bar: 26, id: "d" }, { bar: 32, id: "outro" },
+    { bar: 0, id: "intro" }, { bar: 16, id: "a" }, { bar: 28, id: "rush" }, { bar: 40, id: "c" }, { bar: 44, id: "b" }, { bar: 52, id: "d" }, { bar: 64, id: "outro" },
   ],
 };
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
 // 속도: 물리는 다른 구간과 똑같이 한 박에 4칸이고, 화면에서 이 구간의 가로를 RUSH_STRETCH배로 늘려 그린다 → 눈에는 2배로 달리지만 박자(음악)와는 그대로 맞는다.
 // 공은 늘리지 않으므로 이 구간에서 공의 판정 폭은 절반이다.
-const RUSH_STRETCH = 2.5;
+const RUSH_STRETCH = 1.5;
 const HALF_RUSH = HALF / RUSH_STRETCH;
 const SLOT = SUB / 2;                        // 피버의 한 칸 = 반 박
 const ZIG_TOP = 4.6;                         // 천장 높이(칸)
@@ -221,7 +229,7 @@ function buildLevel(course) {
 
   // 1) 통로
   for (const [b, p] of patternBars) {
-    const d = p.tol ?? 0.1;
+    const d = p.tol ?? course.tol ?? 0.1;
     p.presses.forEach((t, i) => { for (const k of [-d, d]) runBar(b, { presses: p.presses.map((v, j) => (j === i ? v + k : v)), holds: p.holds }, 4, sweep); });
     p.holds.forEach((h, i) => { for (const k of [-d, d]) for (const e of [0, 1]) runBar(b, { presses: p.presses, holds: p.holds.map((v, j) => (j === i ? (e ? [v[0], v[1] + k] : [v[0] + k, v[1]]) : v)) }, 4, sweep); });
   }

@@ -178,7 +178,8 @@ ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 12), '
   // 패턴 마디가 끝나면 다음 마디 첫 박에 땅에서 튀어야 한다(패턴끼리 어떤 순서로 이어 붙여도 되게)
   const bounceSteps = new Set(full.ev.filter(e => e.type === 'bounce' || e.type === 'pad').map(e => e.step));
   const bad = [];
-  Lg.COURSE.bars.forEach((name, b) => { if (b > 0 && b < Lg.COURSE.bars.length - 1 && !(Lg.PATTERNS[name] && Lg.PATTERNS[name].mode === 'rush') && ![0, 1, 2].some(d => bounceSteps.has(4 * b * Lg.SUB + d))) bad.push(b + ' ' + name); });
+  const goalBar = Lg.COURSE.bars.indexOf('goal');
+  Lg.COURSE.bars.forEach((name, b) => { if (b > 0 && b <= goalBar && !(Lg.PATTERNS[name] && Lg.PATTERNS[name].mode === 'rush') && ![0, 1, 2].some(d => bounceSteps.has(4 * b * Lg.SUB + d))) bad.push(b + ' ' + name); });
   ok(bad.length === 0, '피버 구간을 뺀 모든 마디가 첫 박에 땅에서 튀며 시작한다(피버 구간이 끝난 다음 마디도)' + (bad.length ? ' — 어긋난 마디: ' + bad.join(', ') : ''));
 }
 for (const o of [{ grid: 12 }, { grid: 12, offset: 6 }]) {
