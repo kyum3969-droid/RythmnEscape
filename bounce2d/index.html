@@ -114,7 +114,7 @@
 </head>
 <body>
 <div id="app">
-  <canvas id="view" aria-label="게임 화면. 왼쪽을 누르고 있으면 공중에서 멈춤, 오른쪽을 누르면 대시"></canvas>
+  <canvas id="view" aria-label="게임 화면. 왼쪽을 누르고 있으면 공중에서 멈춤, 오른쪽을 누르면 점프(공중에서는 이단 점프)"></canvas>
 
   <div id="hud">
     <div id="bar"><div id="barFill"></div></div>
@@ -128,7 +128,7 @@
     </div>
   </div>
   <div class="zone" id="zoneL"><b>II</b><span>누르고 있기 = 멈춤</span></div>
-  <div class="zone" id="zoneR"><b>»</b><span>누르기 = 대시</span></div>
+  <div class="zone" id="zoneR"><b>▲</b><span>누르기 = 점프 · 공중에선 이단 점프</span></div>
   <div id="toast"></div>
 
   <div class="layer" id="overlay">
@@ -322,7 +322,7 @@
     if (!A.ctx || fake.on) return;
     const t = A.ctx.currentTime + 0.005, m = A.master;
     if (kind === "jump") osc(m, t, "triangle", 520, 0.07, 0.07, { slide: 780 });
-    else if (kind === "dash") { noise(m, t, 0.16, 0.22, "bandpass", 2600, 0.8); osc(m, t, "sawtooth", 300, 0.14, 0.06, { slide: 1200, lp: 3000 }); }
+    else if (kind === "double") { osc(m, t, "triangle", 660, 0.1, 0.1, { slide: 1320 }); noise(m, t, 0.07, 0.1, "highpass", 4000); }
     else if (kind === "break") { noise(m, t, 0.12, 0.3, "highpass", 5000); osc(m, t, "triangle", 1800, 0.08, 0.08, { slide: 900 }); }
     else if (kind === "die") { osc(m, t, "sawtooth", 220, 0.35, 0.2, { slide: 50, lp: 1200 }); noise(m, t, 0.2, 0.3, "lowpass", 1200); }
     else if (kind === "pad") osc(m, t, "triangle", 300, 0.2, 0.12, { slide: 1300 });
@@ -423,7 +423,7 @@
 
   function advanceTo(targetStep) {
     while (phase === "running" && state.step < targetStep) {
-      const press = pressQueued || (bot && bot.dash.has(state.step + 1));
+      const press = pressQueued || (bot && bot.press.has(state.step + 1));
       pressQueued = false;
       ev.length = 0;
       stepState(L, state, press, ev, holding() || (bot && bot.hold.has(state.step + 1)));
@@ -442,7 +442,7 @@
       else if (e.type === "unfreeze") muffle(false);
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
       else if (e.type === "land") { fx.landAt = now; fx.ringChain = 0; puff(state.x, state.y, 4, 0.4); }
-      else if (e.type === "dash") { fx.dashAt = now; fx.shake = 0.16; sfx("dash"); }
+      else if (e.type === "double") { fx.jumpAt = now; sfx("double"); ring(state.x, state.y); }
       else if (e.type === "break") {
         if (!broken.has(e.c + "," + e.r)) {          // 닿은 순간 그 벽 전체가 깨진다
           for (let r = 0; r < ROWS; r++) if (tile(L, e.c, r) === "D") { broken.add(e.c + "," + r); burst(e.c + 0.5, r + 0.5, 6, "accent", 10, true); }
@@ -468,6 +468,9 @@
   // ---------------------------------------------------------------- 입자
   function puff(x, y, n, speed) {
     for (let i = 0; i < n; i++) fx.particles.push({ x, y, vx: (Math.random() - 0.7) * 3 * speed, vy: -Math.random() * 2.5 * speed, life: 0.35, max: 0.35, size: 0.09, color: "white", g: 6 });
+  }
+  function ring(x, y) {            // 이단 점프: 발밑에 퍼지는 고리
+    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; fx.particles.push({ x, y, vx: Math.cos(a) * 3.2, vy: Math.sin(a) * 1.1, life: 0.28, max: 0.28, size: 0.1, color: "white", g: 0 }); }
   }
   function burst(x, y, n, color, speed, shard) {
     for (let i = 0; i < n; i++) {
@@ -796,11 +799,9 @@
         ctx.beginPath(); ctx.arc(0, 0, T * 0.2, 0.3, 2.2); ctx.stroke();
       }
       ctx.restore();
-      if (state.dashAvail && !state.onGround && !dashing) {     // 대시 가능 표시: 앞쪽의 작은 »
-        ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
-        ctx.beginPath();
-        for (const o of [0.78, 0.92]) { ctx.moveTo(cx + T * o, cy - T * 0.12); ctx.lineTo(cx + T * (o + 0.1), cy); ctx.lineTo(cx + T * o, cy + T * 0.12); }
-        ctx.stroke();
+      if (state.djAvail && !state.onGround) {                   // 이단 점프가 남아 있으면 공 위에 작은 ▲
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.beginPath(); ctx.moveTo(cx - T * 0.12, cy - T * 0.58); ctx.lineTo(cx, cy - T * 0.76); ctx.lineTo(cx + T * 0.12, cy - T * 0.58); ctx.closePath(); ctx.fill();
       }
     }
     ctx.restore();
@@ -811,9 +812,9 @@
   }
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
-    fz1: "왼쪽 누르고 있기 = 공중에서 멈춤", over: "이런 가시는 그냥 넘어가요", fz2: "넓은 가시밭은 꼭대기에서 길게 멈추기",
-    col2: "가시 기둥은 높은 곳에서 멈춰 넘기", gate: "틈은 그냥 튀면 지나가요", up: "계단은 저절로 올라가요",
-    long: "오른쪽 누르기 = 대시! 멈춤에 이어 쓰기", ringchain: "고리를 지나면 대시 충전!", colpair: "멈춘 높이 그대로 대시",
+    fz1: "왼쪽 누르고 있기 = 공중에서 멈춤", over: "이런 가시는 그냥 넘어가요", fz3: "굴러갈 때 오른쪽을 누르면 바로 점프", fz2: "넓은 가시밭은 꼭대기에서 길게 멈추기",
+    col2: "가시 기둥은 높은 곳에서 멈춰 넘기", col3: "오른쪽 누르기 = 공중에서 한 번 더 점프!", gate: "틈은 그냥 튀면 지나가요", up: "계단은 저절로 올라가요",
+    long: "멈춤과 이단 점프를 이어 쓰기", ringchain: "고리를 지나면 점프 충전!", colpair: "멈춰서 넘고, 바로 한 번 더 점프",
   };
   const HINTS = [];
   for (const [name, text] of Object.entries(HINT_TEXT)) { const b = COURSE.bars.indexOf(name); if (b >= 0) HINTS.push([b * 16 + 2.5, text]); }
@@ -872,7 +873,7 @@
   }
   function showTitle() {
     phase = "title";
-    showOverlay('PULSE <span>BOUNCE</span>', "공은 박자마다 저절로 튀어요\n왼쪽 누르고 있기 = 공중에서 멈춤\n오른쪽 누르기 = 대시", best > 0 ? `최고 기록 ${best}%` : COURSE.name, [["시작", startFresh, true]]);
+    showOverlay('PULSE <span>BOUNCE</span>', "공은 박자마다 저절로 튀어요\n왼쪽 누르고 있기 = 공중에서 멈춤\n오른쪽 누르기 = 점프 (공중에서는 이단 점프)", best > 0 ? `최고 기록 ${best}%` : COURSE.name, [["시작", startFresh, true]]);
   }
   function showWin() {
     showOverlay('<span>CLEAR!</span>', `${tries}번 만에 완주했어요.`, devRun ? "개발자 모드로 건너뛴 판이라 기록에는 남기지 않아요." : "", [["처음부터 다시", startFresh, true]]);
@@ -885,7 +886,7 @@
     showOverlay("PAUSE", `계속하면 ${from}부터 다시 달려요.`, `진행 ${progress()}% · 시도 ${tries}`, [["계속하기", () => begin(state.cp), true], ["처음부터", startFresh]]);
   }
 
-  // ---------------------------------------------------------------- 입력: 왼쪽 누르고 있기 = 멈춤, 오른쪽 누르기 = 대시
+  // ---------------------------------------------------------------- 입력: 왼쪽 누르고 있기 = 멈춤, 오른쪽 누르기 = 점프(공중에서는 이단 점프)
   function press() {
     if (phase === "running") pressQueued = true;
     else if (phase === "dead" && performance.now() / 1000 - deadAt > 0.15) respawn();   // 기다리지 않고 바로 재도전
@@ -908,7 +909,7 @@
   const release = (e) => { if (holdPointers.delete(e.pointerId)) setZones(); };
   canvas.addEventListener("pointerup", release);
   canvas.addEventListener("pointercancel", release);
-  const HOLD_KEYS = new Set(["ArrowLeft", "a", "A", "Shift"]), DASH_KEYS = new Set(["ArrowRight", "d", "D", " "]);
+  const HOLD_KEYS = new Set(["ArrowLeft", "a", "A", "Shift"]), DASH_KEYS = new Set(["ArrowRight", "ArrowUp", "d", "D", "w", "W", " "]);
   window.addEventListener("keydown", (e) => {
     if (e.repeat) { if (HOLD_KEYS.has(e.key) || DASH_KEYS.has(e.key)) e.preventDefault(); return; }
     if (HOLD_KEYS.has(e.key)) { e.preventDefault(); if (phase === "dead") press(); else { keyHold = true; setZones(); } }

@@ -5,8 +5,8 @@ let fails = 0;
 const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') + msg); if (!c) fails++; };
 const barOf = (x) => Math.floor(x / 16);
 function run(lv, plan, from = -1) {
-  const s = Lg.spawnState(lv, from), inp = plan ? Lg.planInput(plan) : { dash: new Set(), hold: new Set() }, ev = [];
-  while (!s.dead && !s.won) { Lg.stepState(lv, s, inp.dash.has(s.step + 1), ev, inp.hold.has(s.step + 1)); for (const e of ev) if (e.step === undefined) e.step = s.step; }
+  const s = Lg.spawnState(lv, from), inp = plan ? Lg.planInput(plan) : { press: new Set(), hold: new Set() }, ev = [];
+  while (!s.dead && !s.won) { Lg.stepState(lv, s, inp.press.has(s.step + 1), ev, inp.hold.has(s.step + 1)); for (const e of ev) if (e.step === undefined) e.step = s.step; }
   return { s, ev };
 }
 const flat = Lg.buildLevel({ name: 't', bpm: 128, bars: ['flat', 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
@@ -36,20 +36,56 @@ console.log('== 기본 동작 ==');
   for (let i = 0; i < 10; i++) Lg.stepState(flat, a, false, null, false);
   Lg.stepState(flat, a, false, null, true);
   ok(a.frozen && a.freeze === Lg.FREEZE_STEPS - 31, '멈춤: 한 번 튀는 동안 남은 만큼은 나눠 쓸 수 있다');
-  // 멈춘 채로 대시
+}
+
+console.log('== 점프 / 이단 점프 ==');
+{
+  const H = (st) => 9 - st.y;
+  // 공중에서 누르면 이단 점프: 꼭대기에서 한 번 더 → 높이 약 4.5칸
   const d = Lg.spawnState(flat, -1), ev = [];
   while (d.step < 49) Lg.stepState(flat, d, false, null, false);
-  for (let i = 0; i < 10; i++) Lg.stepState(flat, d, false, null, true);
-  Lg.stepState(flat, d, true, ev, true);
-  ok(d.dashing > 0 && !d.frozen && ev.some(e => e.type === 'dash'), '멈춘 채로 대시를 누르면 대시가 나간다');
-  // 땅에서는 아무 일도 없음
-  const g = Lg.spawnState(flat, -1);                 // 대시 후에는 박자가 어긋나 착지 → 다음 박자까지 굴러간다
+  Lg.stepState(flat, d, true, ev, false);
+  let maxH = 0; const x0 = d.x;
+  while (!d.onGround) { Lg.stepState(flat, d, false, ev, false); maxH = Math.max(maxH, H(d)); if (ev.some(e => e.type === 'land')) break; }
+  ok(ev.some(e => e.type === 'double') && maxH > 4.3 && maxH < 4.6, `공중에서 누르면 이단 점프 (꼭대기에서 쓰면 높이 ${maxH.toFixed(2)}칸)`);
+  ok(d.x - x0 > 4.5 && d.x - x0 < 5.2, `이단 점프 뒤 ${(d.x - x0).toFixed(1)}칸을 더 날아 착지한다`);
+  // 한 번 튈 때마다 한 번만
+  const o = Lg.spawnState(flat, -1), ev2 = [];
+  while (o.step < 30) Lg.stepState(flat, o, false, null, false);
+  Lg.stepState(flat, o, true, ev2, false);
+  for (let i = 0; i < 40; i++) Lg.stepState(flat, o, false, ev2, false);
+  Lg.stepState(flat, o, true, ev2, false);
+  for (let i = 0; i < 40; i++) Lg.stepState(flat, o, false, ev2, false);
+  ok(ev2.filter(e => e.type === 'double').length === 1, '이단 점프는 한 번 튈 때마다 한 번만');
+  // 이단 점프 뒤에는 박자가 어긋나 착지 → 굴러간다. 굴러가는 중에 누르면 그 자리에서 점프
+  const g = Lg.spawnState(flat, -1), ev3 = [];
   while (g.step < 49) Lg.stepState(flat, g, false, null, false);
   Lg.stepState(flat, g, true, null, false);
   while (!g.onGround) Lg.stepState(flat, g, false, null, false);
-  const rollY = g.y;
-  for (let i = 0; i < 5; i++) Lg.stepState(flat, g, true, null, true);
-  ok(g.onGround && !g.frozen && g.dashing === 0 && g.y === rollY, '굴러가는 동안(땅)에는 입력이 듣지 않는다');
+  for (let i = 0; i < 5; i++) Lg.stepState(flat, g, false, ev3, true);
+  ok(g.onGround && !g.frozen && g.step % Lg.SUB > 12, '박자와 어긋나게 착지하면 굴러간다(멈춤은 땅에서 듣지 않음)');
+  Lg.stepState(flat, g, true, ev3, false);
+  ok(!g.onGround && ev3.some(e => e.type === 'jump') && g.djAvail, '굴러가는 중에 누르면 그 자리에서 점프하고, 이단 점프도 다시 쓸 수 있다');
+  let mh = 0; while (!g.onGround) { Lg.stepState(flat, g, false, null, false); mh = Math.max(mh, H(g)); }
+  ok(mh > 2.1 && mh < 2.3, `눌러서 뛴 점프도 높이는 같다 (${mh.toFixed(2)}칸)`);
+  // 착지 직전에 눌러 두면(이단 점프를 이미 쓴 뒤) 착지하자마자 점프
+  const b = Lg.spawnState(flat, -1), ev4 = [];
+  while (b.step < 49) Lg.stepState(flat, b, false, null, false);
+  Lg.stepState(flat, b, true, null, false);
+  while (9 - b.y > 0.35 || b.vy < 0) Lg.stepState(flat, b, false, null, false);
+  Lg.stepState(flat, b, true, ev4, false);
+  for (let i = 0; i < 25; i++) Lg.stepState(flat, b, false, ev4, false);
+  ok(ev4.some(e => e.type === 'land') && ev4.some(e => e.type === 'jump'), '착지 직전에 누르면 착지하자마자 점프한다');
+  // 멈춘 채로 점프를 누르면 손을 떼는 순간 솟는다
+  const f = Lg.spawnState(flat, -1);
+  while (f.step < 49) Lg.stepState(flat, f, false, null, false);
+  for (let i = 0; i < 10; i++) Lg.stepState(flat, f, false, null, true);
+  const fh = H(f);
+  Lg.stepState(flat, f, true, null, true);
+  for (let i = 0; i < 5; i++) Lg.stepState(flat, f, false, null, true);
+  const still = Math.abs(H(f) - fh) < 1e-9;
+  for (let i = 0; i < 20; i++) Lg.stepState(flat, f, false, null, false);
+  ok(still && H(f) > fh + 0.5, '멈춘 채로 점프를 누르면, 손을 떼는 순간 위로 솟는다');
 }
 
 console.log('== 코스 ==');
@@ -63,16 +99,26 @@ for (const o of [{ grid: 12 }, { grid: 12, offset: 6 }, { grid: 8, offset: 3 }])
 }
 const full = run(L, sol);
 const n = (t) => full.ev.filter(e => e.type === t).length;
-ok(full.s.won, `풀이를 그대로 재생하면 완주 (대시 ${n('dash')}번, 멈춤 ${n('freeze')}번, 고리 ${n('ring')}번, 점프대 ${n('pad')}번)`);
+ok(full.s.won, `풀이를 그대로 재생하면 완주 (이단 점프 ${n('double')}번, 땅에서 점프 ${n('jump')}번, 멈춤 ${n('freeze')}번, 고리 ${n('ring')}번, 점프대 ${n('pad')}번)`);
 ok(n('checkpoint') === L.cps.length && L.cps.length === 4, '체크포인트 4개를 모두 지난다');
 ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 12), '코스 내내 박자에 맞춰 튄다(늦어도 1/8박 이내, 늦은 만큼 낮게 튀어 다음 박자에 맞춤)');
 L.cps.forEach((cp, i) => ok(!!Lg.solve(L, Lg.spawnState(L, i), { grid: 12 }).plan, `체크포인트 ${i + 1}에서 다시 시작해도 완주 가능`));
 {
   const nf = Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noFreeze: true });
   ok(!nf.plan, `멈춤 없이는 못 깬다 (마디 ${barOf(nf.best)} ${Lg.COURSE.bars[barOf(nf.best)]}에서 막힘)`);
-  const nd = Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noDash: true });
-  ok(!nd.plan, `대시 없이는 못 깬다 (마디 ${barOf(nd.best)} ${Lg.COURSE.bars[barOf(nd.best)]}에서 막힘)`);
+  const nd = Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noJump: true });
+  ok(!nd.plan && barOf(nd.best) === 10, `점프 없이는 못 깬다 (마디 ${barOf(nd.best)} ${Lg.COURSE.bars[barOf(nd.best)]}에서 막힘)`);
+  ok(!!Lg.solve(L, Lg.spawnState(L, -1), { grid: 12, noGroundJump: true }).plan, '땅에서 누르는 점프는 실수를 만회하는 수단: 그것 없이도 깰 수 있다');
 }
+console.log('== 중간지점에 떨어졌을 때 ==');
+{
+  // fz1: 가시가 7~8번 칸. 그 앞 점프(0→4)에서 멈춤을 써 버리면 4~7 사이에 떨어져 가시 쪽으로 굴러간다.
+  const lv = Lg.buildLevel({ name: 't', bpm: 96, bars: ['flat', 'fz1', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const sim = (jumpAtX) => { const s = Lg.spawnState(lv, -1); let pressed = false; while (!s.dead && !s.won && s.x < 16 + 14) { const hold = s.x >= 16 + 1.5 && s.x < 16 + 3.2; const press = !pressed && s.onGround && s.x >= 16 + jumpAtX; if (press) pressed = true; Lg.stepState(lv, s, press, null, hold); } return s; };
+  ok(sim(99).cause === 'spike', '가시 앞 중간지점에 떨어져 그대로 두면 가시로 굴러 들어간다');
+  ok(!sim(5.8).dead, '굴러가다가 가시 앞에서 점프를 누르면 뛰어넘는다');
+}
+
 console.log('== 수직 함정 / 계단 ==');
 {
   const mk = (bars) => Lg.buildLevel({ name: 't', bpm: 96, bars, sections: [{ bar: 0, id: 'a' }] });

@@ -21,7 +21,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   const expect = 1.4 / (60 / await G(() => window.__game.bpm)) * 96;
   ok(st.phase === 'running' && st.step > expect * 0.7 && st.step < expect * 1.2 && await G(() => window.__game.bpm) === 96, `기본 속도 96 BPM, 1.5초 뒤 약 ${Math.round(expect)}스텝 진행 (실제 ${st.step})`);
 
-  console.log('== 왼쪽 누르고 있기 = 멈춤, 오른쪽 누르기 = 대시 (실제 포인터) ==');
+  console.log('== 왼쪽 누르고 있기 = 멈춤, 오른쪽 누르기 = 점프 (실제 포인터) ==');
   await G(() => { const g = window.__game; g.pause(); g.fake.on = true; g.startFresh(); });
   await tick(4.5);                                          // 두 번째 박자에서 튄 뒤 꼭대기
   const h0 = await G(() => 9 - window.__game.state.y);
@@ -38,14 +38,23 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   await tick(4.4);
   await p.mouse.click(700, 200);
   await tick(4.5);
-  st = await G(() => ({ d: window.__game.state.dashing, lead: window.__game.state.lead }));
-  ok(st.d > 0 && st.lead > 0, '오른쪽을 누르면 대시');
+  st = await G(() => ({ dj: window.__game.state.djAvail, vy: window.__game.state.vy, g: window.__game.state.onGround }));
+  ok(!st.dj && st.vy < -5 && !st.g, '공중에서 오른쪽을 누르면 이단 점프 (다시 위로 솟음, 한 번만)');
+  await p.waitForTimeout(60); await p.screenshot({ path: out + 'double.png' });
+  // 이단 점프 뒤 박자와 어긋나게 착지 → 굴러가는 중에 오른쪽을 누르면 그 자리에서 점프
+  let bt = 4.5; while (!(await G(() => window.__game.state.onGround)) && bt < 8) { bt += 0.05; await tick(bt); }
+  const rollX = await G(() => window.__game.state.x);
+  await tick(bt + 0.05);
+  ok(await G(() => window.__game.state.onGround), `박자와 어긋나게 착지하면 굴러간다 (x=${rollX.toFixed(1)})`);
+  await p.mouse.click(700, 200); await tick(bt + 0.1);
+  st = await G(() => ({ g: window.__game.state.onGround, vy: window.__game.state.vy, dj: window.__game.state.djAvail }));
+  ok(!st.g && st.vy < 0 && st.dj, '굴러가는 중에 오른쪽을 누르면 그 자리에서 점프');
   await G(() => window.__game.startFresh());
   await tick(4.5);
   await p.keyboard.down('ArrowLeft'); await tick(4.7);
   const kf = await G(() => window.__game.state.frozen);
   await p.keyboard.up('ArrowLeft'); await p.keyboard.press('ArrowRight'); await tick(4.75);
-  ok(kf && await G(() => window.__game.state.dashing) > 0, '키보드: ← 누르고 있기 = 멈춤, → = 대시');
+  ok(kf && await G(() => !window.__game.state.djAvail && window.__game.state.vy < 0), '키보드: ← 누르고 있기 = 멈춤, → = 점프');
 
   console.log('== 속도 단계 ==');
   await G(() => window.__game.pause()); await p.waitForTimeout(80);
@@ -71,7 +80,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
 
   console.log('== 자동 풀이로 끝까지 ==');
   await G(() => { const g = window.__game; g.setBot(solve(g.L, spawnState(g.L, -1), { grid: 12 }).plan); g.startFresh(); });
-  const shots = { 10: 'a_fz1', 25.5: 'a_col2', 29.5: 'a_fz2', 41.5: 'b_gate', 50.5: 'b_up', 54.5: 'b_hi', 62: 'b_down', 66.5: 'b_padcol', 73.5: 'c_long', 81.5: 'c_colpair', 110: 'e_hicol' };
+  const shots = { 10: 'a_fz1', 25.5: 'a_col2', 41.75: 'b_col3', 50.5: 'b_up', 54.5: 'b_hi', 66.5: 'b_padcol', 73.5: 'c_long', 78: 'c_ring', 81.5: 'c_colpair' };
   for (let beat = 0; beat <= 172; beat += 0.25) {
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
