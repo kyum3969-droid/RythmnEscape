@@ -5,11 +5,13 @@
 ## 구성
 | 위치 | 내용 |
 |---|---|
-| `bounce2d/` | **비교용 두 번째 프로토타입.** 공이 박자마다 저절로 튀고, 왼쪽 누르고 있기 = 멈춤, 오른쪽 누르기 = 점프(공중에서는 이단 점프). [bounce2d/README.md](bounce2d/README.md) |
-| `runner2d/` | **현재 방향.** 음악에 맞춰 설계한 2D 횡스크롤 코스(점프 + 공중 대시) 프로토타입. [runner2d/README.md](runner2d/README.md) |
+| `bounce2d/` | **현재 방향.** 공이 박자마다 저절로 튀고, 왼쪽 누르고 있기 = 멈춤, 오른쪽 누르기 = 점프(공중에서는 이단 점프). 코스는 키 패턴을 먼저 적고 장애물을 만들어 낸다. [DESIGN.md](DESIGN.md) · [bounce2d/README.md](bounce2d/README.md) |
+| `runner2d/` | 이전 프로토타입. 누르면 점프, 공중에서 대시. [runner2d/README.md](runner2d/README.md) |
 | `web3d/` | **3D 웹 프로토타입** (Three.js). 휴대폰 브라우저에서 바로 해보며 다듬는 곳. [web3d/README.md](web3d/README.md) |
 | `godot/` | **Godot 4 3D 버전** (모바일 출시 목표). web3d에서 확정된 것을 옮김. [godot/README.md](godot/README.md) |
 | `index.html` | 첫 2D 웹 프로토타입(단일 파일) |
+
+게임 디자인(정한 것과 이유)은 [DESIGN.md](DESIGN.md)에 있습니다.
 
 `web3d/`, `godot/`, `index.html`은 이전 컨셉(리듬 턴제 탈출)의 프로토타입입니다. Godot 이식은 웹에서 방향이 확정된 뒤에 합니다.
 
