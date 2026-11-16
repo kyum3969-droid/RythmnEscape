@@ -103,14 +103,14 @@ console.log('== 장애물 판정 ==');
   ok(!run(lv, null).s.dead, '매달린 덩어리: 그 밑으로 지나가면 산다');
 }
 
-console.log('== 언덕 모드 ==');
+console.log('== 질주 모드 ==');
 {
   const H = (st) => 9 - st.y;
   Lg.PATTERNS.tFlat = { mode: 'ride', terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [] };
   Lg.PATTERNS.tUp = { mode: 'ride', terrain: [0, 0, 0.6, 1.4, 2.0, 1.2, 0.4, 0], holds: [], presses: [] };
   const mk = (...bars) => Lg.buildLevel({ name: 't', bpm: 96, bars: ['flat', ...bars, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
-  // 그냥 타기: 언덕을 따라가고, 꼭대기를 넘으면 저절로 뜬다. 저절로 튀지는 않는다.
-  let lv = mk('rRoll');
+  // 그냥 타기: 땅을 따라가고, 도약대 끝에서 저절로 뜬다. 저절로 튀지는 않는다.
+  let lv = mk('rRamp');
   let s = Lg.spawnState(lv, -1), ev = [], off = 0, modes = [];
   while (!s.dead && !s.won && s.x < 16 * 3 + 2) {
     const e2 = []; Lg.stepState(lv, s, false, e2, false);
@@ -119,10 +119,10 @@ console.log('== 언덕 모드 ==');
   }
   const inside = (e) => e.x >= 16 && e.x < 32;
   ok(!s.dead && off < 1e-6, '땅에 있을 때는 언덕 높이를 그대로 따라간다');
-  ok(ev.filter(e => inside(e) && e.type === 'lift').length >= 2 && ev.filter(e => inside(e) && e.type === 'land').length >= 2, '언덕 꼭대기를 넘으면 저절로 떴다가 내리막에 내려앉는다');
-  ok(!ev.some(e => inside(e) && e.type === 'bounce'), '언덕 구간에서는 저절로 튀지 않는다');
+  ok(ev.filter(e => inside(e) && e.type === 'lift').length === 1 && ev.filter(e => inside(e) && e.type === 'land').length === 1, '도약대 끝에서 저절로 떴다가 내려앉는다');
+  ok(!ev.some(e => inside(e) && e.type === 'bounce'), '질주 구간에서는 저절로 튀지 않는다');
   ok(modes.join(' ') === 'ride@1.00 bounce@2.00' && ev.some(e => e.type === 'bounce' && Math.abs(e.x - 32) < 0.1), `관문: ${modes.join(', ')} — 나오자마자 첫 박에 다시 튄다`);
-  // 점프: 평지에서 높이 약 2.25칸, 1.6박
+  // 점프: 평지에서 높이 약 2.25칸, 1.4박
   lv = mk('tFlat', 'tFlat');
   const jumpRun = (level, pressBeat, holdFrom, holdTo, until) => {
     const st = Lg.spawnState(level, -1), e2 = []; let maxH = 0, landAt = null, hAt = {}, h0 = 0, top = 0;
@@ -139,7 +139,7 @@ console.log('== 언덕 모드 ==');
     return { maxH, landAt, hAt, st, rise: top - h0 };
   };
   let r = jumpRun(lv, 5, 99, 99, 10);
-  ok(r.maxH > 2.15 && r.maxH < 2.35 && Math.abs(r.landAt - 6.6) < 0.05, `점프: 높이 ${r.maxH.toFixed(2)}칸, ${(r.landAt - 5).toFixed(2)}박 동안 뜬다`);
+  ok(r.maxH > 2.15 && r.maxH < 2.35 && Math.abs(r.landAt - 6.42) < 0.05, `점프: 높이 ${r.maxH.toFixed(2)}칸, ${(r.landAt - 5).toFixed(2)}박 동안 뜬다`);
   // 활공: 꼭대기(5.8박)부터 누르고 있으면 거의 수평으로 간다. 최대 2박.
   const g = jumpRun(lv, 5, 5.8, 99, 10);
   ok(g.hAt[6.5] > r.hAt[6.5] + 1 && g.hAt[7] > 1.2, `활공: 1.2박 뒤에도 높이 ${g.hAt[7].toFixed(2)}칸 (안 누르면 이미 착지)`);
@@ -156,6 +156,11 @@ console.log('== 언덕 모드 ==');
   Lg.stepState(lv, d, true, e3, false);
   for (let i = 0; i < 30; i++) Lg.stepState(lv, d, i === 10, e3, false);
   ok(e3.filter(e => e.type === 'double').length === 1 && d.vy < 0, '공중에서 누르면 이단 점프, 한 번만');
+  // 화면에서 가로를 2배로 늘려 그리므로 공의 판정 폭은 절반: 덩어리 앞 0.06칸(화면으로 0.12칸)까지 다가가야 닿는다
+  lv = mk('tFlat'); lv.floorH[24] = 1;
+  const w = Lg.spawnState(lv, -1);
+  while (!w.dead && !w.won) Lg.stepState(lv, w, false, null, false);
+  ok(w.dead && w.mode === 'ride' && Math.abs(w.x - 23.95) < 0.03 && Lg.RIDE_STRETCH === 2, `질주 구간의 판정 폭은 절반 (덩어리 왼쪽 끝 24.0, 닿은 순간 공 중심 ${w.x.toFixed(2)})`);
   delete Lg.PATTERNS.tFlat; delete Lg.PATTERNS.tUp;
 }
 
@@ -173,7 +178,7 @@ ok(full.ev.filter(e => e.type === 'bounce').every(e => e.step % Lg.SUB <= 12), '
   const bounceSteps = new Set(full.ev.filter(e => e.type === 'bounce' || e.type === 'pad').map(e => e.step));
   const bad = [];
   Lg.COURSE.bars.forEach((name, b) => { if (b > 0 && b < Lg.COURSE.bars.length - 1 && !(Lg.PATTERNS[name] && Lg.PATTERNS[name].mode === 'ride') && ![0, 1, 2].some(d => bounceSteps.has(4 * b * Lg.SUB + d))) bad.push(b + ' ' + name); });
-  ok(bad.length === 0, '언덕 구간을 뺀 모든 마디가 첫 박에 땅에서 튀며 시작한다(언덕 구간이 끝난 다음 마디도)' + (bad.length ? ' — 어긋난 마디: ' + bad.join(', ') : ''));
+  ok(bad.length === 0, '질주 구간을 뺀 모든 마디가 첫 박에 땅에서 튀며 시작한다(질주 구간이 끝난 다음 마디도)' + (bad.length ? ' — 어긋난 마디: ' + bad.join(', ') : ''));
 }
 for (const o of [{ grid: 12 }, { grid: 12, offset: 6 }]) {
   const r = Lg.solve(L, Lg.spawnState(L, -1), o);
@@ -202,7 +207,7 @@ for (const name of Object.keys(Lg.PATTERNS)) {
   if (!m.ok) { ok(false, `${name}: 패턴대로 눌러도 죽는다`); continue; }
   const f = (v) => (v >= 600 ? '600+' : v.toFixed(0));
   const width = Math.min(...m.inputs.map(i => i.early + i.late));
-  ok(m.min >= 60 && width >= 170, `${name}: 입력 여유 ${m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join(', ')}ms`);
+  ok(pat.mode === 'ride' ? m.min >= 100 : m.min >= 60 && width >= 170, `${name}: 입력 여유 ${m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join(', ')}ms`);
   ok(m.idleDies && m.needed.every(Boolean), `${name}: 안 누르면 죽고, 입력을 하나라도 빼먹으면 죽는다`);
 }
 console.log('실패 ' + fails + '건');

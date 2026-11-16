@@ -338,6 +338,7 @@
     if (!A.ctx || fake.on) return;
     const t = A.ctx.currentTime + 0.005, m = A.master;
     if (kind === "jump") osc(m, t, "triangle", 520, 0.07, 0.07, { slide: 780 });
+    else if (kind === "shard") osc(m, t, "triangle", 660 * Math.pow(2, fx.shardChain / 12), 0.07, 0.07);
     else if (kind === "double") { osc(m, t, "triangle", 660, 0.1, 0.1, { slide: 1320 }); noise(m, t, 0.07, 0.1, "highpass", 4000); }
     else if (kind === "break") { noise(m, t, 0.12, 0.3, "highpass", 5000); osc(m, t, "triangle", 1800, 0.08, 0.08, { slide: 900 }); }
     else if (kind === "die") { osc(m, t, "sawtooth", 220, 0.35, 0.2, { slide: 50, lp: 1200 }); noise(m, t, 0.2, 0.3, "lowpass", 1200); }
@@ -405,14 +406,18 @@
   const holding = () => holdPointers.size > 0 || keyHold;
   const broken = new Set();       // 화면에서 지울 깨진 대시벽
   const usedRings = new Set();    // 이미 지나간 충전 고리(칸 번호)
+  const gotShards = new Set();    // 이번 판에 부순 빛 조각
+  let shardPtr = 0;
   const ev = [];
-  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0 };
+  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, ringChain: 0, shardChain: 0 };
 
   function begin(cp) {
     applySpeed();
     state = spawnState(L, cp);
     broken.clear(); usedRings.clear();
     fx.tail.length = 0; fx.particles.length = 0;
+    gotShards.clear(); fx.shardChain = 0;
+    shardPtr = 0; while (shardPtr < L.shards.length && L.shards[shardPtr].x <= state.x) shardPtr++;
     pressQueued = false;
     phase = "running";
     $("overlay").hidden = true;
@@ -511,6 +516,14 @@
       ev.length = 0;
       stepState(L, state, press, ev, holding() || (bot && bot.hold.has(state.step + 1)));
       if (ev.length) handleEvents();
+      while (shardPtr < L.shards.length && L.shards[shardPtr].x <= state.x + 0.05) {
+        const sh = L.shards[shardPtr];
+        if (state.x - sh.x < 0.3 && Math.abs((ROWS - 1 - state.y + HALF) - sh.h) < 0.75 && phase === "running") {
+          gotShards.add(shardPtr); fx.shardChain = Math.min(14, fx.shardChain + 1); sfx("shard");
+          burst(sh.x, ROWS - 1 - sh.h, 3, "accent", 5, true);
+        } else fx.shardChain = 0;
+        shardPtr++;
+      }
     }
   }
 
@@ -524,7 +537,7 @@
       else if (e.type === "freeze") { sfx("freeze"); muffle(true); }
       else if (e.type === "unfreeze") muffle(false);
       else if (e.type === "climb") puff(state.x, state.y, 4, 0.5);
-      else if (e.type === "mode") { setModeLabel(); toast(e.mode === "ride" ? "RIDE" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; }
+      else if (e.type === "mode") { setModeLabel(); toast(e.mode === "ride" ? "RUSH" : "BOUNCE"); sfx("mode"); fx.cpFlash = now; }
       else if (e.type === "land") { fx.landAt = now; fx.ringChain = 0; puff(state.x, state.y, 4, 0.4); }
       else if (e.type === "double") { fx.jumpAt = now; sfx("double"); ring(state.x, state.y); }
       else if (e.type === "break") {
@@ -578,13 +591,32 @@
     view.px = w * (w > h ? 0.24 : 0.2);                       // 플레이어 기준 화면 x
   }
   const hash = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+  // 질주 구간은 가로를 RIDE_STRETCH배로 늘려 그린다(같은 박자에 더 먼 거리 = 빠르게 보인다). 관문 앞뒤 1.5칸에서 서서히 바뀐다.
+  // STRETCH[i] = 세계 x가 i/8칸일 때의 "늘린 x"
+  const STRETCH = (() => {
+    const n = L.cols * 8 + 9, S = new Float32Array(n);
+    let acc = 0;
+    for (let i = 0; i < n; i++) {
+      S[i] = acc;
+      const x = (i + 0.5) / 8;
+      let k = 1;
+      for (const r of L.rides) if (x >= r[0] && x < r[1]) k = 1 + (RIDE_STRETCH - 1) * Math.min(1, (x - r[0]) / 1.5, (r[1] - x) / 1.5);
+      acc += k / 8;
+    }
+    return S;
+  })();
+  const sAt = (x) => { if (x <= 0) return x; const f = x * 8, i = Math.min(STRETCH.length - 2, Math.floor(f)); return STRETCH[i] + (STRETCH[i + 1] - STRETCH[i]) * (f - i); };
 
   function draw(beat, now) {
-    const { w, h, T } = view;
+    const { w, h } = view, BT = view.T;
     const pal = paletteAt(beat);
     const pulse = phase === "running" || phase === "won" ? Math.pow(1 - (beat - Math.floor(beat)), 3) : 0;
     const camX = TPB * beat;                                   // 음악과 함께 흐르는 카메라
-    const sx = (wx) => view.px + (wx - camX) * T;
+    let round = 0;                                             // 0 = 기본 구간, 1 = 질주 구간(둥근 세계, 화면이 조금 물러난다)
+    for (const r of L.rides) round = Math.max(round, Math.min(1, (camX - r[0] + 3) / 3, (r[1] + 1 - camX) / 3));
+    round = Math.max(0, round);
+    const T = BT * (1 - 0.2 * round), camS = sAt(camX);
+    const sx = (wx) => view.px + (sAt(wx) - camS) * T;
     const sy = (wy) => view.groundY + (wy - (ROWS - 1)) * T;
 
     ctx.save();
@@ -607,16 +639,13 @@
     }
 
     // 먼 풍경 (2겹, 박자에 맞춰 들썩임): 평소엔 이퀄라이저 막대, 언덕 구간에서는 둥근 능선으로 바뀐다
-    let round = 0;                                             // 0 = 각진 세계, 1 = 둥근 세계
-    for (const r of L.rides) round = Math.max(round, Math.min(1, (camX - r[0] + 5) / 5, (r[1] + 1 - camX) / 5));
-    round = Math.max(0, round);
-    for (const [layer, bw, par, dark, amp] of [[1, T * 1.7, 0.18, 0.45, 3.6], [2, T * 1.0, 0.42, 0.68, 2.4]]) {
+    for (const [layer, bw, par, dark, amp] of [[1, BT * 1.7, 0.18, 0.45, 3.6], [2, BT * 1.0, 0.42, 0.68, 2.4]]) {
       ctx.fillStyle = css(mix(pal.bottom, [0, 0, 0], dark));
-      const off = camX * T * par, i0 = Math.floor(off / bw);
+      const off = camS * BT * par, i0 = Math.floor(off / bw);
       if (round < 1) {
         ctx.globalAlpha = 1 - round;
         for (let i = i0; i * bw - off < w + bw; i++) {
-          const hh = (0.6 + amp * hash(i, layer)) * T * (1 + 0.22 * pulse * hash(i, layer + 9));
+          const hh = (0.6 + amp * hash(i, layer)) * BT * (1 + 0.22 * pulse * hash(i, layer + 9));
           ctx.fillRect(i * bw - off, view.groundY - hh, bw - 3, hh + h);
         }
       }
@@ -624,8 +653,8 @@
         ctx.globalAlpha = round;
         ctx.beginPath(); ctx.moveTo(-20, h + 20);
         for (let x = -20; x <= w + 20; x += 10) {
-          const u = (x + off) / T;
-          const hh = (0.9 + amp * 0.5 * (1 + 0.6 * Math.sin(u * 0.33 + layer * 2.1) + 0.4 * Math.sin(u * 0.71 + layer))) * T * (1 + 0.05 * pulse);
+          const u = (x + off) / BT;
+          const hh = (0.9 + amp * 0.5 * (1 + 0.6 * Math.sin(u * 0.33 + layer * 2.1) + 0.4 * Math.sin(u * 0.71 + layer))) * BT * (1 + 0.05 * pulse);
           ctx.lineTo(x, view.groundY - hh);
         }
         ctx.lineTo(w + 20, h + 20); ctx.closePath(); ctx.fill();
@@ -633,21 +662,32 @@
       ctx.globalAlpha = 1;
     }
 
+    // 질주 구간: 스쳐 지나가는 빛줄
+    if (round > 0) {
+      ctx.lineCap = "round"; ctx.lineWidth = 2;
+      for (let i = 0; i < 16; i++) {
+        const len = BT * (1.5 + 3 * hash(i, 3)), u = (beat * (0.9 + 1.3 * hash(i, 4)) + hash(i, 5)) % 1;
+        const x = w + len - u * (w + 2 * len), y = view.groundY * (0.06 + 0.9 * hash(i, 6));
+        ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.5), round * (0.1 + 0.25 * hash(i, 7)));
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - len, y); ctx.stroke();
+      }
+    }
+
     // 지형
     const cA = Math.floor(camX - view.px / T) - 1, cB = Math.ceil(camX + (w - view.px) / T) + 1;
     ctx.fillStyle = SIL;
     for (let c = cA; c <= cB; c++) for (let r = 0; r < ROWS; r++) {
       if (tile(L, c, r) !== "#") continue;
-      ctx.fillRect(sx(c) - 0.5, sy(r) - 0.5, T + 1, r === ROWS - 1 ? h : T + 1);
+      ctx.fillRect(sx(c) - 0.5, sy(r) - 0.5, sx(c + 1) - sx(c) + 1, r === ROWS - 1 ? h : T + 1);
     }
     ctx.beginPath();
     for (let c = cA; c <= cB; c++) for (let r = 0; r < ROWS; r++) {
       if (tile(L, c, r) !== "#") continue;
-      const x = sx(c), y = sy(r), yb = r === ROWS - 1 ? h + 20 : y + T;
-      if (tile(L, c, r - 1) !== "#" && !(r === ROWS - 1 && inRide(L, c + 0.5))) { ctx.moveTo(x, y); ctx.lineTo(x + T, y); }
+      const x = sx(c), xr = sx(c + 1), y = sy(r), yb = r === ROWS - 1 ? h + 20 : y + T;
+      if (tile(L, c, r - 1) !== "#" && !(r === ROWS - 1 && inRide(L, c + 0.5))) { ctx.moveTo(x, y); ctx.lineTo(xr, y); }
       if (tile(L, c - 1, r) !== "#") { ctx.moveTo(x, y); ctx.lineTo(x, yb); }
-      if (tile(L, c + 1, r) !== "#") { ctx.moveTo(x + T, y); ctx.lineTo(x + T, yb); }
-      if (r < ROWS - 1 && tile(L, c, r + 1) !== "#") { ctx.moveTo(x, y + T); ctx.lineTo(x + T, y + T); }
+      if (tile(L, c + 1, r) !== "#") { ctx.moveTo(xr, y); ctx.lineTo(xr, yb); }
+      if (r < ROWS - 1 && tile(L, c, r + 1) !== "#") { ctx.moveTo(x, y + T); ctx.lineTo(xr, y + T); }
     }
     ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5;
     ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 8 + 10 * pulse;
@@ -742,7 +782,7 @@
       ctx.lineTo(sx(xb), view.groundY);
       ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5; ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 8 + 10 * pulse; ctx.stroke();
       // 관문: 구간이 바뀌는 자리의 빛 커튼
-      for (const [gx, label] of [[r[0], "RIDE"], [r[1], "BOUNCE"]]) {
+      for (const [gx, label] of [[r[0], "RUSH"], [r[1], "BOUNCE"]]) {
         if (gx < cA || gx > cB) continue;
         const x = sx(gx), gw = T * 0.9;
         const gg = ctx.createLinearGradient(x - gw, 0, x + gw, 0);
@@ -753,6 +793,18 @@
         ctx.fillText(label, x, view.groundY - T * 5.4);
       }
       ctx.shadowBlur = 0;
+    }
+    // 빛 조각: 질주 구간의 길잡이. 지나가며 부수면 소리가 난다.
+    if (L.shards.length) {
+      ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 10; ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.6));
+      ctx.beginPath();
+      for (let i = 0; i < L.shards.length; i++) {
+        const sh = L.shards[i];
+        if (sh.x < cA || sh.x > cB || gotShards.has(i)) continue;
+        const x = sx(sh.x), y = sy(ROWS - 1 - sh.h), q = T * (0.11 + 0.03 * pulse);
+        ctx.moveTo(x, y - q * 1.5); ctx.lineTo(x + q, y); ctx.lineTo(x, y + q * 1.5); ctx.lineTo(x - q, y); ctx.closePath();
+      }
+      ctx.fill(); ctx.shadowBlur = 0;
     }
     if (dev && REF_PATH) {                                         // 개발자 모드: 패턴대로 눌렀을 때의 길(멈춘 구간은 굵게)
       ctx.shadowBlur = 0;
@@ -929,7 +981,7 @@
       const R = T * HALF;
       if (state.frozen) {
         // 멈춘 동안: 공 색 자체가 바뀐다. 남은 멈춤 시간만큼 아래부터 밝게 차 있고, 줄어들수록 어두워진다.
-        const left = state.freeze / FREEZE_STEPS;
+        const left = state.freeze / (state.mode === "ride" ? GLIDE_STEPS : FREEZE_STEPS);
         ctx.shadowColor = css(pal.sun); ctx.shadowBlur = 26;
         ctx.fillStyle = css(mix(pal.sun, [8, 8, 20], 0.74));
         ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
@@ -967,7 +1019,7 @@
   // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
   const HINT_TEXT = {
     glideLow: "왼쪽 누르고 있기 = 공중에서 멈춤", glideHigh: "꼭대기에서 멈춰서 건너가기", peak: "오른쪽 누르기 = 공중에서 한 번 더 점프!",
-    rHop: "언덕 구간: 저절로 안 튀어요. 오른쪽 = 점프", rCrest: "왼쪽 누르고 있기 = 활공", rLeap: "공중에서 한 번 더 점프", rWeave: "점프 → 활공 → 이단 점프",
+    rHop: "질주 구간: 저절로 안 튀어요. 오른쪽 = 점프", rSoar: "왼쪽 누르고 있기 = 활공", rLeap: "공중에서 한 번 더!", rGlide: "뛰고 나서 활공",
     weave: "멈춤 → 이단 점프 → 멈춤", skyGlide: "이단 점프 꼭대기에서 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
   };
   const HINTS = [];
@@ -1109,6 +1161,7 @@
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
     press, startFresh, respawn, pause, view, devJump, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
+    get shards() { return { got: gotShards.size, passed: shardPtr, total: L.shards.length }; },
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },
     loadTrackPCM(samples, sr, name) { const b = new AudioBuffer({ length: samples.length, sampleRate: sr, numberOfChannels: 1 }); b.copyToChannel(samples, 0); return setTrackBuffer(b, name, null).ok; },
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },

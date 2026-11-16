@@ -43,12 +43,13 @@ const PATTERNS = {
   lowThenUp: { holds: [[0.88, 1.3], [2.1, 2.6]], presses: [1.32] },
   // 굴러가다 땅에서 점프 → 공중에서 멈춤
   roller:    { holds: [[2.25, 2.95]], presses: [0.5, 1.75], mF: 0.1 },
-  // ---- 언덕 모드. terrain = 반 박마다의 언덕 높이 8개(첫 값 0, 마디 끝에서 다시 0으로 내려온다)
-  rHop:      { mode: "ride", terrain: [0, 0.3, 0.7, 0.6, 0.3, 0, 0, 0], holds: [], presses: [1.5] },
-  rCrest:    { mode: "ride", terrain: [0, 0, 0.8, 1.8, 0.6, 0, 0, 0], holds: [[1.7, 2.9]], presses: [] },
-  rRoll:     { mode: "ride", terrain: [0, 0.5, 1.3, 0.7, 0.2, 0.9, 0.5, 0.1], holds: [], presses: [] },
-  rLeap:     { mode: "ride", terrain: [0, 0.2, 0.5, 0.3, 0, 0, 0, 0], holds: [], presses: [0.75, 1.6] },
-  rWeave:    { mode: "ride", terrain: [0, 0, 0.3, 0.6, 0.3, 0, 0, 0], holds: [[1.2, 1.85]], presses: [0.5, 1.9] },
+  // ---- 질주 모드. terrain = 반 박마다의 땅 높이 8개(첫 값 0, 마디 끝에서 다시 0). 입력은 박에 맞춰 큼직하게, 여유(tol)는 넓게.
+  rHop:      { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [1.0], tol: 0.18 },
+  rHop2:     { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [0.5, 2.25], tol: 0.18 },
+  rRamp:     { mode: "ride", terrain: [0, 0.1, 0.5, 1.2, 2.0, 0, 0, 0], holds: [], presses: [], tol: 0.18 },
+  rSoar:     { mode: "ride", terrain: [0, 0.1, 0.5, 1.2, 2.0, 0, 0, 0], holds: [[2.25, 3.4]], presses: [], tol: 0.18 },
+  rLeap:     { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [], presses: [0.5, 1.25], tol: 0.18 },
+  rGlide:    { mode: "ride", terrain: [0, 0, 0, 0, 0, 0, 0, 0], holds: [[1.25, 2.75]], presses: [0.5], tol: 0.18 },
 };
 
 const COURSE = {
@@ -58,7 +59,7 @@ const COURSE = {
     "glideLow", "idle", "glideHigh", "idle", "glideLow", "glideHigh", "peak", "cp",
     "weave", "idle", "weave", "skyGlide", "idle", "lowThenUp", "weave", "cp",
     "roller", "peak", "lowThenUp", "idle", "skyGlide", "weave", "roller", "cp",
-    "rHop", "rCrest", "rRoll", "rLeap", "rCrest", "rWeave", "rLeap", "cp",          // 언덕 모드(곡의 조용한 구간)
+    "rHop", "rHop2", "rRamp", "rSoar", "rLeap", "rGlide", "rHop2", "cp",            // 질주 모드
     "roller", "weave", "lowThenUp", "peak", "glideLow", "skyGlide", "weave", "goal",
     "flat",
   ],
@@ -67,9 +68,13 @@ const COURSE = {
   ],
 };
 
-// ---- 언덕 모드(ride): 둥근 언덕을 타고 흐른다. 저절로 튀지 않고, 앞으로 가는 속도는 그대로(박자에 묶임).
-const G_RIDE = 7;                 // 중력이 약해서 오래 뜬다(칸/박²)
-const V_RIDE = 5.6;               // 점프 속도: 평지에서 높이 약 2.25칸(기본 모드와 같다), 1.6박 동안 뜬다
+// ---- 질주 모드(ride): 빠르게 달리며 크게 뛰는 구간. 저절로 튀지 않는다.
+// 속도: 물리는 다른 구간과 똑같이 한 박에 4칸이고, 화면에서 이 구간의 가로를 RIDE_STRETCH배로 늘려 그린다
+// → 눈에는 2배로 달리고 장애물도 2배로 길어지지만, 박자(음악)와는 그대로 맞는다. 공은 늘리지 않으므로 판정 폭을 절반으로 쓴다.
+const RIDE_STRETCH = 2;
+const HALF_RIDE = HALF / RIDE_STRETCH;
+const G_RIDE = 9;                 // 중력은 기본 모드의 절반(칸/박²)
+const V_RIDE = 6.4;               // 점프 속도: 평지에서 높이 약 2.25칸(기본 모드와 같다), 1.4박 = 화면으로 11칸 넘게 난다
 const RIDE_UPHILL = 0.4;          // 오르막에서 뛰면 올라가던 속도의 이만큼이 더해진다
 const GLIDE_STEPS = 2 * SUB;      // 활공은 한 번 뜰 때마다 최대 2박
 const GLIDE_FALL = 0.35;          // 활공: 내려가는 속도가 한 박에 약 0.6칸으로 잦아든다(거의 수평). 올라가는 동안에는 영향 없음
@@ -127,9 +132,10 @@ function traceRun(L, plan) {
 
 // 공이 닿은 패턴 장애물: { c, kind: "floor" | "ceil" }. 없으면 null. (판정은 그림보다 조금 작다)
 function hazardAt(L, s) {
-  const c0 = Math.floor(s.x - HALF + 0.03), c1 = Math.floor(s.x + HALF - 0.03), fh = (ROWS - 1) - s.y;
+  const half = s.mode === "ride" ? HALF_RIDE : HALF, grace = half * 0.2;
+  const c0 = Math.floor(s.x - half + 0.03), c1 = Math.floor(s.x + half - 0.03), fh = (ROWS - 1) - s.y;
   for (let c = c0; c <= c1; c++) {
-    if (c < 0 || c >= L.cols || !(s.x + HALF - 0.08 > c + 0.1 && s.x - HALF + 0.08 < c + 0.9)) continue;
+    if (c < 0 || c >= L.cols || !(s.x + half - grace > c + 0.1 && s.x - half + grace < c + 0.9)) continue;
     if (fh + 0.06 < L.floorH[c]) return { c, kind: "floor" };
     if (fh + SIZE - 0.06 > L.ceilH[c]) return { c, kind: "ceil" };
   }
@@ -151,8 +157,8 @@ function buildLevel(course) {
   const env = [];                                      // 칸마다 통로: 공 바닥 높이의 범위와 땅에 닿는지
   for (let c = 0; c < L.cols; c++) env.push({ lo: 99, hi: -99, ground: false });
   const sweep = (s) => {
-    const h = (ROWS - 1) - s.y;
-    for (let c = Math.max(0, Math.ceil(s.x - 1.4 + 1e-9)); c <= Math.floor(s.x + 0.4 - 1e-9) && c < L.cols; c++) {
+    const h = (ROWS - 1) - s.y, half = s.mode === "ride" ? HALF_RIDE : HALF;
+    for (let c = Math.max(0, Math.ceil(s.x - 1 - half + 1e-9)); c <= Math.floor(s.x + half - 1e-9) && c < L.cols; c++) {
       const k = env[c];
       if (s.onGround) k.ground = true;
       if (h < k.lo) k.lo = h;
@@ -166,6 +172,13 @@ function buildLevel(course) {
       if (s.step % BAR === 0) snaps[s.step / BAR] = { ...s };
       stepState(L, s, base.press.has(s.step + 1), null, base.hold.has(s.step + 1));
       sweep(s);
+    } }
+  // 질주 구간: 패턴대로 달린 길 위에 반의 반 박마다 빛 조각을 놓는다(길잡이 겸 손맛. 판정에는 영향 없음)
+  L.shards = [];
+  { const s = spawnState(L, -1);
+    while (!s.dead && !s.won) {
+      stepState(L, s, base.press.has(s.step + 1), null, base.hold.has(s.step + 1));
+      if (s.mode === "ride" && s.step % (SUB / 4) === 0) L.shards.push({ x: s.x, h: (ROWS - 1) - s.y + HALF, air: !s.onGround });
     } }
   // b번 마디의 입력만 acts로 바꿔서 달린다(다른 마디는 패턴대로)
   const runBar = (b, acts, extraBeats, onStep) => {
@@ -502,4 +515,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, terrainAt, terrainTop, inRide, GLIDE_STEPS, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, coursePlan, hazardAt, terrainAt, terrainTop, inRide, GLIDE_STEPS, RIDE_STRETCH, traceRun, drawBar, buildLevel, spawnState, stepState, solve, planInput, groundY, tile, sawY };
