@@ -229,7 +229,7 @@ L.cps.forEach((cp, i) => ok(!!Lg.solve(L, Lg.spawnState(L, i), { grid: 12 }).pla
 console.log('== 라운드마다 ==');
 for (const C of Lg.COURSES) {
   const lv = Lg.buildLevel(C), tag = C.name.split(' · ')[0];
-  const stairs = C.bars.some((n) => Lg.PATTERNS[n] && Lg.PATTERNS[n].stair);      // 계단의 라운드(8라운드). (climb은 카메라를 따라 올리는 것일 뿐: 9라운드도 켠다)
+  const stairs = C.bars.filter((n) => Lg.PATTERNS[n] && Lg.PATTERNS[n].stair).length > C.bars.length / 2;      // 계단의 라운드(8라운드: 바운스가 전부 계단). 다른 라운드는 음이 올라가는 구간에만 계단이 있다
   const full = run(lv, lv.ref);
   ok(full.s.won && lv.fixed.length === 0, `[${tag}] ${C.name}: ${lv.bars}마디, 체크포인트 ${lv.cps.length}개(마디 ${lv.cps.map(c => c.bar).join(', ')}), 피버 ${lv.rides.map(r => `${r[0] / 16}~${r[1] / 16 - 1}`).join(' / ')} — 패턴대로 완주`);
   if (lv.movers.length) {
@@ -345,7 +345,7 @@ for (const C of Lg.COURSES) {
   ok(hard.length === 0, `[${tag}] 어려운 엮기 동작은 쓰지 않는다`);
     {
       // 바운스 구간의 파란 박스(쉬는 마디): 밟고 튄다. 박자가 밀리지 않고, 뭘 눌러도 그 마디 안에서는 죽지 않는다.
-      const bars3 = Lg.COURSES.find(c => c.name === lv.name).bars, allBox = bars3.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].boxes ? b : -1)).filter(b => b >= 0), boxBars = allBox.filter(b => !Lg.PATTERNS[bars3[b]].lava && !Lg.PATTERNS[bars3[b]].tall), lavaBars = allBox.filter(b => Lg.PATTERNS[bars3[b]].lava);
+      const bars3 = Lg.COURSES.find(c => c.name === lv.name).bars, allBox = bars3.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].boxes && !Lg.PATTERNS[n].stair ? b : -1)).filter(b => b >= 0), boxBars = allBox.filter(b => !Lg.PATTERNS[bars3[b]].lava && !Lg.PATTERNS[bars3[b]].tall), lavaBars = allBox.filter(b => Lg.PATTERNS[bars3[b]].lava);
       const s3 = Lg.spawnState(lv, -1), inp3 = Lg.planInput(lv.ref), bounceAt = {}, snap = {};
       let lands = 0; const landBars = new Set();
       while (!s3.dead && !s3.won) {
@@ -530,11 +530,23 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
     const L = Lg.buildLevel(C), inp = Lg.planInput(L.ref), s = Lg.spawnState(L, -1); let all = 0, fr = 0;
     while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.mode !== 'bounce') continue; const n = C.bars[Math.floor(s.x / 16)], p = Lg.PATTERNS[n]; if (!p || p.mode === 'rush' || n === 'flat' || n === 'goal') continue; all++; if (s.frozen) fr++; }
     share.push(fr / all);
-    lenTraps.push(C.bars.filter((n) => { const p = Lg.PATTERNS[n]; return p && p.mode !== 'rush' && (p.traps || []).some((t) => t.full && t.full.holds.length === p.holds.length && JSON.stringify(t.full.presses) === JSON.stringify(p.presses) && t.full.holds.some((h, i) => h[0] === p.holds[i][0] && h[1] !== p.holds[i][1])); }).length);
+    lenTraps.push(C.bars.filter((n) => { const p = Lg.PATTERNS[n]; return p && p.mode !== 'rush' && (p.traps || []).some((t) => { const hs = t.full ? t.full.holds : p.stair && !t.presses ? t.holds : null; return hs && hs.length === p.holds.length && (!t.full || JSON.stringify(t.full.presses) === JSON.stringify(p.presses)) && hs.some((h, i) => h[0] === p.holds[i][0] && h[1] !== p.holds[i][1]); }); }).length);      // (계단의 멈춤 길이 함정도 센다)
   }
   const pct = share.map((v) => Math.round(v * 100));
   ok(pct[0] <= 15 && pct.slice(1).every((v) => v >= 18) && pct.slice(2).every((v) => v >= 20) && Math.max(...pct.slice(4)) >= 25, `멈춰 있는 시간(바운스 구간): ${pct.map((v, i) => `${i + 1}라운드 ${v}%`).join(', ')} — 1라운드는 그대로, 2라운드부터 늘어난다`);
-  ok(lenTraps.slice(1, 7).every((v) => v >= 2) && lenTraps.slice(1).reduce((u, v) => u + v, 0) >= 20, `멈춤 길이의 함정(앞 마디와 똑같이 가다가 놓는 순간만 다르다): ${lenTraps.map((v, i) => `${i + 1}라운드 ${v}`).join(', ')}`);
+  ok(lenTraps.slice(1, 7).every((v) => v >= 2) && lenTraps.slice(1).reduce((u, v) => u + v, 0) >= 20, `멈춤 길이의 함정(앞 마디와 똑같이 가다가 놓는 순간만 다르다. 계단의 것 포함): ${lenTraps.map((v, i) => `${i + 1}라운드 ${v}`).join(', ')}`);
+  // 음이 올라가는 구간의 계단(곡에서 잰 자리): 오르는 계단(4칸 넘게 올라간다), 곡에서 같은 오르막이 다시 나오는 자리에는 멈춤 길이가 다른 계단. 카메라가 따라 올라간다
+  const RISE = { 2: [37, 57], 3: [4, 55], 4: [12, 67], 5: [29, 61], 6: [8, 56], 7: [21, 69], 9: [19, 66] }, riseBad = [];
+  for (const [no, [a, z]] of Object.entries(RISE)) {
+    const C = Lg.COURSES[no - 1], P = (b) => Lg.PATTERNS[C.bars[b]], L = Lg.buildLevel(C);
+    if (![a, a + 1, z, z + 1].every((b) => P(b) && P(b).stair)) { riseBad.push(no + ': 계단 자리'); continue; }
+    const peak = Math.max(...[a, a + 1].flatMap((b) => [...(P(b).floats || []), ...(P(b).boxes || [])].map((f) => f[2])));
+    const lenTrap = [z, z + 1].some((b) => (P(b).traps || []).some((t) => t.holds && !t.presses && t.holds.length === P(b).holds.length && t.holds.some((h, i) => h[0] === P(b).holds[i][0] && h[1] !== P(b).holds[i][1])));
+    const s = Lg.spawnState(L, -1), inp = Lg.planInput(L.ref); let top = 0;
+    while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.x >= a * 16 && s.x < (a + 2) * 16 && s.onGround) top = Math.max(top, 9 - s.y); }
+    if (peak < 4 || top < 4 || !lenTrap || !C.climb) riseBad.push(`${no}: 높이 ${peak}/${top.toFixed(1)}, 멈춤 길이 함정 ${lenTrap}, 카메라 ${!!C.climb}`);
+  }
+  ok(riseBad.length === 0, `음이 올라가는 구간의 계단(2~7·9라운드, 마디 ${Object.entries(RISE).map(([n, v]) => n + '라운드 ' + v.join('·')).join(', ')}): 네 칸 넘게 딛고 올라가고, 같은 오르막이 다시 나오면 멈춤 길이가 다르다${riseBad.length ? ' — ' + riseBad.join(' / ') : ''}`);
   ok(['ROUND 5', 'ROUND 6', 'ROUND 7', 'ROUND 8', 'ROUND 9'].every((r) => Lg.COURSES.find((c) => c.name.startsWith(r)).bars.includes('airStep')) && !Lg.COURSES.slice(0, 4).some((c) => c.bars.includes('airStep')), '그림의 공중 사슬은 5라운드부터 나온다');
 }
 console.log('== 이후 라운드용으로 보관한 함정(매달린 덩어리 없이, 착지 자리의 빨간 바닥으로 죽는다) ==');
@@ -617,8 +629,9 @@ console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 
   // 떠 있는 빨간 박스: floatReds 코스에서는 매달린 덩어리가 하늘 끝까지 이어지지 않는다
   for (const C of Lg.COURSES) {
     const lvC = Lg.buildLevel(C), tag = C.name.split(' · ')[0];
-    let fr = 0, thin = 0, fb = 0; for (let c = 0; c < lvC.cols; c++) { if (lvC.ceilH[c] < 90 && lvC.ceilTop[c] < 90) { fr++; if (lvC.ceilTop[c] - lvC.ceilH[c] < 1 - 1e-9) thin++; } if (lvC.floorLo[c] > 0) fb++; }
-    let fl = 0; for (let rr = 0; rr < 8; rr++) for (let c = 0; c < lvC.cols; c++) if (lvC.grid[rr][c] === '#' && lvC.grid[rr + 1][c] !== '#') fl++;
+    const stairCol = (c) => { const p = Lg.PATTERNS[C.bars[Math.floor(c / 16)]]; return !!(p && p.stair); };      // (음이 올라가는 구간의 계단은 떠 있는 박스로 짓는다: 따로 센다)
+    let fr = 0, thin = 0, fb = 0; for (let c = 0; c < lvC.cols; c++) { if (!C.floatReds && stairCol(c)) continue; if (lvC.ceilH[c] < 90 && lvC.ceilTop[c] < 90) { fr++; if (lvC.ceilTop[c] - lvC.ceilH[c] < 1 - 1e-9) thin++; } if (lvC.floorLo[c] > 0) fb++; }
+    let fl = 0; for (let rr = 0; rr < 8; rr++) for (let c = 0; c < lvC.cols; c++) if (!(!C.floatReds && stairCol(c)) && lvC.grid[rr][c] === '#' && lvC.grid[rr + 1][c] !== '#') fl++;
     if (!C.floatReds) { ok(fr === 0 && fb === 0 && fl === 0, `[${tag}] 떠 있는 박스를 쓰지 않는 라운드: 빨간 덩어리는 전처럼 땅·하늘에 붙어 있다`); continue; }
     if (lvC.bands) fr += lvC.bands.size;      // 계단의 빨간 단과 뚜껑
     ok(fl >= 20 && fr >= 30 && thin === 0, `[${tag}] 떠 있는 파란 박스 ${fl}칸, 떠 있는 빨간 박스 ${fr}칸(두께 1칸 이상, 위쪽은 비어 있다)`);

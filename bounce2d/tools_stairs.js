@@ -13,14 +13,26 @@ const SLOTS = (hp) => (hp.how === 'a' || !hp.how ? 1 : 2);
 // 뜀의 줄 → 닿는 시각·자리, 입력, 빨간 단, 뚜껑, 함정(버릇대로 누른 달리기)
 function compile(hops) {
   let t = 0, lv = 0;
-  const steps = [], reds = [], presses = [], holds = [], lids = [], traps = [], air = [];
+  const steps = [], reds = [], presses = [], holds = [], lids = [], traps = [], air = [], pits = [];
   let off = null;                                               // 땅을 떠난 시각(빨간 바닥을 깔 구간)
   for (const hp of hops) {
     const b = hp.to, how = hp.how || 'a';
     if (lv === 0 && b > 0 && off === null) off = t;
     let land;
     if (how === 'j') { presses.push(t + 0.5); land = t + 1.0 + fall(lv + 4.5 - b); }
-    else if (how === 'h') { holds.push([t + 0.5, t + 1.5]); land = t + 1.5 + fall(lv + 2.25 - b); if (hp.swap) traps.push({ swap: [t + 0.5, t + 1.5], at: t }); }
+    else if (how === 'h') {
+      const hd = hp.hd ?? 1;                                    // 멈춤의 길이(박). 기본 1박, 멈춤의 라운드부터 1/2박도
+      holds.push([t + 0.5, t + 0.5 + hd]); land = t + 0.5 + hd + fall(lv + 2.25 - b);
+      if (hp.swap) traps.push({ swap: [t + 0.5, t + 0.5 + hd], at: t });
+      if (hp.habit !== undefined) {
+        // 멈춤 길이의 함정: 버릇(앞의 계단에서 멈추던 길이)대로 놓으면 내려앉을 자리가 빨갛다
+        //   더 길게(hd > habit): 버릇대로 일찍 놓으면 내려설 단 앞의 빨간 단에 / 더 짧게(hd < habit): 버릇대로 오래 멈추면 내려설 단 뒤의 빨간 단에
+        const landH = t + 0.5 + hp.habit + fall(lv + 2.25 - b);
+        if (hp.habit < hd) { const seg = [4 * landH - 0.9, 4 * land - 1.4]; if (seg[1] - seg[0] > 0.3) (b === 0 ? pits : reds).push({ lv: b, x0: seg[0], x1: seg[1], len: true }); }
+        else { const xr = 4 * (t + 0.5 + hd); lids.push({ lo: lv + 2.3, hi: lv + 3.05, x0: xr + 2.3, x1: xr + 4.3, inner: true, len: true }); }      // (짧게: 멈춘 높이에 빨간 덩어리. 일찍 놓은 공은 그 밑으로 떨어지고, 버릇대로 계속 멈춘 공은 부딪힌다)
+        traps.push({ hlen: [t + 0.5, t + 0.5 + hd, t + 0.5 + hp.habit], at: t });
+      }
+    }
     else land = t + 0.5 + fall(lv + 2.25 - b);
     if (hp.red !== undefined) {
       // 빨간 단: 저절로 뛰면 내려설 자리에 놓인다. 그 위에는 빨간 덩어리가 떠 있어서(5라운드의 빨간 돌과 같다) 이단 점프로는 못 넘는다 — 멈춘 공만 그 사이로 지나간다
@@ -38,7 +50,7 @@ function compile(hops) {
     if (b === 0 && off !== null) { air.push([4 * off + 1, 4 * land - 2.5]); off = null; }      // (내려설 땅 앞의 두 칸 반은 비워 둔다: 멈춤을 조금 일찍 놓아 일찍 닿아도 빨간 바닥이 아니게)
     t = tb; lv = b;
   }
-  return { steps, reds, lids, presses, holds, traps, air, end: t };
+  return { steps, reds, lids, presses, holds, traps, air, pits, end: t };
 }
 
 // 마디별 패턴으로 자른다. name(i) = i번째 마디의 패턴 이름
@@ -61,10 +73,12 @@ function slice(C, name) {
     for (const r of C.reds) { const c = cols(r.x0, r.x1); if (c) { if (r.lv <= 1) p.redBox.push([c[0], c[1], 1]); else p.bands.push([c[0], c[1], r.lv - 1, r.lv]); } }      // 한 칸 높이의 빨간 단은 땅에 선 빨간 박스
     for (const r of C.lids) { const c = r.inner ? cols(Math.ceil(r.x0 - 1e-9), r.x1 - 1) : cols(r.x0, r.x1); if (c) p.bands.push([c[0], c[1], r4(r.lo), r4(r.hi)]); }
     for (const [a, z] of C.air) { const c = cols(Math.max(a, x0), Math.min(z, x0 + 15.99)); if (c && z > x0 && a < x0 + 16) p.lava.push(c); }
+    for (const q of C.pits || []) { const c = cols(q.x0, q.x1); if (c) p.lava.push(c); }      // 땅에 내려설 때의 멈춤 길이 함정: 버릇대로 내려앉을 땅이 빨갛다
     const tr = [];
     for (const q of C.traps) {
       if (q.presses && q.presses.some(mine)) tr.push({ presses: q.presses.filter(mine).map((v) => r4(v - lo)) });
       if (q.holds && q.holds.some((h) => mine(h[0]))) tr.push({ holds: [...p.holds, ...q.holds.filter((h) => mine(h[0])).map((h) => [r4(h[0] - lo), r4(h[1] - lo)])] });
+      if (q.hlen && mine(q.hlen[0])) tr.push({ holds: p.holds.map((h) => (Math.abs(h[0] - (q.hlen[0] - lo)) < 1e-6 ? [h[0], r4(q.hlen[2] - lo)] : h)) });      // 버릇대로 멈춘 길이
       if (q.swap && mine(q.swap[0])) tr.push({ presses: [r4(q.swap[0] - lo)], holds: p.holds.filter((h) => Math.abs(h[0] - (q.swap[0] - lo)) > 1e-6) });      // 멈출 자리에서 버릇대로 뛴 달리기
     }
     if (tr.length) p.traps = tr;
@@ -108,6 +122,7 @@ function randomHill(slots, rng, opt = {}) {
       for (const q of good) { r -= q[1]; if (r <= 0) { hp = q[0]; break; } }
       if (hp.to < lv || (hp.to === lv && phase === 'up')) phase = hp.to < lv ? 'down' : 'top';
       plain = hp.how ? 0 : plain + 1;
+      if (hp.how === 'h' && opt.hds) hp = { ...hp, hd: pick(opt.hds) };      // 멈춤의 길이를 고른다(멈춤 길이 함정을 낼 수 있게)
       hops.push(hp); left -= SLOTS(hp); lv = hp.to;
       if (lv === 0 && left > 0) { ok = false; break; }
     }
@@ -137,6 +152,10 @@ function variant(hops, i, kind, rng) {
     nw = [{ to: a, trap: 'hold' }, { to: to2, how: 'h', red: red2 }];
   }
   else if (kind === 'swap' && hp.how === 'j' && lv + 2 <= 8) nw = [{ to: lv + 2, how: 'h', red: lv + 1, swap: true }];
+  //   'hlong'  멈춰서 건너뛰던 단에서 이번엔 더 오래 멈춘다(1/2박 → 1박): 내려설 단 앞에 빨간 단이 붙었다
+  //   'hshort' 이번엔 일찍 놓는다(1박 → 1/2박): 내려설 단 바로 뒤가 빨갛다
+  else if (kind === 'hlong' && hp.how === 'h' && (hp.hd ?? 1) <= 0.5) nw = [{ ...hp, hd: 1, habit: hp.hd ?? 1 }];
+  else if (kind === 'hshort' && hp.how === 'h' && (hp.hd ?? 1) >= 1 && hp.to <= lv - 1) nw = [{ ...hp, hd: 0.5, habit: hp.hd ?? 1 }];      // (내려가는 뜀에서만: 덩어리가 멈춘 높이에 있어도 내려선 공이 그 밑으로 튄다)
   if (!nw) return null;
   const head = [...pre, ...nw], last = head[head.length - 1].to;
   const used = head.reduce((u, h) => u + SLOTS(h), 0), total = hops.reduce((u, h) => u + SLOTS(h), 0), left = total - used;

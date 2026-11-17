@@ -20,6 +20,7 @@ const G = (g, sets) => ({ g, sets });
 const TEMPLATES = {
   R2: {
     prefix: 'g2', bpm: 151.9867,
+    rise: [{ at: 37, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 57, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 37~38, 57~58)
     sections: [
       ['도입: 앞에서 배운 동작을 섞어서. 끝에서 곡이 잠깐 빠지는 자리만 쉰다', ['flat', 'flat', G(1), G(1), G(1), G(1), 'box', 'cp']],
       ['첫 큰 구간(멈춤의 철학: 긴 멈춤과 가벼운 공중 사슬, 멈춤 길이의 함정이 처음 나온다)', [G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), G('a2')]],
@@ -72,6 +73,7 @@ function fillStretches(lens, R, seed) {
 // 3라운드: 버릇 묶음(2~6라운드)의 둘째. 앞 라운드의 "끝에서 뚝"에 더해 "끝에서 손 바꿈"과 "하나 더"를 소개한다
 TEMPLATES.R3 = {
   prefix: 'g3', bpm: 152.0183,
+  rise: [{ at: 4, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 55, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 4~5, 55~56)
   recipe: { g: 'a3', traps: 8, from: 1, kinds: { 'stop-last': 1, 'hand-last': 2, add: 2, 'short-last': 4, 'long-last': 3 }, reps: { 2: 7, 3: 3 }, intro: [{ stretch: 1, kind: 'hand-last' }, { stretch: 2, kind: 'add' }, { stretch: 3, kind: 'short-last' }], fill: { one: 6, pair: 2, set: 1.2, rest: 0.6 } },
   sections(seed) {
     const [s0, s1, s2, s3, s4, s5, s6, s7] = fillStretches([4, 7, 7, 7, 6, 7, 7, 7], this.recipe, seed);
@@ -96,6 +98,7 @@ TEMPLATES.R3 = {
 // 그 사이를 조건대로 뽑은 마디가 채운다(손 함정은 앞 라운드의 것을 복습: 끝에서 뚝, 끝에서 손 바꿈, 하나 더).
 TEMPLATES.R4 = {
   prefix: 'g4', bpm: 152.005, floatReds: true, vary: true, density: 0.95,
+  rise: [{ at: 12, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 67, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 12~13, 67~68)
   // g = 되풀이 → 함정 짜임에 쓰는 단계(높이 장치 없음), gf = 그 사이를 채우는 마디의 단계(높이 장치를 섞는다)
   recipe: { g: 'a4', gf: 'a4', traps: 7, from: 0, kinds: { 'stop-last': 1, 'hand-last': 1, 'short-last': 5, 'long-last': 4 },      // ("하나 더"는 되풀이하는 마디의 절반이 비게 돼서 뺐다)
     reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
@@ -120,7 +123,8 @@ TEMPLATES.R4 = {
 // 5라운드: 피버 위주. 피버의 짜임은 "새 마디 → 한 번 더 → 함정"이고, 함정은 뚝(누르던 자리에서 끊김)과 하나 더(안 누르던 자리에서 한 번 더) 두 가지다.
 // 통로의 굽이는 코스의 cam 표에 있다(logic.js의 ROUND5). 굽이가 걸리는 넓은 통로의 짜임(H와 그 뒤 마디)은 성기게 뽑는다(calm: 마디의 첫 박은 누르지 않는다, run: 반 박 간격으로 이어 누르기는 두 번까지) — 굽이를 볼 틈이 있어야 한다. 좁은 통로는 원래 한 박에 한 번까지라 그대로 둔다. 바운스 구간은 4라운드와 같은 조건(밀도 95%, 변주)에 새 함정 fJ3G를 넣는다.
 TEMPLATES.R5 = {
-  prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95, cpFill: true, cpLevel: 'a5',      // cpFill = 체크포인트 마디에도 패턴(개발하는 동안)
+  prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95, cpFill: true, cpLevel: 'a5',
+  rise: [{ at: 29, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 61, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 29~30, 61~62)      // cpFill = 체크포인트 마디에도 패턴(개발하는 동안)
   recipe: { g: 'a5', gf: 'a5', traps: 4, from: 0, kinds: { 'stop-last': 2, 'hand-last': 2, 'short-last': 3, 'long-last': 3, 'short-first': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
   sections(seed) {
     const [s1, s3, s4] = fillStretches([3, 5, 2], this.recipe, seed);
@@ -147,7 +151,8 @@ TEMPLATES.R5 = {
 // 피버는 곡의 절정 두 곳에만 둔다(남발하지 않는다): 얇은 굴이 있는 굽은 통로 / 왼쪽 위로 넘어가는 넓은 통로. 굽이는 코스의 cam 표에 있다(logic.js의 ROUND6).
 // 조여드는 통로는 없다(곡에 점점 세지는 자리가 없다). 징검다리는 구간의 끝(체크포인트 앞)이나 gAfter 앞에 둔다.
 TEMPLATES.R6 = {
-  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a6',      // fresh = 앞 라운드에 나온 피버 문제를 다시 내지 않는다
+  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a6',
+  rise: [{ at: 8, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 56, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 8~9, 56~57)      // fresh = 앞 라운드에 나온 피버 문제를 다시 내지 않는다
   recipe: { g: 'a6', gf: 'a6', traps: 9, from: 0, kinds: { 'stop-last': 2, 'hand-last': 3, 'short-last': 3, 'long-last': 3 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
   sections() {
     // 뽑을 마디의 자리를 손으로 정한다(무작위로 나누면 같은 함정이 연달아 나오거나, 한 마디만 세 번 되풀이하고 끝나는 구간이 생긴다).
@@ -184,6 +189,7 @@ TEMPLATES.R6 = {
 // 좁은 통로의 줄(19가지)은 바닥났지만, 튕김판이 있는 줄은 새것이라 좁은 통로에도 쓴다. 바운스에는 삼단 점프(충전 고리)와 미끼 고리를 넣었다.
 TEMPLATES.R7 = {
   prefix: 'g7', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
+  rise: [{ at: 21, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 69, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 21~22, 69~70)
   recipe: { g: 'a7', gf: 'a7', traps: 13, from: 0, kinds: { 'stop-last': 2, 'hand-last': 2, 'stop-first': 2, 'hand-first': 2, 'short-last': 2, 'long-last': 2, 'short-first': 2, 'long-first': 2 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
   sections() {
     //   one() 새 마디 하나 / phrase(함정, 되풀이 횟수) 새 마디를 그만큼 되풀이한 뒤 함정 / feint(횟수) 헛다리: 그만큼 되풀이하고 함정 없이 넘어간다
@@ -216,7 +222,8 @@ TEMPLATES.R7 = {
 // 계단 하나는 땅에서 시작해 땅에서 끝나고, 길이는 한 마디·두 마디·네 마디(큰 산: 여덟 칸 높이까지). 짜임은 7라운드와 같다(되풀이 → 함정, 헛다리, 한 번 보여 주고 함정).
 // 피버는 곡의 가장 센 절정 한 곳(40~46)에만 둔다. 마지막 절정은 큰 산을 넘어 결승선으로 간다.
 TEMPLATES.R8 = {
-  prefix: 'g8', bpm: 150.0, floatReds: true, fresh: true, density: 0.9, cpFill: true, cpStairs: true, holdW: 5,      // holdW: 멈춰서 건너뛰는 단을 5배 자주(공중에서 멈추는 시간을 늘린다)
+  prefix: 'g8', bpm: 150.0, floatReds: true, fresh: true, density: 0.9, cpFill: true, cpStairs: true, holdW: 5, hds: [0.5, 1],      // hds: 멈춰서 건너뛰는 단의 멈춤 길이(1/2박·1박) — 멈춤 길이 함정을 낼 수 있게
+       // holdW: 멈춰서 건너뛰는 단을 5배 자주(공중에서 멈추는 시간을 늘린다)
   recipe: { traps: 8, intro: [] },
   sections() {
     const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
@@ -227,11 +234,11 @@ TEMPLATES.R8 = {
       ['리듬 — 오르면서 함정: 한 마디짜리 계단을 두 번 → 이단 점프로 오르던 단이 낮아졌다. 이어서 두 마디짜리 계단을 두 번(헛다리: 함정이 없다)', [...hill('A', 1, { need: { kind: ['lidJ'], where: 'up' } }), ...rep('A', 1), ...trap('A', 1, ['lidJ'], 'up'), ...hill('B', 2, { peak: 5 }), ...rep('B', 2), 'cp']],
       ['더 꽉 찬 리듬 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 내려오는 길의 빨간 단이 한 칸 뒤로 밀렸다. 이어서 새 계단 하나', [...hill('C', 2, { peak: 5, need: { kind: ['shift'], where: 'down' } }), ...rep('C', 2), ...trap('C', 2, ['shift'], 'down'), ...hill('D', 1), 'cp']],
       ['조용함 — 큰 산: 네 마디에 걸쳐 여덟 칸 높이까지 올랐다가 내려온다. 이어서 한 마디짜리를 두 번 → 손 바꿈(이단 점프로 오르던 자리에 빨간 단)', [...hill('M1', 4, { peak: 8 }), ...hill('E', 1, { need: { kind: ['swap'], where: 'up' } }), ...rep('E', 1), ...trap('E', 1, ['swap'], 'up'), 'cp']],
-      ['다시 꽉 찬 리듬 — 한 번만 보여 주고 함정(오르면서), 이어서 헛다리(두 번 하고 그냥 넘어간다)와 새 계단', [...hill('F', 2, { peak: 5, need: { kind: ['lidJ', 'swap'], where: 'up' } }), ...trap('F', 2, ['lidJ', 'swap'], 'up'), ...hill('G', 1), ...rep('G', 1), ...hill('H', 1), 'cp']],
+      ['다시 꽉 찬 리듬 — 한 번만 보여 주고 함정(오르면서), 이어서 헛다리(두 번 하고 그냥 넘어간다)와 새 계단', [...hill('F', 2, { peak: 5, need: { kind: ['hlong', 'lidJ', 'swap'], where: 'up' } }), ...trap('F', 2, ['hlong', 'lidJ', 'swap'], 'up'), ...hill('G', 1), ...rep('G', 1), ...hill('H', 1), 'cp']],
       ['가장 센 절정 — 피버 하나(넓은 통로, 튕김판): 판이 있는 마디를 두 번 → 판이 없다(눌러야 꺾인다). 끝은 좁은 통로의 튕김판', ['wUp', { wm: 'FA', pads: 1, calm: 1, run: 2, kind: 'pad' }, { wr: 'FA' }, { wt: 'FA', kind: 'pad' }, 'wDn', { zm: 'Z1', pads: 1, kind: 'none' }, { zm: 'Z2', pads: 1, kind: 'none' }, 'cp']],
-      ['엇박 베이스 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 밀린 빨간 단. 이어서 새 계단 하나', [...hill('J', 2, { peak: 5, need: { kind: ['shift'], where: 'down' } }), ...rep('J', 2), ...trap('J', 2, ['shift'], 'down'), ...hill('K', 1), 'cp']],
-      ['엇박 베이스, 더 꽉 차게 — 헛다리(같은 계단 세 번), 이어서 한 번만 보여 주고 함정', [...hill('L', 1), ...rep('L', 1), ...rep('L', 1), ...hill('N', 2, { peak: 5, need: { kind: ['lidJ', 'swap', 'shift'] } }), ...trap('N', 2, ['lidJ', 'swap', 'shift']), 'cp']],
-      ['조용함 — 두 번째 큰 산, 이어서 한 마디짜리를 두 번 → 밀린 빨간 단', [...hill('M2', 4, { peak: 8 }), ...hill('P', 1, { need: { kind: ['shift'] } }), ...rep('P', 1), ...trap('P', 1, ['shift']), 'cp']],
+      ['엇박 베이스 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 밀린 빨간 단. 이어서 새 계단 하나', [...hill('J', 2, { peak: 5, need: { kind: ['hshort', 'hlong', 'shift'], where: 'down' } }), ...rep('J', 2), ...trap('J', 2, ['hshort', 'hlong', 'shift'], 'down'), ...hill('K', 1), 'cp']],
+      ['엇박 베이스, 더 꽉 차게 — 헛다리(같은 계단 세 번), 이어서 한 번만 보여 주고 함정', [...hill('L', 1), ...rep('L', 1), ...rep('L', 1), ...hill('N', 2, { peak: 5, need: { kind: ['hlong', 'hshort', 'lidJ', 'swap', 'shift'] } }), ...trap('N', 2, ['hlong', 'hshort', 'lidJ', 'swap', 'shift']), 'cp']],
+      ['조용함 — 두 번째 큰 산, 이어서 한 마디짜리를 두 번 → 밀린 빨간 단', [...hill('M2', 4, { peak: 8 }), ...hill('P', 1, { need: { kind: ['hlong', 'shift'] } }), ...rep('P', 1), ...trap('P', 1, ['hlong', 'shift']), 'cp']],
       ['마지막 절정 — 세 번째 큰 산을 넘고, 그림의 공중 사슬(파란 단에 내려 튀며 멈추고, 충전 고리로 다시 올라 멈추고)을 지나 결승선으로', [...hill('M3', 4, { peak: 8 }), 'airStep', 'airRing']],
       ['', ['goal', 'flat', 'flat']],
     ];
@@ -246,6 +253,7 @@ TEMPLATES.R8 = {
 //   피버는 다섯 곳(질주 구간). 지난 시안의 "움직이는 이빨"은 뺐다(벽 속의 이빨이 튀어나오는 것은 읽기 어렵고 세련돼 보이지 않았다).
 TEMPLATES.R9 = {
   prefix: 'g9', bpm: 150.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
+  rise: [{ at: 19, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 66, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 19~20, 66~67)
   recipe: { g: '7v', gf: '7v', traps: 4, from: 0, kinds: { 'stop-last': 3, 'hand-last': 3, 'stop-first': 3, 'hand-first': 3 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
   sections() {
     let key = 0;
@@ -526,6 +534,7 @@ function generate(T, seed) {
       }
       delete Lg.PATTERNS[name]; throw new Error('되풀이할 마디를 못 뽑았다(마디 ' + b + ')');
     }
+    if ((slot.r || slot.t) && (riseCut.has(slot.r || slot.t) || !motifs[slot.r || slot.t])) return phraseSlot({ m: (slot.r || slot.t) + '#' + b, g: T.recipe ? T.recipe.gf || T.recipe.g : 'a5' }, b);      // (짜임의 앞마디가 올라가는 계단으로 바뀌었다: 함정 없이 새 마디 하나로)
     if (slot.r && slot.blind) {                        // 안내 없이 한 번 더: 같은 입력이지만 길잡이(수정·누르는 표시)가 없다
       const def = { ...JSON.parse(JSON.stringify(motifs[slot.r].def)), blind: true };
       Lg.PATTERNS[name] = def; made[name] = def; bars.push(name); trapList.push({ bar: b, kind: 'blind', of: slot.r }); roles[b] = slot.r + '?'; return;
@@ -596,7 +605,7 @@ function generate(T, seed) {
   const trapOfHill = (hops, kinds, where, b) => {       // 함정으로 바꾼 계단: 종류와 자리(오르는 뜀 / 내려오는 뜀)를 섞어 해 보고, 통과하는 첫 번째
     const cand = [];
     hops.forEach((h, i) => { const from = i ? hops[i - 1].to : 0, up = h.to > from; if (where && (where === 'up') !== up) return; for (const kind of kinds) cand.push([i, kind]); });
-    cand.sort(() => rng() - 0.5);
+    cand.sort((u, v) => kinds.indexOf(u[1]) - kinds.indexOf(v[1]) || rng() - 0.5);      // (앞에 적은 종류부터)
     for (const [i, kind] of cand) {
       const v = St.variant(hops, i, kind, rng);
       if (!v) continue;
@@ -606,7 +615,7 @@ function generate(T, seed) {
     }
     return null;
   };
-  const KOS = { lidJ: '낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다', shift: '밀린 빨간 단: 건너뛰던 자리는 파란 단이고 그다음이 빨갛다. 버릇대로 먼저 멈추면 빨간 단에 내려앉는다', swap: '손 바꿈: 이단 점프로 오르던 자리에 빨간 단. 멈춰서 건너뛴다(뛰면 걸린다)' };
+  const KOS = { hlong: '멈춤이 길다: 멈춰서 건너뛰던 단에서 이번엔 더 오래 멈춘다. 버릇대로 일찍 놓으면 내려설 단 앞의 빨간 단에 내려앉는다', hshort: '멈춤이 짧다: 이번엔 일찍 놓아 내려간다. 버릇대로 계속 멈추면 멈춘 높이의 빨간 덩어리에 부딪힌다', lidJ: '낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다', shift: '밀린 빨간 단: 건너뛰던 자리는 파란 단이고 그다음이 빨갛다. 버릇대로 먼저 멈추면 빨간 단에 내려앉는다', swap: '손 바꿈: 이단 점프로 오르던 자리에 빨간 단. 멈춰서 건너뛴다(뛰면 걸린다)' };
   const stairSlot = (slot, b) => {
     if (slot.cont) return;
     if (slot.hr) { bars.push(...stairs[slot.hr].names); roles[b] = slot.hr; return; }
@@ -621,7 +630,7 @@ function generate(T, seed) {
     }
     const n = slot.bars || 1;
     for (let tries = 0; tries < 400; tries++) {
-      const hops = slot.hops || St.randomHill(4 * n, rng, { peak: slot.peak, max: slot.max, inputs: slot.inputs, holdW: T.holdW });
+      const hops = slot.hops || St.randomHill(4 * n, rng, { peak: slot.peak, max: slot.max, inputs: slot.inputs, holdW: slot.holdW || T.holdW, hds: slot.hds || T.hds });
       if (!hops) continue;
       if (!slot.hops && Object.values(stairs).some((q) => JSON.stringify(q.hops) === JSON.stringify(hops))) continue;      // 같은 계단을 두 번 뽑지 않는다
       const put = putHill(hops, b);
@@ -646,7 +655,7 @@ function generate(T, seed) {
     const name = `${T.prefix}_${b}`;
     for (let tries = 0; tries < 300; tries++) {
       if (T.cpStairs) {
-        const hops = St.randomHill(4, rng, { inputs: 1, holdW: T.holdW });
+        const hops = St.randomHill(4, rng, { inputs: 1, holdW: T.holdW, hds: T.hds });
         if (!hops) continue;
         const put = putHill(hops, b);
         if (!put) continue;
@@ -670,8 +679,20 @@ function generate(T, seed) {
 
   let A = null, reps = 0, feverA = null, feverReps = 0, lastHow = '';
   const flatSlots = T.sections.flatMap(([, slots]) => slots);
+  // 음이 올라가는 구간(곡에서 잰 자리, T.rise): 그 마디들을 오르는 계단으로 바꾼다. 같은 오르막이 곡에서 다시 나오면 두 번째는 멈춤 길이가 다른 계단(함정)
+  let riseSkip = 0; const riseCut = new Set();      // 계단으로 바뀐 자리에 있던 짜임(새 마디)의 이름
+  const riseAt = new Map((T.rise || []).map((r) => [r.at, r]));
   T.sections.forEach(([, slots]) => slots.forEach((slot) => {
+    if (riseSkip > 0) { riseSkip--; if (typeof slot !== 'string' && slot.m) riseCut.add(slot.m); return; }
     const b = bars.length;
+    if (riseAt.has(b)) {
+      const r = riseAt.get(b); riseSkip = r.bars - 1; if (typeof slot !== 'string' && slot.m) riseCut.add(slot.m);
+      if (r.key) stairSlot({ hill: r.key, bars: r.bars, peak: r.peak || 2 + 2 * r.bars, holdW: 3, hds: [0.5, 1], need: r.need }, b);
+      else stairSlot({ ht: r.trap, kind: r.kind || ['hlong', 'hshort', 'shift', 'lidJ', 'swap'] }, b);
+      notes[b] = (r.key ? '음이 올라가는 구간 — 오르는 계단: ' : '같은 오르막이 다시(멈춤 길이가 다르다): ') + (notes[b] || '');
+      A = null; reps = 0;
+      return;
+    }
     if (slot === 'cp' && T.cpFill) { cpSlot(b); A = null; reps = 0; return; }
     if (typeof slot !== 'string' && (slot.hill || slot.hr || slot.ht || slot.cont)) { stairSlot(slot, b); return; }
     if (typeof slot !== 'string' && (slot.m || slot.r || slot.t)) { phraseSlot(slot, b); return; }

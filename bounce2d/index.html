@@ -1598,7 +1598,8 @@
   // 공의 자리(x)로만 정해서(시간으로 따라가지 않는다) 늘 같고 매끄럽다. 공이 화면 위로 나가는 것은 물러나기(HIGH_NEED)가 막는다.
   const CAMT = new Float32Array(L.cols + 2);
   if (CLIMB.length) {
-    const n = L.cols + 1, f = Array.from({ length: n }, (_, c) => (inRide(L, c + 0.5) ? 0 : climbAt(c + 0.5))), at = (arr, k) => arr[Math.max(0, Math.min(n - 1, k))];      // (피버 구간은 늘 높이 0: 피버의 앞뒤 디딤 사이를 잇지 않는다)
+    const onlyStairs = COURSE.climb === "stairs", stairCol = (c) => { const p = PATTERNS[COURSE.bars[Math.floor(c / 16)]]; return !!(p && p.stair); };      // climb: "stairs" = 계단 마디에서만 따라 올라간다(음이 올라가는 구간). 나머지는 전처럼 물러나기로
+    const n = L.cols + 1, f = Array.from({ length: n }, (_, c) => (inRide(L, c + 0.5) || (onlyStairs && !stairCol(c)) ? 0 : climbAt(c + 0.5))), at = (arr, k) => arr[Math.max(0, Math.min(n - 1, k))];      // (피버 구간은 늘 높이 0: 피버의 앞뒤 디딤 사이를 잇지 않는다)
     const box = (arr, r) => arr.map((_, c) => { let u = 0; for (let k = c - r; k <= c + r; k++) u += at(arr, k); return u / (2 * r + 1); });
     const avg = box(box(f, 8), 8);      // (상자 평균을 두 번: 삼각형 모양으로 고르게 펴진다)
     const capped = avg.map((v, c) => { let m = 1e9; for (let k = c - 2; k <= c + 8; k++) m = Math.min(m, at(f, k)); return Math.max(0, Math.min(v, m + 0.8)); });
