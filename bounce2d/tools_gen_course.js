@@ -46,7 +46,7 @@ function fillStretches(lens, R, seed) {
   // 손을 바꾸는 함정: 오른쪽 → 왼쪽이면 머리 위 덩어리에 걸리고, 왼쪽 → 오른쪽이면 그 자리에 높은 박스가 서서 멈춤으로는 못 넘는다
   // hard = 소개하는 함정: 반드시 그 종류로 만든다(못 만들면 이 씨앗은 버린다). 나머지는 안 되면 다른 종류, 그것도 안 되면 그냥 한 번 더
   const phrase = (reps, kind, hard) => { const k = K(), others = Object.keys(R.kinds).filter((x) => x !== kind && x !== 'add'); return [{ m: k, g: R.g, add: kind === 'add' }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: kind === 'add' || hard ? [kind] : [kind, ...others], soft: !hard }]; };
-  const filler = (room) => { const kind = pickW(R.fill); if (kind === 'pair' && room >= 2) { const k = K(); return [{ m: k, g: R.g }, { r: k }]; } if (kind === 'set') return [SETS[Math.floor(rng() * SETS.length)]]; if (kind === 'rest') return [['box', 'twin', 'stairs'][Math.floor(rng() * 3)]]; return [{ m: K(), g: R.g }]; };
+  const GF = R.gf || R.g; const filler = (room) => { const kind = pickW(R.fill); if (kind === 'pair' && room >= 2) { const k = K(); return [{ m: k, g: GF }, { r: k }]; } if (kind === 'set') return [SETS[Math.floor(rng() * SETS.length)]]; if (kind === 'rest') return [['box', 'twin', 'stairs'][Math.floor(rng() * 3)]]; return [{ m: K(), g: GF }]; };
   // 함정을 구간들에 나눈다: 소개하는 것부터 놓고, 나머지는 긴 구간부터 하나씩
   const plan = lens.map(() => []);
   for (const it of R.intro) plan[it.stretch].push(phrase(2, it.kind, true));
@@ -93,21 +93,23 @@ TEMPLATES.R3 = {
 // 4라운드: 높이로 속이는 함정을 소개한다(떠 있는 파란 박스, 파란 천장, 떠 있는 빨간 박스). 이 마디들은 손으로 만든 것이라 자리를 정해 두고,
 // 그 사이를 조건대로 뽑은 마디가 채운다(손 함정은 앞 라운드의 것을 복습: 끝에서 뚝, 끝에서 손 바꿈, 하나 더).
 TEMPLATES.R4 = {
-  prefix: 'g4', bpm: 152.005, floatReds: true, vary: true,
-  recipe: { g: '2t', traps: 5, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4, add: 3 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 1.0, rest: 0.3 } },
+  prefix: 'g4', bpm: 152.005, floatReds: true, vary: true, density: 0.95,
+  // g = 되풀이 → 함정 짜임에 쓰는 단계(높이 장치 없음), gf = 그 사이를 채우는 마디의 단계(높이 장치를 섞는다)
+  recipe: { g: '4d', gf: '4v', traps: 5, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 },      // ("하나 더"는 되풀이하는 마디의 절반이 비게 돼서 뺐다)
+    reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
   sections(seed) {
     const [s1, s2, s3, s4, s5, s6, s7] = fillStretches([4, 2, 2, 3, 7, 4, 4], this.recipe, seed);
     return [
-      ['도입(조용함): 떠 있는 파란 박스를 함정 없이 보여 준다. 올라타서 그냥 떨어지기 두 번 → 올라타서 다시 뛰기 두 번', ['flat', 'flat', 'fDrop', 'fDrop', { g: 1, plain: true }, 'fJump', 'fJump', 'cp']],
+      ['도입(조용함): 떠 있는 파란 박스를 함정 없이 보여 준다. 올라타서 그냥 떨어지기 두 번 → 올라타서 다시 뛰기 두 번', ['flat', 'flat', 'fDropH', 'fDropH', { g: '4d', plain: true }, 'fJump', 'fJump', 'cp']],
       ['잔잔한 리듬: 높이 함정 하나. 다시 뛰기를 두 번 한 뒤 같은 박스에서 그냥 떨어져야 한다(위에 빨간 박스가 떠 있다)', ['fJump', 'fJump', 'fDropH', ...s1, 'cp']],
-      ['첫 후렴: 파란 천장을 소개한다. 이단 점프로 기둥을 두 번 넘은 뒤, 같은 기둥 위에 천장이 생긴다(멈춤으로 건넌다). 이어서 낮은 천장', ['dj1', 'dj1', 'cHold', 'cLow', 'cLow', ...s2, 'cp']],
-      ['거의 무음 → 조용히 쌓아 올림: 숨 고르기. 떨어지며 멈추기를 함정 없이 보여 준다', ['fGlide', 'fGlide', 'fLate', 'fTwice', 'cLow', ...s3, 'cp']],
+      ['첫 후렴: 파란 천장을 소개한다. 이단 점프로 기둥을 두 번 넘은 뒤, 같은 기둥 위에 천장이 생긴다(멈춤으로 건넌다). 이어서 낮은 천장', ['djT', 'djT', 'cHoldT', 'cLowD', 'cLowD', ...s2, 'cp']],
+      ['거의 무음 → 조용히 쌓아 올림: 떨어지며 멈추기를 함정 없이 보여 준다', ['fGlide', 'fGlide', 'fLateH', 'fTwice', 'cLowH', ...s3, 'cp']],
       ['둘째 후렴: 첫 피버. 좁은 통로 → 계단으로 올라가 넓은 통로 → 계단으로 내려와 다시 좁은 통로', [{ z: 1 }, { z: 1 }, 'wUp', { w: 1 }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }]],
-      ['낮게 깔린 베이스: 올라타기를 두 번 한 뒤, 올라가면 안 되는 박스(앞을 빨간 박스가 막고 있다)', ['cp', 'fDropH', 'fDropH', 'fLow', ...s4, 'cp']],
+      ['낮게 깔린 베이스: 올라타기를 두 번 한 뒤, 올라가면 안 되는 박스(앞을 빨간 박스가 막고 있다)', ['cp', 'fDropH', 'fDropH', 'fLow3', ...s4, 'cp']],
       ['쌓아 올림: 손 함정을 촘촘하게', [...s5, 'cp']],
       ['절정: 둘째 피버. 들어서자마자 넓은 통로 → 계단으로 내려와 좁은 통로', ['wUp', { w: 1 }, { w: 1 }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }, { z: 1 }]],
-      ['여운과 무음 → 조용히 쌓아 올림: 높이 장치와 손 함정을 섞는다', ['cp', 'cHoldL', 'fGlide', ...s6, 'cp']],
-      ['마지막 후렴: 배운 것을 다 섞는다. 곡이 끝맺는 박에 결승선', ['fJump', 'fDropH', ...s7, 'cHoldD', 'cLowD']],
+      ['여운과 무음 → 조용히 쌓아 올림: 박스 셋을 건너뛰기, 높이 장치와 손 함정을 섞는다', ['cp', 'fJump3', 'cHoldLD', ...s6, 'cp']],
+      ['마지막 후렴: 배운 것을 다 섞는다. 곡이 끝맺는 박에 결승선', ['fJump3', 'fDropH', ...s7, 'cHoldT', 'cLowD']],
       ['', ['goal', 'flat', 'flat']],
     ];
   },
@@ -122,6 +124,10 @@ const LEVELS = {
   '1t': { plain: 0.45, H: 0, D: 0, DH: 0, HD: 0, T: 0.55, hs: [0.5], hd: [0.75], dt: [0.5], one: true },      // 높은 박스만 나오는 쉬운 마디(처음 보여 줄 때)
   // 2t: 2단계에 높은 박스를 섞은 것(조건으로 채우는 라운드용. 앞의 단계들은 그대로 둬서 이미 뽑은 라운드가 달라지지 않게 한다)
   '2t': { plain: 0.14, H: 0.28, D: 0.2, DH: 0.2, HD: 0, T: 0.18, hs: [0.375, 0.5, 0.625], hd: [0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875] },
+  // 4d: 촘촘한 단계(밀도 95%용). 튈 때마다 거의 늘 동작이 있고, 세 박짜리 동작(DH)은 한 박짜리 빈틈을 남기므로 드물게만
+  '4d': { plain: 0.03, H: 0.34, D: 0.24, DH: 0.05, HD: 0, T: 0.34, hs: [0.375, 0.5, 0.625], hd: [0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875] },
+  // 4v: 4d에 높이 장치를 섞은 것. FD 떠 있는 박스에 올라타 떨어지기 / CH 파란 천장 밑 멈춤 / CL 낮은 천장 밑에서 낮게 떠서 건너기
+  '4v': { plain: 0.03, H: 0.2, D: 0.13, DH: 0.04, HD: 0, T: 0.14, FD: 0.2, CH: 0.13, CL: 0.13, hs: [0.375, 0.5, 0.625], hd: [0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875] },
   3: { plain: 0.1, H: 0.28, D: 0.28, DH: 0.2, HD: 0.14, hs: [0.375, 0.5, 0.625], hd: [0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625, 0.75], dhd: [0.5, 0.75, 0.875], hdd: [0.375, 0.5, 0.625] },
   // 어려움: 쉬는 박이 거의 없고, 엮인 동작이 많고, 통로가 좁다(tol = 장애물을 만들 때 봐주는 타이밍 오차. 작을수록 빡빡하다)
   4: { plain: 0.05, H: 0.22, D: 0.25, DH: 0.26, HD: 0.22, hs: [0.25, 0.375, 0.5, 0.625, 0.75], hd: [0.375, 0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.25, 0.375, 0.5, 0.625, 0.75], dhd: [0.375, 0.5, 0.75, 0.875], hdd: [0.25, 0.375, 0.5, 0.625], tol: 0.13 },
@@ -181,13 +187,21 @@ function generate(T, seed) {
       if (!taus.length) break;
       const tau = taus[0]; decided.add(tau);
       let r = rng(), kind = 'plain';
-      for (const k of ['plain', 'H', 'D', 'DH', 'HD', 'T']) { if (r < (cfg[k] || 0)) { kind = k; break; } r -= cfg[k] || 0; }
+      for (const k of ['plain', 'H', 'D', 'DH', 'HD', 'T', 'FD', 'CH', 'CL']) { if (r < (cfg[k] || 0)) { kind = k; break; } r -= cfg[k] || 0; }
+      const tb = Math.round(tau * 8) / 8;               // 높이 장치는 칸에 맞춰 놓는다(떠 있는 박스에서 떨어진 뒤에는 한 틱 늦게 튀므로 반올림)
+      if ((kind === 'FD' && tb > 2.75) || ((kind === 'CH' || kind === 'CL') && tb > 2) || (kind === 'CL' && def.tall) || ((kind === 'FD' || kind === 'CH' || kind === 'CL') && tb !== Math.round(tb))) kind = 'D';
+      if (kind === 'FD') { def.presses.push(tb + 0.5); (def.floats = def.floats || []).push([4 * tb + 4, 4 * tb + 4, 4]); (def.traps = def.traps || []).push({ presses: [tb + 1.125] }); continue; }
+      if (kind === 'CH') { def.holds.push([tb + 0.5, tb + 1.25]); (def.caps = def.caps || []).push([4 * tb + 1, 4 * tb + 7, 3]); (def.__ch = def.__ch || []).push(tb + 0.5); continue; }
+      if (kind === 'CL') { def.holds.push([tb + 0.25, tb + 1.25]); (def.caps = def.caps || []).push([4 * tb + 1, 4 * tb + 6, 2]); (def.lava = def.lava || []).push([4 * tb + 2, 4 * tb + 4]); def.tol = Math.min(def.tol, 0.15); continue; }
       if (kind === 'H') { const s = tau + pick(cfg.hs), d = pick(cfg.hd); if (s + d <= 4) def.holds.push([q8(s), q8(s + d)]); }
       else if (kind === 'D') { const t = tau + pick(cfg.dt); if (t < 4) def.presses.push(q8(t)); }
       else if (kind === 'DH') { const t = tau + 0.5, d = pick(cfg.dhd); if (t + 0.5 + d <= 4) { def.presses.push(q8(t)); def.holds.push([q8(t + 0.5), q8(t + 0.5 + d)]); } }
       else if (kind === 'T') { const t = tau + 0.5; if (t < 4) { def.presses.push(q8(t)); (def.tall = def.tall || []).push(q8(t)); } }      // 높은 박스: 꼭대기에서 이단 점프해야만 넘는다(멈춤으로는 못 넘는다)
       else if (kind === 'HD') { const d = pick(cfg.hdd), t = tau + 0.5 + d + 0.125; if (t < 4) { def.holds.push([tau + 0.5, q8(tau + 0.5 + d)]); def.presses.push(q8(t)); } }
     }
+    // 파란 천장 밑에서 버릇대로 이단 점프하면(멈춤 대신) 죽어야 한다: 그 멈춤을 누르기로 바꾼 달리기를 함정으로 적는다
+    for (const t of def.__ch || []) (def.traps = def.traps || []).push({ presses: [t], holds: def.holds.filter((h) => h[0] !== t) });
+    delete def.__ch;
     const n = def.holds.length + def.presses.length;
     return n >= 2 || (n === 1 && (cfg.one || rng() < 0.15)) ? def : null;      // 2단계부터는 대개 한 마디에 두 번 이상 누른다
   };
@@ -343,6 +357,7 @@ function generate(T, seed) {
       if (!def) continue;
       if (A && JSON.stringify([def.holds, def.presses]) === JSON.stringify([A.def.holds, A.def.presses])) continue;
       const v = validate(name);
+      if (v && T.density && !(v.clean && v.startClean)) continue;      // 촘촘한 라운드: 마디가 땅에서 박자에 맞춰 시작하고 끝나야 한다(다음 마디의 높이 장치가 어긋나지 않게)
       if (v) { def.__clean = v.clean; made[name] = def; bars.push(name); A = { name, def, clean: v.clean, startClean: v.startClean }; reps = 1; notes[b] = ''; return; }
     }
     delete Lg.PATTERNS[name];
@@ -374,9 +389,10 @@ for (let seed = seed0; seed < seed0 + tries; seed++) {
   const solved = s.won && [-1, ...L.cps.keys()].every((k) => Lg.solve(L, Lg.spawnState(L, k), { grid: 12 }).plan);
   const traps = Object.values(g.notes).filter((n) => /함정|뚝/.test(n)).length, rests = g.bars.filter((n) => n === 'idle' || n === 'box').length;
   const spots = new Set([...L.ref.presses, ...L.ref.holds.map((h) => h[0])].map((st) => st % BAR)).size, inputs = L.ref.presses.length + L.ref.holds.length;
+  const dens = Lg.touchDensity(course, L);
   const kindsGot = new Set(g.traps.map((x) => x.kind)), want = T.recipe ? T.recipe.traps + 2 : null;      // 조건이 있는 라운드: 함정 수가 목표에 가깝고, 소개할 함정이 다 나와야 한다
-  const score = T.recipe ? (T.recipe.intro.every((it) => kindsGot.has(it.kind)) ? 0 : -100) - Math.abs(traps - want) * 3 + spots * 0.5 + inputs * 0.05 - rests : traps * 3 + spots * 0.5 + inputs * 0.1 - rests * 2;
-  console.error(`씨앗 ${seed}: ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'} | 함정 ${traps}, 누르는 자리 ${spots}가지, 입력 ${inputs}번, 쉬는 마디 ${rests} → 점수 ${score.toFixed(1)}`);
+  const score = T.recipe ? (T.recipe.intro.every((it) => kindsGot.has(it.kind)) ? 0 : -100) - Math.abs(traps - want) * 3 + spots * 0.5 + inputs * 0.05 - rests + (T.density ? (dens.busy >= T.density ? 0 : -100) + dens.busy * 20 : 0) : traps * 3 + spots * 0.5 + inputs * 0.1 - rests * 2;
+  console.error(`씨앗 ${seed}: ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'} | 함정 ${traps}, 누르는 자리 ${spots}가지, 입력 ${inputs}번, 쉬는 마디 ${rests}, 밀도 ${(dens.busy * 100).toFixed(1)}%(누르기만 ${(dens.touch * 100).toFixed(1)}%) → 점수 ${score.toFixed(1)}`);
   if (s.won && !L.fixed.length && solved && (!result || score > result.score)) result = { ...g, seed, score };
 }
 if (!result) { console.error('통과하는 코스를 찾지 못했다'); process.exit(1); }
@@ -388,7 +404,7 @@ const lines = [`  // 도구(tools_gen_course.js ${round} ${result.seed})가 무�
 for (const [name, d] of Object.entries(result.made)) {
   const b = +name.replace(/^\D+\d*\D/, ''), note = result.notes[b];
   if (d.mode === 'rush') lines.push(`  ${name}: { mode: "rush"${d.wide ? ', wide: true' : ''}${d.gap ? ', gap: ' + d.gap : ''}, nodes: "${d.nodes}" },${note ? '   // ' + note : ''}`);
-  else lines.push(`  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''} },${note ? '   // ' + note : ''}`);
+  else lines.push(`  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''} },${note ? '   // ' + note : ''}`);
 }
 const barLines = [];
 let at = 0;

@@ -274,6 +274,10 @@ for (const C of Lg.COURSES) {
     }
   }
   {
+    // 밀도 95%(4라운드부터의 기준): 바운스 구간에서 공이 떠 있는 시간의 95% 이상이 "눌러야 하는 토막"(또는 함정이라 일부러 안 누르는 토막)이다
+    { const d9 = Lg.touchDensity(C, lv);
+      if (C.density) ok(d9.busy >= C.density, `[${tag}] 밀도 ${(d9.busy * 100).toFixed(1)}% (기준 ${C.density * 100}%. 누르는 토막만 ${(d9.touch * 100).toFixed(1)}%, 빈 토막 ${d9.empty.length}곳: 마디 ${[...new Set(d9.empty.map(v => Math.floor(v / 4)))].join(', ')})`);
+      else console.log(`  (참고) [${tag}] 밀도 ${(d9.busy * 100).toFixed(1)}% (누르는 토막만 ${(d9.touch * 100).toFixed(1)}%)`); }
     // 밀도: 2라운드부터는 대부분의 마디에서 누르거나 함정을 만난다
     const pat = C.bars.map(n => Lg.PATTERNS[n]).filter(p => p && p.mode !== 'rush'), busy = pat.filter(p => p.holds.length || p.presses.length || p.traps).length;
     const rushBars = C.bars.map(n => Lg.PATTERNS[n]).filter(p => p && p.mode === 'rush'), rushBusy = rushBars.filter(p => /[FS]/.test(p.nodes)).length;
@@ -456,7 +460,7 @@ console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 
     C.bars.forEach((name, b) => {
       const p = Lg.PATTERNS[name]; if (!p || !p.floats) return;
       const alts = [];
-      for (const t of p.traps || []) if (t.presses) alts.push({ presses: [...p.presses, ...t.presses], holds: p.holds });      // 떨어져야 하는데 뛴다
+      for (const t of p.traps || []) if (t.presses) alts.push({ presses: [...p.presses, ...t.presses], holds: t.holds || p.holds });      // 떨어져야 하는데 뛴다(파란 천장 밑에서는: 멈춰야 하는데 뛴다)
       p.presses.forEach((t, i) => { if (p.presses.some(u => Math.abs(u - (t - 0.625)) < 1e-9)) alts.push({ presses: p.presses.filter((_, j) => j !== i), holds: p.holds }); });   // 뛰어야 하는데 떨어진다
       for (const alt of alts) {
         n++;
