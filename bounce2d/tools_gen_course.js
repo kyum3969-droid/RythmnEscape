@@ -116,7 +116,7 @@ TEMPLATES.R4 = {
 };
 
 // 5라운드: 피버 위주. 피버의 짜임은 "새 마디 → 한 번 더 → 함정"이고, 함정은 뚝(누르던 자리에서 끊김)과 하나 더(안 누르던 자리에서 한 번 더) 두 가지다.
-// 통로가 기울고 솟는 연출은 코스의 cam 표에 있다(logic.js의 ROUND5). 바운스 구간은 4라운드와 같은 조건(밀도 95%, 변주)에 새 함정 fJ3G를 넣는다.
+// 통로의 굽이는 코스의 cam 표에 있다(logic.js의 ROUND5). 굽이가 걸리는 넓은 통로의 짜임(H와 그 뒤 마디)은 성기게 뽑는다(calm: 마디의 첫 박은 누르지 않는다, run: 반 박 간격으로 이어 누르기는 두 번까지) — 굽이를 볼 틈이 있어야 한다. 좁은 통로는 원래 한 박에 한 번까지라 그대로 둔다. 바운스 구간은 4라운드와 같은 조건(밀도 95%, 변주)에 새 함정 fJ3G를 넣는다.
 TEMPLATES.R5 = {
   prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95,
   recipe: { g: '4d', gf: '4v', traps: 3, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
@@ -132,7 +132,7 @@ TEMPLATES.R5 = {
       ['', ['cp']],
       ['넷째 피버: 아래로 굽었다가, 한가운데의 얇은 굴(통로가 가늘어져 화면이 다가간다)을 지나, 위로 굽는다', [{ zm: 'F' }, { zr: 'F' }, { zt: 'F', kind: 'add' }, 'zThin', { zm: 'G' }, { zr: 'G' }, { zt: 'G', kind: 'break' }]],
       ['', ['cp']],
-      ['다섯째 피버(솟는 넓은 통로): 위로 굽고, 왼쪽 위로 넘어갔다가, 다시 가로로', ['wUp', { wm: 'H' }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }]],
+      ['다섯째 피버(솟는 넓은 통로): 위로 굽고, 왼쪽 위로 넘어갔다가, 다시 가로로', ['wUp', { wm: 'H', calm: 2, run: 2 }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1, calm: 2, run: 2 }, 'wDn', { z: 1 }, { z: 1 }]],
       ['더 꽉 찬 리듬: 바운스. 손 함정과 높이 장치를 촘촘하게', ['cp', ...s3, 'cp']],
       ['가라앉음: 징검다리 세 마디. 가운데에 빨간 돌, 마지막 돌에서 내려올 땅이 빨간 박스(마지막으로 튄 뒤 멈춰서 건넌다)', ['stIn', 'stMidR', 'stOutG', 'gAfter', ...s4, 'cp']],
       ['마지막 피버: 위로, 아래로 굽이친다. 끝의 두 마디는 조여드는 통로, 곡의 끝맺는 한 방에 터져 나온다', [{ zm: 'I' }, { zr: 'I' }, { zt: 'I', kind: 'break' }, { zm: 'J' }, { zt: 'J', kind: 'add' }, 'zS1', 'zS2']],
@@ -322,11 +322,13 @@ function generate(T, seed) {
   };
   const breaksOf = (nodes, wide) => (wide ? wAll : zAll).filter((s) => { let k = 0; while (k < 8 && s[k] === nodes[k]) k++; return k >= 2 && k < 7 && nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => feverTry(s, wide));
   const addsOf = (nodes, wide) => (wide ? wAll : zAll).filter((s) => { let k = 0; while (k < 8 && s[k] === nodes[k]) k++; return k >= 2 && k < 7 && nodes[k] !== 'F' && s[k] === 'F' && feverTry(s, wide); });
+  // 굽은 통로의 마디는 성기게: calm = 마디 앞쪽의 이만큼(반 박 단위)은 누르지 않는다(굽이를 볼 틈), run = 반 박 간격으로 이어 누르는 횟수의 한도
+  const fits = (s, o) => !o || ((!o.calm || /^\.*$/.test(s.slice(0, o.calm))) && (!o.run || !new RegExp('F{' + (o.run + 1) + '}').test(s)));
   const feverSlot = (slot, b) => {
     const wide = !!(slot.wm || slot.wr || slot.wt), key = slot.zm || slot.wm || slot.zr || slot.wr || slot.zt || slot.wt, all = wide ? wAll : zAll, name = `${T.prefix}${wide ? 'w' : 'z'}${b}`;
     if (slot.zr || slot.wr) { bars.push(motifs[key].name); roles[b] = key; return; }
     if (slot.zt || slot.wt) {                            // 피버의 함정: break = 누르던 자리에서 뚝 / add = 안 누르던 자리에서 하나 더(둘 다 앞쪽은 되풀이한 마디와 같다)
-      const M = motifs[key].nodes, adds = addsOf(M, wide), brk = breaksOf(M, wide);
+      const M = motifs[key].nodes, lim = motifs[key].lim, adds = addsOf(M, wide).filter((q) => fits(q, lim)), brk = breaksOf(M, wide).filter((q) => fits(q, lim));
       const useAdd = slot.kind === 'add' && adds.length, pool = useAdd ? adds : brk;
       if (!pool.length) throw new Error('피버 함정으로 쓸 줄이 없다');
       const nodes = pick(pool); made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
@@ -336,8 +338,9 @@ function generate(T, seed) {
     const weight = (s) => Math.pow(count(s, 'F'), 2) + 4 * (s.match(/FF/g) || []).length, total = all.reduce((u, s) => u + weight(s), 0);
     for (let tries = 0; tries < 300; tries++) {
       let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } }
-      if (!feverTry(s, wide) || Object.values(motifs).some((mm) => mm.nodes === s) || !breaksOf(s, wide).length) continue;
-      made[name] = Lg.PATTERNS[name] = feverDef(s, wide); bars.push(name); motifs[key] = { name, nodes: s, wide }; roles[b] = key; return;
+      const lim = slot.calm || slot.run ? { calm: slot.calm, run: slot.run } : null;
+      if (!fits(s, lim) || !feverTry(s, wide) || Object.values(motifs).some((mm) => mm.nodes === s) || !breaksOf(s, wide).filter((q) => fits(q, lim)).length) continue;
+      made[name] = Lg.PATTERNS[name] = feverDef(s, wide); bars.push(name); motifs[key] = { name, nodes: s, wide, lim }; roles[b] = key; return;
     }
     throw new Error('피버 마디를 못 뽑았다');
   };
@@ -351,14 +354,16 @@ function generate(T, seed) {
     if (slot.z || slot.w) {                            // 피버: 새로 뽑기 → (절반은) 한 번 더 → 앞쪽은 같고 뒤에서 끊기는 것
       const wide = !!slot.w, all = wide ? wAll : zAll, name = `${T.prefix}${wide ? 'w' : 'z'}${b}`;
       let nodes = null, how = '';
+      const lim = slot.calm || slot.run ? { calm: slot.calm, run: slot.run } : null;
+      if (feverA && !fits(feverA.nodes, lim)) { feverA = null; feverReps = 0; }
       if (feverA && feverA.wide === wide && feverReps >= 1 && rng() < (feverReps === 2 ? 0.9 : 0.4)) {
-        const brk = all.filter((s) => { let k = 0; while (k < 8 && s[k] === feverA.nodes[k]) k++; return k >= 2 && k < 7 && feverA.nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => feverTry(s, wide));
+        const brk = all.filter((s) => { let k = 0; while (k < 8 && s[k] === feverA.nodes[k]) k++; return k >= 2 && k < 7 && feverA.nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => fits(s, lim) && feverTry(s, wide));
         if (brk.length) { nodes = pick(brk); how = 'break'; }
       }
       if (!nodes && feverA && feverA.wide === wide && feverReps === 1 && rng() < 0.6) { bars.push(feverA.name); feverReps = 2; notes[b] = '한 번 더'; return; }
       const weight = (s) => Math.pow(count(s, 'F'), 2) + 4 * (s.match(/FF/g) || []).length;       // 많이 누르는 것, 이어 누르는 것을 더 자주 뽑는다
       const total = all.reduce((u, s) => u + weight(s), 0);
-      for (let tries = 0; !nodes && tries < 200; tries++) { let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } } if (feverTry(s, wide) && (!feverA || s !== feverA.nodes)) nodes = s; }
+      for (let tries = 0; !nodes && tries < 200; tries++) { let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } } if (fits(s, lim) && feverTry(s, wide) && (!feverA || s !== feverA.nodes)) nodes = s; }
       if (!nodes) throw new Error('피버 패턴을 못 뽑았다');
       made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
       bars.push(name); notes[b] = how === 'break' ? `뚝: 앞 마디(${feverA.nodes})와 같이 가다가 끊긴다` : '';

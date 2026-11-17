@@ -1454,14 +1454,16 @@
     const range = Math.hypot(w, h) / T / 0.45 + 4, i0 = segAt(camX - range), i1 = segAt(camX + range);
     let any = false; for (let i = i0; i <= i1; i++) if (SEGS[i].th !== 0) any = true;
     if (!any) return { passes: [one], bent: false, th: 0, k: kThin, ax: view.px, ay: view.groundY - (ZIG_TOP / 2) * T, back: view.px / T + 1, fwd: (w - view.px) / T + 1 };
-    // 공이 있는 자리(길의 바닥 선 위의 점)를 화면 어디에 둘까: 곧게 갈 때는 늘 그 자리, 기울수록 가는 쪽 반대편으로 옮긴다
-    const th = dirAt(camX), u = Math.min(1, Math.abs(th) / (Math.PI / 6));
-    const P0x = view.px, P0y = view.groundY, cs = Math.cos(-th), sn = Math.sin(-th), ox = P0x - w / 2, oy = P0y - h / 2;
-    const rx = Math.max(w * 0.22, Math.min(w * 0.78, w / 2 + ox * cs - oy * sn)), ry = Math.max(h * 0.24, Math.min(h * 0.8, h / 2 + ox * sn + oy * cs));
-    const ax = P0x + (rx - P0x) * u, ay = P0y + (ry - P0y) * u;
+    // 공이 있는 자리의 "통로 한가운데"를 화면 어디에 둘까: 곧게 갈 때는 늘 그 자리, 기울수록 가는 쪽 반대편으로 옮긴다(위로 갈 때는 아래쪽, 왼쪽 위로 갈 때는 오른쪽 아래).
+    // (통로의 바닥 선을 기준으로 잡았더니, 넓은 통로가 비스듬할 때 통로가 한쪽으로 쏠려 화면 밖으로 나갔다. 그래서 통로의 가운데를 기준으로 잡는다)
+    const th = dirAt(camX), u = Math.min(1, Math.abs(th) / (Math.PI / 6)), dx = Math.cos(th), dy = -Math.sin(th);
+    const hcT = ceilAt(L, camX) * T, dtc = Math.min(0.1, Math.max(0, now - (view.hcAt ?? now))); view.hcAt = now;
+    view.hc = (view.hc ?? hcT) + (hcT - (view.hc ?? hcT)) * (1 - Math.exp(-dtc * 8));        // 통로의 폭(좁은 통로 ↔ 넓은 통로가 바뀔 때 서서히 따라간다)
+    const half = view.hc / 2, m0x = view.px, m0y = view.groundY - half;
+    const mx = m0x + (w / 2 - dx * 0.26 * w - m0x) * u, my = m0y + (h / 2 - dy * 0.26 * h - m0y) * u;
+    const ax = mx + Math.sin(th) * half, ay = my + Math.cos(th) * half;                         // 바닥 선 위의 점 = 가운데에서 통로 폭의 절반만큼 바닥 쪽으로
     // 가는 쪽으로 화면 끝까지 7칸(1.75박)이 안 보이면 그만큼 물러난다
-    const dx = Math.cos(th), dy = -Math.sin(th);
-    const tx = dx > 1e-6 ? (w - ax) / dx : dx < -1e-6 ? -ax / dx : 1e9, ty = dy > 1e-6 ? (h - ay) / dy : dy < -1e-6 ? -ay / dy : 1e9;
+    const tx = dx > 1e-6 ? (w - mx) / dx : dx < -1e-6 ? -mx / dx : 1e9, ty = dy > 1e-6 ? (h - my) / dy : dy < -1e-6 ? -my / dy : 1e9;
     const k = Math.max(0.45, Math.min(1, Math.min(tx, ty) / (10.5 * T))) * kThin;
     const jb = segAt(camX), gb = SEGS[jb], along = sAt(camX) - sAt(Math.max(gb.x0, 0));
     const bx = (gb.x0 < 0 ? 0 : gb.vx) + along * Math.cos(gb.th), by = (gb.x0 < 0 ? 0 : gb.vy) - along * Math.sin(gb.th);

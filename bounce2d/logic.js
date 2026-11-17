@@ -242,20 +242,21 @@ const PATTERNS = {
   g5z42: { mode: "rush", nodes: "F.F.F.F." },   // 하나 더: 앞 마디(F.F...S.)와 같이 가다가 한 번 더 누른다
   g5z44: { mode: "rush", nodes: "..F.S.F." },
   g5z46: { mode: "rush", nodes: "..S.F.F." },   // 뚝: 앞 마디(..F.S.F.)와 같이 가다가 끊긴다
-  g5w49: { mode: "rush", wide: true, gap: 1.5, nodes: ".FF.FS.." },
-  g5w51: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFF..F." },   // 하나 더: 앞 마디(.FF.FS..)와 같이 가다가 한 번 더 누른다
-  g5w52: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFFFF.." },
-  g5z54: { mode: "rush", nodes: "F.F...S." },
-  g5_57: { holds: [[2, 2.75]], presses: [1.5], tol: 0.18 },
-  g5_58: { holds: [[0.5, 1.25], [2.625, 3.625]], presses: [], tol: 0.18 },
-  g5_60: { holds: [[0.5, 1.25]], presses: [2.625], tol: 0.18, tall: [2.625], traps: [{full: {presses: [], holds: [[0.5, 1.25], [2.625, 3.625]]}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
-  g5_61: { holds: [[2.5, 3.125]], presses: [0.5], tol: 0.18, tall: [0.5] },
-  g5_63: { holds: [], presses: [0.5], tol: 0.18, tall: [0.5], traps: [{full: {presses: [0.5], holds: [[2.5, 3.125]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
-  g5_69: { holds: [[2.375, 3.125]], presses: [0.5], tol: 0.18, floats: [[4, 4, 4]], traps: [{presses: [1.125]}] },
+  g5w49: { mode: "rush", wide: true, gap: 1.5, nodes: "..FSFFS." },
+  g5w51: { mode: "rush", wide: true, gap: 1.5, nodes: "..FSS.F." },   // 뚝: 앞 마디(..FSFFS.)와 같이 가다가 끊긴다
+  g5w52: { mode: "rush", wide: true, gap: 1.5, nodes: "..F.FFS." },
+  g5z54: { mode: "rush", nodes: "F...F.S." },
+  g5z55: { mode: "rush", nodes: "F.F.F.F." },
+  g5_57: { holds: [], presses: [0.625, 2.5], tol: 0.18, tall: [2.5] },
+  g5_58: { holds: [[0.375, 1.25]], presses: [2.5], tol: 0.18, tall: [2.5] },
+  g5_60: { holds: [[0.375, 1.25]], presses: [], tol: 0.18, traps: [{full: {presses: [2.5], holds: [[0.375, 1.25]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g5_61: { holds: [], presses: [0.5, 2.375], tol: 0.18, tall: [0.5] },
+  g5_63: { holds: [], presses: [0.5], tol: 0.18, tall: [0.5], traps: [{full: {presses: [0.5, 2.375], holds: []}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g5_69: { holds: [[2.25, 3.25]], presses: [0.5], tol: 0.15, floats: [[4, 4, 4]], caps: [[9, 14, 2]], lava: [[10, 12]], traps: [{presses: [1.125]}] },
   g5z72: { mode: "rush", nodes: "S.F.F.S." },
   g5z74: { mode: "rush", nodes: "S.S.F.F." },   // 뚝: 앞 마디(S.F.F.S.)와 같이 가다가 끊긴다
-  g5z75: { mode: "rush", nodes: "F...F.S." },
-  g5z76: { mode: "rush", nodes: "F.F.F.F." },   // 하나 더: 앞 마디(F...F.S.)와 같이 가다가 한 번 더 누른다
+  g5z75: { mode: "rush", nodes: "S.F...F." },
+  g5z76: { mode: "rush", nodes: "S.F.F..." },   // 하나 더: 앞 마디(S.F...F.)와 같이 가다가 한 번 더 누른다
   // </gen:patterns:R5>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
@@ -584,7 +585,7 @@ const ROUND5 = {
     "g5z40", "g5z40", "g5z42", "zThin",   "g5z44", "g5z44", "g5z46",
     "cp",
     // 다섯째 피버(솟는 넓은 통로): 위로 굽고, 왼쪽 위로 넘어갔다가, 다시 가로로
-    "wUp", "g5w49", "g5w49", "g5w51",   "g5w52", "wDn", "g5z54", "g5z54",
+    "wUp", "g5w49", "g5w49", "g5w51",   "g5w52", "wDn", "g5z54", "g5z55",
     // 더 꽉 찬 리듬: 바운스. 손 함정과 높이 장치를 촘촘하게
     "cp", "g5_57", "g5_58", "g5_58",   "g5_60", "g5_61", "g5_61", "g5_63",   "cp",
     // 가라앉음: 징검다리 세 마디. 가운데에 빨간 돌, 마지막 돌에서 내려올 땅이 빨간 박스(마지막으로 튄 뒤 멈춰서 건넌다)
