@@ -251,7 +251,7 @@ for (const C of Lg.COURSES) {
     }
   {
     // 충전 고리와 계단으로 박자 틀기(3라운드)
-    const bars4 = C.bars, ringBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].rings ? b : -1)).filter(b => b >= 0), tallBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].tall ? b : -1)).filter(b => b >= 0);
+    const bars4 = C.bars, ringBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].rings ? b : -1)).filter(b => b >= 0), tallBars = bars4.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].tall === true ? b : -1)).filter(b => b >= 0);      // tall: true = 계단 구간(높은 박스의 tall: [..]과는 다르다)
     if (ringBars.length || tallBars.length) {
       const s7 = Lg.spawnState(lv, -1), inp7 = Lg.planInput(lv.ref), rings = new Set(), bounces = [];
       let groundInRing = 0;
@@ -387,6 +387,33 @@ for (const name of Object.keys(Lg.PATTERNS)) {
   const width = Math.min(...m.inputs.map(i => i.early + i.late));
   ok(pat.mode === 'rush' ? m.min >= 100 : m.min >= 60 && width >= 170, `${name}: 입력 여유 ${m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join(', ')}ms`);
   ok(m.idleDies && m.needed.every(Boolean), `${name}: 안 누르면 죽고, 입력을 하나라도 빼먹으면 죽는다`);
+}
+console.log('== 높은 박스: 이단 점프로만 넘는 빨간 박스 ==');
+{
+  Lg.PATTERNS.__tall = { holds: [], presses: [0.5], tol: 0.18, tall: [0.5] };
+  const lvT = Lg.buildLevel({ name: 't', bpm: 152, bars: ['flat', '__tall', 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const runT = (press, holds) => { const sT = Lg.spawnState(lvT, -1), P = new Set(press); while (!sT.dead && !sT.won && sT.step < 96 * 12) { const st = sT.step + 1; Lg.stepState(lvT, sT, P.has(st), null, holds.some(q => st >= q[0] && st < q[1])); } return sT; };
+  const at = Math.round(4.5 * 96), q = lvT.talls[0];
+  ok(lvT.talls.length === 1 && q.x === 16 + 4 && q.h === 2.5 && q.w === 1 && q.h > Lg.JUMP_H, `패턴의 tall: [0.5] → 이단 점프의 꼭대기 바로 밑(마디 넷째 칸)에 높이 ${q.h}칸, 너비 ${q.w}칸의 박스가 선다. 튀는 높이(${Lg.JUMP_H}칸)보다 높다`);
+  ok(!runT([at], []).dead && runT([], []).dead, '꼭대기에서 이단 점프하면 넘고, 그냥 튀면 박스에 걸린다');
+  let holdPass = 0; for (let a = -30; a <= 30; a += 3) for (let d = 12; d <= 96; d += 6) if (!runT([], [[at + a, at + a + d]]).dead) holdPass++;
+  ok(holdPass === 0, '멈춤(왼쪽)으로는 언제 얼마나 누르든 못 넘는다(멈춰서 뜬 높이보다 박스가 높다) — 231가지 모두 걸림');
+  let lo = 0, hi = 0; while (lo > -48 && !runT([at + lo - 1], []).dead) lo--; while (hi < 48 && !runT([at + hi + 1], []).dead) hi++;
+  ok(-lo * 4.11 >= 70 && hi * 4.11 >= 70, `이단 점프를 누르는 여유 ${(lo * 4.11).toFixed(0)}/+${(hi * 4.11).toFixed(0)}ms (다른 동작과 비슷하다)`);
+  delete Lg.PATTERNS.__tall;
+  for (const C of Lg.COURSES) {
+    const lvC = Lg.buildLevel(C); if (!lvC.talls.length) continue;
+    const tag = C.name.split(' · ')[0], inpC = lvC.ref;
+    let cleared = 0, habitDead = 0;
+    for (const t of lvC.talls) {                       // 박스마다: 그 박스를 넘는 이단 점프를 멈춤으로 바꿔 누르면 죽는다
+      const pressStep = Math.round((t.x - 2) / 4 * 96);
+      if (inpC.presses.includes(pressStep)) cleared++;
+      const sC = Lg.spawnState(lvC, -1), P = new Set(inpC.presses.filter(v => v !== pressStep)), H = [...inpC.holds, [pressStep, pressStep + 72]];
+      while (!sC.dead && !sC.won && sC.step < pressStep + 96 * 3) { const st = sC.step + 1; Lg.stepState(lvC, sC, P.has(st), null, H.some(h => st >= h[0] && st < h[1])); }
+      if (sC.dead && Math.abs(sC.x - t.x) < 1.2) habitDead++;
+    }
+    ok(lvC.talls.length >= 8 && cleared === lvC.talls.length && habitDead === lvC.talls.length, `[${tag}] 높은 박스 ${lvC.talls.length}개: 모두 패턴의 이단 점프 바로 앞에 서 있고, 그 자리를 멈춤으로 누르면 그 박스에서 죽는다 (${habitDead}/${lvC.talls.length})`);
+  }
 }
 console.log('== 뒤 라운드를 위해 보관한 장치(지금 코스에서는 쓰지 않는다): 충전 고리, 계단으로 박자 틀기 ==');
 {

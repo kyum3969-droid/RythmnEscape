@@ -833,6 +833,21 @@
       blockRuns(L.floorH, (v) => v > 0, view.groundY);
       blockRuns(L.ceilH, (v) => v < 90, -40);
     }
+    // 높은 박스: 이단 점프로만 넘는 빨간 박스. 멈춤으로 뜬 공은 윗부분에 걸린다. 다른 빨간 덩어리보다 밝은 테두리와 뚜껑 줄로 구분한다.
+    for (const q of L.talls) {
+      if (q.x + 1 < cA || q.x - 1 > cB) continue;
+      const xa = sx(q.x - q.w / 2), xb = sx(q.x + q.w / 2), yT = sy(ROWS - 1 - q.h);
+      const bg = ctx.createLinearGradient(0, view.groundY, 0, yT);
+      bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#a01a4c");
+      ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fillRect(xa, yT, xb - xa, view.groundY - yT);
+      ctx.save(); ctx.beginPath(); ctx.rect(xa, yT, xb - xa, view.groundY - yT); ctx.clip();
+      ctx.strokeStyle = "rgba(255,107,144,0.25)"; ctx.lineWidth = 2; ctx.beginPath();
+      for (let y = view.groundY; y > yT - (xb - xa); y -= T * 0.36) { ctx.moveTo(xa, y); ctx.lineTo(xb, y - (xb - xa)); }
+      ctx.stroke(); ctx.restore();
+      ctx.strokeStyle = "#ffb3c7"; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.shadowColor = DANGER; ctx.shadowBlur = 12 + 10 * pulse;
+      ctx.beginPath(); ctx.moveTo(xa, view.groundY); ctx.lineTo(xa, yT); ctx.lineTo(xb, yT); ctx.lineTo(xb, view.groundY); ctx.stroke();
+      ctx.fillStyle = "#ffd0dc"; ctx.shadowBlur = 14; ctx.fillRect(xa - 3, yT - 3, xb - xa + 6, 6); ctx.shadowBlur = 0;      // 뚜껑 줄: "여기까지 높다"
+    }
     // 파란 박스(땅 위의 블록): 닿아도 죽지 않는다. 위에 내려앉아 다시 튀고, 옆에서 부딪히면 올라탄다.
     // 높을수록 이른 박에 튄다(한 칸에 1/8박). 박스마다 자기가 튀는 박에 빛난다. 빨간 덩어리보다 나중에 그려서, 박스 위의 빨간 덩어리가 얹힌 것처럼 보인다.
     {
@@ -1242,6 +1257,7 @@
   };
   const HINTS = [];
   for (const [name, text] of Object.entries(HINT_TEXT)) { const b = COURSE.bars.indexOf(name); if (b >= 0) HINTS.push([b * 16 + 2.5, text]); }
+  if (L.talls.length) HINTS.push([Math.floor(L.talls[0].x / 16) * 16 + 2.5, "높은 빨간 박스는 멈춤으로는 못 넘어요 · 이단 점프로만"]);
   const REF_PATH = L.ref ? traceRun(L, L.ref).trace : null;
   const GATES = new Map(L.switches.map((sw) => [sw.col, sw.mode]));
   // 지금 손을 떼고 아무것도 안 하면 공이 닿을 자리. 그 전에 죽는다면 없음.
