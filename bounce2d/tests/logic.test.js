@@ -243,6 +243,27 @@ for (const C of Lg.COURSES) {
       const died = gone.filter(st => { const r = run2(null, new Set([st])); return r.s.dead && Math.abs(r.s.x / 16 - st / 384) < 0.5; }).length;
       ok(base.s.won && base.pad === lv.pads.size && mash.s.won && lv.reds.every(q => q.kind !== 'pad') && [...lv.pads.values()].every(q => Math.abs(Lg.padFace(q) - (q.from > 0 ? q.lv * Lg.ZIG_STEP + Lg.SIZE : q.lv * Lg.ZIG_STEP)) < 1e-9), `[${tag}] 튕김판 ${lv.pads.size}개(마디 ${padBars.join(', ')}): 패턴대로 가면 모두 판에 닿아 저절로 꺾인다(${base.pad}번). 판에 닿는 순간에 눌러도 길은 그대로다. 판은 파란 판뿐이고 죽이는 부분이 없다`);
       ok(gone.length >= 1 && died === gone.length, `[${tag}] 판이 없어진 함정 ${gone.length}곳: 앞 마디처럼 누르지 않으면 그 자리에서 죽는다 (${died}/${gone.length})`);
+      // 판의 뒷면도 튕긴다: 빨간 장애물을 걷어 내고 아무렇게나 눌러 보면, 반대쪽에서 판으로 오는 공이 지점과 지점의 한가운데에서 반 단계만 갔다가 되돌아, 다음 지점에는 떠난 높이로 와 있다
+      { const bare = { ...lv, reds: [] }, half = Lg.ZIG_STEP / 2, seen = { up: 0, down: 0, bad: 0 };
+        let seed = 7; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+        for (let trial = 0; trial < 60; trial++) {
+          const s3 = Lg.spawnState(bare, -1), inp3 = Lg.planInput(lv.ref), hs = [], backs = [], pr = new Set();
+          while (!s3.dead && !s3.won) {
+            const st = s3.step + 1, ev = [], rush = s3.mode === 'rush';
+            const pressed = rush ? rnd() < 0.02 : inp3.press.has(st); if (pressed) pr.add(st);
+            Lg.stepState(bare, s3, pressed, ev, rush ? false : inp3.hold.has(st));
+            hs[s3.step] = 9 - s3.y;
+            for (const e of ev) if (e.type === 'rebound' && e.back) backs.push({ step: s3.step, up: e.top, x: s3.x });
+          }
+          for (const b of backs) {
+            const h0 = hs[b.step - 24], hm = hs[b.step], h1 = hs[b.step + 24];
+            let turned = false; for (let q = b.step - 60; q <= b.step + 24; q++) if (pr.has(q)) turned = true;      // (그 언저리에서 누른 것은 뺀다: 급히 꺾어 가느라 면에 조금 못 미치거나, 되돌아가다 다음 지점 전에 또 돌아선다)
+            if (h1 === undefined || turned || lv.rides.some(r => r[1] - b.x < 1.5 && r[1] - b.x > 0)) continue;      // (피버가 끝나는 선 바로 앞의 판도 뺀다: 되돌아가는 도중에 피버가 끝난다)
+            if (Math.abs(h1 - h0) < 1e-6 && Math.abs(Math.abs(hm - h0) - half) < 0.12 && (hm > h0) === b.up) seen[b.up ? 'up' : 'down']++; else seen.bad++;
+          }
+        }
+        const kinds = new Set([...lv.pads.values()].map(q => q.from));
+        ok(seen.bad === 0 && (!kinds.has(1) || seen.down > 0) && (!kinds.has(-1) || seen.up > 0) && Math.abs(Lg.PAD_TH - (half - Lg.SIZE)) < 1e-9, `[${tag}] 판의 뒷면도 튕긴다: 내려오다 윗면에 닿아 되돌아간 것 ${seen.down}번, 올라가다 밑면에 닿아 되돌아간 것 ${seen.up}번 — 모두 반 단계(${half.toFixed(2)}칸)만 갔다가 다음 지점에 떠난 높이로 돌아왔다`); }
     }
     // 피버의 이빨은 통로 밖으로 튀어나오지 않는다(피버가 끝나는 선에 걸친 이빨은 그 선에서 잘린 반쪽이다)
     const out = lv.reds.filter(q => { const r = lv.rides.find(r => q.xt >= r[0] && q.xt <= r[1]); return !r || q.x0 < r[0] - 1e-9 || q.x1 > r[1] + 1e-9; });

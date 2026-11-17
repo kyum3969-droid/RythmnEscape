@@ -864,11 +864,14 @@ function hazard(xt, ok, bad, top, gap = 1) {       // gap = 지나가는 공과 
   if (bad === top) return { kind: "ceil", xt, tip, far: top * ZIG_STEP + SIZE, w: TOOTH_W, x0: xt - TOOTH_W, x1: xt + TOOTH_W };
   return { kind: "float", xt, tip, far: up ? bad * ZIG_STEP + SIZE + 0.4 : bad * ZIG_STEP - 0.4, w: KITE_W, x0: xt - KITE_W, x1: xt + KITE_W };
 }
-// 튕김판(피버): 공중에 떠 있는 얇은 파란 판. 판에 닿으면 누르지 않아도 튕겨서 되돌아간다(바닥·천장에 닿은 것과 같다). 닿아서 죽는 일은 없다.
-//  - 반 박 지점에서, 높이 단계 lv에 "from 방향으로 움직이며" 닿는 공을 되돌린다(from +1 = 올라오던 공 → 판이 공 바로 위에 있다, -1 = 내려오던 공 → 판이 공 바로 밑에 있다).
-//  - 한쪽으로만 막는 판이다: 반대쪽에서 오는 공은 그냥 지나간다(판은 얇아서, 한 단계 너머로 지나가는 공에는 닿지 않는다).
-//    처음에는 판 뒤에 빨간 몸통을 붙여 반대쪽에서 오면 죽게 했는데(한 변만 파란 세모), 파란 판만 있는 쪽이 깔끔하다는 의견으로 뺐다.
-//  - 판이 놓이는 높이(공이 닿는 면): from +1이면 lv 단계의 공 윗면, -1이면 공 밑면.
+// 튕김판(피버): 공중에 떠 있는 얇은 파란 판. 판에 닿으면 누르지 않아도 튕겨서 되돌아간다(바닥·천장에 닿은 것과 같다). 닿아서 죽는 일은 없다. 양쪽 면이 다 튕긴다.
+//  - 앞면: 반 박 지점에서, 높이 단계 lv에 "from 방향으로 움직이며" 닿는 공을 되돌린다(from +1 = 올라오던 공 → 판이 공 바로 위에 있다, -1 = 내려오던 공 → 판이 공 바로 밑에 있다).
+//    패턴(줄의 B)이 쓰는 면이다. 판이 놓이는 높이(padFace)는 그 공이 닿는 면: from +1이면 lv 단계의 공 윗면, -1이면 공 밑면.
+//  - 뒷면: 반대쪽에서 오는 공도 튕긴다. 판이 얇아서(두께 PAD_TH) 뒷면에는 "지점과 지점의 한가운데"에서 닿는다 — 반 단계만 가다가 되돌아서, 다음 지점에는 떠난 높이로 돌아와 있다.
+//    (두께를 반 단계 - 공의 크기로 잡으면 딱 한가운데에서 닿는다. 판의 반 너비 PAD_W = 1칸이라 판의 양 끝이 바로 그 자리다.)
+//    지금 코스의 패턴은 앞면만 쓴다. 뒷면은 길을 벗어난 공이 닿을 때와, 나중에 뒷면을 쓰는 패턴을 위해 만들어 두었다.
+//  - 처음에는 판 뒤에 빨간 몸통을 붙여 반대쪽에서 오면 죽게 했다가(한 변만 파란 세모), 파란 판만 있는 쪽이 깔끔하다는 의견으로 뺐다. 그 뒤로 뒷면은 그냥 지나가게 했다가, 양쪽 다 튕기게 바꿨다.
+const PAD_TH = ZIG_STEP / 2 - SIZE, PAD_W = 1;
 const padFace = (q) => (q.from > 0 ? q.lv * ZIG_STEP + SIZE : q.lv * ZIG_STEP);
 // 장애물이 가운데에서 dx만큼 떨어진 곳에서 차지하는 높이 범위 [아래, 위]
 function hazardSpan(q, dx) {
@@ -1306,9 +1309,13 @@ function rushStep(L, s, press, ev, hold, r) {
     const topAt = (k) => { const v = L.stairHi.get(n0 + k); return v === undefined ? (L.wideBars.has(Math.floor((r[0] + 2 * k) / 16)) ? WIDE_TOP : 2) : v; };
     const padHit = (lev, zin, k) => { const q = L.pads.get(n0 + k); return !!q && q.lv === lev && q.from === zin; };      // 이 지점의 튕김판에 닿는가(판이 막는 쪽에서 왔는가)
     const dirAt = (lev, zin, tog, k) => (lev <= botAt(k) ? 1 : lev >= topAt(k) ? -1 : padHit(lev, zin, k) ? -zin : tog ? -zin : zin);
+    // 판의 뒷면: k번째 지점의 lev 단계를 떠나 d 쪽으로 가는 공이, 이 지점이나 다음 지점에 있는 판의 뒷면에 닿는가(내려가는 공은 바로 아래 단계를 막는 판의 윗면에, 올라가는 공은 바로 위 단계를 막는 판의 밑면에)
+    const padBack = (lev, d, k) => [k, k + 1].some((n) => { const q = L.pads.get(n0 + n); return !!q && q.from === -d && q.lv === lev + d; });
     while (local >= s.zk * SLOT + SLOT / 2) {              // 지난 지점의 선택을 굳히고, 다음 지점으로 넘어간다
       const d = dirAt(s.zlk, s.zin, s.ztog, s.zk);
-      s.zlk += d; s.zin = d; s.zk++; s.ztog = s.zpend ? 1 : 0; s.zpend = 0;      // 벽을 친 직후에 눌러 둔 것은 이 지점의 누름이 된다
+      if (padBack(s.zlk, d, s.zk)) { s.zin = -d; if (ev) ev.push({ type: "rebound", top: d > 0, step: true, pad: true, back: true }); }      // 판의 뒷면에 닿았다(지점과 지점의 한가운데): 반 단계만 갔다가 되돌아가, 다음 지점에는 같은 높이로 와 있다
+      else { s.zlk += d; s.zin = d; }
+      s.zk++; s.ztog = s.zpend ? 1 : 0; s.zpend = 0;      // 벽을 친 직후에 눌러 둔 것은 이 지점의 누름이 된다
     }
     const tk = s.zk * SLOT, top = topAt(s.zk), bot = botAt(s.zk);
     if (press) {
@@ -1322,8 +1329,11 @@ function rushStep(L, s, press, ev, hold, r) {
         else if (ev) ev.push({ type: "spark" });             // 연출 마디, 또는 벽으로 다가가는 중: 길은 그대로(불꽃만 튄다)
       }
     }
-    const toNode = local <= tk && !s.ztog;                   // 지점을 향해 가는 중인가, 지점 다음 높이를 향해 가는 중인가
-    const wpStep = toNode ? tk : tk + SLOT, wpH = (toNode ? s.zlk : s.zlk + dirAt(s.zlk, s.zin, s.ztog, s.zk)) * ZIG_STEP;
+    // 이 지점을 떠나는 길에 판의 뒷면이 있으면(dip): 다음 높이까지 가지 못하고, 지점과 지점의 한가운데에서 반 단계만 간 곳(판의 면)에 닿는다. 언제 눌러서 꺾었든 그 순간 그 자리에 닿도록 간다.
+    // 그리고 그럴 때는 지점에 닿기 전에 미리 돌아서지 않는다(미리 돌아서면 판을 뚫고 지나가게 된다).
+    const dNext = dirAt(s.zlk, s.zin, s.ztog, s.zk), dip = padBack(s.zlk, dNext, s.zk);
+    const toNode = local <= tk && (!s.ztog || dip);          // 지점을 향해 가는 중인가, 지점 다음 높이를 향해 가는 중인가
+    const wpStep = toNode ? tk : dip ? tk + SLOT / 2 : tk + SLOT, wpH = (toNode ? s.zlk : s.zlk + (dip ? dNext / 2 : dNext)) * ZIG_STEP;
     const prev = s.zh;
     s.zh = local === 0 ? s.zlk * ZIG_STEP : wpStep - local <= 0 ? wpH : prev + (wpH - prev) / (wpStep - local + 1);
     s.zv = Math.abs(s.zh - prev) * SUB;
@@ -1605,4 +1615,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
