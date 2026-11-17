@@ -57,25 +57,51 @@ console.log('== 점프 / 이단 점프 ==');
   Lg.stepState(flat, o, true, ev2, false);
   for (let i = 0; i < 40; i++) Lg.stepState(flat, o, false, ev2, false);
   ok(ev2.filter(e => e.type === 'double').length === 1, '이단 점프는 한 번 튈 때마다 한 번만');
-  // 이단 점프 뒤에는 박자가 어긋나 착지 → 굴러간다. 굴러가는 중에 누르면 그 자리에서 점프
+  // 이단 점프 뒤에는 박자가 어긋나 착지 → 굴러간다. 한참 구르는 중에 누르면 그 자리에서 점프
   const g = Lg.spawnState(flat, -1), ev3 = [];
   while (g.step < 49) Lg.stepState(flat, g, false, null, false);
   Lg.stepState(flat, g, true, null, false);
   while (!g.onGround) Lg.stepState(flat, g, false, null, false);
   for (let i = 0; i < 5; i++) Lg.stepState(flat, g, false, ev3, true);
   ok(g.onGround && !g.frozen && g.step % Lg.SUB > 12, '박자와 어긋나게 착지하면 굴러간다(멈춤은 땅에서 듣지 않음)');
+  g.step = Lg.SUB * 5 + 20;                                // 다음 박까지 0.79박 남은 자리로 옮겨서(튀기까지 멀다)
   Lg.stepState(flat, g, true, ev3, false);
-  ok(!g.onGround && ev3.some(e => e.type === 'jump') && g.djAvail, '굴러가는 중에 누르면 그 자리에서 점프하고, 이단 점프도 다시 쓸 수 있다');
+  ok(!g.onGround && ev3.some(e => e.type === 'jump') && g.djAvail, '한참 구르는 중에(다음 박이 멀 때) 누르면 그 자리에서 점프하고, 이단 점프도 다시 쓸 수 있다');
   let mh = 0; while (!g.onGround) { Lg.stepState(flat, g, false, null, false); mh = Math.max(mh, H(g)); }
   ok(mh > 2.1 && mh < 2.3, `눌러서 뛴 점프도 높이는 같다 (${mh.toFixed(2)}칸)`);
-  // 착지 직전에 눌러 두면(이단 점프를 이미 쓴 뒤) 착지하자마자 점프
+  // ---- 이단 점프 보정: 땅 언저리에서 누른 이단 점프는 꼭대기에서 한다
+  const assist = (pressAt, pre = () => {}) => {            // pressAt = 박 4에서 튀는 것을 기준으로 한 스텝(음수 = 튀기 전). 결과: 그 튐의 꼭대기 높이와 이단 점프를 한 시각
+    const a = Lg.spawnState(flat, -1), evA = []; let top = 0, at = null;
+    while (a.step < Lg.SUB * 4 + pressAt - 1) Lg.stepState(flat, a, false, null, false);
+    pre(a);
+    Lg.stepState(flat, a, true, evA, false);
+    if (evA.some(q => q.type === 'double')) at = (a.step - Lg.SUB * 4) / Lg.SUB;
+    while (a.step < Lg.SUB * 6) { const e = []; Lg.stepState(flat, a, false, e, false); if (a.step > Lg.SUB * 4) top = Math.max(top, H(a)); if (e.some(q => q.type === 'double') && at === null) at = (a.step - Lg.SUB * 4) / Lg.SUB; evA.push(...e); }
+    return { top, at, queued: evA.some(q => q.type === 'queue'), dead: a.dead };
+  };
+  const cases = [-14, -8, -3, 0, 1, 6, 15, 28].map(k => [k, assist(k)]);
+  ok(cases.every(([, r]) => r.queued && Math.abs(r.at - 0.5) < 0.03 && r.top > 4.3 && r.top < 4.6), `이단 점프 보정: 튀기 0.15박 전부터 튄 뒤 0.3박까지 누른 것은 모두 꼭대기(0.5박)에서 이단 점프가 된다 — ${cases.map(([k, r]) => `${(k / 96).toFixed(2)}박:${r.top.toFixed(1)}칸`).join(', ')}`);
+  const late = [30, 40, 48, 60].map(k => [k, assist(k)]);
+  ok(late.every(([k, r]) => !r.queued && Math.abs(r.at - k / 96) < 0.03), `그 뒤에 누른 것은 전처럼 누른 자리에서 바로 한다 — ${late.map(([k, r]) => `${(k / 96).toFixed(2)}박에 누름 → ${r.at.toFixed(2)}박`).join(', ')}`);
+  { // 앞의 점프에서 조금 늦게 누른 이단 점프(닿기 0.2박 전)는 다음 튐으로 넘기지 않는다
+    const r = assist(-20);
+    ok(!r.queued && r.at < 0, `닿기 0.2박 전에 누른 것은 지금 뛰고 있는 점프의 이단 점프다(다음 튐으로 넘기지 않는다) — ${r.at.toFixed(2)}박`);
+    // 이번에 멈춤을 쓴 뒤 낮게 누른 것은 일부러 낮게 뛰는 것: 그대로 둔다
+    const a = Lg.spawnState(flat, -1), evB = [];
+    while (a.step < Lg.SUB * 3 + 60) Lg.stepState(flat, a, false, null, false);
+    for (let i = 0; i < 24; i++) Lg.stepState(flat, a, false, null, true);       // 떨어지다가 잠깐 멈춤
+    while (H(a) > 0.5) Lg.stepState(flat, a, false, null, false);
+    Lg.stepState(flat, a, true, evB, false);
+    ok(evB.some(q => q.type === 'double') && !evB.some(q => q.type === 'queue'), '멈춤을 쓴 뒤 땅 가까이에서 누른 이단 점프는 그 자리에서 한다(일부러 낮게 뛰는 동작)');
+  }
+  // 착지 직전에 눌러 두면(이단 점프를 이미 쓴 뒤): 맨땅이고 곧 튈 참이면 이단 점프로 맡아 둔다 → 다음 박에 튀고, 꼭대기에서 이단 점프
   const b = Lg.spawnState(flat, -1), ev4 = [];
   while (b.step < 49) Lg.stepState(flat, b, false, null, false);
   Lg.stepState(flat, b, true, null, false);
   while (9 - b.y > 0.35 || b.vy < 0) Lg.stepState(flat, b, false, null, false);
   Lg.stepState(flat, b, true, ev4, false);
-  for (let i = 0; i < 25; i++) Lg.stepState(flat, b, false, ev4, false);
-  ok(ev4.some(e => e.type === 'land') && ev4.some(e => e.type === 'jump'), '착지 직전에 누르면 착지하자마자 점프한다');
+  let topB = 0; for (let i = 0; i < 130; i++) { Lg.stepState(flat, b, false, ev4, false); topB = Math.max(topB, H(b)); }
+  ok(ev4.some(e => e.type === 'land') && ev4.some(e => e.type === 'queue') && !ev4.some(e => e.type === 'jump') && ev4.some(e => e.type === 'bounce') && ev4.some(e => e.type === 'double') && topB > 4.3, `이단 점프를 쓴 뒤 착지 직전에 누르면: 착지 → 박에 맞춰 튐 → 꼭대기에서 이단 점프 (${topB.toFixed(2)}칸)`);
   // 멈춘 채로 점프를 누르면 손을 떼는 순간 솟는다
   const f = Lg.spawnState(flat, -1);
   while (f.step < 49) Lg.stepState(flat, f, false, null, false);

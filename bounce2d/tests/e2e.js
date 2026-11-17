@@ -54,9 +54,12 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   const rollX = await G(() => window.__game.state.x);
   await tick(bt + 0.05);
   ok(await G(() => window.__game.state.onGround), `박자와 어긋나게 착지하면 굴러간다 (x=${rollX.toFixed(1)})`);
+  // 이단 점프 보정: 맨땅에서 곧 튈 참에 누른 것은 이단 점프로 맡아 둔다 → 박에 맞춰 튀고, 꼭대기에서 이단 점프(4.5칸까지)
   await p.mouse.click(700, 200); await tick(bt + 0.1);
-  st = await G(() => ({ g: window.__game.state.onGround, vy: window.__game.state.vy, dj: window.__game.state.djAvail }));
-  ok(!st.g && st.vy < 0 && st.dj, '굴러가는 중에 오른쪽을 누르면 그 자리에서 점프');
+  st = await G(() => ({ g: window.__game.state.onGround, q: window.__game.state.djq, step: window.__game.state.step }));
+  const nextBeat = Math.ceil(st.step / 96);
+  let topQ = 0; for (let t2 = bt + 0.15; t2 <= nextBeat + 1.0; t2 += 0.05) { await tick(t2); topQ = Math.max(topQ, await G(() => 9 - window.__game.state.y)); }
+  ok(st.g && st.q === 2 && topQ > 4.2, `굴러가는 중에(곧 튈 참에) 오른쪽을 누르면 그 자리에서 뛰지 않고, 박에 맞춰 튄 뒤 꼭대기에서 이단 점프한다 (${topQ.toFixed(2)}칸)`);
   await G(() => window.__game.startFresh());
   await tick(4.5);
   await p.keyboard.down('ArrowLeft'); await tick(4.7);

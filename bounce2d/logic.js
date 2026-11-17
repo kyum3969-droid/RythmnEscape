@@ -12,6 +12,12 @@ const V0 = 4 * JUMP_H;
 const V_PAD = G * 1.5 / 2;     // 점프대: 체공 1.5박자, 높이 약 5칸
 const JUMP_BUF_STEPS = 30;     // 점프할 수 없을 때 누른 입력을 기억하는 시간(약 1/3박). 착지 직전·고리 직전에 눌러도 이어진다
 const FREEZE_STEPS = SUB;      // 한 번 튈 때마다 멈출 수 있는 시간: 1박자
+// 이단 점프 보정: 이단 점프를 하려고 눌렀는데 땅 언저리에서 눌러 버린 경우를 뜻대로 해 준다.
+// 튀어서 꼭대기까지가 반 박(약 0.2초)밖에 안 돼서, 박에 맞춰 누르면 공이 아직 땅 근처다. 그러면 전에는 낮은 데서 한 번 뛴 것으로 끝났다(땅에서 한 번 뛴 것처럼 보인다).
+// 이제는 그런 누름을 "이번에 튀면 꼭대기에서 이단 점프"로 맡아 두었다가 꼭대기에서 한다.
+const DJ_PRE = 0.15;                       // 땅에 닿기 이만큼(박, 약 59ms) 전부터 누른 것 → 다음에 튈 때의 꼭대기에서. (더 넓히면 "조금 늦게 누른 이단 점프"까지 다음 튐으로 넘어가 버린다)
+const DJ_EARLY = Math.round(0.3 * SUB);    // 튀고 나서 이 스텝 안에 누른 것 → 이번 꼭대기에서(그 뒤에 누른 것은 전처럼 바로 한다)
+const DJ_ROLL = Math.round(0.35 * SUB);    // 땅에서 구르는 중: 튀기까지 이 스텝이 안 남았으면 → 튄 뒤 꼭대기에서(더 일찍 누르면 전처럼 그 자리에서 뛴다)
 const BOUNCE_TOL = 12;         // 박자 직후 이 스텝(1/8박) 안에 땅에 닿으면 바로 튄다. 늦은 만큼 낮게 튀어 다음 박자에 맞춰 착지한다
 const SAW_R = 0.4, SAW_TRAVEL = 2.2;
 const SIZE = 0.8, HALF = 0.4;
@@ -1107,7 +1113,7 @@ function spawnState(L, cp = -1) {
   return {
     mode: "bounce", step, x, lead: 0, dashing: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
     zh: 0, zdir: 1, zv: 0, zk: 0, zlk: 0, zin: -1, ztog: 0,
-    djAvail: false, jbuf: 0, ring: -1,
+    djAvail: false, jbuf: 0, ring: -1, djq: 0, since: 0, ringed: 0,      // djq = 맡아 둔 이단 점프(2 = 다음에 튀면, 1 = 이번 꼭대기에서), since = 튄 뒤 지난 스텝
     freeze: 0, frozen: false,
     cp, dead: false, cause: "", won: false,
   };
@@ -1118,6 +1124,7 @@ function launch(s, kind, ev, late = 0) {
   // 저절로 튈 때 박자보다 조금 늦었으면 그만큼 낮게 튀어 다음 박자에 맞춰 착지한다(계단을 내려갈 때 박자가 밀리지 않게)
   s.vy = kind === "pad" ? -V_PAD : kind === "jump" ? -V0 : -G * (1 - late / SUB) / 2;
   s.onGround = false; s.djAvail = true; s.jbuf = 0; s.freeze = FREEZE_STEPS;
+  s.since = 0; s.djq = s.djq === 2 ? 1 : 0; s.ringed = 0;
   if (ev) ev.push({ type: kind });
 }
 
@@ -1157,11 +1164,23 @@ function stepState(L, s, press, ev, hold) {
     if (s.dead) return;
   } else {
   if (s.onGround) {
-    if (s.jbuf > 0) launch(s, "jump", ev);            // 굴러가는 중에 누르면 그 자리에서 점프
-    else tryBounce(L, s, ev);
+    if (s.jbuf > 0) {
+      // 땅(박스 위가 아니라 맨땅)에서 곧 튈 참에 누른 것은 이단 점프로 맡아 둔다. 그 밖에는 그 자리에서 점프(박스 위에서 다시 뛰기, 한참 구르다 뛰기)
+      const wait = (SUB - (s.step + bouncePhase(s)) % SUB) % SUB;
+      if (s.y === ROWS - 1 && (wait <= DJ_ROLL || SUB - wait <= BOUNCE_TOL)) { s.djq = 2; s.jbuf = 0; if (ev) ev.push({ type: "queue" }); tryBounce(L, s, ev); }
+      else launch(s, "jump", ev);
+    } else tryBounce(L, s, ev);
   } else if (s.jbuf > 0 && s.djAvail) {              // 공중: 이단 점프
-    s.vy = -V0; s.djAvail = false; s.jbuf = 0;
-    if (ev) ev.push({ type: "double" });
+    const hh = (ROWS - 1) - s.y, tl = s.vy > 0 ? (-s.vy + Math.sqrt(s.vy * s.vy + 2 * G * hh)) / G : 99;      // 맨땅에 닿기까지 남은 박
+    if (s.ringed) { s.vy = -V0; s.djAvail = false; s.jbuf = 0; s.djq = 0; if (ev) ev.push({ type: "double" }); }      // 충전 고리로 얻은 이단 점프는 누른 자리에서 바로(보정하지 않는다)
+    else if (s.vy < 0 && s.since < DJ_EARLY) { s.djq = 1; s.jbuf = 0; if (ev) ev.push({ type: "queue" }); }              // 튀자마자 누름 → 꼭대기에서
+    // (이번에 멈춤을 쓴 뒤라면 일부러 낮게 뛰는 것이므로 그대로 둔다)
+    else if (tl <= DJ_PRE && s.freeze === FREEZE_STEPS && !isSolid(L, Math.floor(s.x + TPB * tl), ROWS - 2)) { s.djq = 2; s.jbuf = 0; if (ev) ev.push({ type: "queue" }); }   // 닿기 직전에 누름 → 다음에 튀면 꼭대기에서
+    else { s.vy = -V0; s.djAvail = false; s.jbuf = 0; s.djq = 0; if (ev) ev.push({ type: "double" }); }
+  }
+  if (!s.onGround) {
+    s.since++;
+    if (s.djq === 1 && s.djAvail && s.vy >= 0 && !(hold && s.freeze > 0)) { s.vy = -V0; s.djAvail = false; s.djq = 0; if (ev) ev.push({ type: "double" }); }   // 맡아 둔 이단 점프: 꼭대기에서
   }
   if (s.jbuf > 0) s.jbuf--;
 
@@ -1227,7 +1246,7 @@ function stepState(L, s, press, ev, hold) {
     } else if (t === "J") {
       if (s.onGround && r === s.y - 1) launch(s, "pad", ev);
     } else if (t === "O") {
-      if (s.ring !== c) { s.ring = c; s.djAvail = true; if (ev) ev.push({ type: "ring", c, r }); }
+      if (s.ring !== c) { s.ring = c; s.djAvail = true; s.ringed = 1; if (ev) ev.push({ type: "ring", c, r }); }
     } else if (t === "^" || t === "v") {
       const hx0 = c + 0.22, hx1 = c + 0.78;
       const hy0 = t === "^" ? r + 0.4 : r, hy1 = t === "^" ? r + 1 : r + 0.6;
@@ -1294,7 +1313,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < (opts.offset || 0); i++) stepState(L, s0, false, null, false);
   if (s0.dead) return { plan: null, best: s0.x };
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}|${Math.ceil(s.freeze / 8)}|${s.zk}|${s.zlk}${s.zin}${s.ztog}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}${s.djq || 0}|${Math.ceil(s.freeze / 8)}|${s.zk}|${s.zlk}${s.zin}${s.ztog}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {
