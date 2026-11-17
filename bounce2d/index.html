@@ -108,6 +108,17 @@
   .btn.small { font-size: 13px; font-weight: 500; padding: 8px 10px; color: var(--muted); }
   #devJumps .btn.small { color: var(--text); font-variant-numeric: tabular-nums; }
   #devTag { color: var(--danger); font-weight: 700; letter-spacing: 0.08em; }
+  /* 개발자 기능: 코스 둘러보기(플레이가 아니다). 아래쪽 막대에서 퍼센트로 옮겨 다닌다 */
+  #inspect {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; align-items: center; gap: 6px;
+    padding: 6px var(--gutter-r) max(8px, env(safe-area-inset-bottom, 0px)) var(--gutter-l); background: rgba(6, 6, 16, 0.82);
+  }
+  #inspect[hidden] { display: none; }
+  #inspect input[type=range] { flex: 1 1 80px; min-width: 60px; accent-color: var(--accent); }
+  #inspect input[type=number] { width: 64px; background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-variant-numeric: tabular-nums; }
+  #inspect .btn.small { color: var(--text); padding: 6px 8px; white-space: nowrap; }
+  #app.inspect .zone, #app.inspect #pauseBtn { visibility: hidden; }
+  #app.inspect #view { cursor: grab; touch-action: none; }
   .layer { overflow-y: auto; }
   @media (max-height: 480px) {             /* 가로로 든 휴대폰: 패널을 낮게 */
     .panel { padding: 14px 18px; gap: 8px; max-width: 560px; }
@@ -140,6 +151,15 @@
   <div class="zone" id="zoneL"><b>II</b></div>
   <div class="zone" id="zoneR"><b>▲</b></div>
   <div id="toast"></div>
+  <div id="inspect" hidden>
+    <button class="btn small" data-mv="-16">◀ 마디</button>
+    <button class="btn small" data-mv="-4">◀ 박</button>
+    <input type="range" id="insRange" min="0" max="100" step="0.1" value="0" aria-label="코스에서의 위치(퍼센트)">
+    <button class="btn small" data-mv="4">박 ▶</button>
+    <button class="btn small" data-mv="16">마디 ▶</button>
+    <input type="number" id="insPct" min="0" max="100" step="0.1" aria-label="퍼센트 직접 입력">
+    <button class="btn small" id="insClose">닫기</button>
+  </div>
 
   <div class="layer" id="overlay">
     <div class="panel" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
@@ -166,6 +186,8 @@
           <button class="btn small" id="devMarks">길 위의 누르는 표시: 켜짐</button>
           <button class="btn small" id="devZones">아래쪽 버튼 안내: 켜짐</button>
           <button class="btn small" id="devGems">수정: 켜짐</button>
+          <button class="btn small" id="devLabels">플레이 중 번호표: 꺼짐</button>
+          <button class="btn small" id="devInspect">코스 둘러보기</button>
         </div>
         <div id="devJumps" hidden></div>
       </div>
@@ -207,7 +229,7 @@
   let dev = store.get("dev", false);     // 개발자 모드: 체크포인트로 바로 이동
   let devRun = false;                    // 건너뛰어 시작한 판은 최고 기록에 넣지 않는다
   // 개발자 기능: 안내 없이 해 보기. 길 위의 누르는 표시(II, ▲, 피버의 화살표)와 화면 아래쪽의 버튼 안내를 따로 끌 수 있다(개발자 모드일 때만 적용된다)
-  let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true), devGems = store.get("devGems", true);
+  let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true), devGems = store.get("devGems", true), devLabels = store.get("devLabels", false);
   const showMarks = () => !dev || devMarks;
   const showGems = () => !dev || devGems;            // 길 위에 줄지어 있는 수정(공이 갈 길을 보여 준다)
 
@@ -538,6 +560,7 @@
     $("devMarks").textContent = "길 위의 누르는 표시: " + (devMarks ? "켜짐" : "꺼짐");
     $("devZones").textContent = "아래쪽 버튼 안내: " + (devZones ? "켜짐" : "꺼짐");
     $("devGems").textContent = "수정: " + (devGems ? "켜짐" : "꺼짐");
+    $("devLabels").textContent = "플레이 중 번호표: " + (devLabels ? "켜짐" : "꺼짐");
     $("app").classList.toggle("nozones", dev && !devZones);
     const box = $("devJumps");
     box.hidden = !dev;
@@ -1270,11 +1293,93 @@
         ctx.stroke(); ctx.restore();
       }
     }
+    if (dev && (phase === "inspect" || devLabels)) {      // 번호표: 마디 선과 이름, 상자마다 "마디-R/B번호"
+      ctx.save(); ctx.shadowBlur = 0; ctx.textBaseline = "middle";
+      const fs = Math.max(10, Math.min(13, T * 0.3));
+      for (let b = Math.max(0, Math.floor(cA / 16)); b <= Math.floor(cB / 16) && b < L.bars; b++) {
+        const x = sx(b * 16);
+        ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = 1; ctx.setLineDash([4, 6]);
+        ctx.beginPath(); ctx.moveTo(x, 64); ctx.lineTo(x, view.groundY); ctx.stroke(); ctx.setLineDash([]);
+        const txt = `마디 ${b} · ${COURSE.bars[b]}`;
+        ctx.font = `600 ${fs + 1}px "Chakra Petch", sans-serif`; ctx.textAlign = "left";
+        const tw = ctx.measureText(txt).width;
+        ctx.fillStyle = "rgba(6,6,16,0.78)"; ctx.fillRect(x + 4, 62, tw + 12, fs + 10);
+        ctx.fillStyle = "#ffffff"; ctx.fillText(txt, x + 10, 62 + (fs + 10) / 2);
+      }
+      ctx.font = `700 ${fs}px "Chakra Petch", sans-serif`; ctx.textAlign = "center";
+      for (const o of LABELS) {
+        if (o.x1 < cA || o.x0 > cB) continue;
+        const x = sx(o.x), y = Math.max(96, Math.min(view.groundY - fs, sy(ROWS - 1 - o.h))), tw = ctx.measureText(o.text).width;
+        ctx.fillStyle = "rgba(6,6,16,0.82)"; ctx.fillRect(x - tw / 2 - 4, y - fs / 2 - 3, tw + 8, fs + 6);
+        ctx.strokeStyle = o.k === "R" ? "#ff8fab" : "#9fdcff"; ctx.lineWidth = 1; ctx.strokeRect(x - tw / 2 - 4, y - fs / 2 - 3, tw + 8, fs + 6);
+        ctx.fillStyle = o.k === "R" ? "#ffd0dc" : "#d6f0ff"; ctx.fillText(o.text, x, y);
+      }
+      ctx.restore();
+    }
     if (fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${fx.flash * 0.5})`; ctx.fillRect(0, 0, w, h); }
     const since = now - fx.cpFlash;
     if (since < 0.4) { ctx.fillStyle = css(pal.accent, (1 - since / 0.4) * 0.22); ctx.fillRect(0, 0, w, h); }
   }
   const REF_PATH = L.ref ? traceRun(L, L.ref).trace : null;
+  // ---- 개발자 기능: 번호표. 상자마다 "마디-종류번호"(빨간 것은 R, 파란 것은 B. 그 마디에서 왼쪽부터 센다)를 붙여, 고칠 곳을 말로 짚을 수 있게 한다.
+  const LABELS = (() => {
+    const out = [];
+    const runs = (arr, has, step, fn) => { for (let c = 0; c < arr.length; c++) { if (!has(arr[c]) || (c > 0 && has(arr[c - 1]))) continue; let e = c; while (e + 1 < arr.length && has(arr[e + 1])) e++; fn(c * step, (e + 1) * step, c, e); c = e; } };
+    const most = (arr, a, e, f) => { let v = arr[a]; for (let k = a; k <= e; k++) v = f(v, arr[k]); return v; };
+    if (L.floorH) {
+      runs(FLOOR2, (v) => v > 0, 0.5, (x0, x1, a, e) => { const top = most(FLOOR2, a, e, Math.max); out.push({ x0, x1, h: top < 0.9 ? top + 0.4 : top / 2, k: "R" }); });
+      runs(FLOOR_FLOAT, (v) => v > 0, 1, (x0, x1, a, e) => out.push({ x0, x1, h: (L.floorLo[a] + most(FLOOR_FLOAT, a, e, Math.max)) / 2, k: "R" }));
+      runs(CEIL_HANG, (v) => v < 90, 1, (x0, x1, a, e) => out.push({ x0, x1, h: most(CEIL_HANG, a, e, Math.max) + 0.5, k: "R" }));
+      runs(CEIL_FLOAT, (v) => v < 90, 1, (x0, x1, a, e) => out.push({ x0, x1, h: (most(CEIL_FLOAT, a, e, Math.max) + L.ceilTop[a]) / 2, k: "R" }));
+    }
+    for (const q of L.reds) out.push({ x0: q.x0, x1: q.x1, h: q.kind === "floor" ? q.tip / 2 : (q.tip + q.far) / 2, k: "R" });      // 피버의 이빨과 떠 있는 장애물
+    const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
+    const BH = Array.from({ length: L.cols }, (_, c) => boxH(c));
+    runs(BH, (v) => v > 0, 1, (x0, x1, a, e) => out.push({ x0, x1, h: most(BH, a, e, Math.max) / 2, k: "B" }));
+    const floating = (c, r) => { if (r < 0 || r >= ROWS - 1 || c < 0 || c >= L.cols || !isSolid(L, c, r)) return false; for (let k = r + 1; k < ROWS; k++) if (!isSolid(L, c, k)) return true; return false; };
+    for (let r = 0; r < ROWS - 1; r++) for (let c = 0; c < L.cols; c++) {
+      if (!floating(c, r) || floating(c - 1, r) || floating(c, r - 1)) continue;
+      let e = c; while (floating(e + 1, r) && !floating(e + 1, r - 1)) e++;
+      out.push({ x0: c, x1: e + 1, h: ROWS - 1 - r - 0.5, k: "B" }); c = e;
+    }
+    out.sort((u, v) => u.x0 - v.x0 || u.h - v.h);
+    const cnt = {};
+    for (const o of out) { o.bar = Math.floor((o.x0 + 1e-6) / 16); const key = o.bar + o.k; cnt[key] = (cnt[key] || 0) + 1; o.text = `${o.bar}-${o.k}${cnt[key]}`; o.x = (o.x0 + o.x1) / 2; }
+    return out;
+  })();
+  // ---- 개발자 기능: 코스 둘러보기. 플레이가 아니다(소리도 판정도 없다). 퍼센트로 옮겨 다니며, 공은 패턴대로 갔을 때 그 자리에 있을 모습으로 서 있다.
+  let inspectX = 0, insDrag = null;
+  const BAR_SNAPS = [], REF_INP = L.ref ? planInput(L.ref) : null;
+  function inspectAt(x) {
+    if (phase !== "inspect") return;
+    inspectX = Math.max(0, Math.min(L.goalX - 0.5, isFinite(x) ? x : 0));
+    const step = Math.round(inspectX / TPB * SUB), b = Math.min(BAR_SNAPS.length - 1, Math.floor(step / (4 * SUB)));
+    const s2 = { ...BAR_SNAPS[b] };
+    while (s2.step < step && !s2.dead && !s2.won) stepState(L, s2, REF_INP.press.has(s2.step + 1), null, REF_INP.hold.has(s2.step + 1));
+    state = s2;
+    const pct = inspectX / L.goalX * 100, bar = Math.floor(inspectX / 16), here = LABELS.filter((o) => o.bar === bar).map((o) => o.text.split("-")[1]);
+    $("insRange").value = pct.toFixed(1);
+    if (document.activeElement !== $("insPct")) $("insPct").value = pct.toFixed(1);
+    refreshHud();
+    $("tries").textContent = `마디 ${bar} (${COURSE.bars[bar] || "-"}) · ${(inspectX % 16 / 4).toFixed(2)}박째 · 상자: ${here.length ? here.join(", ") : "없음"}`;      // 둘러보는 동안에는 "시도" 자리에 지금 자리의 정보를 적는다
+  }
+  function openInspect() {
+    if (!dev || !REF_INP) return;
+    const from = state ? state.x : 0;
+    stopClock(true);
+    if (!BAR_SNAPS.length) { const s2 = spawnState(L, -1); while (!s2.dead && !s2.won) { if (s2.step % (4 * SUB) === 0) BAR_SNAPS[s2.step / (4 * SUB)] = { ...s2 }; stepState(L, s2, REF_INP.press.has(s2.step + 1), null, REF_INP.hold.has(s2.step + 1)); } }
+    broken.clear(); usedRings.clear(); gotGems.clear(); fx.tail.length = 0; fx.particles.length = 0; fx.chain = 0;
+    phase = "inspect";
+    $("overlay").hidden = true; $("inspect").hidden = false; $("app").classList.add("inspect");
+    inspectAt(from);
+    setModeLabel();
+  }
+  function closeInspect() {
+    if (phase !== "inspect") return;
+    $("inspect").hidden = true; $("app").classList.remove("inspect");
+    state = spawnState(L, -1); setModeLabel(); refreshHud();
+    showTitle();
+  }
   const HIGH_NEED = new Float32Array(L.bars);       // 마디마다: 패턴대로 갈 때 공 윗면이 닿는 가장 높은 곳(칸). 피버와 계단 구간은 따로 물러나므로 뺀다
   if (REF_PATH) for (const t of REF_PATH) { const b = Math.floor(t.x / 16); if (b < L.bars && !inRide(L, t.x) && !L.tallBars.has(b)) HIGH_NEED[b] = Math.max(HIGH_NEED[b], t.h + SIZE); }
   const GATES = new Map(L.switches.map((sw) => [sw.col, sw.mode]));
@@ -1365,6 +1470,7 @@
   const oneButton = () => phase === "running" && state.mode === "rush";
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
+    if (phase === "inspect") { insDrag = { id: e.pointerId, px: e.clientX, x: inspectX }; try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 일부 브라우저 */ } return; }
     const r = canvas.getBoundingClientRect();
     if (oneButton()) {                             // 누르는 순간 = 탁, 누르고 있으면 = 꾹
       press();
@@ -1382,11 +1488,18 @@
       setTimeout(() => $("zoneR").classList.remove("on"), 120);
     }
   });
-  const release = (e) => { if (holdPointers.delete(e.pointerId)) setZones(); };
+  canvas.addEventListener("pointermove", (e) => { if (phase === "inspect" && insDrag && insDrag.id === e.pointerId) inspectAt(insDrag.x - (e.clientX - insDrag.px) / (view.zT || view.T)); });
+  const release = (e) => { if (insDrag && insDrag.id === e.pointerId) insDrag = null; if (holdPointers.delete(e.pointerId)) setZones(); };
   canvas.addEventListener("pointerup", release);
   canvas.addEventListener("pointercancel", release);
   const HOLD_KEYS = new Set(["ArrowLeft", "a", "A", "Shift"]), DASH_KEYS = new Set(["ArrowRight", "ArrowUp", "d", "D", "w", "W", " "]);
   window.addEventListener("keydown", (e) => {
+    if (phase === "inspect") {                      // 둘러보기: ←/→ 한 박, Shift와 함께면 한 마디, Esc로 닫기
+      if (e.target && e.target.tagName === "INPUT" && e.target.type === "number") return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); inspectAt(inspectX + (e.key === "ArrowRight" ? 1 : -1) * (e.shiftKey ? 16 : 4)); }
+      else if (e.key === "Escape") closeInspect();
+      return;
+    }
     if (e.repeat) { if (HOLD_KEYS.has(e.key) || DASH_KEYS.has(e.key)) e.preventDefault(); return; }
     if (oneButton() && (HOLD_KEYS.has(e.key) || DASH_KEYS.has(e.key))) { e.preventDefault(); press(); keyHold = true; rushKey = e.key; setZones(); }
     else if (HOLD_KEYS.has(e.key)) { e.preventDefault(); if (phase === "dead") press(); else { keyHold = true; setZones(); } }
@@ -1401,6 +1514,12 @@
   $("devMarks").addEventListener("click", () => { devMarks = !devMarks; store.set("devMarks", devMarks); renderDev(); });
   $("devZones").addEventListener("click", () => { devZones = !devZones; store.set("devZones", devZones); renderDev(); });
   $("devGems").addEventListener("click", () => { devGems = !devGems; store.set("devGems", devGems); renderDev(); });
+  $("devLabels").addEventListener("click", () => { devLabels = !devLabels; store.set("devLabels", devLabels); renderDev(); });
+  $("devInspect").addEventListener("click", openInspect);
+  $("insRange").addEventListener("input", (e) => inspectAt(+e.target.value / 100 * L.goalX));
+  $("insPct").addEventListener("change", (e) => inspectAt(+e.target.value / 100 * L.goalX));
+  $("insClose").addEventListener("click", closeInspect);
+  $("inspect").addEventListener("click", (e) => { const b = e.target.closest("button[data-mv]"); if (b) inspectAt(+b.dataset.mv > 0 ? Math.floor((inspectX + 1e-6) / Math.abs(+b.dataset.mv) + 1) * Math.abs(+b.dataset.mv) : Math.ceil((inspectX - 1e-6) / Math.abs(+b.dataset.mv) - 1) * Math.abs(+b.dataset.mv)); });
   applySpeed(); renderSpeed();
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   new ResizeObserver(resize).observe(canvas);
@@ -1431,7 +1550,7 @@
   // 자동 테스트용 훅
   window.__game = {
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
-    press, startFresh, respawn, pause, view, devJump, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
+    press, startFresh, respawn, pause, view, devJump, openInspect, closeInspect, inspectAt, get labels() { return LABELS; }, get inspectX() { return inspectX; }, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
     get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; }, round,
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },

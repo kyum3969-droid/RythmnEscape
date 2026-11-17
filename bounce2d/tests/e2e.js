@@ -267,6 +267,27 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok(seen4[9.25] && seen4[9.25].on && Math.abs(seen4[9.25].h - 4) < 0.01, `이단 점프로 떠 있는 파란 박스에 올라탄다 (높이 ${seen4[9.25] && seen4[9.25].h.toFixed(2)}칸)`);
     ok(seen4[21.75] && seen4[21.75].h > 6 && seen4[21.75].z < 0.97 && seen4[21.75].topPx > 35, `박스에서 다시 뛰면 6칸 넘게 올라가고, 화면이 조금 물러나 공이 화면 안에 있다 (높이 ${seen4[21.75] && seen4[21.75].h.toFixed(2)}칸, ${seen4[21.75] && seen4[21.75].z.toFixed(2)}배, 공 윗면 y=${seen4[21.75] && seen4[21.75].topPx.toFixed(0)}px)`);
     ok(seen4[76.75] && seen4[76.75].h > 0.9 && seen4[76.75].h < 1.21 && !seen4[76.75].on, `낮은 파란 천장 밑에서는 낮게 뜬 채로 멈춰서 건넌다 (높이 ${seen4[76.75] && seen4[76.75].h.toFixed(2)}칸)`);
+    // 개발자 기능: 코스 둘러보기(퍼센트로 이동)와 번호표
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    let ins = await G(() => { const g = window.__game; g.openInspect(); g.inspectAt(g.L.goalX * 0.24); const t = g.labels.map((o) => o.text); return { phase: g.phase, x: g.state.x, want: g.L.goalX * 0.24, pct: document.getElementById('insRange').value, info: document.getElementById('tries').textContent, n: t.length, uniq: new Set(t).size, red: t.filter((v) => /-R\d+$/.test(v)).length, blue: t.filter((v) => /-B\d+$/.test(v)).length, bar: document.getElementById('inspect').hidden, ov: document.getElementById('overlay').hidden }; });
+    await p.waitForTimeout(200); await p.screenshot({ path: out + 'r4_inspect.png' });
+    ok(ins.phase === 'inspect' && Math.abs(ins.x - ins.want) < 0.05 && Math.abs(+ins.pct - 24) < 0.11 && !ins.bar && ins.ov, `둘러보기: 24%로 옮기면 그 자리가 보인다(플레이가 아니다) — ${ins.info} [막대 ${ins.pct}]`);
+    ok(ins.n > 150 && ins.uniq === ins.n && ins.red > 100 && ins.blue > 20, `번호표: 상자 ${ins.n}개에 서로 다른 이름이 붙는다 (빨간 것 ${ins.red}개, 파란 것 ${ins.blue}개)`);
+    ins = await G(() => { const g = window.__game, el = document.getElementById('insRange'); el.value = '61.3'; el.dispatchEvent(new Event('input', { bubbles: true })); return { x: g.state.x, want: g.L.goalX * 0.613, step: g.state.step, pctHud: document.getElementById('pct').textContent }; });
+    await p.waitForTimeout(150);
+    const stepBefore = await G(() => window.__game.state.step);
+    await p.waitForTimeout(300);
+    ok(Math.abs(ins.x - ins.want) < 0.05 && ins.pctHud === '61%' && await G(() => window.__game.state.step) === stepBefore, `막대를 61.3%로 옮기면 그리로 가고, 가만히 두면 흐르지 않는다 (화면 표시 ${ins.pctHud})`);
+    { const bb = await p.$eval('#view', (c) => { const r = c.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+      const x0 = await G(() => window.__game.inspectX);
+      await p.mouse.move(bb.x, bb.y); await p.mouse.down(); await p.mouse.move(bb.x - 200, bb.y, { steps: 4 }); await p.mouse.up();
+      const x1 = await G(() => window.__game.inspectX);
+      ok(x1 > x0 + 2, `화면을 왼쪽으로 끌면 앞으로 넘어간다 (${x0.toFixed(1)} → ${x1.toFixed(1)}칸)`);
+      await p.click('#inspect button[data-mv="16"]');
+      const x2 = await G(() => window.__game.inspectX);
+      ok(x2 > x1 && x2 % 16 === 0, `"마디 ▶"는 다음 마디의 첫 박으로 간다 (${x2}칸 = 마디 ${x2 / 16})`); }
+    await p.click('#insClose');
+    ok(await G(() => window.__game.phase === 'title' && document.getElementById('inspect').hidden && !document.getElementById('overlay').hidden), '닫으면 처음 화면으로 돌아온다');
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');
