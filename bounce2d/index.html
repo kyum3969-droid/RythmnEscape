@@ -190,6 +190,12 @@
   const round = Math.max(0, Math.min(COURSES.length - 1, store.get("round", 0) | 0));
   const COURSE = COURSES[round];
   const L = buildLevel(COURSE);
+  // 그릴 때 쓰는 바닥 높이(반 칸 단위): 빨간 덩어리에 높은 박스를 합친 것. 붙어 있으면 한 덩어리로 그려진다(높은 박스를 따로 표시하지 않는다).
+  const FLOOR2 = L.floorH ? (() => {
+    const a = Array.from({ length: L.floorH.length * 2 }, (_, k) => L.floorH[k >> 1]);
+    for (const q of L.talls) for (let k = Math.round((q.x - q.w / 2) * 2); k < Math.round((q.x + q.w / 2) * 2); k++) if (k >= 0 && k < a.length) a[k] = Math.max(a[k], q.h);
+    return a;
+  })() : null;
   const gotoRound = (i) => { store.set("round", i); location.reload(); };
   let SPB = 60 / L.bpm;
   const TOTAL_BEATS = L.cols / TPB;
@@ -788,17 +794,18 @@
 
     // 패턴 장애물: 바닥에서 솟은 덩어리와 위에 매달린 덩어리. 이웃한 칸은 한 덩어리로 이어 그린다. (판정은 그림보다 조금 작다)
     // 언덕 구간에서는 모서리를 둥글린다.
-    const blockRuns = (arr, has, yBase) => {
-      for (let c = Math.max(0, cA); c <= cB && c < L.cols; c++) {
+    const blockRuns = (arr, has, yBase, step = 1) => {              // step = 배열 한 칸의 너비(칸). 높은 박스를 합친 바닥은 반 칸 단위다
+      const n = arr.length;
+      for (let c = Math.max(0, Math.floor(cA / step)); c <= cB / step && c < n; c++) {
         if (!has(arr[c])) continue;
         let a = c, e = c;
         while (a > 0 && has(arr[a - 1])) a--;
-        while (e + 1 < L.cols && has(arr[e + 1])) e++;
-        const x0 = sx(a) + T * 0.06, x1 = sx(e + 1) - T * 0.06, soft = inRide(L, a + 0.5) ? T * 0.34 : 0;
+        while (e + 1 < n && has(arr[e + 1])) e++;
+        const x0 = sx(a * step) + T * 0.06, x1 = sx((e + 1) * step) - T * 0.06, soft = inRide(L, (a + 0.5) * step) ? T * 0.34 : 0;
         const pts = [[x0, yBase]];
         let yMin = yBase, yMax = yBase;
         for (let k = a; k <= e; k++) {
-          const y = sy(ROWS - 1 - arr[k]), xl = k === a ? x0 : sx(k), xr = k === e ? x1 : sx(k + 1);
+          const y = sy(ROWS - 1 - arr[k]), xl = k === a ? x0 : sx(k * step), xr = k === e ? x1 : sx((k + 1) * step);
           yMin = Math.min(yMin, y); yMax = Math.max(yMax, y);
           if (pts[pts.length - 1][1] !== y) pts.push([xl, y]);
           if (k === e || arr[k + 1] !== arr[k]) pts.push([xr, y]);
@@ -830,23 +837,8 @@
       }
     };
     if (L.floorH) {
-      blockRuns(L.floorH, (v) => v > 0, view.groundY);
+      blockRuns(FLOOR2, (v) => v > 0, view.groundY, 0.5);
       blockRuns(L.ceilH, (v) => v < 90, -40);
-    }
-    // 높은 박스: 이단 점프로만 넘는 빨간 박스. 멈춤으로 뜬 공은 윗부분에 걸린다. 다른 빨간 덩어리와 똑같이 그린다(따로 표시하지 않는다).
-    for (const q of L.talls) {
-      if (q.x + 1 < cA || q.x - 1 > cB) continue;
-      const xa = sx(q.x - q.w / 2), xb = sx(q.x + q.w / 2), yT = sy(ROWS - 1 - q.h);
-      const bg = ctx.createLinearGradient(0, view.groundY, 0, yT);
-      bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#6d1236");
-      ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fillRect(xa, yT, xb - xa, view.groundY - yT);
-      ctx.save(); ctx.beginPath(); ctx.rect(xa, yT, xb - xa, view.groundY - yT); ctx.clip();
-      ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2; ctx.beginPath();
-      for (let y = view.groundY; y > yT - (xb - xa); y -= T * 0.36) { ctx.moveTo(xa, y); ctx.lineTo(xb, y - (xb - xa)); }
-      ctx.stroke(); ctx.restore();
-      ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; ctx.shadowBlur = 9 + 8 * pulse;
-      ctx.beginPath(); ctx.moveTo(xa, view.groundY); ctx.lineTo(xa, yT); ctx.lineTo(xb, yT); ctx.lineTo(xb, view.groundY); ctx.closePath(); ctx.stroke();
-      ctx.lineJoin = "round"; ctx.shadowBlur = 0;
     }
     // 파란 박스(땅 위의 블록): 닿아도 죽지 않는다. 위에 내려앉아 다시 튀고, 옆에서 부딪히면 올라탄다.
     // 높을수록 이른 박에 튄다(한 칸에 1/8박). 박스마다 자기가 튀는 박에 빛난다. 빨간 덩어리보다 나중에 그려서, 박스 위의 빨간 덩어리가 얹힌 것처럼 보인다.

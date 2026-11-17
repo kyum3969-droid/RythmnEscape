@@ -243,7 +243,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length }; });
     ok(st.round === 2 && st.name.includes('Final Quarter Credit') && Math.abs(st.bpm - 152.0183) < 0.01 && st.off === 1.0518 && st.cps === 9, `3라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개)`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots3 = { 17.0: 'r3_tall_intro', 29.5: 'r3_repeat', 36.5: 'r3_trap_hand', 68.5: 'r3_trap_add', 137.25: 'r3_fever', 198.25: 'r3_trap_hand2', 290.5: 'r3_fever2', 311.5: 'r3_squeeze' };
+    const shots3 = { 17.0: 'r3_tall_intro', 29.5: 'r3_repeat', 36.5: 'r3_trap_hand', 68.5: 'r3_trap_add', 137.25: 'r3_fever', 198.25: 'r3_trap_hand2', 290.5: 'r3_fever2', 309.5: 'r3_end' };
     for (let beat = 0; beat <= 322; beat += 0.25) {
       await tick(beat);
       if (shots3[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots3[beat] + '.png' }); }

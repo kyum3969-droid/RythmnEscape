@@ -180,6 +180,7 @@ const PATTERNS = {
   g3w72: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFSF..." },
   g3w73: { mode: "rush", wide: true, gap: 1.5, nodes: "SFS.SF.." },   // 뚝: 앞 마디(SFFSF...)와 같이 가다가 끊긴다
   g3w74: { mode: "rush", wide: true, gap: 1.5, nodes: "SFS..FS." },
+  g3z76: { mode: "rush", nodes: "F.F...S." },
   // </gen:patterns:R3>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
@@ -350,8 +351,8 @@ const ROUND3 = {
     "g3_55", "g3_56", "g3_56", "g3_56",   "g3_59", "lavaGlide", "g3_61", "cp",
     // 낮게 깔렸다가 쌓아 올림
     "lavaLeap", "g3_64", "g3_64", "g3_66",   "g3_66", "g3_68", "lavaGlide", "cp",
-    // 마지막 절정: 피버. 들어서자마자 넓은 통로. 끝의 두 마디는 연출 — 통로가 조여들다 터져 나오고, 곡이 끊기는 순간에 결승선을 지난다
-    "wUp", "g3w72", "g3w73", "g3w74",   "wDn", "zS1", "zS2",
+    // 마지막 절정: 피버. 들어서자마자 넓은 통로 → 계단으로 내려와 좁은 통로. 곡이 후렴 그대로 끝까지 가므로 조여드는 연출 없이 끝까지 친다. 곡이 끊기는 순간에 결승선을 지난다
+    "wUp", "g3w72", "g3w73", "g3w74",   "wDn", "g3z76", "g3z76",
     "goal", "flat", "flat",
     // </gen:bars:R3>
   ],
