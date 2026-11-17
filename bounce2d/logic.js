@@ -420,6 +420,7 @@ const ROUND4 = {
   bpm: 150.0004,
   track: { file: "music/the_glass_horizon.mp3", offset: 0.1 },
   floatReds: true,                               // 빨간 덩어리를 땅·하늘 끝까지 잇지 않고 떠 있는 박스로 만든다
+  goalAt: 0,                                     // 곡이 마디 78의 첫 박에서 멎는다. 바로 그 박에 결승선을 지난다(두 박 뒤에 두면 소리가 꺼진 채로 달리게 돼서 곡이 잘린 것처럼 들린다)
   pal: {                                         // 이 라운드의 색: 유리 같은 푸른빛과 새벽빛
     intro: { top: "#060d1f", bottom: "#17456b", accent: "#9fe8ff", sun: "#d8f4ff" },
     a:     { top: "#0a1230", bottom: "#2a5fa8", accent: "#b8f1ff", sun: "#ffffff" },
@@ -578,7 +579,7 @@ function emptyLevel(course) {
     if (p && p.caps) for (const [a, z, hb] of p.caps) { if (hb < 2) throw new Error("파란 천장 밑으로 공이 튈 수 있어야 한다(밑면 2칸 이상): " + name); for (let c = x0 + a; c <= x0 + z; c++) { grid[ROWS - 2 - hb][c] = "#"; capRed.set(c, hb + 1); } }
     if (p && p.rings) for (const [c, hh] of p.rings) grid[ROWS - 2 - hh][x0 + c] = "O";
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
-    else if (name === "goal") goalX = b * 16 + 8;
+    else if (name === "goal") goalX = course.goalAt == null ? b * 16 + 8 : b * 16 + 4 * course.goalAt - 0.5;   // goalAt = 결승선을 지나는 박(그 마디 안에서). 안 적으면 둘째 박을 조금 지나서
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
   for (const sq of squeezes) { const e = sq.pts[sq.pts.length - 1]; sq.pts.push({ step: Math.round(sq.x1 / TPB * SUB), x: sq.x1, g: e.g, top: !e.top }); }   // 끝에서 한 번 더 닿는다
