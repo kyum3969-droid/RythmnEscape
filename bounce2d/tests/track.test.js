@@ -69,6 +69,34 @@ console.log('== 실제 곡 (ffmpeg가 있을 때만) ==');
     try { pcm = execFileSync('ffmpeg', ['-v', 'error', '-i', path.join(__dirname, '..', C.track.file), '-ac', '1', '-ar', '44100', '-f', 'f32le', '-'], { maxBuffer: 64 * 1024 * 1024 }); } catch (e) { /* ffmpeg 없음 */ }
     if (!pcm) { console.log(`  (건너뜀: ffmpeg를 찾지 못했어요 — ${C.name})`); continue; }
     const x = new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4);
+    if (C.track.measured) {
+      // 게임 안 분석기가 빠르기를 틀리게 읽는 곡: 코스에 적은 박(손으로 잰 값)이 곡의 날카로운 소리와 맞는지 직접 본다.
+      // 박마다 앞뒤 0.1초에서 소리가 갑자기 커지는 순간을 찾아, 그 순간이 박에서 얼마나 떨어져 있는지 잰다.
+      const sr = 44100, acc = new Float64Array(x.length + 1);
+      for (let i = 1; i < x.length; i++) acc[i + 1] = acc[i] + Math.abs(x[i] - x[i - 1]);
+      const w = Math.round(0.002 * sr), env = (i) => (acc[Math.min(x.length, i + w)] - acc[Math.max(0, i)]) / w;
+      const per = 60 / C.bpm, goalBeat = C.bars.indexOf('goal') * 4, offs = [];
+      const med = (a) => { const v = Float64Array.from(a).sort(); return v[v.length >> 1]; };
+      for (let k = 8; k < goalBeat; k++) {
+        const t0 = C.track.offset + k * per, i0 = Math.round((t0 - 0.1) * sr), n = Math.round(0.2 * sr);
+        if (i0 < Math.round(0.06 * sr) || i0 + n + w >= x.length) continue;
+        const pre = []; for (let i = i0 - Math.round(0.05 * sr); i < i0 + Math.round(0.04 * sr); i += 8) pre.push(env(i));
+        const base = med(pre); let pk = 0; for (let i = i0; i < i0 + n; i += 4) pk = Math.max(pk, env(i));
+        if (pk < 4 * base) continue;
+        const th = base + 0.35 * (pk - base); let j = 0; while (j < n && env(i0 + j) <= th) j++;
+        offs.push({ k, ms: (j / sr - 0.1) * 1000 });
+      }
+      const near = offs.filter((o) => o.ms > -20 && o.ms < 10), m = near.length ? med(near.map((o) => o.ms)) : 99;
+      const early = near.filter((o) => o.k < goalBeat / 3), late = near.filter((o) => o.k > goalBeat * 2 / 3);
+      const drift = early.length > 3 && late.length > 3 ? med(late.map((o) => o.ms)) - med(early.map((o) => o.ms)) : 99;
+      ok(offs.length >= 40 && near.length / offs.length > 0.75 && Math.abs(m + 5) < 6, `${C.name}: 코스에 적은 박(${C.bpm} BPM, 첫 박 ${C.track.offset}초)이 곡의 날카로운 소리와 맞는다 — ${offs.length}곳 가운데 ${near.length}곳이 박 언저리, 가운데값 ${m.toFixed(1)}ms`);
+      ok(Math.abs(drift) < 12, `  곡 앞쪽과 뒤쪽의 어긋남 차이 ${drift.toFixed(1)}ms (빠르기가 맞다. 앞쪽은 악기가 달라 소리가 커지는 모양이 조금 다르므로 몇 ms는 차이 난다)`);
+      const r0 = analyzeTrack(x, 44100, { hintBpm: 96 });
+      console.log(`  (참고) 게임 안 분석기는 이 곡을 ${r0.ok ? r0.musicBpm.toFixed(1) + ' BPM' : '못 잼'}으로 읽는다. 코스의 값은 손으로 잰 것이다.`);
+      const goal = C.bars.indexOf('goal'), endSec = C.track.offset + goal * 4 * 60 / C.bpm, dur = x.length / sr;
+      ok(endSec < dur && dur - endSec < 8, `  결승선 마디(${goal})가 곡의 ${endSec.toFixed(1)}초, 곡 길이 ${dur.toFixed(1)}초`);
+      continue;
+    }
     const r = analyzeTrack(x, 44100, { hintBpm: 96 });
     ok(r.ok && Math.abs(r.musicBpm - C.bpm) < 0.06, `${C.name}: 곡 ${r.musicBpm.toFixed(2)} BPM (코스에 적힌 값 ${C.bpm.toFixed(3)})`);
     // 코스의 첫 박은 첫 킥과 같거나, 킥 없이 시작하는 곡이면 그보다 몇 박 앞이다(박 단위로만 다르다)

@@ -252,11 +252,11 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(4)')]); await ready();
     st = await G(() => { const g = window.__game, L = g.L, t = g.track; let fb = 0, fr = 0; for (let r = 0; r < 8; r++) for (let c = 0; c < L.cols; c++) if (L.grid[r][c] === '#' && L.grid[r + 1][c] !== '#') fb++; for (let c = 0; c < L.cols; c++) if (L.ceilTop[c] < 90 && !(c > 0 && L.ceilTop[c - 1] < 90)) fr++; return { round: g.round, fb, fr, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length }; });
-    ok(st.round === 3 && st.name.includes('The Glass Horizon') && Math.abs(st.bpm - 150.0004) < 0.01 && st.off === 0.1 && st.cps === 9 && st.fb >= 20 && st.fr >= 10, `4라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개, 떠 있는 파란 박스 ${st.fb}칸, 떠 있는 빨간 박스 ${st.fr}개)`);
+    ok(st.round === 3 && st.name.includes('Miles Before Sunrise') && Math.abs(st.bpm - 152.005) < 0.01 && st.off === 0.474 && st.cps === 9 && st.fb >= 20 && st.fr >= 10, `4라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개, 떠 있는 파란 박스 ${st.fb}칸, 떠 있는 빨간 박스 ${st.fr}개)`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots4 = { 9.25: 'r4_drop', 21.25: 'r4_jump', 21.75: 'r4_jump_high', 42.5: 'r4_trap_drop', 72.75: 'r4_cap', 76.75: 'r4_cap_low', 78.25: 'r4_cap_after', 104.5: 'r4_low', 158.5: 'r4_squeeze', 165.75: 'r4_glide', 205.0: 'r4_climax', 305.0: 'r4_end', 311.5: 'r4_finish' };
+    const shots4 = { 9.25: 'r4_drop', 21.25: 'r4_jump', 21.75: 'r4_jump_high', 25.25: 'r4_jump_var', 42.5: 'r4_trap_drop', 49.5: 'r4_gen_base', 53.5: 'r4_gen_var', 101.75: 'r4_glide_var', 72.75: 'r4_cap', 76.75: 'r4_cap_low', 78.25: 'r4_cap_after', 97.75: 'r4_glide', 172.5: 'r4_low', 205.0: 'r4_build', 305.0: 'r4_final', 321.5: 'r4_finish' };
     const seen4 = {};
-    for (let beat = 0; beat <= 326; beat += 0.25) {
+    for (let beat = 0; beat <= 334; beat += 0.25) {
       await tick(beat);
       if (shots4[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots4[beat] + '.png' }); }
       if (beat === 9.25 || beat === 21.75 || beat === 76.75) seen4[beat] = await G(() => { const g = window.__game, v = g.view; return { h: 9 - g.state.y, on: g.state.onGround, z: v.zT / v.T, topPx: v.groundY - (9 - g.state.y + 0.8) * v.zT }; });

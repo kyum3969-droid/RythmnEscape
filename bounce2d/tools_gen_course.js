@@ -93,21 +93,21 @@ TEMPLATES.R3 = {
 // 4라운드: 높이로 속이는 함정을 소개한다(떠 있는 파란 박스, 파란 천장, 떠 있는 빨간 박스). 이 마디들은 손으로 만든 것이라 자리를 정해 두고,
 // 그 사이를 조건대로 뽑은 마디가 채운다(손 함정은 앞 라운드의 것을 복습: 끝에서 뚝, 끝에서 손 바꿈, 하나 더).
 TEMPLATES.R4 = {
-  prefix: 'g4', bpm: 150.0004, floatReds: true,
-  recipe: { g: '2t', traps: 4, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4, add: 3 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 1.0, rest: 0.3 } },
+  prefix: 'g4', bpm: 152.005, floatReds: true, vary: true,
+  recipe: { g: '2t', traps: 5, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4, add: 3 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 1.0, rest: 0.3 } },
   sections(seed) {
-    const [s1, s2, s3, s4, s5, s6, s7] = fillStretches([4, 2, 4, 3, 5, 4, 2], this.recipe, seed);
+    const [s1, s2, s3, s4, s5, s6, s7] = fillStretches([4, 2, 2, 3, 7, 4, 4], this.recipe, seed);
     return [
       ['도입(조용함): 떠 있는 파란 박스를 함정 없이 보여 준다. 올라타서 그냥 떨어지기 두 번 → 올라타서 다시 뛰기 두 번', ['flat', 'flat', 'fDrop', 'fDrop', { g: 1, plain: true }, 'fJump', 'fJump', 'cp']],
-      ['본 리듬: 높이 함정 하나. 다시 뛰기를 두 번 한 뒤 같은 박스에서 그냥 떨어져야 한다(위에 빨간 박스가 떠 있다)', ['fJump', 'fJump', 'fDropH', ...s1, 'cp']],
-      ['가라앉았다가 쌓아 올림: 파란 천장을 소개한다. 이단 점프로 기둥을 두 번 넘은 뒤, 같은 기둥 위에 천장이 생긴다(멈춤으로 건넌다). 이어서 낮은 천장', ['dj1', 'dj1', 'cHold', 'cLow', 'cLow', ...s2, 'cp']],
-      ['낮게 깔린 베이스: 올라타기를 두 번 한 뒤, 올라가면 안 되는 박스(앞을 빨간 박스가 막고 있다)', ['fDropH', 'fDropH', 'fLow', ...s3, 'cp']],
-      ['첫 피버: 좁은 통로 → 계단 → 넓은 통로 → 계단 → 조여드는 통로(곡의 드럼이 굴러가며 쌓아 올리는 두 마디에 맞춘다)', [{ z: 1 }, { z: 1 }, 'wUp', { w: 1 }, { w: 1 }, 'wDn', 'zS1', 'zS2']],
-      ['아주 조용한 구간: 숨 고르기. 떨어지며 멈추기를 함정 없이 보여 준다. 끝에서 곡이 쌓아 올릴 때 뽑은 마디가 다시 나온다', ['cp', 'fGlide', 'fGlide', 'fLate', 'fTwice', 'cLow', ...s4, 'cp']],
-      ['절정: 손 함정을 촘촘하게', [...s5, 'cp']],
-      ['가장 센 절정: 둘째 피버. 들어서자마자 넓은 통로 → 계단으로 내려와 좁은 통로', ['wUp', { w: 1 }, { w: 1 }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }, { z: 1 }]],
-      ['가라앉았다가 쌓아 올림: 높이 장치와 손 함정을 섞는다', ['cp', 'cHoldL', 'fGlide', ...s6, 'cp']],
-      ['마지막(낮게 깔린 베이스): 배운 것을 다 섞는다. 곡이 끝나는 박에 결승선', ['fJump', 'fDropH', ...s7, 'cHoldD', 'cLowD']],
+      ['잔잔한 리듬: 높이 함정 하나. 다시 뛰기를 두 번 한 뒤 같은 박스에서 그냥 떨어져야 한다(위에 빨간 박스가 떠 있다)', ['fJump', 'fJump', 'fDropH', ...s1, 'cp']],
+      ['첫 후렴: 파란 천장을 소개한다. 이단 점프로 기둥을 두 번 넘은 뒤, 같은 기둥 위에 천장이 생긴다(멈춤으로 건넌다). 이어서 낮은 천장', ['dj1', 'dj1', 'cHold', 'cLow', 'cLow', ...s2, 'cp']],
+      ['거의 무음 → 조용히 쌓아 올림: 숨 고르기. 떨어지며 멈추기를 함정 없이 보여 준다', ['fGlide', 'fGlide', 'fLate', 'fTwice', 'cLow', ...s3, 'cp']],
+      ['둘째 후렴: 첫 피버. 좁은 통로 → 계단으로 올라가 넓은 통로 → 계단으로 내려와 다시 좁은 통로', [{ z: 1 }, { z: 1 }, 'wUp', { w: 1 }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }]],
+      ['낮게 깔린 베이스: 올라타기를 두 번 한 뒤, 올라가면 안 되는 박스(앞을 빨간 박스가 막고 있다)', ['cp', 'fDropH', 'fDropH', 'fLow', ...s4, 'cp']],
+      ['쌓아 올림: 손 함정을 촘촘하게', [...s5, 'cp']],
+      ['절정: 둘째 피버. 들어서자마자 넓은 통로 → 계단으로 내려와 좁은 통로', ['wUp', { w: 1 }, { w: 1 }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }, { z: 1 }]],
+      ['여운과 무음 → 조용히 쌓아 올림: 높이 장치와 손 함정을 섞는다', ['cp', 'cHoldL', 'fGlide', ...s6, 'cp']],
+      ['마지막 후렴: 배운 것을 다 섞는다. 곡이 끝맺는 박에 결승선', ['fJump', 'fDropH', ...s7, 'cHoldD', 'cLowD']],
       ['', ['goal', 'flat', 'flat']],
     ];
   },
@@ -139,7 +139,7 @@ function generate(T, seed) {
     while (prev.length < 2) prev.unshift('flat');
     return { bars: ['flat', ...prev, cand, 'flat', 'flat', 'goal'], at: 3 };
   };
-  const build = (ctx) => Lg.buildLevel({ name: 't', bpm: T.bpm, bars: ctx.bars, floatReds: !!T.floatReds, sections: [{ bar: 0, id: 'a' }] });
+  const build = (ctx) => Lg.buildLevel({ name: 't', bpm: T.bpm, bars: ctx.bars, floatReds: !!T.floatReds, vary: !!T.vary, sections: [{ bar: 0, id: 'a' }] });
   const run = (L, plan, until, from = 0) => {      // from = 높이를 재기 시작하는 스텝(앞 마디가 떠 있는 박스에서 높이 뛴 것은 세지 않는다)
     const inp = Lg.planInput(plan), s = Lg.spawnState(L, -1), bounces = [];
     let maxH = 0;

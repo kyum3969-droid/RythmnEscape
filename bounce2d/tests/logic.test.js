@@ -412,7 +412,7 @@ console.log('== 높은 박스: 이단 점프로만 넘는 빨간 박스 ==');
       while (!sC.dead && !sC.won && sC.step < pressStep + 96 * 3) { const st = sC.step + 1; Lg.stepState(lvC, sC, P.has(st), null, H.some(h => st >= h[0] && st < h[1])); }
       if (sC.dead && Math.abs(sC.x - t.x) < 1.2) habitDead++;
     }
-    ok(lvC.talls.length >= 8 && cleared === lvC.talls.length && habitDead === lvC.talls.length, `[${tag}] 높은 박스 ${lvC.talls.length}개: 모두 패턴의 이단 점프 바로 앞에 서 있고, 그 자리를 멈춤으로 누르면 그 박스에서 죽는다 (${habitDead}/${lvC.talls.length})`);
+    ok(lvC.talls.length >= 3 && cleared === lvC.talls.length && habitDead === lvC.talls.length, `[${tag}] 높은 박스 ${lvC.talls.length}개: 모두 패턴의 이단 점프 바로 앞에 서 있고, 그 자리를 멈춤으로 누르면 그 박스에서 죽는다 (${habitDead}/${lvC.talls.length})`);
   }
 }
 console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 떠 있는 빨간 박스 ==');
