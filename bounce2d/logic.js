@@ -133,6 +133,52 @@ const PATTERNS = {
   g2w67: { mode: "rush", wide: true, gap: 1.5, nodes: "F.SFFF.." },
   g2z69: { mode: "rush", nodes: "..F.F.S." },
   // </gen:patterns:R2>
+  // <gen:patterns:R3>
+  // 도구(tools_gen_course.js R3 15)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
+  g3_2: { holds: [[1.5, 2.25]], presses: [], tol: 0.18 },
+  g3_3: { holds: [[2.5, 3.25]], presses: [0.5], tol: 0.18 },
+  g3_4: { holds: [[0.5, 1.125]], presses: [2.5], tol: 0.18 },
+  g3_5: { holds: [[0.5, 1.375]], presses: [2.5], tol: 0.18 },
+  g3_7: { holds: [], presses: [0.5, 2.5], tol: 0.18 },
+  g3_9: { holds: [[2.5, 3.25]], presses: [0.5], tol: 0.18, traps: [{full: {presses: [0.5, 2.5], holds: []}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
+  g3_10: { holds: [], presses: [1.625], tol: 0.18 },
+  g3_11: { holds: [[2, 2.875]], presses: [1.5], tol: 0.18 },
+  g3_13: { holds: [[1, 1.5]], presses: [0.5], tol: 0.18 },
+  g3_15: { holds: [], presses: [0.625], tol: 0.18 },
+  g3_17: { holds: [[2.625, 3.5]], presses: [0.625], tol: 0.18, traps: [{full: {presses: [0.625], holds: []}}] },   // 함정(하나 더): 앞 마디와 같이 가다가 한 군데가 다르다
+  g3_19: { holds: [], presses: [1.5], tol: 0.18 },
+  g3_21: { holds: [[2, 2.75]], presses: [1.5], tol: 0.18, traps: [{full: {presses: [1.5], holds: []}}] },   // 함정(하나 더): 앞 마디와 같이 가다가 한 군데가 다르다
+  g3_24: { holds: [[2.625, 3.375]], presses: [0.5], tol: 0.18 },
+  g3_26: { holds: [], presses: [0.5], tol: 0.18, traps: [{full: {presses: [0.5], holds: [[2.625, 3.375]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g3_27: { holds: [], presses: [0.625, 2.5], tol: 0.18 },
+  g3_29: { holds: [[1, 1.875]], presses: [0.5], tol: 0.18 },
+  g3z31: { mode: "rush", nodes: "F.F.F.F." },
+  g3z32: { mode: "rush", nodes: "F.S.F..." },
+  g3w34: { mode: "rush", wide: true, gap: 1.5, nodes: "S.FFFSS." },
+  g3z37: { mode: "rush", nodes: "F.F.F.F." },
+  g3z38: { mode: "rush", nodes: "F.F.S.S." },   // 뚝: 앞 마디(F.F.F.F.)와 같이 가다가 끊긴다
+  g3_40: { holds: [[0.5, 1.5], [2.625, 3.375]], presses: [], tol: 0.18 },
+  g3_41: { holds: [], presses: [0.375, 2.625], tol: 0.18 },
+  g3_42: { holds: [[2.375, 3]], presses: [0.375], tol: 0.18 },
+  g3_43: { holds: [[2.625, 3.625]], presses: [0.375], tol: 0.18 },
+  g3_44: { holds: [], presses: [0.375, 2.5], tol: 0.18 },
+  g3_47: { holds: [[0.625, 1.125]], presses: [2.5], tol: 0.18 },
+  g3_50: { holds: [[1, 1.75]], presses: [0.5], tol: 0.18 },
+  g3_51: { holds: [[0.625, 1.375], [2.375, 2.875]], presses: [], tol: 0.18 },
+  g3_53: { holds: [[0.5, 1.25]], presses: [2.625], tol: 0.18 },
+  g3_55: { holds: [[0.375, 1.25]], presses: [2.375], tol: 0.18 },
+  g3_56: { holds: [[0.625, 1.375]], presses: [2.5], tol: 0.18 },
+  g3_58: { holds: [[0.625, 1.375], [2.5, 3.25]], presses: [], tol: 0.18, traps: [{full: {presses: [2.5], holds: [[0.625, 1.375]]}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
+  g3_59: { holds: [[2.375, 3.25]], presses: [0.5], tol: 0.18 },
+  g3_61: { holds: [], presses: [0.5], tol: 0.18, traps: [{full: {presses: [0.5], holds: [[2.375, 3.25]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g3_63: { holds: [[0.5, 1]], presses: [2.5], tol: 0.18 },
+  g3_64: { holds: [[2.5, 3.125]], presses: [0.375], tol: 0.18 },
+  g3_65: { holds: [], presses: [0.375, 2.375], tol: 0.18 },
+  g3_67: { holds: [[0.625, 1.25], [2.375, 3.375]], presses: [], tol: 0.18 },
+  g3_68: { holds: [[2, 2.5]], presses: [1.5], tol: 0.18 },
+  g3w72: { mode: "rush", wide: true, gap: 1.5, nodes: "SSFFFSS." },
+  g3w74: { mode: "rush", wide: true, gap: 1.5, nodes: "SSFSFF.." },   // 뚝: 앞 마디(SSFFFSS.)와 같이 가다가 끊긴다
+  // </gen:patterns:R3>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
   // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 바로 위의 빨간 덩어리에 부딪힌다
@@ -267,7 +313,7 @@ const ROUND2 = {
 // 곡의 구간(마디): 0~6 조용한 도입(킥이 두 마디에 한 번) / 7~14 본 리듬 / 15~22 더 밝게(22는 숨 고르기) / 23~30 낮게 깔림(30에서 올라감)
 //                / 31~38 첫 절정 / 39~46 가라앉음 / 47~54 본 리듬 다시 / 55~62 더 밝게 / 63~70 낮게 깔렸다가 쌓아 올림 / 71~77 마지막 절정 / 78의 둘째 박에서 곡이 끊긴다
 // (디스코 펑크 곡 "Chasing the Gold Token"으로 한 번 만들었다가 곡을 바꿨다.)
-// 새 요소 둘: 충전 고리(본 리듬 첫 구간에서 가르친다)와 계단으로 박자 틀기(가라앉는 구간에서 시험한다). 쉬는 마디는 거의 없다.
+// 함정 배분안의 버릇 묶음(2~6라운드) 둘째: "끝에서 손 바꿈"과 "하나 더"를 소개한다. 쉬는 마디는 거의 없다.
 const ROUND3 = {
   name: "ROUND 3 · Final Quarter Credit",
   bpm: 152.0183,
@@ -280,29 +326,32 @@ const ROUND3 = {
     d:     { top: "#1a0a2a", bottom: "#7a1f6e", accent: "#ffd84a", sun: "#ff9a3c" },
     rush:  { top: "#141006", bottom: "#8a6a10", accent: "#ffffff", sun: "#ffe066" },
   },
+  // 3라운드의 마디는 도구(tools_gen_course.js R3)가 뽑는다. 버릇 묶음(2~6라운드)의 둘째 라운드로, "끝에서 손 바꿈"과 "하나 더"를 새로 소개한다.
+  // 틀과 조건(함정의 종류·수, 소개할 자리)은 도구 안의 TEMPLATES.R3에 있다. 고리와 계단은 뒤 묶음의 장치라서 여기서는 쓰지 않는다(패턴은 보관해 둔다).
   bars: [
-    // 도입(조용함): 앞에서 배운 것을 두 번씩 누르는 마디로. 구간의 마지막 마디마다 체크포인트
-    "flat", "flat", "mix", "peak",   "mix2", "glideHigh", "cp",
-    // 본 리듬: 충전 고리를 가르친다(하나 두 번 → 둘 두 번). 사이는 아는 동작으로 채운다
-    "ring1", "ring1", "peak", "ringWave",   "ringWave", "mix", "lavaHop", "cp",
-    // 더 밝게: 고리 연타. 탁탁탁(ringWave) → 탁탁탁탁(ringRun) → 뚝(ringStop: 다음 고리는 미끼) … 다시 연타 → 이번엔 왼쪽(ringGlide: 다음 고리가 두 배로 멀다)
-    "ringWave", "ringRun", "ringStop", "lavaLeap",   "skyGlide", "ringRun", "ringGlide", "cp",
-    // 낮게 깔림: 손 함정. 오른쪽만 다섯 번 → 뚝 / 왼쪽만 다섯 번 → 뚝
-    "peak", "peak", "goStop", "lavaGlide",   "glideHigh", "glideHigh", "holdStop", "cp",
-    // 첫 절정: 피버. 매 박 누르다 뚝(z5 → z4) → 계단으로 넓은 통로 → 다섯 번 연타 두 번 뒤 세 번에서 뚝(w5, w5 → w8) → 계단으로 내려온다
-    "z5", "z4", "wUp", "w5",   "w5", "w8", "wDn", "z7",
-    "cp",
-    // 가라앉는 구간: 계단으로 박자 틀기(시험). 네 단을 오르면 엇박 → 꼭대기에서 멈춤 → 이단 점프 → 멈춤 → 네 단을 내려오면 정박(내려온 마디는 뒤 절반에서만 누른다)
-    "upStairs", "skyHold", "skyDj", "skyHold",   "downStairs", "dj2", "cp",
-    // 본 리듬 다시: 고리 연타 뒤 왼쪽 → 왼·오 다섯 번 → 뚝
-    "ringWave", "ringRun", "ringGlide", "mix",   "mix", "holdStop", "lavaLeap", "cp",
-    // 더 밝게: 계단을 한 번 더(꼭대기에서 이단 점프) → 오른쪽만 다섯 번 → 뚝
-    "upStairs", "skyDj", "downStairs", "hB",   "peak", "peak", "goStop", "cp",
-    // 낮게 깔렸다가 쌓아 올림: 빨간 바닥 → 고리 연타 → 뚝 → 오, 그리고 뚝 → 오
-    "lavaHop", "lavaGlide", "ringWave", "ringRun",   "ringStop", "peak", "stopGo", "cp",
-    // 마지막 절정: 피버. 들어서자마자 넓은 통로의 연타. 끝의 두 마디는 연출 — 통로가 조여들다 터져 나오고, 곡이 끊기는 순간에 결승선을 지난다
-    "wUp", "w6", "w5", "w8",   "wDn", "zS1", "zS2",
+    // <gen:bars:R3>
+    // 도입(조용함): 쉬운 패턴만. 구간의 마지막 마디마다 체크포인트
+    "flat", "flat", "g3_2", "g3_3",   "g3_4", "g3_5", "cp",
+    // 본 리듬: 새 함정 "끝에서 손 바꿈"을 체크포인트 바로 뒤에서 소개한다(두 번 되풀이 → 마지막 입력의 손이 반대)
+    "g3_7", "g3_7", "g3_9", "g3_10",   "g3_11", "lavaHop", "g3_13", "cp",
+    // 더 밝게: 새 함정 "하나 더"를 소개한다(두 번 되풀이 → 이번엔 하나 더 눌러야 한다)
+    "g3_15", "g3_15", "g3_17", "lavaHop",   "g3_19", "g3_19", "g3_21", "cp",
+    // 낮게 깔림: 배운 함정들을 섞는다
+    "lavaGlide", "g3_24", "g3_24", "g3_26",   "g3_27", "lavaGlide", "g3_29", "cp",
+    // 첫 절정: 피버. 좁은 통로 → 계단으로 올라가 넓은 통로 → 계단으로 내려와 다시 좁은 통로
+    "g3z31", "g3z32", "wUp", "g3w34",   "g3w34", "wDn", "g3z37", "g3z38",
+    // 가라앉는 구간
+    "cp", "g3_40", "g3_41", "g3_42",   "g3_43", "g3_44", "lavaGlide", "cp",
+    // 본 리듬 다시
+    "g3_47", "lavaHop", "lavaLeap", "g3_50",   "g3_51", "g3_51", "g3_53", "cp",
+    // 더 밝게
+    "g3_55", "g3_56", "g3_56", "g3_58",   "g3_59", "g3_59", "g3_61", "cp",
+    // 낮게 깔렸다가 쌓아 올림
+    "g3_63", "g3_64", "g3_65", "g3_65",   "g3_67", "g3_68", "g3_68", "cp",
+    // 마지막 절정: 피버. 들어서자마자 넓은 통로. 끝의 두 마디는 연출 — 통로가 조여들다 터져 나오고, 곡이 끊기는 순간에 결승선을 지난다
+    "wUp", "g3w72", "g3w72", "g3w74",   "wDn", "zS1", "zS2",
     "goal", "flat", "flat",
+    // </gen:bars:R3>
   ],
   sections: [
     { bar: 0, id: "intro" }, { bar: 7, id: "a" }, { bar: 15, id: "d" }, { bar: 23, id: "c" }, { bar: 31, id: "rush" }, { bar: 39, id: "b" }, { bar: 47, id: "a" }, { bar: 55, id: "d" }, { bar: 63, id: "c" }, { bar: 71, id: "rush" }, { bar: 78, id: "outro" },

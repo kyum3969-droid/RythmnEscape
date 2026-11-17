@@ -388,6 +388,14 @@ for (const name of Object.keys(Lg.PATTERNS)) {
   ok(pat.mode === 'rush' ? m.min >= 100 : m.min >= 60 && width >= 170, `${name}: 입력 여유 ${m.inputs.map(i => `${i.label} -${f(i.early)}/+${f(i.late)}`).join(', ')}ms`);
   ok(m.idleDies && m.needed.every(Boolean), `${name}: 안 누르면 죽고, 입력을 하나라도 빼먹으면 죽는다`);
 }
+console.log('== 뒤 라운드를 위해 보관한 장치(지금 코스에서는 쓰지 않는다): 충전 고리, 계단으로 박자 틀기 ==');
+{
+  const lvK = Lg.buildLevel({ name: 't', bpm: 152, bars: ['flat', 'flat', 'ring1', 'ringWave', 'ringRun', 'ringStop', 'flat', 'ringRun', 'ringGlide', 'flat', 'upStairs', 'skyHold', 'skyDj', 'downStairs', 'dj2', 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const inpK = Lg.planInput(lvK.ref), sK = Lg.spawnState(lvK, -1), rings = new Set(), sky = [];
+  while (!sK.dead && !sK.won) { const e = []; Lg.stepState(lvK, sK, inpK.press.has(sK.step + 1), e, inpK.hold.has(sK.step + 1)); for (const x of e) { if (x.type === 'ring') rings.add(x.c); if (x.type === 'bounce' && Math.round(9 - sK.y - 0.09) === 4) sky.push(sK.step); } }
+  ok(sK.won && lvK.fixed.length === 0 && rings.size === 11, `충전 고리: 고리 하나 · 둘 · 연타 → 뚝 · 연타 → 왼쪽이 이어 붙여도 패턴대로 지나간다(고리 ${rings.size}개)`);
+  ok(sky.length >= 6 && sky.every(st => st % 96 === 48), `계단으로 박자 틀기: 네 단을 오르면 꼭대기에서는 엇박에 튄다 (${sky.length}번)`);
+}
 console.log('== 구간 모음(sections.js): 함정을 중심으로 짠, 어디에 놓아도 되는 구간들 ==');
 {
   const { SECTIONS, registerSections } = require('../sections.js');

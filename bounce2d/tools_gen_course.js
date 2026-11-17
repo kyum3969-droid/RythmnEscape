@@ -35,6 +35,61 @@ const TEMPLATES = {
 };
 const SETS = ['lavaHop', 'lavaLeap', 'lavaGlide'];
 
+// ---- 조건으로 채우는 틀(함정 배분안을 따르는 라운드): 구간마다 마디 수만 정해 두고, 그 안은 조건(recipe)대로 "되풀이 → 함정" 짜임과 채움 마디로 메운다
+//   kinds   이 라운드에 나오는 함정의 종류와 비중 / reps 함정 앞의 되풀이 횟수와 비중 / traps 함정의 수(바운스 구간 전체)
+//   intro   새로 소개하는 함정: 몇 번째 구간의 맨 앞(체크포인트 바로 뒤)에, 두 번 되풀이한 다음에 놓는다(처음엔 읽기 쉽게)
+//   fill    함정이 아닌 마디의 비중: one 새 마디 하나 / pair 같은 마디 두 번(함정 없이 지나간다) / set 빨간 바닥과 파란 섬 / rest 파란 박스(쉬는 마디)
+function fillStretches(lens, R, seed) {
+  const rng = mulberry(seed * 7919 + 13), pickW = (obj) => { let r = rng() * Object.values(obj).reduce((u, v) => u + v, 0); for (const [k, v] of Object.entries(obj)) { r -= v; if (r <= 0) return k; } return Object.keys(obj)[0]; };
+  let key = 0;
+  const K = () => 'M' + key++;
+  // 손을 바꾸는 함정은 그 자리의 입력이 오른쪽(점프)일 때만 확실히 걸린다(왼쪽으로 바꾸면 머리 위 덩어리에 걸리지만, 반대는 떠서 넘어가 버린다) → 그런 마디를 뽑는다
+  // hard = 소개하는 함정: 반드시 그 종류로 만든다(못 만들면 이 씨앗은 버린다). 나머지는 안 되면 다른 종류, 그것도 안 되면 그냥 한 번 더
+  const phrase = (reps, kind, hard) => { const k = K(), others = Object.keys(R.kinds).filter((x) => x !== kind && x !== 'add'); return [{ m: k, g: R.g, add: kind === 'add', last: kind === 'hand-last' ? 'R' : undefined, first: kind === 'hand-first' ? 'R' : undefined }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: kind === 'add' || hard ? [kind] : [kind, ...others], soft: !hard }]; };
+  const filler = (room) => { const kind = pickW(R.fill); if (kind === 'pair' && room >= 2) { const k = K(); return [{ m: k, g: R.g }, { r: k }]; } if (kind === 'set') return [SETS[Math.floor(rng() * SETS.length)]]; if (kind === 'rest') return [['box', 'twin', 'stairs'][Math.floor(rng() * 3)]]; return [{ m: K(), g: R.g }]; };
+  // 함정을 구간들에 나눈다: 소개하는 것부터 놓고, 나머지는 긴 구간부터 하나씩
+  const plan = lens.map(() => []);
+  for (const it of R.intro) plan[it.stretch].push(phrase(2, it.kind, true));
+  let left = R.traps - R.intro.length;
+  for (let guard = 0; left > 0 && guard < 200; guard++) {
+    const i = R.from + Math.floor(rng() * (lens.length - R.from)), used = plan[i].reduce((u, p) => u + p.length, 0), reps = +pickW(R.reps);
+    if (used + reps + 1 + plan[i].length > lens[i]) continue;                       // 함정 짜임 사이에 채움 마디가 하나씩은 들어가게
+    plan[i].push(phrase(reps, pickW(R.kinds))); left--;
+  }
+  return lens.map((n, i) => {
+    const out = [], phrases = plan[i];
+    let room = n - phrases.reduce((u, p) => u + p.length, 0);
+    phrases.forEach((p, k) => {
+      if (k > 0 || !R.intro.some((it) => it.stretch === i)) { const gap = Math.min(room, k === 0 ? Math.floor(rng() * 2) : 1); for (let q = 0; q < gap;) { const f = filler(gap - q); out.push(...f); q += f.length; room -= f.length; } }
+      out.push(...p);
+    });
+    while (room > 0) { const f = filler(room); out.push(...f); room -= f.length; }
+    return out;
+  });
+}
+// 3라운드: 버릇 묶음(2~6라운드)의 둘째. 앞 라운드의 "끝에서 뚝"에 더해 "끝에서 손 바꿈"과 "하나 더"를 소개한다
+TEMPLATES.R3 = {
+  prefix: 'g3', bpm: 152.0183,
+  recipe: { g: 2, traps: 6, from: 1, kinds: { 'stop-last': 3, 'hand-last': 4, add: 3 }, reps: { 2: 7, 3: 3 }, intro: [{ stretch: 1, kind: 'hand-last' }, { stretch: 2, kind: 'add' }], fill: { one: 6, pair: 2, set: 1.2, rest: 0.6 } },
+  sections(seed) {
+    const [s0, s1, s2, s3, s4, s5, s6, s7] = fillStretches([4, 7, 7, 7, 6, 7, 7, 7], this.recipe, seed);
+    s0.splice(0, s0.length, ...[1, 1, 1, 1].map((g) => ({ g, plain: true })));           // 도입은 함정도 되풀이도 없이 쉬운 것만
+    return [
+      ['도입(조용함): 쉬운 패턴만. 구간의 마지막 마디마다 체크포인트', ['flat', 'flat', ...s0, 'cp']],
+      ['본 리듬: 새 함정 "끝에서 손 바꿈"을 체크포인트 바로 뒤에서 소개한다(두 번 되풀이 → 마지막 입력의 손이 반대)', [...s1, 'cp']],
+      ['더 밝게: 새 함정 "하나 더"를 소개한다(두 번 되풀이 → 이번엔 하나 더 눌러야 한다)', [...s2, 'cp']],
+      ['낮게 깔림: 배운 함정들을 섞는다', [...s3, 'cp']],
+      ['첫 절정: 피버. 좁은 통로 → 계단으로 올라가 넓은 통로 → 계단으로 내려와 다시 좁은 통로', [{ z: 1 }, { z: 1 }, 'wUp', { w: 1 }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }]],
+      ['가라앉는 구간', ['cp', ...s4, 'cp']],
+      ['본 리듬 다시', [...s5, 'cp']],
+      ['더 밝게', [...s6, 'cp']],
+      ['낮게 깔렸다가 쌓아 올림', [...s7, 'cp']],
+      ['마지막 절정: 피버. 들어서자마자 넓은 통로. 끝의 두 마디는 연출 — 통로가 조여들다 터져 나오고, 곡이 끊기는 순간에 결승선을 지난다', ['wUp', { w: 1 }, { w: 1 }, { w: 1 }, 'wDn', 'zS1', 'zS2']],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
@@ -166,6 +221,7 @@ function generate(T, seed) {
         let v = validate(name);
         if (!v || !v.clean || !v.startClean) continue;
         if (Object.values(motifs).some((mm) => mm.def && (same(mm.def, def) || (mm.full && same(mm.full, def))))) continue;
+        { const ins0 = inputsOf(def); if ((slot.last && ins0[ins0.length - 1].k !== slot.last) || (slot.first && ins0[0].k !== slot.first)) continue; }
         if (slot.add) {                                // 되풀이할 것은 "마지막 입력을 뺀 것", 함정 자리에는 온전한 것을 놓는다
           const ins = inputsOf(def);
           if (ins.length < 2) continue;
@@ -183,13 +239,19 @@ function generate(T, seed) {
       Lg.PATTERNS[name] = def; made[name] = def; bars.push(name); trapList.push({ bar: b, kind: 'blind', of: slot.r }); roles[b] = slot.r + '?'; return;
     }
     if (slot.r) { bars.push(motifs[slot.r].name); roles[b] = slot.r; return; }
-    const M = motifs[slot.t];
-    const def = slot.kind === 'add' ? (M.full ? { ...JSON.parse(JSON.stringify(M.full)), traps: [{ full: { presses: M.def.presses.slice(), holds: M.def.holds.map((h) => h.slice()) } }] } : null) : variant(M.def, slot.kind);
-    if (!def) throw new Error('이 마디로는 그 함정을 못 만든다: ' + slot.kind);
-    Lg.PATTERNS[name] = def;
-    const v = validate(name, def.traps[0].full);
-    if (!v || !v.clean) { delete Lg.PATTERNS[name]; throw new Error('함정이 통과하지 못했다: ' + slot.kind); }
-    made[name] = def; bars.push(name); trapList.push({ bar: b, kind: slot.kind, of: slot.t }); roles[b] = slot.t + '!';
+    const M = motifs[slot.t], KO = { 'stop-last': '끝에서 뚝', 'stop-first': '앞에서 뚝', 'hand-last': '끝에서 손 바꿈', 'hand-first': '앞에서 손 바꿈', add: '하나 더' };
+    for (const kind of [].concat(slot.kind)) {         // 종류를 여러 개 주면 차례로 해 보고, 통과한 첫 번째를 쓴다
+      const def = kind === 'add' ? (M.full ? { ...JSON.parse(JSON.stringify(M.full)), traps: [{ full: { presses: M.def.presses.slice(), holds: M.def.holds.map((h) => h.slice()) } }] } : null) : variant(M.def, kind);
+      if (!def) continue;
+      Lg.PATTERNS[name] = def;
+      const v = validate(name, def.traps[0].full);
+      if (!v || !v.clean) { delete Lg.PATTERNS[name]; continue; }
+      made[name] = def; bars.push(name); trapList.push({ bar: b, kind, of: slot.t }); roles[b] = slot.t + '!';
+      notes[b] = `함정(${KO[kind]}): 앞 마디와 같이 가다가 한 군데가 다르다`;
+      return;
+    }
+    if (!slot.soft) throw new Error('함정이 통과하지 못했다: ' + slot.kind);
+    bars.push(M.name); roles[b] = slot.t;              // soft: 함정을 못 만들면 그냥 한 번 더 한다
   };
   const breaksOf = (nodes, wide) => (wide ? wAll : zAll).filter((s) => { let k = 0; while (k < 8 && s[k] === nodes[k]) k++; return k >= 2 && k < 7 && nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => feverTry(s, wide));
   const feverSlot = (slot, b) => {
@@ -235,7 +297,7 @@ function generate(T, seed) {
     }
     const name = `${T.prefix}_${b}`, prevName = bars[b - 1], prevClean = !isPat(prevName) || (A && A.clean) || (made[prevName] && made[prevName].__clean) || ['box', 'twin', 'stairs', 'lavaHop', 'lavaLeap', 'lavaGlide'].includes(prevName);
     // ① 같은 마디를 두 번 한 뒤에는 함정(한 군데만 다른 마디)
-    if (A && reps === 2 && rng() < 0.95) {
+    if (A && reps === 2 && !slot.plain && rng() < 0.95) {
       const cands = trapOf(A.def).filter((c) => c.how !== lastHow || rng() < 0.3);
       for (const c of cands.sort(() => rng() - 0.5)) {
         const { how, ...def } = c; Lg.PATTERNS[name] = def;
@@ -245,7 +307,7 @@ function generate(T, seed) {
       }
     }
     // ② 방금 새로 뽑은 마디는 절반쯤 한 번 더 한다(버릇이 생기게)
-    if (A && reps === 1 && A.clean && A.startClean && prevClean && rng() < 0.6) { bars.push(A.name); reps = 2; notes[b] = '한 번 더'; return; }
+    if (A && reps === 1 && !slot.plain && A.clean && A.startClean && prevClean && rng() < 0.6) { bars.push(A.name); reps = 2; notes[b] = '한 번 더'; return; }
     // ③ 빨간 바닥 마디를 가끔 섞는다
     if (slot.sets && prevClean && rng() < 0.16) { const n = pick(SETS); bars.push(n); A = null; reps = 0; return; }
     // ④ 새로 뽑는다
@@ -276,7 +338,8 @@ let result = null;
 for (let seed = seed0; seed < seed0 + tries; seed++) {
   for (const k of Object.keys(Lg.PATTERNS)) if (k.startsWith(T.prefix)) delete Lg.PATTERNS[k];
   let g;
-  try { g = generate(T, seed); } catch (e) { console.error(`씨앗 ${seed}: ${e.message}`); continue; }
+  const sections = typeof T.sections === 'function' ? T.sections(seed) : T.sections;
+  try { g = generate({ ...T, sections }, seed); g.sections = sections; } catch (e) { console.error(`씨앗 ${seed}: ${e.message}`); continue; }
   const course = { ...course0, bars: g.bars };
   let L; try { L = Lg.buildLevel(course); } catch (e) { console.error(`씨앗 ${seed}: ${e.message}`); continue; }
   const inp = Lg.planInput(L.ref), s = Lg.spawnState(L, -1);
@@ -284,7 +347,8 @@ for (let seed = seed0; seed < seed0 + tries; seed++) {
   const solved = s.won && [-1, ...L.cps.keys()].every((k) => Lg.solve(L, Lg.spawnState(L, k), { grid: 12 }).plan);
   const traps = Object.values(g.notes).filter((n) => /함정|뚝/.test(n)).length, rests = g.bars.filter((n) => n === 'idle' || n === 'box').length;
   const spots = new Set([...L.ref.presses, ...L.ref.holds.map((h) => h[0])].map((st) => st % BAR)).size, inputs = L.ref.presses.length + L.ref.holds.length;
-  const score = traps * 3 + spots * 0.5 + inputs * 0.1 - rests * 2;
+  const kindsGot = new Set(g.traps.map((x) => x.kind)), want = T.recipe ? T.recipe.traps + 2 : null;      // 조건이 있는 라운드: 함정 수가 목표에 가깝고, 소개할 함정이 다 나와야 한다
+  const score = T.recipe ? (T.recipe.intro.every((it) => kindsGot.has(it.kind)) ? 0 : -100) - Math.abs(traps - want) * 3 + spots * 0.5 + inputs * 0.05 - rests : traps * 3 + spots * 0.5 + inputs * 0.1 - rests * 2;
   console.error(`씨앗 ${seed}: ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'} | 함정 ${traps}, 누르는 자리 ${spots}가지, 입력 ${inputs}번, 쉬는 마디 ${rests} → 점수 ${score.toFixed(1)}`);
   if (s.won && !L.fixed.length && solved && (!result || score > result.score)) result = { ...g, seed, score };
 }
@@ -301,7 +365,7 @@ for (const [name, d] of Object.entries(result.made)) {
 }
 const barLines = [];
 let at = 0;
-for (const [title, slots] of T.sections) {
+for (const [title, slots] of result.sections) {
   if (title) barLines.push(`    // ${title}`);
   const names = result.bars.slice(at, at + slots.length); at += slots.length;
   barLines.push('    ' + names.map((n, i) => JSON.stringify(n) + ',' + (i % 4 === 3 && i < names.length - 1 ? '  ' : '')).join(' '));
