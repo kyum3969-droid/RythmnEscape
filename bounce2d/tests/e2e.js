@@ -100,11 +100,11 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
   ok(await G(() => window.__game.phase) === 'running', '개발자 모드: 패턴대로 눌렀을 때의 길을 점선으로 보여 준다(스크린샷 dev_path.png)');
   {
     // 개발자 기능: 안내 없이 해 보기(길 위의 누르는 표시, 아래쪽 버튼 안내를 따로 끈다)
-    const off = await G(() => { document.getElementById('devMarks').click(); document.getElementById('devZones').click(); return { marks: document.getElementById('devMarks').textContent, zones: document.getElementById('devZones').textContent, cls: document.getElementById('app').classList.contains('nozones'), vis: getComputedStyle(document.getElementById('zoneL')).visibility }; });
+    const off = await G(() => { document.getElementById('devMarks').click(); document.getElementById('devZones').click(); document.getElementById('devGems').click(); return { marks: document.getElementById('devMarks').textContent, zones: document.getElementById('devZones').textContent, gems: document.getElementById('devGems').textContent, cls: document.getElementById('app').classList.contains('nozones'), vis: getComputedStyle(document.getElementById('zoneL')).visibility }; });
     for (let beat = 118.25; beat <= 120; beat += 0.25) await tick(beat);
     await p.waitForTimeout(80); await p.screenshot({ path: out + 'dev_nomarks.png' });
-    const on = await G(() => { document.getElementById('devMarks').click(); document.getElementById('devZones').click(); return { marks: document.getElementById('devMarks').textContent, cls: document.getElementById('app').classList.contains('nozones') }; });
-    ok(off.marks.endsWith('꺼짐') && off.zones.endsWith('꺼짐') && off.cls && off.vis === 'hidden' && on.marks.endsWith('켜짐') && !on.cls && await G(() => window.__game.phase) === 'running', '개발자 기능: 길 위의 누르는 표시와 아래쪽 버튼 안내를 끄고 켤 수 있다(스크린샷 dev_nomarks.png)');
+    const on = await G(() => { document.getElementById('devMarks').click(); document.getElementById('devZones').click(); document.getElementById('devGems').click(); return { gems: document.getElementById('devGems').textContent, marks: document.getElementById('devMarks').textContent, cls: document.getElementById('app').classList.contains('nozones') }; });
+    ok(off.marks.endsWith('꺼짐') && off.zones.endsWith('꺼짐') && off.gems.endsWith('꺼짐') && on.gems.endsWith('켜짐') && off.cls && off.vis === 'hidden' && on.marks.endsWith('켜짐') && !on.cls && await G(() => window.__game.phase) === 'running', '개발자 기능: 길 위의 누르는 표시, 아래쪽 버튼 안내, 수정을 따로 끄고 켤 수 있다(스크린샷 dev_nomarks.png)');
   }
   for (const [w, h, name] of [[390, 844, 'portrait'], [844, 390, 'landscape'], [360, 640, 'small']]) {
     await p.setViewportSize({ width: w, height: h }); await p.waitForTimeout(150);

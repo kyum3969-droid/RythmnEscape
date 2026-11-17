@@ -166,6 +166,7 @@
         <div id="devOpts" hidden>
           <button class="btn small" id="devMarks">길 위의 누르는 표시: 켜짐</button>
           <button class="btn small" id="devZones">아래쪽 버튼 안내: 켜짐</button>
+          <button class="btn small" id="devGems">수정: 켜짐</button>
         </div>
         <div id="devJumps" hidden></div>
       </div>
@@ -197,8 +198,9 @@
   let dev = store.get("dev", false);     // 개발자 모드: 체크포인트로 바로 이동
   let devRun = false;                    // 건너뛰어 시작한 판은 최고 기록에 넣지 않는다
   // 개발자 기능: 안내 없이 해 보기. 길 위의 누르는 표시(II, ▲, 피버의 화살표)와 화면 아래쪽의 버튼 안내를 따로 끌 수 있다(개발자 모드일 때만 적용된다)
-  let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true);
+  let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true), devGems = store.get("devGems", true);
   const showMarks = () => !dev || devMarks;
+  const showGems = () => !dev || devGems;            // 길 위에 줄지어 있는 수정(공이 갈 길을 보여 준다)
 
   // ---------------------------------------------------------------- 색 (구간마다 바뀜)
   const PAL = {
@@ -526,6 +528,7 @@
     $("devOpts").hidden = !dev;
     $("devMarks").textContent = "길 위의 누르는 표시: " + (devMarks ? "켜짐" : "꺼짐");
     $("devZones").textContent = "아래쪽 버튼 안내: " + (devZones ? "켜짐" : "꺼짐");
+    $("devGems").textContent = "수정: " + (devGems ? "켜짐" : "꺼짐");
     $("app").classList.toggle("nozones", dev && !devZones);
     const box = $("devJumps");
     box.hidden = !dev;
@@ -563,7 +566,7 @@
         if (phase === "running" && Math.abs((ROWS - 1 - state.y + HALF) - gm.h) < 0.7) {
           gotGems.add(gemPtr); fx.chain++;                  // 소리는 내지 않는다(곡과 어울리지 않았다). 파편만 튄다
           const big = gm.flip || gm.hold;
-          burst(gm.x + 0.1, ROWS - 1 - gm.h, big ? 9 : 3, "accent", big ? 13 : 8, true);
+          if (big ? showMarks() || showGems() : showGems()) burst(gm.x + 0.1, ROWS - 1 - gm.h, big ? 9 : 3, "accent", big ? 13 : 8, true);      // 꺼 둔 것은 뚫는 파편도 튀지 않는다
           if (big && state.mode === "rush") fx.shake = Math.max(fx.shake, 0.06);
         } else fx.chain = 0;
         gemPtr++;
@@ -988,7 +991,7 @@
           ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
           ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.3));
           ctx.beginPath(); ctx.moveTo(x, y + d * R * 0.62); ctx.lineTo(x + R * 0.55, y - d * R * 0.3); ctx.lineTo(x - R * 0.55, y - d * R * 0.3); ctx.closePath(); ctx.fill();
-        } else {
+        } else if (showGems()) {
           const q = T * 0.13 * (1 + 0.12 * pulse);
           ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.6), 0.95);
           ctx.beginPath(); ctx.moveTo(x, y - q * 1.5); ctx.lineTo(x + q, y); ctx.lineTo(x, y + q * 1.5); ctx.lineTo(x - q, y); ctx.closePath(); ctx.fill();
@@ -996,7 +999,7 @@
       }
       ctx.shadowBlur = 0;
     }
-    if (dev && REF_PATH && showMarks()) {                                         // 개발자 모드: 패턴대로 눌렀을 때의 길(멈춘 구간은 굵게)
+    if (dev && REF_PATH && showMarks() && showGems()) {                                         // 개발자 모드: 패턴대로 눌렀을 때의 길(멈춘 구간은 굵게)
       ctx.shadowBlur = 0;
       for (let i = 0; i < REF_PATH.length; i += 4) {
         const t = REF_PATH[i];
@@ -1366,6 +1369,7 @@
   $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); renderDev(); });
   $("devMarks").addEventListener("click", () => { devMarks = !devMarks; store.set("devMarks", devMarks); renderDev(); });
   $("devZones").addEventListener("click", () => { devZones = !devZones; store.set("devZones", devZones); renderDev(); });
+  $("devGems").addEventListener("click", () => { devGems = !devGems; store.set("devGems", devGems); renderDev(); });
   applySpeed(); renderSpeed();
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   new ResizeObserver(resize).observe(canvas);
