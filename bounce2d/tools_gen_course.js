@@ -142,6 +142,7 @@ function generate(T, seed) {
   // ---- 짜임을 정해 주는 자리(구간 모음용): { m: 'A', g } 새 마디(되풀이할 수 있는 것) / { r: 'A' } 그 마디 한 번 더 / { t: 'A', kind } 그 마디의 함정
   //   kind: stop-last 마지막 입력을 뺀다 / stop-first 첫 입력을 뺀다 / hand-last 마지막 입력의 손을 바꾼다 / hand-first 첫 입력의 손을 바꾼다
   //         add 되풀이하던 것보다 하나 더 눌러야 한다({ m, add: true }로 뽑은 마디에만)
+  //   { r: 'A', blind: true } 그 마디를 안내(수정·누르는 표시) 없이 한 번 더
   //   피버는 { zm } / { zr } / { zt } (넓은 통로는 wm / wr / wt): 함정은 "앞쪽은 같고 누르던 자리에서 끊기는" 줄
   const motifs = {}, trapList = [], roles = {};
   const same = (u, v) => JSON.stringify([u.holds, u.presses]) === JSON.stringify([v.holds, v.presses]);
@@ -176,6 +177,10 @@ function generate(T, seed) {
         made[name] = def; bars.push(name); motifs[slot.m] = { name, def }; roles[b] = slot.m; return;
       }
       delete Lg.PATTERNS[name]; throw new Error('되풀이할 마디를 못 뽑았다');
+    }
+    if (slot.r && slot.blind) {                        // 안내 없이 한 번 더: 같은 입력이지만 길잡이(수정·누르는 표시)가 없다
+      const def = { ...JSON.parse(JSON.stringify(motifs[slot.r].def)), blind: true };
+      Lg.PATTERNS[name] = def; made[name] = def; bars.push(name); trapList.push({ bar: b, kind: 'blind', of: slot.r }); roles[b] = slot.r + '?'; return;
     }
     if (slot.r) { bars.push(motifs[slot.r].name); roles[b] = slot.r; return; }
     const M = motifs[slot.t];

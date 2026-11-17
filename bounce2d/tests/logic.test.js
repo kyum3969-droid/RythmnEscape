@@ -400,6 +400,7 @@ console.log('== 구간 모음(sections.js): 함정을 중심으로 짠, 어디�
     if (ref.sS.won && lvS.fixed.length === 0) pass++;
     if (ref.bS.has((2 + sec.len) * 384) && (sec.kind === 'fever' || ref.bS.has(2 * 384))) clean++;
     for (const tr of sec.diff.traps) {                 // 함정: 되풀이하던 그대로(앞 마디의 입력대로) 누르면 그 마디에서 죽는다
+      if (tr.kind === 'blind' || tr.kind === 'switch') continue;      // 안내를 지운 마디와 리믹스는 죽이는 함정이 아니다
       traps++;
       const lo = (2 + tr.bar) * 384, mine = (st) => st >= lo && st < lo + 384;
       const habit = tr.kind === 'break' ? { presses: Lg.PATTERNS[sec.bars[tr.bar - 1]].presses, holds: [] } : Lg.PATTERNS[sec.bars[tr.bar]].traps[0].full;
@@ -410,8 +411,17 @@ console.log('== 구간 모음(sections.js): 함정을 중심으로 짠, 어디�
   const lens = [...new Set(SECTIONS.map(s => s.len))].sort((a, b) => a - b), grades = [1, 2, 3, 4, 5].map(g => SECTIONS.filter(s => s.diff.grade === g).length), kinds = [...new Set(SECTIONS.flatMap(s => s.diff.traps.map(t => t.kind)))].sort();
   ok(SECTIONS.length === 50 && pass === 50, `구간 ${SECTIONS.length}개 모두, 평지 사이에 놓고 패턴대로 달리면 지나간다 (${pass}/50)`);
   ok(clean === 50, `모든 구간이 땅에서 박자에 맞춰 튀며 끝난다(바운스 구간은 들어올 때도) — 그래서 어떤 순서로든 이어 붙일 수 있다 (${clean}/50)`);
-  ok(SECTIONS.every(s => s.diff.traps.length >= 1) && traps >= 70 && lethal === traps, `모든 구간에 함정이 있고(모두 ${traps}개), 되풀이하던 그대로 누르면 그 마디에서 죽는다 (${lethal}/${traps})`);
-  ok(kinds.length === 6, `함정의 종류 ${kinds.length}가지: ${kinds.join(', ')}`);
+  ok(SECTIONS.every(s => s.diff.traps.length >= 1) && traps >= 55 && lethal === traps, `모든 구간에 함정이 있고(죽이는 함정 ${traps}개), 되풀이하던 그대로 누르면 그 마디에서 죽는다 (${lethal}/${traps})`);
+  ok(kinds.length === 8, `함정의 종류 ${kinds.length}가지: ${kinds.join(', ')}`);
+  // 조사한 원칙: 예측되는 함정은 함정이 아니다 → 되풀이 횟수가 들쭉날쭉하고, 함정 없이 지나가는 되풀이(헛다리)도 있다
+  const repsSeen = [...new Set(SECTIONS.flatMap(s => s.diff.traps.filter(t => !['blind', 'switch'].includes(t.kind)).map(t => t.reps)))].sort(), bluffs = SECTIONS.filter(s => s.diff.bluffs > 0).length;
+  ok(repsSeen.length >= 4 && bluffs >= 5, `함정 앞의 되풀이 횟수가 ${repsSeen.join('·')}번으로 여러 가지이고, 헛다리가 있는 구간이 ${bluffs}개다`);
+  // 안내를 지운 마디: 입력은 되풀이하던 마디와 같고, 길잡이(수정·누르는 표시)가 없다
+  const blindOk = SECTIONS.filter(s => s.diff.traps.some(t => t.kind === 'blind')).every(sec => {
+    const lvB = Lg.buildLevel({ name: 't', bpm: 152, bars: ['flat', 'flat', ...sec.bars, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+    return sec.diff.traps.filter(t => t.kind === 'blind').every(t => { const x0 = (2 + t.bar) * 16, p = Lg.PATTERNS[sec.bars[t.bar]], q = Lg.PATTERNS[sec.bars[t.bar - 1]]; return p.blind && JSON.stringify([p.holds, p.presses]) === JSON.stringify([q.holds, q.presses]) && !lvB.gems.some(g => g.x >= x0 && g.x < x0 + 16) && lvB.gems.some(g => g.x >= x0 - 16 && g.x < x0); });
+  });
+  ok(blindOk, '안내를 지운 마디는 앞 마디와 입력이 같고, 그 마디에만 길잡이가 없다');
   ok(lens.length >= 5 && grades.every(n => n >= 5), `길이 ${lens.join('·')}마디, 등급별 개수 ${grades.join(' / ')} (쉬움 → 어려움. 등급은 함정으로만 매긴다)`);
   ok(SECTIONS.every(s => s.diff.minWin >= 80), `타이밍은 난이도가 아니다: 누르는 여유는 모든 구간이 넉넉하다 (가장 좁은 것도 ±${Math.min(...SECTIONS.map(s => s.diff.minWin))}ms)`);
 }

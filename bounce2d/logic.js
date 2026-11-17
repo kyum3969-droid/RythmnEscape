@@ -580,7 +580,9 @@ function buildLevel(course) {
       if (mark) active.add(air);
       if (mark || s.step % (SUB / 4) === 0) recs.push({ air, x: s.x, h: (ROWS - 1) - s.y + HALF, mark });
     }
-    for (const r of recs) if (active.has(r.air)) L.gems.push(r.mark === "jump" ? { x: r.x, h: r.h, flip: 1 } : r.mark === "hold" ? { x: r.x, h: r.h, hold: true } : { x: r.x, h: r.h });
+    // blind: true인 마디에는 길잡이를 두지 않는다(같은 마디를 되풀이한 뒤, 안내 없이 기억으로 한 번 더 하게 하는 마디)
+    const blindAt = (x) => { const p = PATTERNS[course.bars[Math.floor(x / 16)]]; return !!(p && p.blind); };
+    for (const r of recs) if (active.has(r.air) && !blindAt(r.x)) L.gems.push(r.mark === "jump" ? { x: r.x, h: r.h, flip: 1 } : r.mark === "hold" ? { x: r.x, h: r.h, hold: true } : { x: r.x, h: r.h });
     L.gems.sort((u, v) => u.x - v.x);
   }
   return L;
