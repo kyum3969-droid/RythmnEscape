@@ -208,8 +208,9 @@
     set(k, v) { try { localStorage.setItem("pulsebounce." + k, JSON.stringify(v)); } catch (e) { /* 저장 불가 */ } },
   };
   // 라운드: 고르면 코스와 곡을 다시 만들어야 해서 화면을 새로 연다
-  const round = Math.max(0, Math.min(COURSES.length - 1, store.get("round", 0) | 0));
-  const COURSE = COURSES[round];
+  const ALL = COURSES.concat(typeof LABS !== "undefined" ? LABS : []);      // 라운드 뒤에 시안(LAB) 코스가 붙는다
+  const round = Math.max(0, Math.min(ALL.length - 1, store.get("round", 0) | 0));
+  const COURSE = ALL[round];
   const L = buildLevel(COURSE);
   // 그릴 때 쓰는 바닥 높이(반 칸 단위): 빨간 덩어리에 높은 박스를 합친 것. 붙어 있으면 한 덩어리로 그려진다(높은 박스를 따로 표시하지 않는다).
   const FLOOR2 = L.floorH ? (() => {
@@ -692,6 +693,8 @@
   const hash = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
   // 돌파 구간은 가로를 RUSH_STRETCH배로 늘려 그린다(같은 박자에 더 먼 거리 = 빠르게 보인다). 관문 앞뒤 1.5칸에서 서서히 바뀐다.
   // STRETCH[i] = 세계 x가 i/8칸일 때의 "늘린 x"
+  const SCROLL = COURSE.bars.map((n) => (PATTERNS[n] && PATTERNS[n].scroll) || 1);
+  const HIDDEN = COURSE.bars.map((n) => !!(PATTERNS[n] && PATTERNS[n].hidden));
   const STRETCH = (() => {
     const n = L.cols * 8 + 9, S = new Float32Array(n);
     let acc = 0;
@@ -700,10 +703,13 @@
       const x = (i + 0.5) / 8;
       let k = 1;
       for (const r of L.rides) if (x >= r[0] && x < r[1]) k = 1 + (RUSH_STRETCH - 1) * Math.min(1, (x - r[0]) / 1.5, (r[1] - x) / 1.5);
+      k *= SCROLL[Math.floor(x / 16)] ?? 1;                    // 시안 C: 마디마다 화면에서 흐르는 빠르기(그림만)
       acc += k / 8;
     }
     return S;
   })();
+  const SCROLL_ANY = SCROLL.some((k) => k !== 1);
+  const sInv = (v) => { let a = 0, b = STRETCH.length - 1; if (v <= 0) return v; if (v >= STRETCH[b]) return b / 8 + (v - STRETCH[b]); while (b - a > 1) { const m = (a + b) >> 1; if (STRETCH[m] < v) a = m; else b = m; } return a / 8; };
   const sAt = (x) => { if (x <= 0) return x; const f = x * 8, i = Math.min(STRETCH.length - 2, Math.floor(f)); return STRETCH[i] + (STRETCH[i + 1] - STRETCH[i]) * (f - i); };
 
   function draw(beat, now) {
@@ -814,6 +820,7 @@
     // 굽이 안의 토막은 이웃으로 조금만 넘겨 그린다(이음매의 쐐기를 메울 만큼만). 바탕의 칠(땅, 천장 너머)만 넉넉히 넓게 칠한다.
     const MG = pass.mg ?? 3, WIDE = pass.bent ? 6 : 0;
     let cA = Math.max(pass.x0 - MG, Math.floor(camX - bend.back) - 1), cB = Math.min(pass.x1 + MG, Math.ceil(camX + bend.fwd) + 1);
+    if (!pass.bent && SCROLL_ANY) { cA = Math.max(pass.x0 - MG, Math.min(cA, Math.floor(sInv(camS - bend.back)) - 1)); cB = Math.min(pass.x1 + MG, Math.max(cB, Math.ceil(sInv(camS + bend.fwd)) + 1)); }   // 줄여 그린 마디(시안 C)에서는 화면에 더 많은 칸이 들어온다
     if (pass.bent) {                           // 화면에 걸치는 칸만(앞뒤로 두 칸 여유)
       const lo = sx(pass.rx) + pass.a0 - 2 * T, hi = sx(pass.rx) + pass.a1 + 2 * T;
       while (cA < cB && sx(cA + 1) < lo) cA++;
@@ -881,6 +888,9 @@
         while (e + 1 < n && has(arr[e + 1])) e++;
         const x0 = sx(a * step) + T * 0.06, x1 = sx((e + 1) * step) - T * 0.06, soft = inRide(L, (a + 0.5) * step) ? T * 0.34 : 0;
         const yBase = typeof base === "function" ? base(a) : base;      // 떠 있는 박스는 덩어리마다 밑(또는 위)이 다르다
+        // 시안 B: 흐려지는 마디의 덩어리는 공에 다가올수록 흐려진다(5칸 앞부터 2칸 앞까지). 다 흐려져도 박자마다 테두리가 살짝 번쩍인다
+        const hb = Math.floor(a * step / 16);
+        ctx.globalAlpha = HIDDEN[hb] && phase !== "dead" ? Math.max(0.1 * pulse, Math.min(1, (a * step - camX - 2) / 3)) : 1;      // 죽으면 다시 드러난다(무엇에 걸렸는지 보이게)
         const pts = [[x0, yBase]];
         let yMin = yBase, yMax = yBase;
         for (let k = a; k <= e; k++) {
@@ -912,6 +922,7 @@
         trace(); if (typeof base === "function") ctx.closePath();       // 떠 있는 박스는 네 변을 다 두른다(땅·하늘에 붙은 덩어리는 붙은 쪽을 비운다)
         ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(9 + 8 * pulse); gs();
         ctx.lineJoin = "round"; sb(0);
+        ctx.globalAlpha = 1;
         c = e;
       }
     };
@@ -1288,6 +1299,39 @@
       ctx.restore();
     }
 
+    // 시안 D: 오르내리는 문. 땅에 서 있으면 뛰어넘고, 공중에 떠 있으면 밑으로 지나간다. 다음 엇박에 움직일 문은 그 앞 반 박 동안 떨고 밝아진다.
+    // 움직이는 문은 오가는 두 자리를 점선 레일로 보여 준다.
+    for (const g of L.gates) {
+      if (g.x < cA - 1 || g.x > cB + 1 || !inPass(g.x)) continue;
+      const q = gateSpan(g, beat), xa0 = sx(g.x - g.w / 2) + T * 0.06, xb0 = sx(g.x + g.w / 2) - T * 0.06;
+      const jig = q.shake * T * 0.07 * Math.sin(now * 70), xa = xa0 + jig, xb = xb0 + jig, ya = sy(ROWS - 1 - q.hi), yb = sy(ROWS - 1 - q.lo);
+      if (g.seq.length > 1 && new Set(g.seq).size > 1) {
+        ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,143,171,0.35)"; ctx.lineWidth = 2; ctx.setLineDash([4, 7]);
+        ctx.strokeRect(xa0, sy(ROWS - 1 - (GATE_LOW[1] + GATE_RISE)), xb0 - xa0, sy(ROWS - 1 - GATE_LOW[0]) - sy(ROWS - 1 - (GATE_LOW[1] + GATE_RISE)));
+        ctx.setLineDash([]);
+      }
+      const bg = ctx.createLinearGradient(0, yb, 0, ya);
+      bg.addColorStop(0, "#12050d"); bg.addColorStop(1, q.shake > 0 ? `rgb(${122 + 120 * q.shake},${20 + 40 * q.shake},${64 + 40 * q.shake})` : "#7a1440");
+      ctx.fillStyle = bg; ctx.fillRect(xa, ya, xb - xa, yb - ya);
+      ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; ctx.shadowBlur = 10 + 8 * pulse + 14 * q.shake; ctx.strokeRect(xa, ya, xb - xa, yb - ya); ctx.shadowBlur = 0;
+    }
+    // 시안 A: 유령 공. 부르는 마디에서 다음 마디의 정답을 먼저 쳐 보인다(반투명, 지나온 자취를 남긴다). 누르는 순간에는 고리, 멈춘 동안에는 II.
+    if (L.ghost.size && phase === "running") {
+      const st = Math.round(beat * SUB), gNow = L.ghost.get(st);
+      if (gNow) {
+        ctx.shadowBlur = 0; ctx.fillStyle = "rgba(255,255,255,0.35)";
+        for (let k = st - 72; k < st; k += 4) { const gp = L.ghost.get(k); if (gp) { ctx.beginPath(); ctx.arc(sx(TPB * k / SUB), sy(ROWS - 1 - gp.h) - HALF * T, T * 0.07, 0, Math.PI * 2); ctx.fill(); } }
+        const gx = sx(camX), gy = sy(ROWS - 1 - gNow.h) - HALF * T, R = T * HALF;
+        let act = ""; for (let k = st - 14; k <= st; k++) { const gp = L.ghost.get(k); if (gp && gp.act) act = gp.act; }
+        ctx.save(); ctx.globalAlpha = 0.6;
+        ctx.fillStyle = gNow.frozen ? css(pal.sun, 0.55) : "rgba(220,240,255,0.45)"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+        ctx.shadowColor = "#ffffff"; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(gx, gy, R, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur = 0;
+        if (gNow.frozen) { ctx.fillStyle = "#ffffff"; ctx.fillRect(gx - R * 0.32, gy - R * 0.4, R * 0.22, R * 0.8); ctx.fillRect(gx + R * 0.1, gy - R * 0.4, R * 0.22, R * 0.8); }
+        if (act === "jump") { ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(gx, gy + R, R * 1.6, 0, Math.PI * 2); ctx.stroke(); }
+        ctx.restore();
+      }
+    }
     // 플레이어: 빛나는 구슬 + 꼬리
     if (phase !== "dead" && inPass(camX + state.lead)) {
       // 굽은 길에서 공은 토막의 기울기(한 칸마다 조금씩 꺾인다)가 아니라, 칸 사이를 매끄럽게 이은 기울기로 그린다.
@@ -1676,10 +1720,10 @@
     showOverlay('PULSE <span>BOUNCE</span>', "공은 박자마다 저절로 튀어요\n왼쪽 누르고 있기 = 공중에서 멈춤\n오른쪽 누르기 = 점프 (공중에서는 이단 점프)", best > 0 ? `최고 기록 ${best}%` : COURSE.name, [["시작", startFresh, true]]);
   }
   function showWin() {
-    const next = round + 1 < COURSES.length ? [["다음 라운드", () => gotoRound(round + 1), true], ["처음부터 다시", startFresh]] : [["처음부터 다시", startFresh, true]];
+    const next = round + 1 < (COURSE.lab ? ALL.length : COURSES.length) ? [["다음 라운드", () => gotoRound(round + 1), true], ["처음부터 다시", startFresh]] : [["처음부터 다시", startFresh, true]];
     showOverlay('<span>CLEAR!</span>', `${tries}번 만에 완주했어요.`, devRun ? "개발자 모드로 건너뛴 판이라 기록에는 남기지 않아요." : "", next);
   }
-  COURSES.forEach((c, i) => {                     // 라운드 고르기
+  ALL.forEach((c, i) => {                         // 라운드 고르기(뒤에 시안 코스)
     const b = document.createElement("button");
     b.className = "btn small"; b.textContent = c.name; b.disabled = i === round;
     b.addEventListener("click", () => gotoRound(i));
