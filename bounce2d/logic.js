@@ -222,6 +222,15 @@ const PATTERNS = {
   w7: { mode: "rush", wide: true, gap: 1.5, nodes: "F.SFFFS." },     // 한 번, 쉬고, 세 번, 뚝
   w8: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFFS.F." },     // 세 번에서 뚝(w5 다음에 놓는다: 다섯 번을 치던 손이 세 번에서 멈춰야 한다), 그리고 한 번
   w4: { mode: "rush", wide: true, nodes: "F.F.F.F." },     // 천장을 스치듯: 한 박마다 눌러 천장으로 되돌아간다. 바로 밑에 장애물이 줄지어 떠 있다
+  // 떠 있는 파란 박스(floats: [첫 칸, 끝 칸, 윗면 높이]): 이단 점프의 꼭대기(4.5칸) 바로 밑, 4칸 높이에 뜬 한 칸짜리 박스.
+  // 이단 점프로 올라타면 잠깐 구르다 끝에서 떨어지고, 떨어지면 다음 박에 맞춰 땅에 닿는다. 구르는 동안(또는 닿기 직전에) 누르면 박스에서 다시 뛴다.
+  // 그 뒤에 무엇을 해야 하는지는 빨간 박스가 알려 준다: 박스 위에 빨간 박스가 떠 있으면 그냥 떨어지고, 박스 너머에 빨간 기둥이 서 있으면 다시 뛴다.
+  fDrop: { holds: [], presses: [0.5], floats: [[4, 4, 4]], traps: [{ presses: [1.125] }], tol: 0.18 },                 // 올라타서 그냥 떨어진다(뛰면 위의 빨간 박스에 걸린다)
+  fLate: { holds: [], presses: [2.5], floats: [[12, 12, 4]], traps: [{ presses: [3.125] }], tol: 0.18 },               // 같은 것을 마디의 뒤쪽에서
+  fTwice: { holds: [], presses: [0.5, 2.5], floats: [[4, 4, 4], [12, 12, 4]], traps: [{ presses: [1.125] }, { presses: [3.125] }], tol: 0.18 },
+  fJump: { holds: [], presses: [0.5, 1.125], floats: [[4, 4, 4], [8, 8, 4]], tol: 0.18 },                              // 올라타서 다시 뛰어 다음 박스로, 거기서 떨어진다(안 뛰면 박스 너머의 빨간 기둥에 걸린다)
+  fGlide: { holds: [[1.5, 2.0]], presses: [0.5], floats: [[4, 4, 4]], tol: 0.18 },                                     // 올라타서 떨어지자마자 멈춰, 밑의 빨간 기둥 위를 건넌다
+  fLow: { holds: [], presses: [2.5], floats: [[4, 4, 4]], traps: [{ presses: [0.5] }], tol: 0.18 },                    // 박스가 있지만 올라가면 안 된다(박스 앞을 빨간 박스가 막고 있다). 밑으로 지나간다
   // 조여드는 통로(연출): 바닥과 천장이 가운데로 모여들어, 공이 닿는 간격이 한 박 → 반 박 → … → 1/32박까지 빨라진다("타다다다닥" → "드르르륵").
   // squeeze = 닿는 간격(박)을 차례로 적은 것. 한 마디에 4박어치. 피버의 맨 끝에만 쓴다(통로가 좁아진 채로 끝난다).
   zS1: { mode: "rush", nodes: "........", free: true, squeeze: [1, 1, 0.5, 0.5, 0.5, 0.5] },
@@ -360,7 +369,27 @@ const ROUND3 = {
     { bar: 0, id: "intro" }, { bar: 7, id: "a" }, { bar: 15, id: "d" }, { bar: 23, id: "c" }, { bar: 31, id: "rush" }, { bar: 39, id: "b" }, { bar: 47, id: "a" }, { bar: 55, id: "d" }, { bar: 63, id: "c" }, { bar: 71, id: "rush" }, { bar: 78, id: "outro" },
   ],
 };
-const COURSES = [ROUND1, ROUND2, ROUND3];
+// 시험 코스: 떠 있는 파란 박스와 떠 있는 빨간 박스. 4라운드 곡이 오기 전까지 2라운드 곡을 빌려 쓴다.
+const ROUND4 = {
+  name: "ROUND 4 · 시험 (떠 있는 박스)",
+  bpm: 151.9867,
+  track: { file: "music/terminal_pursuit.mp3", offset: 0.2809 },
+  lab: true,                                     // 시험 코스: 라운드의 짜임새(밀도, 함정의 차례)를 따지는 검사는 건너뛴다
+  floatReds: true,                               // 빨간 덩어리를 땅·하늘 끝까지 잇지 않고 떠 있는 박스로 만든다
+  bars: [
+    // 보여 주기: 올라타서 떨어지기 → 뒤쪽에서 → 두 번
+    "flat", "flat", "fDrop", "fDrop",   "box", "fLate", "fTwice", "cp",
+    // 다시 뛰기를 두 번 한 뒤, 같은 박스에서 그냥 떨어지기(버릇대로 뛰면 걸린다). 떨어지며 멈추기
+    "fJump", "fJump", "fDrop", "fGlide",   "fGlide", "fDrop", "fTwice", "cp",
+    // 올라타기를 두 번 한 뒤, 올라가면 안 되는 박스. 보통 함정(매달린 덩어리가 떠 있는 박스로 나온다)
+    "fDrop", "fDrop", "fLow", "fJump",   "goStop", "fJump", "holdStop", "cp",
+    // 섞기
+    "fGlide", "fJump", "fLow", "fTwice",   "fJump", "fDrop", "fGlide", "fJump",
+    "goal", "flat", "flat",
+  ],
+  sections: [{ bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 16, id: "d" }, { bar: 24, id: "b" }, { bar: 32, id: "outro" }],
+};
+const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4];
 const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
@@ -380,6 +409,7 @@ const WIDE_TOP = 4;                          // 넓은 통로의 맨 위 단계(
 //   패턴에 tall: [누르는 시각, ...]을 적으면, 그 이단 점프의 꼭대기 바로 밑(누른 자리에서 두 칸 앞)에 한 칸 너비로 선다.
 //   높이 2.5칸이면 누르는 여유가 다른 동작과 비슷하다(약 ±0.2박). 더 높이면 그만큼 빡빡해진다(3칸이면 ±0.17박).
 const TALL_H = 2.5, TALL_W = 1;
+const RED_MIN = 1, RED_PAD = 0.3;   // 떠 있는 빨간 박스: 최소 두께(칸), 부딪힌 자리에서 더 남겨 두는 여유
 const LAVA_H = 0.375;       // 빨간 바닥의 두께(칸)
 const HAZ_MAX_H = 4;       // 바닥에서 솟는 장애물의 최대 높이(칸)
 const WRONG_SHIFT = [-0.3, 0.3];   // "크게 어긋난 입력"으로 치는 박자 차이
@@ -471,6 +501,8 @@ function emptyLevel(course) {
     if (p && p.tall === true) tallBars.add(b);          // (계단 구간의 tall: true는 화면이 물러나야 하는 마디)
     if (p && Array.isArray(p.tall)) for (const t of p.tall) talls.push({ x: x0 + TPB * (t + 0.5), w: TALL_W, h: TALL_H });
     if (p && p.boxes) for (const [a, z, hh] of p.boxes) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "#";
+    // 떠 있는 파란 박스: [첫 칸, 끝 칸, 윗면 높이]. 두께는 한 칸이고 밑은 비어 있다(밑으로 지나갈 수 있다).
+    if (p && p.floats) for (const [a, z, hh] of p.floats) { if (hh < 2) throw new Error("떠 있는 박스는 밑으로 공이 지나갈 수 있어야 한다(윗면 2칸 이상): " + name); for (let c = x0 + a; c <= x0 + z; c++) grid[ROWS - 1 - hh][c] = "#"; }
     if (p && p.rings) for (const [c, hh] of p.rings) grid[ROWS - 2 - hh][x0 + c] = "O";
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
     else if (name === "goal") goalX = b * 16 + 8;
@@ -500,8 +532,8 @@ function hazardAt(L, s) {
   const c0 = Math.floor(s.x - half + 0.03), c1 = Math.floor(s.x + half - 0.03), fh = (ROWS - 1) - s.y;
   for (let c = c0; c <= c1; c++) {
     if (c < 0 || c >= L.cols || !(s.x + half - grace > c + 0.1 && s.x - half + grace < c + 0.9)) continue;
-    if (fh + 0.06 < L.floorH[c]) return { c, kind: "floor" };
-    if (fh + SIZE - 0.06 > L.ceilH[c]) return { c, kind: "ceil" };
+    if (fh + 0.06 < L.floorH[c] && (!L.floorLo || fh + SIZE - 0.06 > L.floorLo[c])) return { c, kind: "floor" };
+    if (fh + SIZE - 0.06 > L.ceilH[c] && (!L.ceilTop || fh + 0.06 < L.ceilTop[c])) return { c, kind: "ceil" };
   }
   return null;
 }
@@ -568,19 +600,22 @@ function buildLevel(course) {
       const fh = Math.min(HAZ_MAX_H, Math.floor((k.lo - mF) * 4) / 4);
       // 파란 박스가 있는 칸에는, 박스 위로 반 칸 넘게 솟을 때만 빨간 덩어리를 세운다(박스 위에 얹힌 덩어리가 된다)
       let bh = 0; while (isSolid(L, c, ROWS - 2 - bh)) bh++;
-      const fh2 = Math.min(HAZ_MAX_H + bh, Math.floor((k.lo - mF) * 4) / 4);
+      // 떠 있는 파란 박스가 있는 칸: 길이 박스 위면 빨간 덩어리는 박스 밑에서 멈추고, 길이 박스 밑이면 매달린 덩어리를 두지 않는다(박스가 천장 노릇을 한다)
+      let fb = 99, ft = -1; for (let r = ROWS - 2 - bh; r >= 0; r--) if (isSolid(L, c, r)) { if (fb > 90) fb = ROWS - 2 - r; ft = ROWS - 1 - r; }
+      const fh2 = Math.min(HAZ_MAX_H + bh, Math.floor((k.lo - mF) * 4) / 4, fb > 90 || k.hi < fb ? 99 : fb - 0.5);
       if (!k.ground && fh2 >= bh + 0.5) L.floorH[c] = fh2;
-      const ch = Math.ceil((k.hi + SIZE + mC) * 4) / 4;
-      if (ch <= CEIL_MAX_H) L.ceilH[c] = ch;
+      const ch = Math.max(Math.ceil((k.hi + SIZE + mC) * 4) / 4, ft + 0.5);
+      if (ch <= CEIL_MAX_H + (fb < 90 ? 2 : 0) && !(fb < 90 && k.hi < fb)) L.ceilH[c] = ch;
     }
   }
   // 3) 틀리게 누른 달리기를 실제로 막는 자리만 남긴다. 막은 칸의 높이 그대로, 통로가 허락하는 만큼 양옆으로 BLOCK_GROW칸까지 넓힌 네모 덩어리.
   const outF = new Float32Array(L.cols), outC = new Float32Array(L.cols).fill(99);
-  const keep = (hit) => {
-    const fl = hit.kind === "floor", v = fl ? L.floorH[hit.c] : L.ceilH[hit.c];
+  const hitLo = new Float32Array(L.cols).fill(99), hitHi = new Float32Array(L.cols).fill(-99);   // 그 덩어리에 걸려 죽은 공들의 바닥 높이의 최솟값 / 윗면 높이의 최댓값
+  const keep = (hit, s) => {
+    const fl = hit.kind === "floor", v = fl ? L.floorH[hit.c] : L.ceilH[hit.c], feet = (ROWS - 1) - s.y;
     for (const dir of [-1, 1]) for (let n = dir < 0 ? 0 : 1, c = hit.c + (dir < 0 ? 0 : 1); n <= BLOCK_GROW && c >= 0 && c < L.cols; n++, c += dir) {
       if (fl ? L.floorH[c] < v : L.ceilH[c] > v) break;
-      if (fl) outF[c] = Math.max(outF[c], v); else outC[c] = Math.min(outC[c], v);
+      if (fl) { outF[c] = Math.max(outF[c], v); hitLo[c] = Math.min(hitLo[c], feet); } else { outC[c] = Math.min(outC[c], v); hitHi[c] = Math.max(hitHi[c], feet + SIZE); }
     }
   };
   for (const [b, p] of patternBars) {
@@ -601,7 +636,7 @@ function buildLevel(course) {
     for (const w of wrong) {
       const s = runBar(b, w, 2);
       const hit = s.dead ? hazardAt(L, s) : null;
-      if (hit && hit.c >= b * 16 && hit.c < b * 16 + 16) keep(hit);
+      if (hit && hit.c >= b * 16 && hit.c < b * 16 + 16) keep(hit, s);
     }
   }
   // 1/4칸짜리 잔턱은 없앤다(길이 넓어지는 쪽으로 맞춤)
@@ -610,6 +645,24 @@ function buildLevel(course) {
     if (outC[c] < 90 && outC[c - 1] < 90 && Math.abs(outC[c] - outC[c - 1]) <= 0.25) { const v = Math.max(outC[c], outC[c - 1]); for (let k = c; k >= 0 && outC[k] < 90 && v - outC[k] <= 0.25 && outC[k] !== v; k--) outC[k] = v; outC[c] = v; }
   }
   L.floorH = outF; L.ceilH = outC;
+  // 떠 있는 빨간 박스(course.floatReds): 덩어리를 땅이나 하늘 끝까지 잇지 않고, 틀린 달리기가 실제로 부딪힌 높이만 남긴다.
+  //   바닥에서 솟은 덩어리: 가장 낮게 부딪힌 자리 밑을 비운다(밑이 1칸 넘게 빌 때만). 매달린 덩어리: 가장 높이 부딪힌 자리 위를 비운다.
+  //   틀린 달리기는 저마다 부딪혔던 그 자리에서 그대로 죽는다. 대신 위로 넘거나 밑으로 지나가는 길이 열린다.
+  L.floorLo = new Float32Array(L.cols); L.ceilTop = new Float32Array(L.cols).fill(99);
+  if (course.floatReds) {
+    for (let c = 0; c < L.cols; c++) {
+      if (outF[c] > 0 && !(c > 0 && outF[c - 1] > 0)) {
+        let e = c, lo = 99, hMin = 99; while (e < L.cols && outF[e] > 0) { lo = Math.min(lo, hitLo[e]); hMin = Math.min(hMin, outF[e]); e++; }
+        const bottom = Math.min(Math.floor((lo - RED_PAD) * 4) / 4, hMin - RED_MIN);
+        if (bottom >= 1) for (let k = c; k < e; k++) L.floorLo[k] = bottom;
+      }
+      if (outC[c] < 90 && !(c > 0 && outC[c - 1] < 90)) {
+        let e = c, hi = -99, cMax = -99; while (e < L.cols && outC[e] < 90) { hi = Math.max(hi, hitHi[e]); cMax = Math.max(cMax, outC[e]); e++; }
+        const top = Math.max(Math.ceil((hi + RED_PAD) * 4) / 4, cMax + RED_MIN);
+        for (let k = c; k < e; k++) L.ceilTop[k] = top;
+      }
+    }
+  }
   // 빨간 바닥(lava): 패턴에 적힌 칸의 땅은 닿으면 죽는다. 그 위에 놓인 파란 박스만 디딜 수 있다.
   course.bars.forEach((name, b) => {
     const p = PATTERNS[name];
@@ -855,8 +908,15 @@ function stepState(L, s, press, ev, hold) {
     const t = tile(L, c, r);
     if (t === ".") continue;
     if (t === "#") {
-      let rt = r;
+      let rt = r, rb = r;
       while (isSolid(L, c, rt - 1)) rt--;                 // 그 블록 기둥의 꼭대기
+      while (rb + 1 < ROWS && isSolid(L, c, rb + 1)) rb++;   //            밑바닥(땅까지 이어지면 ROWS - 1)
+      if (rb < ROWS - 1 && (rb + 1) - top < s.y - rt) {  // 떠 있는 박스에 아래쪽으로 걸쳤다: 올라타지 않고 밑으로 밀려난다(죽지 않는다)
+        s.y = rb + 1 + SIZE;
+        if (s.vy < 0) s.vy = 0;
+        if (ev) ev.push({ type: "bonk" });
+        r = r1 + 1; break;
+      }
       {                                                  // 파란 박스의 옆면: 죽지 않고 저절로 올라탄다(박스는 한 칸씩만 높아지게 놓는다)
         s.y = rt;
         if (!frozen && !s.onGround) {

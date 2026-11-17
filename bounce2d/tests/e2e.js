@@ -248,6 +248,24 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === 8 && st.gems.got === st.gems.total, `3라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    // 시험 코스: 떠 있는 파란 박스와 떠 있는 빨간 박스
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(4)')]); await ready();
+    st = await G(() => { const g = window.__game, L = g.L; let fb = 0, fr = 0; for (let r = 0; r < 8; r++) for (let c = 0; c < L.cols; c++) if (L.grid[r][c] === '#' && L.grid[r + 1][c] !== '#') fb++; for (let c = 0; c < L.cols; c++) if (L.ceilTop[c] < 90 && !(c > 0 && L.ceilTop[c - 1] < 90)) fr++; return { round: g.round, fb, fr }; });
+    ok(st.round === 3 && st.fb >= 20 && st.fr >= 10, `시험 코스: 떠 있는 파란 박스 ${st.fb}칸, 떠 있는 빨간 박스 ${st.fr}개`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots4 = { 9.25: 'r4_drop', 33.25: 'r4_jump', 33.75: 'r4_jump_high', 45.75: 'r4_glide', 72.5: 'r4_low', 82.25: 'r4_trap' };
+    const seen4 = {};
+    for (let beat = 0; beat <= 140; beat += 0.25) {
+      await tick(beat);
+      if (shots4[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots4[beat] + '.png' }); }
+      if (beat === 9.25 || beat === 33.75) seen4[beat] = await G(() => { const g = window.__game, v = g.view; return { h: 9 - g.state.y, on: g.state.onGround, z: v.zT / v.T, topPx: v.groundY - (9 - g.state.y + 0.8) * v.zT }; });
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === 2 && st.gems.got === st.gems.total, `시험 코스도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(seen4[9.25] && seen4[9.25].on && Math.abs(seen4[9.25].h - 4) < 0.01, `이단 점프로 떠 있는 파란 박스에 올라탄다 (높이 ${seen4[9.25] && seen4[9.25].h.toFixed(2)}칸)`);
+    ok(seen4[33.75] && seen4[33.75].h > 6 && seen4[33.75].z < 0.97 && seen4[33.75].topPx > 35, `박스에서 다시 뛰면 6칸 넘게 올라가고, 화면이 조금 물러나 공이 화면 안에 있다 (높이 ${seen4[33.75] && seen4[33.75].h.toFixed(2)}칸, ${seen4[33.75] && seen4[33.75].z.toFixed(2)}배, 공 윗면 y=${seen4[33.75] && seen4[33.75].topPx.toFixed(0)}px)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');

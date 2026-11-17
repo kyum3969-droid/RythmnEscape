@@ -76,7 +76,7 @@ console.log('== 실제 곡 (ffmpeg가 있을 때만) ==');
     ok(Math.abs(lead - Math.round(lead)) * beatSec < 0.01 && Math.round(lead) >= 0 && Math.round(lead) <= 8 && r.coverage > 0.85, `  첫 킥 ${r.offset.toFixed(3)}초, 코스의 첫 박 ${C.track.offset}초(첫 킥보다 ${Math.round(lead)}박 앞), 킥 잡힌 박 ${(r.coverage * 100).toFixed(0)}%`);
     ok(r.wobbleMs < 60, `  템포 흔들림 ±${r.wobbleMs.toFixed(0)}ms`);
     const goal = C.bars.indexOf('goal'), endSec = C.track.offset + goal * 4 * 60 / C.bpm;
-    ok(endSec < r.duration && r.duration - endSec < 8, `  결승선 마디(${goal})가 곡의 ${endSec.toFixed(1)}초, 곡 길이 ${r.duration.toFixed(1)}초`);
+    ok(endSec < r.duration && (C.lab || r.duration - endSec < 8), `  결승선 마디(${goal})가 곡의 ${endSec.toFixed(1)}초, 곡 길이 ${r.duration.toFixed(1)}초`);
   }
 }
 console.log('실패 ' + fails + '건');
