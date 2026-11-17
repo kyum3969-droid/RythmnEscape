@@ -1299,21 +1299,18 @@
       ctx.restore();
     }
 
-    // 시안 D: 오르내리는 문. 땅에 서 있으면 뛰어넘고, 공중에 떠 있으면 밑으로 지나간다. 다음 엇박에 움직일 문은 그 앞 반 박 동안 떨고 밝아진다.
-    // 움직이는 문은 오가는 두 자리를 점선 레일로 보여 준다.
-    for (const g of L.gates) {
-      if (g.x < cA - 1 || g.x > cB + 1 || !inPass(g.x)) continue;
-      const q = gateSpan(g, beat), xa0 = sx(g.x - g.w / 2) + T * 0.06, xb0 = sx(g.x + g.w / 2) - T * 0.06;
-      const jig = q.shake * T * 0.07 * Math.sin(now * 70), xa = xa0 + jig, xb = xb0 + jig, ya = sy(ROWS - 1 - q.hi), yb = sy(ROWS - 1 - q.lo);
-      if (g.seq.length > 1 && new Set(g.seq).size > 1) {
-        ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,143,171,0.35)"; ctx.lineWidth = 2; ctx.setLineDash([4, 7]);
-        ctx.strokeRect(xa0, sy(ROWS - 1 - (GATE_LOW[1] + GATE_RISE)), xb0 - xa0, sy(ROWS - 1 - GATE_LOW[0]) - sy(ROWS - 1 - (GATE_LOW[1] + GATE_RISE)));
-        ctx.setLineDash([]);
-      }
+    // 시안 D: 박자 악보. 공이 닿는 자리마다 빨간 네모가 선다(공중 덩어리 / 기둥 / 틈 = 낮은 기둥 + 뚜껑). 그림은 판정 그대로다.
+    for (const q of L.blocks) {
+      if (q.x < cA - 1 || q.x > cB + 1 || !inPass(q.x)) continue;
+      const xa = sx(q.x - q.w / 2) + T * 0.06, xb = sx(q.x + q.w / 2) - T * 0.06, ya = sy(ROWS - 1 - q.hi), yb = sy(ROWS - 1 - q.lo);
       const bg = ctx.createLinearGradient(0, yb, 0, ya);
-      bg.addColorStop(0, "#12050d"); bg.addColorStop(1, q.shake > 0 ? `rgb(${122 + 120 * q.shake},${20 + 40 * q.shake},${64 + 40 * q.shake})` : "#7a1440");
-      ctx.fillStyle = bg; ctx.fillRect(xa, ya, xb - xa, yb - ya);
-      ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; ctx.shadowBlur = 10 + 8 * pulse + 14 * q.shake; ctx.strokeRect(xa, ya, xb - xa, yb - ya); ctx.shadowBlur = 0;
+      bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#7a1440");
+      ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fillRect(xa, ya, xb - xa, yb - ya);
+      ctx.save(); ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya); ctx.clip();
+      ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2; ctx.beginPath();
+      { const span = yb - ya, gap = T * 0.36; for (let x = Math.floor((xa - span) / gap) * gap; x < xb; x += gap) { ctx.moveTo(x, yb); ctx.lineTo(x + span, ya); } }
+      ctx.stroke(); ctx.restore();
+      ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; ctx.shadowBlur = 10 + 8 * pulse; ctx.strokeRect(xa, ya, xb - xa, yb - ya); ctx.shadowBlur = 0;
     }
     // 시안 A: 유령 공. 부르는 마디에서 다음 마디의 정답을 먼저 쳐 보인다(반투명, 지나온 자취를 남긴다). 누르는 순간에는 고리, 멈춘 동안에는 II.
     if (L.ghost.size && phase === "running") {

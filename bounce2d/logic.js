@@ -931,35 +931,34 @@ const COURSE = ROUND1;
 //   A 따라 치기  — 앞 마디에서 유령 공이 먼저 쳐 보이고(call), 다음 마디는 안내 없이 내가 친다. 유령은 언제나 맞게 친다.
 //   B 사라지는 장애물(Hidden) — 빨간 덩어리가 멀리서는 보이다가 가까이 오면 흐려진다. 멀리서 읽어 둔 사람만 피한다.
 //   C 정지·변속(그림만) — 박자와 판정은 그대로, 화면에서 흐르는 빠르기만 바뀐다(scroll). 멈춘 마디에서는 세상이 서고 공만 제자리에서 튄다.
-//   D 오르내리는 문 — 빨간 박스 하나가 박자에 맞춰 땅(이단 점프로 넘는다)과 공중(그냥 밑으로 지나간다)을 오간다. 움직이기 전에 떤다.
+//   D 박자 악보 — 공이 닿는 자리(박마다)에 기호가 하나씩 선다. 공중 덩어리 = 그냥 튄다, 기둥 = 이단 점프로 넘는다, 틈 = 떠서(멈춤) 사이로 지나간다.
+//                 기호마다 맞는 손이 하나뿐이다. 마디를 악보처럼 읽는다. (처음에는 오르내리는 문으로 만들었다가, 움직이는 것은 별로라는 의견으로 바꿨다)
 // 새 필드(이 코스들에서만 쓴다)
 //   call: "패턴 이름"  이 마디에서 유령 공이 그 패턴대로 쳐 보인다. 이 마디 자체는 누를 것도 장애물도 없다.
 //   hidden: true      이 마디의 빨간 덩어리는 공에 다가오면 흐려진다(그림만). 수정·누르는 표시도 없다(blind와 함께 쓴다).
 //   scroll: k         이 마디가 화면에서 흐르는 빠르기(1 = 보통, 2 = 두 배로 늘려 그림, 0.12 = 거의 멈춤). 그림만 바뀐다.
-//   gates: [[칸, 줄, 밀기]]  오르내리는 문. 칸 = 마디 안에서 문의 가운데(공이 땅에 닿는 칸: 4 또는 12). 줄 = 박마다의 자리("L" 땅 / "H" 공중)를 되풀이한다.
-//                     정박 n에서의 자리 = 줄[(n - 마디 첫 박 + 밀기) mod 길이]. 문은 엇박(n - 0.5)에 움직이기 시작해 1/4박 만에 자리를 잡는다. 공은 정박에 지나가므로 늘 자리를 잡은 문을 만난다.
+//   notes: "oToS"     박자 악보(시안 D). 글자 하나가 한 박: 그 박에 공이 닿는 자리(마디 안의 칸 4k)에 기호가 선다.
+//                     o = 공중 덩어리(그냥 튄다) / T = 기둥(그 반 박 앞 꼭대기에서 이단 점프) / S = 틈(그 반 박 앞부터 멈춤으로 떠서 지나간다) / - = 아무것도 없음
+//                     누르는 것(presses·holds)은 noteBar가 악보에서 만든다. 동작 뒤 한 박은 쉰다(이단 점프·멈춤 뒤에는 그다음 박에 땅에서 다시 튄다).
 //   manual: true      도구가 장애물을 만들지 않는다(문이나 손으로 놓은 덩어리만 쓴다).
-const GATE_LOW = [0, 2.5];       // 땅에 선 문: 높은 박스와 같다(멈춤으로는 못 넘고 이단 점프로만 넘는다)
-const GATE_RISE = 2.6;           // 공중으로 올라간 문: [2.6, 5.1]. 그냥 튀는 공(정박 언저리에서 윗면 2.27칸 아래)은 밑으로 지나가고, 이단 점프·멈춤은 걸린다
-const gateState = (g, n) => g.seq[(((n - g.n0 + g.shift) % g.seq.length) + g.seq.length) % g.seq.length];
-// 문의 높이 범위 [아래, 위]와 떨림(0~1: 곧 움직인다)
-function gateSpan(g, beat) {
-  const n = Math.round(beat), u = beat - (n - 0.5);                 // n = 가장 가까운 정박, u = 그 박의 구간(엇박부터 다음 엇박까지) 안에서의 자리 0~1
-  const to = gateState(g, n) === "H" ? 1 : 0, from = gateState(g, n - 1) === "H" ? 1 : 0;
-  const e = u < 0.25 ? (1 - Math.cos(Math.PI * u / 0.25)) / 2 : 1;
-  const p = from + (to - from) * e;
-  const next = gateState(g, n + 1) === "H" ? 1 : 0;
-  const shake = next !== to && u >= 0.5 ? (u - 0.5) / 0.5 : 0;     // 다음 엇박에 움직일 문은 그 앞 반 박 동안 떤다
-  return { lo: GATE_LOW[0] + GATE_RISE * p, hi: GATE_LOW[1] + GATE_RISE * p, p, shake };
-}
-// 문 마디: 문의 자리에서 누를 것을 정한다(땅에 서 있으면 그 반 박 앞 꼭대기에서 이단 점프)
-function gateBar(gates, extra = {}) {
-  const presses = [];
-  for (const [c, seq, shift = 0] of gates) {
-    const n = c / 4, st = seq[((n + shift) % seq.length + seq.length) % seq.length];
-    if (st === "L") presses.push(n - 0.5);
+// 박자 악보의 기호: 칸 x(공이 정박에 닿는 자리)를 가운데로 한 칸 너비의 빨간 덩어리들 [아래, 위]
+//   o 공중 덩어리 [2.6, 4.6]: 그냥 튀는 공은 정박 언저리에서 윗면이 2.27칸 아래라 밑으로 지나간다. 이단 점프(4.1칸 위)·멈춤(윗면 3.05칸)은 걸린다
+//   T 기둥 [0, 2.5]: 높은 박스와 같다. 멈춤(바닥 2.25칸)으로는 못 넘고 이단 점프로만 넘는다
+//   S 틈 = 낮은 기둥 [0, 1.75] + 뚜껑 [3.3, 5.3]: 그냥 튀면 기둥에, 이단 점프하면 뚜껑에 걸린다. 꼭대기에서 멈춰(2.25~3.05칸) 사이로 지나간다
+const NOTE_SHAPES = { o: [[2.6, 4.6]], T: [[0, 2.5]], S: [[0, 1.75], [3.3, 5.3]], "-": [] };
+function noteBar(notes, extra = {}) {
+  if (notes.length !== 4) throw new Error("악보는 한 마디에 네 박: " + notes);
+  const presses = [], holds = [];
+  let last = -9;
+  for (let k = 0; k < 4; k++) {
+    const c = notes[k];
+    if (!(c in NOTE_SHAPES)) throw new Error("모르는 기호: " + c);
+    if (c !== "T" && c !== "S") continue;
+    if (k === 0 || k - last < 2) throw new Error("동작은 둘째 박부터, 두 박에 한 번까지: " + notes);
+    if (c === "T") presses.push(k - 0.5); else holds.push([k - 0.5, k + 0.375]);
+    last = k;
   }
-  return { holds: [], presses: presses.sort((a, b) => a - b), tol: 0.18, manual: true, gates, ...extra };
+  return { holds, presses, tol: 0.18, manual: true, notes, ...extra };
 }
 const blindOf = (name, extra = {}) => ({ ...PATTERNS[name], blind: true, ...extra });
 Object.assign(PATTERNS, {
@@ -975,16 +974,11 @@ Object.assign(PATTERNS, {
   s_lid: { holds: [], presses: [], scroll: 0.12, redFloat: [[0, 15, 3.4, 6]] },                       // 멈춘 마디 + 머리 위의 뚜껑: 그냥 튀면 지나가고, 이단 점프하면 뚜껑에 걸린다
   s2_mix: { ...PATTERNS.mix, scroll: 2 }, s05_mix: { ...PATTERNS.mix, scroll: 0.5 },
   s2_glideHigh: { ...PATTERNS.glideHigh, scroll: 2 }, s05_peak: { ...PATTERNS.peak, scroll: 0.5 },
-  // D 오르내리는 문
-  d_LL: gateBar([[4, "L"], [12, "L"]]),                      // 땅에 선 문 둘: 높은 박스와 같다(이단 점프 ×2)
-  d_HH: gateBar([[4, "H"], [12, "H"]]),                      // 공중의 문 둘: 그냥 밑으로 지나간다
-  d_alt: gateBar([[4, "LH", 1], [12, "LH", 1]]),             // 박마다 오르내리는 문: 지나갈 때는 땅(이단 점프 ×2)
-  d_altB: gateBar([[4, "LH", 1], [12, "LH", 1]], { blind: true }),
-  d_alt2: gateBar([[4, "LH", 1], [12, "LH", 0]], { blind: true }),   // 같이 오르내리는 문 둘인데 박이 어긋나 있다: 앞은 땅, 뒤는 공중
-  d_alt3: gateBar([[4, "LH", 0], [12, "LH", 1]], { blind: true }),   //                                                   앞은 공중, 뒤는 땅
-  d_tri: gateBar([[4, "LLH", 2], [12, "LLH", 2]], { blind: true }),  // 세 박에 한 번 올라가는 문(두 박 땅, 한 박 공중): 박마다 오르내리던 버릇이 어긋난다. 앞은 땅, 뒤는 공중
-  d_tri2: gateBar([[4, "LLH", 1], [12, "LLH", 1]], { blind: true }), //                                                                        앞은 공중, 뒤는 땅
-  d_mixG: gateBar([[4, "LH", 1], [12, "LLH", 2]], { blind: true }),  // 두 박 문과 세 박 문이 한 마디에: 앞은 땅, 뒤는 공중
+  // D 박자 악보
+  n_oToT: noteBar("oToT"), n_oSoS: noteBar("oSoS"), n_oooo: noteBar("oooo"),
+  n_oToS: noteBar("oToS", { blind: true }), n_oSoT: noteBar("oSoT", { blind: true }), n_oToTb: noteBar("oToT", { blind: true }), n_oSoSb: noteBar("oSoS", { blind: true }),
+  n_oToo: noteBar("oToo", { blind: true }), n_oSoo: noteBar("oSoo", { blind: true }), n_ooTo: noteBar("ooTo", { blind: true }), n_ooSo: noteBar("ooSo", { blind: true }),
+  n_oooT: noteBar("oooT", { blind: true }), n_oooS: noteBar("oooS", { blind: true }),
 });
 const LAB_BASE = { bpm: ROUND1.bpm, track: ROUND1.track, lab: true };
 const LAB_A = {
@@ -1033,20 +1027,21 @@ const LAB_C = {
   sections: [{ bar: 0, id: "intro" }, { bar: 7, id: "b" }, { bar: 13, id: "c" }, { bar: 18, id: "d" }, { bar: 24, id: "outro" }],
 };
 const LAB_D = {
-  ...LAB_BASE, name: "시안 D · 오르내리는 문",
+  ...LAB_BASE, name: "시안 D · 박자 악보",
+  // 공이 닿는 자리마다 기호가 하나씩: o 공중 덩어리(그냥) / T 기둥(이단 점프) / S 틈(멈춤). 마디를 악보처럼 읽는다.
   bars: [
     "flat", "flat",
-    // 땅에 선 문(뛰어넘는다) → 공중의 문(밑으로 지나간다)
-    "d_LL", "idle", "d_HH", "idle",
-    // 박마다 오르내리는 문: 지나가는 박의 자리를 읽는다(처음은 안내, 다음은 안내 없이)
-    "d_alt", "d_altB", "cp",
-    "d_alt2", "d_alt3", "d_alt2", "cp",
-    // 세 박 문: 박마다 오르내리던 버릇이 어긋난다
-    "d_tri", "d_tri2", "d_tri", "cp",
-    "d_mixG", "d_alt3", "d_tri2", "d_mixG",
+    // 기호 하나씩: 기둥 두 번 → 공중 덩어리만 → 틈 두 번 → 공중 덩어리만 (처음 둘은 안내가 있다)
+    "n_oToT", "n_oooo", "n_oSoS", "n_oooo",   "n_oToS", "n_oSoT", "cp",
+    // 버릇: 같은 악보를 두 번 → 끝에서 손 바꿈 / 끝에서 뚝
+    "n_oToTb", "n_oToTb", "n_oToS",   "n_oSoSb", "n_oSoSb", "n_oSoo", "cp",
+    // 자리 옮기기: 동작이 셋째 박(가운데)과 넷째 박(끝)으로
+    "n_ooTo", "n_ooTo", "n_ooSo", "n_oooT", "n_oooS", "n_oToS", "cp",
+    // 읽기만: 섞인 악보를 이어서
+    "n_oSoT", "n_ooTo", "n_oToo", "n_oooS", "n_oToT", "n_oSoo", "n_ooSo", "n_oSoT",
     "goal", "flat", "flat",
   ],
-  sections: [{ bar: 0, id: "intro" }, { bar: 6, id: "a" }, { bar: 13, id: "c" }, { bar: 17, id: "d" }, { bar: 21, id: "outro" }],
+  sections: [{ bar: 0, id: "intro" }, { bar: 9, id: "a" }, { bar: 16, id: "c" }, { bar: 23, id: "d" }, { bar: 31, id: "outro" }],
 };
 const LABS = [LAB_A, LAB_B, LAB_C, LAB_D];
 
@@ -1123,7 +1118,7 @@ function emptyLevel(course) {
   const capRed = new Map();                             // 파란 천장: 칸 → 그 위 빨간 덩어리의 밑면 높이
   const stairLo = new Map(), stairHi = new Map();       // 파란 발판: 반 박 지점 번호(x / 2) → 바닥 쪽·천장 쪽 높이 단계
   const pads = new Map();                               // 튕김판: 반 박 지점 번호 → { lv 높이 단계, from 공이 오던 방향 }
-  const gates = [];                                     // 오르내리는 문(시안 D): { x 가운데, seq, shift, n0 마디 첫 박 }
+  const blocks = [];                                    // 박자 악보의 기호(시안 D): { x 가운데, w 너비, lo, hi, note }
   let goalX = cols - 8;
   let zl = 0, zin = -1;                                 // 피버: 패턴대로 갈 때, 반 박 지점에서의 높이 단계(0 = 바닥)와 거기로 들어온 방향
   course.bars.forEach((name, b) => {
@@ -1169,7 +1164,7 @@ function emptyLevel(course) {
         gems.push({ x: x0 + 16, h: zl * ZIG_STEP + HALF });
       }
     }
-    if (p && p.gates) for (const [c, seq, shift = 0] of p.gates) gates.push({ x: x0 + c, w: TALL_W, seq, shift, n0: 4 * b });
+    if (p && p.notes) for (let k = 0; k < 4; k++) for (const [lo, hi] of NOTE_SHAPES[p.notes[k]]) blocks.push({ x: x0 + 4 * k, w: 1, lo, hi, note: p.notes[k] });
     if (p && p.tall === true) tallBars.add(b);          // (계단 구간의 tall: true는 화면이 물러나야 하는 마디)
     if (p && Array.isArray(p.tall)) for (const t of p.tall) talls.push({ x: x0 + TPB * (t + 0.5), w: TALL_W, h: TALL_H });
     if (p && p.boxes) for (const [a, z, hh] of p.boxes) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "#";
@@ -1190,7 +1185,7 @@ function emptyLevel(course) {
     if (q.x1 > r[1] + 1e-9) { q.x1 = r[1]; q.cut = 1; }
     if (q.x0 < r[0] - 1e-9) { q.x0 = r[0]; q.cut = -1; }
   }
-  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, tallBars, talls, capRed, squeezes, stairLo, stairHi, pads, gates, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, tallBars, talls, capRed, squeezes, stairLo, stairHi, pads, blocks, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 // 패턴대로 달린 공의 자취(스텝마다 위치·상태)
@@ -1493,8 +1488,8 @@ function buildLevel(course) {
   if (calls.length) {
     const starts = [], s = spawnState(L, -1);
     while (!s.dead && !s.won) { if (s.step % BAR === 0) starts[s.step / BAR] = { ...s }; stepState(L, s, base.press.has(s.step + 1), null, base.hold.has(s.step + 1)); }
-    const F = L.floorH, Gs = L.gates;
-    L.floorH = null; L.gates = [];                      // 유령은 장애물에 걸리지 않는다(부르는 마디에는 원래 장애물이 없다)
+    const F = L.floorH, Bs = L.blocks;
+    L.floorH = null; L.blocks = [];                      // 유령은 장애물에 걸리지 않는다(부르는 마디에는 원래 장애물이 없다)
     for (const [b, q] of calls) {
       if (!starts[b]) continue;
       const g = { ...starts[b] }, lo = b * BAR, hi = lo + BAR;
@@ -1505,7 +1500,7 @@ function buildLevel(course) {
         L.ghost.set(g.step, { h: (ROWS - 1) - g.y, frozen: g.frozen, act: ev.some((e) => e.type === "double" || e.type === "jump") ? "jump" : ev.some((e) => e.type === "freeze") ? "hold" : "" });
       }
     }
-    L.floorH = F; L.gates = Gs;
+    L.floorH = F; L.blocks = Bs;
   }
   return L;
 }
@@ -1787,24 +1782,11 @@ function stepState(L, s, press, ev, hold) {
     const fh = (ROWS - 1) - s.y;
     for (const q of L.talls) if (Math.abs(s.x - q.x) < q.w / 2 + HALF - 0.08 && fh + 0.06 < q.h) { die(s, "spike", ev); break; }
   }
-  if (!s.dead && s.mode === "bounce" && L.gates && L.gates.length) {   // 오르내리는 문(시안 D): 지금 박의 자리에서 겹치면 죽는다
+  if (!s.dead && s.mode === "bounce" && L.blocks && L.blocks.length) {   // 박자 악보의 기호(시안 D): 네모 덩어리에 겹치면 죽는다
     const fh = (ROWS - 1) - s.y;
-    for (const g of L.gates) {
-      if (Math.abs(s.x - g.x) >= g.w / 2 + HALF - 0.08) continue;
-      const q = gateSpan(g, s.step / SUB);
-      if (fh + 0.06 < q.hi && fh + SIZE - 0.06 > q.lo) { die(s, "spike", ev); break; }
-    }
-  }   // 패턴 통로의 장애물(바닥에서 솟은 덩어리와 매달린 덩어리)
-  for (let c = c0 - 1; c <= c1 + 1 && !s.dead; c++) {
-    const list = L.sawCols.get(c);
-    if (!list) continue;
-    for (const w of list) {
-      const cx = w.c + 0.5, cy = sawY(w, s.step / SUB);
-      const bx = Math.max(s.x - HALF + 0.06, Math.min(cx, s.x + HALF - 0.06));
-      const by = Math.max(top + 0.06, Math.min(cy, s.y - 0.06));
-      if ((bx - cx) ** 2 + (by - cy) ** 2 < SAW_R * SAW_R) { die(s, "saw", ev); break; }
-    }
+    for (const q of L.blocks) if (Math.abs(s.x - q.x) < q.w / 2 + HALF - 0.08 && fh + 0.06 < q.hi && fh + SIZE - 0.06 > q.lo) { die(s, "spike", ev); break; }
   }
+
   if (!s.dead && s.y > ROWS + 1.5) die(s, "fall", ev);
   if (s.dead) return;
   while (s.cp + 1 < L.cps.length && s.x >= L.cps[s.cp + 1].col + 0.5) { s.cp++; if (ev) ev.push({ type: "checkpoint", index: s.cp }); }
@@ -1887,4 +1869,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { LABS, gateSpan, gateState, TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { LABS, NOTE_SHAPES, noteBar, TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };

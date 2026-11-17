@@ -75,31 +75,43 @@ console.log('== C 정지·변속 ==');
   }
 }
 
-console.log('== D 오르내리는 문 ==');
+console.log('== D 박자 악보 ==');
 {
-  const L = Lg.buildLevel(D);
-  // 공은 정박에 문을 지나간다: 지나가는 동안(±1/4박) 문은 자리를 잡고 있다
-  ok(L.gates.every((g) => { const n = g.x / 4; const a = Lg.gateSpan(g, n - 0.25), z = Lg.gateSpan(g, n + 0.25), m = Lg.gateSpan(g, n); return a.lo === m.lo && z.lo === m.lo; }), `문 ${L.gates.length}개 모두, 공이 지나가는 동안에는 움직이지 않는다`);
-  ok(L.gates.some((g) => g.seq.length > 1), '움직이는 문이 있다');
-  let flips = 0, flipOk = 0, wins = [];
+  const L = Lg.buildLevel(D), act = { o: 'none', T: 'jump', S: 'hold' };
+  const doing = (kind, k) => kind === 'jump' ? { presses: [k - 0.5], holds: [] } : kind === 'hold' ? { presses: [], holds: [[k - 0.5, k + 0.375]] } : { presses: [], holds: [] };
+  // 기호마다 맞는 손은 하나뿐: 같은 마디의 다른 박은 정답대로 두고, 그 박만 세 가지(그냥 / 이단 점프 / 멈춤)로 해 본다
+  let right = 0, wrong = 0, total = 0;
+  const wins = { T: [], S: [] };
   D.bars.forEach((name, b) => {
     const p = Lg.PATTERNS[name];
-    if (!p || !p.gates) return;
-    for (const [c, seq, shift = 0] of p.gates) {
-      const n = c / 4, low = p.presses.includes(n - 0.5), others = p.presses.filter((t) => t !== n - 0.5);
-      // 거꾸로 하면 죽는다: 땅의 문인데 안 뛰면, 공중의 문인데 뛰면. 그리고 멈춤으로는 어느 쪽도 못 지나간다
-      const wrong = [low ? { presses: others, holds: [] } : { presses: [...others, n - 0.5].sort(), holds: [] }, { presses: others, holds: [[n - 0.5, n + 0.375]] }];
-      for (const w of wrong) { flips++; if (diesIn(L, b, w)) flipOk++; }
-      if (low) {                                        // 이단 점프의 여유: 일찍·늦게
-        const pass = (d) => !runWith(L, b, { presses: [...others, n - 0.5 + d].sort(), holds: [] }).dead;
+    if (!p || !p.notes) return;
+    for (let k = 1; k < 4; k++) {
+      const c = p.notes[k], prev = p.notes[k - 1], next = p.notes[k + 1];
+      if ((prev === 'T' || prev === 'S')) continue;              // 동작 바로 뒤 박은 쉬는 자리(공이 아직 그 동작 중이다)
+      const others = { presses: p.presses.filter((t) => Math.abs(t - (k - 0.5)) > 1e-9), holds: p.holds.filter((h) => Math.abs(h[0] - (k - 0.5)) > 1e-9) };
+      for (const kind of ['none', 'jump', 'hold']) {
+        const d = doing(kind, k), s = runWith(L, b, { presses: [...others.presses, ...d.presses], holds: [...others.holds, ...d.holds] });
+        const died = s.dead && Math.floor(s.x / 16) === b;
+        total++;
+        if (kind === act[c] ? !s.dead || Math.floor(s.x / 16) > b : died) (kind === act[c] ? right++ : wrong++);
+      }
+      if (c === 'T' || c === 'S') {                               // 누르는 여유
+        const pass = (dt) => { const d = doing(act[c], k); if (d.presses.length) d.presses[0] += dt; else d.holds[0] = [d.holds[0][0] + dt, d.holds[0][1]]; const s = runWith(L, b, { presses: [...others.presses, ...d.presses], holds: [...others.holds, ...d.holds] }); return !(s.dead && Math.floor(s.x / 16) === b); };
         let e = 0, z = 0; while (e < 0.4 && pass(-(e + 0.01))) e += 0.01; while (z < 0.4 && pass(z + 0.01)) z += 0.01;
-        wins.push([e, z]);
+        wins[c].push([e, z]);
       }
     }
   });
-  ok(flipOk === flips, `문마다 반대로 하면(땅인데 안 뜀 / 공중인데 뜀 / 멈춤) 그 마디에서 죽는다 (${flipOk}/${flips})`);
-  const ms = (v) => Math.round(v * 60000 / D.bpm), minE = Math.min(...wins.map((w) => w[0])), minZ = Math.min(...wins.map((w) => w[1]));
-  ok(minE >= 0.15 && minZ >= 0.15, `땅의 문을 넘는 이단 점프의 여유: 일찍 ${ms(minE)}ms, 늦게 ${ms(minZ)}ms 이상 (타이밍은 어렵지 않다)`);
+  ok(right + wrong === total, `박마다 맞는 손 하나로만 지나가고, 나머지 둘은 그 마디에서 죽는다 (${right + wrong}/${total})`);
+  const ms = (v) => Math.round(v * 60000 / D.bpm);
+  for (const c of ['T', 'S']) { const e = Math.min(...wins[c].map((w) => w[0])), z = Math.min(...wins[c].map((w) => w[1])); ok(e >= 0.15 && z >= 0.15, `${c === 'T' ? '기둥(이단 점프)' : '틈(멈춤 시작)'}의 여유: 일찍 ${ms(e)}ms, 늦게 ${ms(z)}ms 이상`); }
+  // 버릇 함정: 같은 악보를 두 번 친 뒤의 마디를, 앞 마디대로 치면 죽는다
+  for (const name of ['n_oToS', 'n_oSoo', 'n_ooSo']) {
+    const b = D.bars.findIndex((n, i) => n === name && i > 8 && D.bars[i - 1] !== 'cp' && Lg.PATTERNS[D.bars[i - 1]].notes !== Lg.PATTERNS[n].notes);
+    if (b < 0) continue;
+    ok(diesIn(L, b, inputs(D.bars[b - 1])), `${name}(마디 ${b}): 앞 마디(${Lg.PATTERNS[D.bars[b - 1]].notes})대로 치면 죽는다`);
+  }
+  ok(D.bars.every((n) => !Lg.PATTERNS[n] || !Lg.PATTERNS[n].notes || Lg.PATTERNS[n].notes.split('').every((c, k) => Lg.NOTE_SHAPES[c].length > 0)), '모든 박에 기호가 하나씩 있다(빈 박이 없다)');
 }
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);
