@@ -101,9 +101,9 @@
   #trackInfo { color: var(--muted); font-size: 12px; line-height: 1.45; white-space: pre-line; font-variant-numeric: tabular-nums; }
   #rounds { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
   #rounds .btn.small { color: var(--text); }
-  #labRate { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  #labRate .btn.small { color: var(--text); }
-  #labRate .btn.small[disabled] { border-color: var(--accent); color: var(--accent); opacity: 1; }
+  #rateRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  #rateRow .btn.small { color: var(--text); }
+  #rateRow .btn.small[disabled] { border-color: var(--accent); color: var(--accent); opacity: 1; }
   #rounds .btn.small[disabled] { border-color: var(--accent); color: var(--accent); opacity: 1; }
   #trackAdj { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; }
   #trackAdj[hidden] { display: none; }
@@ -171,7 +171,7 @@
       <div class="stat" id="ovStat"></div>
       <div class="buttons" id="ovButtons"></div>
       <div id="rounds"></div>
-      <div id="labRate" hidden></div>
+      <div id="rateRow" hidden></div>
       <div id="opts">
         <button class="btn small" id="trackBtn">곡 넣기</button>
         <input type="file" id="trackFile" accept="audio/*" hidden>
@@ -227,12 +227,14 @@
   const CEIL_HANG = L.floorH ? Array.from(L.ceilH, (v, c) => (L.ceilTop[c] < 90 ? 99 : v)) : null;
   const CEIL_FLOAT = L.floorH ? Array.from(L.ceilH, (v, c) => (L.ceilTop[c] < 90 ? v : 99)) : null;
   const gotoRound = (i) => { store.set("round", i); location.reload(); };
-  // 시안 코스만: 빠르기 배율(곡과 게임을 함께 빠르게 돌린다. 곡은 그만큼 음이 높아진다 — 박자가 빠르면 어떤지 손으로 비교해 보려는 것)
-  const RATE = COURSE.lab ? Math.max(1, Math.min(1.6, +store.get("labRate", 1) || 1)) : 1;
+  // 빠르기 배율(모든 라운드): 곡과 게임을 함께 빠르게 돌린다. 곡은 그만큼 음이 높아진다. 박자가 빠르면 어떤지 손으로 비교해 보려는 것.
+  // 최고 기록은 배율마다 따로 남긴다(1배는 예전 그대로)
+  const RATE = [1, 1.2, 1.4].includes(+store.get("rate", 1)) ? +store.get("rate", 1) : 1;
+  const BEST_KEY = "best" + round + (RATE !== 1 ? "@" + RATE : "");
   let SPB = 60 / L.bpm;
   const TOTAL_BEATS = L.cols / TPB;
 
-  let best = store.get("best" + round, round === 0 ? store.get("best", 0) : 0);
+  let best = store.get(BEST_KEY, round === 0 && RATE === 1 ? store.get("best", 0) : 0);
   let dev = store.get("dev", false);     // 개발자 모드: 체크포인트로 바로 이동
   let devRun = false;                    // 건너뛰어 시작한 판은 최고 기록에 넣지 않는다
   // 개발자 기능: 안내 없이 해 보기. 길 위의 누르는 표시(II, ▲, 피버의 화살표)와 화면 아래쪽의 버튼 안내를 따로 끌 수 있다(개발자 모드일 때만 적용된다)
@@ -658,10 +660,10 @@
         stopClock(true); sfx("die");
         burst(state.x, state.y - HALF, 26, "accent", 13);
         const pct = progress();
-        if (pct > best && !devRun) { best = pct; store.set("best" + round, best); }
+        if (pct > best && !devRun) { best = pct; store.set(BEST_KEY, best); }
         refreshHud();
       } else if (e.type === "win") {
-        phase = "won"; if (!devRun) { best = 100; store.set("best" + round, 100); }
+        phase = "won"; if (!devRun) { best = 100; store.set(BEST_KEY, 100); }
         sfx("win"); refreshHud();
         setTimeout(showWin, fake.on ? 0 : 900);
       }
@@ -1700,13 +1702,13 @@
     const next = round + 1 < (COURSE.lab ? ALL.length : COURSES.length) ? [["다음 라운드", () => gotoRound(round + 1), true], ["처음부터 다시", startFresh]] : [["처음부터 다시", startFresh, true]];
     showOverlay('<span>CLEAR!</span>', `${tries}번 만에 완주했어요.`, devRun ? "개발자 모드로 건너뛴 판이라 기록에는 남기지 않아요." : "", next);
   }
-  if (COURSE.lab) {                               // 시안 코스: 빠르기 고르기
-    $("labRate").hidden = false;
+  {                                               // 빠르기 고르기(모든 라운드)
+    $("rateRow").hidden = false;
     for (const r of [1, 1.2, 1.4]) {
       const b = document.createElement("button");
       b.className = "btn small"; b.textContent = `빠르기 ${r.toFixed(1)}배 · ${Math.round(COURSE.bpm * r)}`; b.disabled = r === RATE;
-      b.addEventListener("click", () => { store.set("labRate", r); location.reload(); });
-      $("labRate").appendChild(b);
+      b.addEventListener("click", () => { store.set("rate", r); location.reload(); });
+      $("rateRow").appendChild(b);
     }
   }
   ALL.forEach((c, i) => {                         // 라운드 고르기(뒤에 시안 코스)
