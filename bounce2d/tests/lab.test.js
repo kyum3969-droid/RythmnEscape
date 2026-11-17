@@ -76,5 +76,17 @@ console.log('== 타이밍은 어렵지 않다 ==');
   }
   ok(ms(worst.e) >= 75 && ms(worst.z) >= 75, `가장 빡빡한 입력(${worst.at})도 일찍 ${ms(worst.e)}ms, 늦게 ${ms(worst.z)}ms 여유가 있다`);
 }
+console.log('== 5라운드 · 반 박 튀기(시범) ==');
+{
+  const H = Lg.LABS[1], LH = Lg.buildLevel(H), { end } = Lg.traceRun(LH, LH.ref), PH = (b) => Lg.PATTERNS[H.bars[b]];
+  ok(H.sub === 2 && H.track.file.includes('concrete_pulse') && end.won && LH.fixed.length === 0, `5라운드 곡에 공이 반 박마다 튀는 코스를 짠다: 패턴대로 가면 완주 (${H.bars.length}마디 = 곡 ${H.bars.length / 2}마디)`);
+  ok(H.bars.indexOf('goal') === 158, '결승선은 곡의 79번째 마디(원래 5라운드의 결승선)와 같은 자리다');
+  ok(H.bars.every((n) => !Lg.PATTERNS[n] || !!Lg.PATTERNS[n].notes), '마디는 전부 박자 악보다(피버 없음)');
+  const ref = Lg.planInput(LH.ref);
+  const dies = (b, a) => { const lo = b * BAR, hi = lo + BAR, pr = new Set(a.presses.map((t) => lo + Math.round(t * SUB))), hl = a.holds.map(([x, z]) => [lo + Math.round(x * SUB), lo + Math.round(z * SUB)]), st = Lg.spawnState(LH, -1); while (!st.dead && !st.won) { const k = st.step + 1, i = k >= lo && k < hi; Lg.stepState(LH, st, i ? pr.has(k) : ref.press.has(k), null, i ? hl.some((h) => k >= h[0] && k < h[1]) : ref.hold.has(k)); } return st.dead && st.step >= lo && st.step < hi + SUB / 2; };
+  let traps = 0, caught = 0;
+  for (let b = 2; b < H.bars.length; b++) { if (!PH(b) || !PH(b - 1) || !PH(b - 2) || !PH(b).notes || !PH(b - 1).notes || PH(b - 1).notes !== PH(b - 2).notes || PH(b).notes === PH(b - 1).notes) continue; traps++; if (dies(b, { presses: PH(b - 1).presses, holds: PH(b - 1).holds })) caught++; }
+  ok(traps >= 20 && caught === traps, `버릇 함정 ${traps}곳 모두, 앞 마디 버릇대로 치면 죽는다`);
+}
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);

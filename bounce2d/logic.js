@@ -1862,6 +1862,40 @@ const LAB_D = {
   bars: ["flat", "flat", ...LAB_NOTES.map((e) => (e === "cp" ? "cp" : notePattern(e[0], e[1] !== 0))), "goal", "flat", "flat"],
   sections: [{ bar: 0, id: "intro" }, { bar: 11, id: "a" }, { bar: 16, id: "c" }, { bar: 23, id: "b" }, { bar: 30, id: "d" }, { bar: 38, id: "outro" }],
 };
-const LABS = [LAB_D];
+// 5라운드 · 반 박 튀기(시범): 공이 반 박마다 튄다(sub: 2 — 게임의 한 박 = 곡의 반 박). 그래서 이단 점프·멈춤 같은 동작 하나가 곡의 한 박 안에 끝나고,
+// 같은 곡 위에서 리듬이 두 배로 촘촘해진다. 마디는 박자 악보만 쓴다(피버는 반 박 단위로는 너무 빨라 뺐다). 곡의 마디 하나 = 게임의 마디 둘.
+// 마디는 도구(tools_gen_notes.js)가 통과한 악보 가운데서 곡의 구간에 맞춰 뽑는다: 조용한 구간은 동작 하나 이하, 센 구간은 동작 둘과 버릇 함정(같은 악보 두 번 → 한 군데만 다르게).
+// 판정은 게임의 박 단위라서, 누르는 여유(밀리초)는 보통 라운드의 절반이다.
+const R5H_NOTES = [
+  // <gen:notes:R5H>
+  // 도구(tools_gen_notes.js)가 뽑았다(씨앗 1). 손으로 고치지 말고 도구를 다시 돌린다.
+  ["oToo", 0], ["oooo"], ["ooSo", 0], ["oooo"], ["o.B.", 0], [".BoB"], ["oR~o", 0], "cp",
+  ["o.oT"], ["oR~."], ["oo.T"], ["oo.T"], ["oo.o"], ["oBoB"], [".S.S"], "cp",
+  ["oT.T"], ["oT.T"], ["oS.T"], [".T.S"], [".T.S"], [".T.T"], [".S.T"], "cp",
+  [".ToT"], [".ToT"], [".ToS"], ["oS.T"], ["oS.T"], ["oT.T"], [".ToT"], "cp",
+  ["oT.T"], ["oT.T"], ["oS.T"], [".S.S"], [".S.S"], [".o.S"], ["oToT"], "cp",
+  ["oS.T"], ["oS.T"], ["oo.T"], ["oToS"], ["oToS"], ["oToT"], ["oS.S"], "cp",
+  [".S.."], [".B.T"], ["oT.o"], ["oT.o"], ["oo.o"], [".T.."], [".T.S"], "cp",
+  [".o.T"], [".T.B"], ["ooB."], ["ooB."], ["oTB."], ["..oB"], ["oT.S"], "cp",
+  ["oSoS"], ["oSoS"], ["oooS"], ["oToS"], ["oToS"], ["oToT"], [".S.S"], "cp",
+  ["oToT"], ["oToT"], ["oBoT"], ["oToS"], ["oToS"], ["oBoS"], ["oSoT"], "cp",
+  [".T.T"], [".T.T"], [".o.T"], ["oSoS"], ["oSoS"], ["oToS"], ["oSoS"], "cp",
+  ["oToS"], ["oToS"], ["oooS"], ["oToT"], ["oToT"], ["oBoT"], [".T.S"], "cp",
+  [".ToT"], [".ToT"], [".ToS"], [".T.S"], [".T.S"], [".T.T"], [".SoT"], "cp",
+  ["oToT"], ["oToT"], ["oToB"], ["oSoT"], ["oSoT"], ["oSoB"], [".S.S"], "cp",
+  [".ToT"], [".ToT"], [".Too"], [".S.S"], [".S.S"], [".o.S"], ["oToT"], "cp",
+  [".SoT"], [".SoT"], [".ooT"], [".T.S"], [".T.S"], [".o.S"], [".S.S"], "cp",
+  ["..R~"], ["o..T"], ["ooT."], ["ooT."], ["ooS."], ["o..B"], [".ToS"], "cp",
+  ["oR~o"], ["oBoT"], ["oToB"], ["oToB"], ["oooB"], ["oSB."], ["..R~"], "cp",
+  [".ToT"], [".ToT"], [".ooT"], [".SoT"], [".SoT"], [".SoS"], ["oSoS"], "cp",
+  [".T.T"], [".S.T"], ["oSoS"], ["oS.S"],
+  // </gen:notes:R5H>
+];
+const ROUND5H = {
+  name: "5라운드 · 반 박 튀기(시범)", bpm: ROUND5.bpm, track: ROUND5.track, pal: ROUND5.pal, lab: true, sub: 2,
+  bars: ["flat", "flat", ...R5H_NOTES.map((e) => (e === "cp" ? "cp" : notePattern(e[0], e[1] !== 0))), "goal", "flat", "flat"],
+  sections: ROUND5.sections.map((q) => ({ bar: q.bar * 2, id: q.id })),
+};
+const LABS = [LAB_D, ROUND5H];
 
 if (typeof module !== "undefined") module.exports = { LABS, NOTE_KINDS, notePattern, noteCheck, TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };

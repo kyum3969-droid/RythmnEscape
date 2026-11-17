@@ -79,13 +79,13 @@
   #toast.show { animation: toast 1.1s ease-out forwards; }
   @keyframes toast { 0% { opacity: 0; transform: scale(1.3); } 15% { opacity: 1; transform: scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
 
-  .layer {
-    position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center;
+  .layer {          /* 패널이 화면보다 길면 위에서부터 스크롤된다(가운데 정렬이면 넘친 위쪽이 화면 밖으로 잘려 닿지 않는다). 남으면 패널의 margin: auto로 가운데 */
+    position: absolute; inset: 0; z-index: 5; display: flex; align-items: flex-start; justify-content: center;
     padding-left: var(--gutter-l); padding-right: var(--gutter-r);
     background: rgba(6, 6, 16, 0.55);
   }
   .panel {
-    width: 100%; max-width: 420px; background: var(--panel); border: 1.5px solid var(--line); border-radius: 22px;
+    width: 100%; max-width: 420px; margin: auto 0; background: var(--panel); border: 1.5px solid var(--line); border-radius: 22px;
     padding: 26px 22px; display: flex; flex-direction: column; gap: 14px; text-align: center;
     backdrop-filter: blur(6px);
   }
@@ -426,7 +426,7 @@
       src.buffer = track.buffer;
       src.connect(A.songBus);
       src.playbackRate.value = RATE;
-      const at = trackZero() + beat0 * SPB * RATE;                // 곡 속 시각(곡의 초). 빠르기 배율만큼 빨리 튼다
+      const at = trackZero() + beat0 * SPB * RATE;                // 곡 속 시각(곡의 초). 빠르기 배율만큼 빨리 튼다(반 박 튀기 코스는 SPB가 이미 절반이다)
       if (at >= 0) src.start(clock.t0, Math.min(at, track.duration)); else src.start(clock.t0 - at / RATE, 0);
       A.src = src;
     }
@@ -483,7 +483,8 @@
   function startFresh() { tries = 1; devRun = false; begin(-1); }
   function devJump(cp) { if (!dev) return; tries = 1; devRun = cp >= 0; begin(cp); }
   // 템포는 곡이 정한다(코스가 곡에 맞춰 짜여 있다). 다른 곡을 넣으면 그 곡의 템포로 달린다.
-  function applySpeed() { L.bpm = (track ? track.bpm : COURSE.bpm) * RATE; SPB = 60 / L.bpm; }
+  // COURSE.sub: 게임의 한 박을 곡의 몇 분의 일 박으로 칠까(2 = 공이 곡의 반 박마다 튄다). 곡은 그대로 튼다.
+  function applySpeed() { L.bpm = (track ? track.bpm : COURSE.bpm) * RATE * (COURSE.sub || 1); SPB = 60 / L.bpm; }
   const renderSpeed = () => {};
 
   // ---------------------------------------------------------------- 넣은 곡 (Gemini 등으로 만든 파일). 템포와 첫 박은 track.js가 잰다.
@@ -537,7 +538,7 @@
     if (msg || !track) { $("trackInfo").textContent = msg || (songLoading ? "곡을 불러오는 중…" : "임시 음악으로 달려요."); return; }
     const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
     const nudge = track.nudge ? ` · 소리 ${track.nudge > 0 ? "+" : ""}${track.nudge}ms` : "";
-    if (!user) { $("trackInfo").textContent = `♪ ${track.name} · ${mmss(track.duration)} · 한 번 튀는 데 ${track.period.toFixed(2)}초${nudge}\n공이 땅에 닿는 순간과 킥이 어긋나 들리면 아래 버튼으로 맞추세요(다음에 달릴 때 적용).`; return; }
+    if (!user) { $("trackInfo").textContent = `♪ ${track.name} · ${mmss(track.duration)} · 한 번 튀는 데 ${(track.period / (COURSE.sub || 1) / RATE).toFixed(2)}초${nudge}\n공이 땅에 닿는 순간과 킥이 어긋나 들리면 아래 버튼으로 맞추세요(다음에 달릴 때 적용).`; return; }
     const bars = (track.duration - trackZero()) / track.period / 4;
     const w = track.wobbleMs, wob = w < 35 ? "좋음" : w < 60 ? "조금 흔들림" : "많이 흔들림 — 뒤로 갈수록 박이 어긋날 수 있어요";
     $("trackInfo").textContent = `${track.name} · ${mmss(track.duration)}\n템포 ${track.bpm.toFixed(2)} BPM${track.beatsPerBounce === 2 ? ` (곡은 ${track.musicBpm.toFixed(1)}, 두 박에 한 번 튐)` : ""} · 첫 박 ${trackZero().toFixed(2)}초${nudge}\n`
