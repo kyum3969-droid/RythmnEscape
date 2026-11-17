@@ -141,6 +141,36 @@ TEMPLATES.R5 = {
   },
 };
 
+// 6라운드: 버릇 묶음(2~6)의 마지막, 리믹스. 새것 없이 2~5라운드의 것을 구간마다 다르게 섞는다.
+// 피버 네 번이 저마다 다른 것을 보여 준다(비스듬한 굽이 / 솟는 넓은 통로 / 얇은 굴 / 왼쪽 위로 넘어가는 넓은 통로). 굽이는 코스의 cam 표에 있다(logic.js의 ROUND6).
+// 조여드는 통로는 없다(곡에 점점 세지는 자리가 없다). 징검다리는 구간의 끝(체크포인트 앞)이나 gAfter 앞에 둔다 — 돌에서 내려온 공은 박자에 안 맞게 땅에 닿아서, 바로 뒤에 뽑은 마디를 붙일 수 없다.
+TEMPLATES.R6 = {
+  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95,
+  recipe: { g: '4d', gf: '4v', traps: 5, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
+  sections() {
+    // 뽑을 마디의 자리를 손으로 정한다(무작위로 나누면 같은 함정이 연달아 나오거나, 한 마디만 세 번 되풀이하고 끝나는 구간이 생긴다).
+    //   one() = 높이 장치를 섞은 새 마디 하나 / phrase(먼저 해 볼 함정) = 새 마디 → 한 번 더 → 함정(안 되면 다른 종류)
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: '4v' });
+    const phrase = (kind) => { const k = 'p' + key++; const kinds = kind === 'stop-last' ? ['stop-last', 'hand-last'] : ['hand-last', 'stop-last']; return [{ m: k, g: '4d', need: kinds }, { r: k }, { t: k, kind: kinds }]; };
+    const s1 = [...phrase('stop-last'), one(), one()], s2 = [one()], s3 = [one(), one()], s4 = [one(), ...phrase('hand-last')];
+    const s5 = [...phrase('stop-last'), one(), ...phrase('hand-last')], s6 = phrase('stop-last');
+    return [
+      ['도입(조용함): 손 함정과 높이 장치로 몸풀기', ['flat', 'flat', ...s1, 'cp']],
+      ['리듬: 높이 함정 둘. 떠 있는 박스에서 다시 뛰기 두 번 → 같은 박스에서 그냥 떨어지기. 이단 점프로 기둥 넘기 두 번 → 같은 기둥 위에 파란 천장(멈춤으로)', ['fJump', 'fJump', 'fDropH', ...s2, 'djT', 'djT', 'cHoldT', 'cp']],
+      ['첫 피버(비스듬한 굽이): 파란 발판으로 들어가서, 위로 굽고 아래로 굽는다. 되풀이 → 뚝, 되풀이 → 하나 더', ['zT', { zm: 'A' }, { zr: 'A' }, { zt: 'A', kind: 'break' }, { zm: 'B' }, { zr: 'B' }, { zt: 'B', kind: 'add' }, 'cp']],
+      ['낮게 깔린 베이스: 빨간 바닥과 파란 섬, 이어서 징검다리(빨간 돌 둘)', [...s3, 'lavaLeap', 'stIn', 'stOutR', 'stInR', 'stOut', 'cp']],
+      ['첫 절정(솟는 넓은 통로): 계단을 오르며 곧장 위로 굽고, 넓은 통로를 위로 달리고, 계단을 내려오며 다시 가로로. 곡이 뚝 끊기는 마디가 체크포인트', ['wUp', { wm: 'E' }, { wr: 'E' }, { wt: 'E', kind: 'break' }, 'wDn', { z: 1 }, { z: 1 }, 'cp']],
+      ['조용함: 떠 있는 박스에 올라타 떨어지며 멈추기 두 번 → 올라가면 안 되는 박스. 뒤는 뽑은 마디', ['fGlide', 'fGlide', 'fLow3', ...s4, 'cp']],
+      ['둘째 피버(얇은 굴): 아래로 굽었다가, 한가운데의 얇은 굴을 지나, 위로 굽는다', [{ zm: 'F' }, { zr: 'F' }, { zt: 'F', kind: 'add' }, 'zThin', { zm: 'G' }, { zr: 'G' }, { zt: 'G', kind: 'break' }, 'cp']],
+      ['꽉 찬 리듬: 손 함정과 높이 장치를 촘촘하게', [...s5, 'cp']],
+      ['가라앉음: 징검다리 세 마디(가운데에 빨간 돌, 마지막 돌에서 내려올 땅이 빨간 박스 — 마지막으로 튄 뒤 멈춰서 건넌다). 뒤는 뽑은 마디', ['stIn', 'stMidR', 'stOutG', 'gAfter', ...s6, 'cp']],
+      ['마지막 절정(왼쪽 위로 넘어가는 넓은 통로): 위로 굽고, 왼쪽 위로 넘어갔다가, 다시 가로로. 곡의 끝맺는 한 방에 결승선', ['wUp', { wm: 'H', calm: 2, run: 2 }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1, calm: 2, run: 2 }, 'wDn', { z: 1 }]],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
@@ -167,9 +197,11 @@ function generate(T, seed) {
   const bars = [], notes = {};
   const isPat = (n) => Lg.PATTERNS[n] && Lg.PATTERNS[n].mode !== 'rush';
   const ctxOf = (cand) => {                            // 이 마디를 시험할 짧은 코스: 앞의 네 마디(패턴이면) + 이 마디 + 평지. (징검다리처럼 앞 마디에서 이어지는 마디가 있어서 넉넉히 붙인다)
-    const prev = bars.slice(-4).map((n) => (isPat(n) ? n : 'flat'));
+    let n0 = Math.max(0, bars.length - 4);
+    while (n0 > 0 && isPat(bars[n0]) && Lg.PATTERNS[bars[n0]].lead && bars.length - n0 < 8) n0--;      // 앞 마디에서 이어져야 하는 마디(징검다리의 둘째·셋째 마디)에서 끊지 않는다
+    const prev = bars.slice(n0).map((n) => (isPat(n) ? n : 'flat'));
     while (prev.length < 4) prev.unshift('flat');
-    return { bars: ['flat', ...prev, cand, 'flat', 'flat', 'goal'], at: 5 };
+    return { bars: ['flat', ...prev, cand, 'flat', 'flat', 'goal'], at: prev.length + 1 };
   };
   const build = (ctx) => Lg.buildLevel({ name: 't', bpm: T.bpm, bars: ctx.bars, floatReds: !!T.floatReds, vary: !!T.vary, sections: [{ bar: 0, id: 'a' }] });
   const run = (L, plan, until, from = 0) => {      // from = 높이를 재기 시작하는 스텝(앞 마디가 떠 있는 박스에서 높이 뛴 것은 세지 않는다)
@@ -289,6 +321,12 @@ function generate(T, seed) {
         if (!v || !v.clean || !v.startClean) continue;
         if (Object.values(motifs).some((mm) => mm.def && (same(mm.def, def) || (mm.full && same(mm.full, def))))) continue;
         { const ins0 = inputsOf(def); if ((slot.last && ins0[ins0.length - 1].k !== slot.last) || (slot.first && ins0[0].k !== slot.first)) continue; }
+        if (slot.need) {                               // 이 마디를 두 번 한 뒤에 놓을 함정이 성립하는 것만 받는다(안 그러면 함정 자리에서 통째로 실패한다)
+          const tn = `${T.prefix}_${b + 2}`; bars.push(name, name);
+          const okT = slot.need.some((kind) => { const d = variant(def, kind); if (!d) return false; Lg.PATTERNS[tn] = d; const v2 = validate(tn, d.traps[0].full); delete Lg.PATTERNS[tn]; return !!(v2 && v2.clean); });
+          bars.length -= 2;
+          if (!okT) continue;
+        }
         if (slot.add) {                                // 되풀이할 것은 "마지막 입력을 뺀 것", 함정 자리에는 온전한 것을 놓는다
           const ins = inputsOf(def);
           if (ins.length < 2) continue;
@@ -299,7 +337,7 @@ function generate(T, seed) {
         }
         made[name] = def; bars.push(name); motifs[slot.m] = { name, def }; roles[b] = slot.m; return;
       }
-      delete Lg.PATTERNS[name]; throw new Error('되풀이할 마디를 못 뽑았다');
+      delete Lg.PATTERNS[name]; throw new Error('되풀이할 마디를 못 뽑았다(마디 ' + b + ')');
     }
     if (slot.r && slot.blind) {                        // 안내 없이 한 번 더: 같은 입력이지만 길잡이(수정·누르는 표시)가 없다
       const def = { ...JSON.parse(JSON.stringify(motifs[slot.r].def)), blind: true };
@@ -317,7 +355,7 @@ function generate(T, seed) {
       notes[b] = `함정(${KO[kind]}): 앞 마디와 같이 가다가 한 군데가 다르다`;
       return;
     }
-    if (!slot.soft) throw new Error('함정이 통과하지 못했다: ' + slot.kind);
+    if (!slot.soft) throw new Error('함정이 통과하지 못했다(마디 ' + b + '): ' + slot.kind);
     bars.push(M.name); roles[b] = slot.t;              // soft: 함정을 못 만들면 그냥 한 번 더 한다
   };
   const breaksOf = (nodes, wide) => (wide ? wAll : zAll).filter((s) => { let k = 0; while (k < 8 && s[k] === nodes[k]) k++; return k >= 2 && k < 7 && nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => feverTry(s, wide));

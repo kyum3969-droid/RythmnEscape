@@ -384,7 +384,7 @@ for (const C of Lg.COURSES) {
       ok([...lv.stairLo.keys(), ...lv.stairHi.keys()].every(n => lv.freeBars.has(Math.floor(n / 8))), `[${tag}] 파란 발판은 장애물이 없는 연출 마디에만 있다`);
       ok(lv.reds.every(q => { const sp = Lg.hazardSpan(q, 0); return q.kind === 'floor' ? sp[0] === 0 && Math.abs(sp[1] - q.tip) < 1e-9 : q.kind === 'ceil' ? Math.abs(sp[0] - q.tip) < 1e-9 : (Math.abs(sp[1] - sp[0] - 3.2) < 1e-6 || Math.abs(sp[1] - sp[0] - 2.7) < 1e-6) && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-6; }), `[${tag}] 장애물 모양: 이빨은 삼각형, 떠 있는 것은 길이 3.2칸(연타 패턴에서는 2.7칸)의 마름모(양 끝이 뾰족)`);
     }
-    if (lv.squeezes.length) {
+    if (lv.squeezes.some(q => !q.mid)) {      // (얇은 굴만 있고 조여드는 통로는 없는 라운드도 있다)
       // 조여드는 통로: 닿는 간격이 1박에서 1/32박까지 반씩 줄고, 통로 폭도 그만큼 좁아진다(끝에서는 공 크기와 거의 같다)
       const sq = lv.squeezes.find(q => !q.mid), allHits = ev.filter(e => e.type === 'rebound' && e.tight).length, others = lv.squeezes.filter(q => q !== sq).reduce((u, q) => u + q.pts.length - 2, 0), hits = allHits - others;      // (조여드는 통로가 여럿이면 나머지 것들이 치는 횟수를 뺀다. mid = 피버 한가운데의 얇은 굴)
       const gaps = sq.pts.slice(1).map((p, i) => (p.step - sq.pts[i].step) / 96);
