@@ -552,8 +552,6 @@ const ROUND3 = {
   },
   // 3라운드의 마디는 도구(tools_gen_course.js R3)가 뽑는다. 버릇 묶음(2~6라운드)의 둘째 라운드로, "끝에서 손 바꿈"과 "하나 더"를 새로 소개한다.
   // 틀과 조건(함정의 종류·수, 소개할 자리)은 도구 안의 TEMPLATES.R3에 있다. 고리와 계단은 뒤 묶음의 장치라서 여기서는 쓰지 않는다(패턴은 보관해 둔다).
-  // 높이: 구간마다 땅의 높이가 다르다(체크포인트 마디가 파란 계단). 이 라운드에서 처음 나온다 — 한 번에 네 칸씩, 두 번 오르고 두 번 내려온다. 피버는 늘 높이 0.
-  alt: [{ bar: 6, h: 4 }, { bar: 14, h: 8 }, { bar: 22, h: 4 }, { bar: 30, h: 0 }, { bar: 39, h: 4 }, { bar: 46, h: 8 }, { bar: 62, h: 4 }, { bar: 70, h: 0 }],
   bars: [
     // <gen:bars:R3>
     // 도입(조용함): 쉬운 패턴만. 뒤의 두 마디에서 높은 박스(이단 점프로만 넘는다)를 처음 보여 준다. 구간의 마지막 마디마다 체크포인트
@@ -606,8 +604,6 @@ const ROUND4 = {
     rush:  { top: "#06121a", bottom: "#1f8fa8", accent: "#ffffff", sun: "#c9fbff" },
   },
   // 4라운드의 마디도 도구(tools_gen_course.js R4)가 뽑는다. 떠 있는 박스와 파란 천장 마디는 틀(TEMPLATES.R4)에 자리를 정해 두었고, 그 사이를 뽑은 마디가 채운다.
-  // 높이: 두 번 오르고 내려와 첫 피버, 다시 올랐다가 높은 계단(한 박에 두 칸)으로 한 번에 내려와 둘째 피버. 마지막은 여덟 칸 위에서 결승선.
-  alt: [{ bar: 7, h: 4 }, { bar: 15, h: 8 }, { bar: 23, h: 4 }, { bar: 31, h: 0 }, { bar: 40, h: 4 }, { bar: 47, h: 8 }, { bar: 55, h: 0, step: 2 }, { bar: 64, h: 4 }, { bar: 71, h: 8 }],
   bars: [
     // <gen:bars:R4>
     // 도입(조용함): 떠 있는 파란 박스를 함정 없이 보여 준다. 올라타서 그냥 떨어지기 두 번 → 올라타서 다시 뛰기 두 번
@@ -668,8 +664,6 @@ const ROUND5 = {
     rush:  { top: "#08090c", bottom: "#5a5f6a", accent: "#ffffff", sun: "#ffb347" },
   },
   // 5라운드의 마디도 도구(tools_gen_course.js R5)가 뽑는다. 피버의 짜임(되풀이 → 함정)과 연출 마디의 자리는 틀(TEMPLATES.R5)에 정해 두었다.
-  // 높이: 피버 위주의 라운드라 바운스 구간만 올라간다. 뒤쪽은 높은 계단(한 박에 두 칸)으로 여덟 칸.
-  alt: [{ bar: 24, h: 4 }, { bar: 31, h: 0 }, { bar: 56, h: 8, step: 2 }, { bar: 64, h: 4 }, { bar: 71, h: 0 }],
   bars: [
     // <gen:bars:R5>
     // 도입(조용함): 앞 라운드의 것들로 몸풀기
@@ -732,8 +726,6 @@ const ROUND6 = {
     rush:  { top: "#05050f", bottom: "#343a8a", accent: "#ffffff", sun: "#ffc94d" },
   },
   // 6라운드의 마디도 도구(tools_gen_course.js R6)가 뽑는다. 손으로 만든 마디의 자리와 피버의 짜임은 틀(TEMPLATES.R6)에 정해 두었다.
-  // 높이: 처음부터 높은 계단(한 박에 두 칸)으로 여덟 칸. 뒤쪽은 열두 칸까지 올라갔다가 두 번에 내려온다.
-  alt: [{ bar: 7, h: 8, step: 2 }, { bar: 15, h: 4 }, { bar: 23, h: 8 }, { bar: 31, h: 0, step: 2 }, { bar: 39, h: 4 }, { bar: 47, h: 8 }, { bar: 55, h: 12 }, { bar: 63, h: 6, step: 2 }, { bar: 71, h: 0, step: 2 }],
   bars: [
     // <gen:bars:R6>
     // 도입(조용함)이지만 쉬어 가지 않는다: 한 마디로 함정 둘. 두 번 되풀이 → 끝에서 뚝 → 다시 원래대로 → 끝에서 손 바꿈
@@ -792,8 +784,6 @@ const ROUND7 = {
     rush:  { top: "#04070d", bottom: "#1f4f7a", accent: "#ffffff", sun: "#ffe66d" },
   },
   // 7라운드의 마디도 도구(tools_gen_course.js R7)가 뽑는다. 짜임(되풀이 횟수, 헛다리, 함정의 종류)은 틀(TEMPLATES.R7)에 정해 두었다.
-  // 높이: 네 칸씩 세 번 올라 열두 칸, 가파른 계단(한 박에 세 칸)으로 한 번에 내려와 첫 피버. 뒤쪽은 오르내림이 엇갈린다.
-  alt: [{ bar: 7, h: 4 }, { bar: 15, h: 8 }, { bar: 23, h: 12 }, { bar: 31, h: 0, step: 3 }, { bar: 39, h: 8, step: 2 }, { bar: 47, h: 4 }, { bar: 55, h: 8 }, { bar: 63, h: 4 }, { bar: 71, h: 0 }],
   bars: [
     // <gen:bars:R7>
     // 도입(조용함)이지만 쉬어 가지 않는다: 두 번 되풀이 → 끝에서 뚝, 한 번 보여 주고 → 끝에서 손 바꿈
@@ -1362,31 +1352,6 @@ function rushStep(L, s, press, ev, hold, r) {
   }
 }
 
-// ---- 높이(코스의 alt 표, 3라운드부터): 구간마다 땅의 높이가 다르다. 체크포인트 마디가 파란 계단이 되어 한 박에 한 단씩 오르내리고, 카메라가 따라 올라가서 위쪽에서 패턴을 친다.
-//   올라간 땅은 공중에 뜬 파란 박스로 그린다(계단 = 한 단씩 높아지는 박스들, 구간 = 길게 이어진 박스). 원래 땅은 그만큼 아래에 그대로 있다.
-//   alt = [{ bar, h, step }, ...] 그 마디가 시작할 때부터, 한 박에 step칸(안 적으면 1칸. 3칸까지)씩 오르내려 높이 h(칸)에 이른다. 한 마디 안에 끝나야 한다(|높이 차| ≤ 4 × step).
-//   **그림만 그렇다.** 물리와 판정은 평지 그대로다(공은 여느 때처럼 한 박에 한 번 땅에서 튄다). 계단의 단은 공이 닿는 자리(박마다 4칸)를 가운데에 두고 4칸씩이라,
-//   공이 단마다 한 번씩 딛고 올라가는 것으로 보인다. 그래서 계단은 장애물이 없는 마디(flat, cp, goal)에만 놓고, 피버 구간은 늘 높이 0이다(테스트가 확인한다).
-//   돌려주는 것: elev[칸] = 그 칸의 땅 높이(계단 모양), ramps = [{ x0, x1, e0, e1 }] 계단 구간(공과 카메라는 이 구간을 비탈처럼 매끄럽게 지난다)
-function altProfile(course, cols) {
-  const elev = new Int16Array(cols + 1), ramps = [];
-  let cur = 0;
-  for (const k of (course.alt || []).slice().sort((u, v) => u.bar - v.bar)) {
-    const step = k.step || 1, n = Math.abs(k.h - cur) / step, sign = Math.sign(k.h - cur);
-    if (!Number.isInteger(n) || n > 4 || step > 3) throw new Error(`높이 표: 마디 ${k.bar}에서 ${cur} → ${k.h}칸은 한 마디에 오르내릴 수 없다(한 박에 ${step}칸)`);
-    const x0 = k.bar * 16;
-    for (let j = 1; j <= n; j++) elev.fill(cur + sign * step * j, Math.min(cols, x0 + 4 * j - 2));      // j번째 단: 공이 닿는 자리(x0 + 4j)의 두 칸 앞에서 시작한다
-    if (n) ramps.push({ x0, x1: x0 + 4 * n, e0: cur, e1: k.h });
-    cur = k.h;
-  }
-  return { elev, ramps, any: ramps.length > 0 };
-}
-// 공과 카메라가 보는 높이: 계단 구간에서는 단이 아니라 비탈(공이 닿는 자리들을 이은 선)
-function altSmooth(P, x) {
-  for (const r of P.ramps) if (x >= r.x0 && x <= r.x1) return r.e0 + (r.e1 - r.e0) * (x - r.x0) / (r.x1 - r.x0);
-  return P.elev[Math.max(0, Math.min(P.elev.length - 1, Math.floor(x)))];
-}
-
 const tile = (L, c, r) => (r < 0 || r >= ROWS ? "." : c < 0 || c >= L.cols ? (r === ROWS - 1 ? "#" : ".") : L.grid[r][c]);
 const isSolid = (L, c, r) => tile(L, c, r) === "#";
 
@@ -1650,4 +1615,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, altProfile, altSmooth, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };

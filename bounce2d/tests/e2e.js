@@ -322,20 +322,6 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
       ok(x2 > x1 && x2 % 16 === 0, `"마디 ▶"는 다음 마디의 첫 박으로 간다 (${x2}칸 = 마디 ${x2 / 16})`); }
     await p.click('#insClose');
     ok(await G(() => window.__game.phase === 'title' && document.getElementById('inspect').hidden && !document.getElementById('overlay').hidden), '닫으면 처음 화면으로 돌아온다');
-    // 높이(3라운드부터): 체크포인트 마디가 파란 계단이 되어 구간마다 땅의 높이가 달라지고, 카메라가 따라 올라간다
-    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
-    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(3)')]); await ready();
-    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    { const alts = {}, shotsA = { 25.0: 'alt_stairs_up', 34.0: 'alt_plateau4', 60.0: 'alt_stairs_up2', 70.0: 'alt_plateau8', 90.0: 'alt_stairs_down', 122.0: 'alt_down_to_fever' };
-      for (let beat = 0; beat <= 130; beat += 0.25) {
-        await tick(beat);
-        if (shotsA[beat]) { await p.waitForTimeout(200); await p.screenshot({ path: out + shotsA[beat] + '.png' }); }
-        if ([20, 26, 34, 70, 100, 126].includes(beat)) { await p.waitForTimeout(250); alts[beat] = await G(() => { const g = window.__game, a = g.alt(g.state.x); return { ...a, h: 9 - g.state.y, mode: g.state.mode }; }); }
-      }
-      const a = alts;
-      ok(a[20].any && a[20].step === 0 && a[26].smooth === 2 && a[26].step === 2 && a[34].step === 4 && Math.abs(a[34].cam - 4) < 0.2 && a[70].step === 8 && Math.abs(a[70].cam - 8) < 0.2 && a[100].step === 4 && a[126].step === 0 && a[126].mode === 'rush' && Math.abs(a[126].cam) < 0.2,
-        `높이: 3라운드의 체크포인트 마디는 계단이다 — 한 박에 한 칸씩 올라(둘째 박에 ${a[26].step}칸) ${a[34].step}칸, 다시 ${a[70].step}칸까지. 카메라가 따라 올라간다(${a[34].cam.toFixed(1)}칸, ${a[70].cam.toFixed(1)}칸). 피버에 들어갈 때는 내려와 있다(${a[126].step}칸)`);
-      ok(a[26].h < 0.15 && a[34].h < 2.4, `높이는 그림만 바꾼다: 계단 위에서도 공은 여느 때처럼 박마다 땅에서 튄다(둘째 박에 높이 ${a[26].h.toFixed(2)}칸)`); }
     // 6라운드(리믹스): 앞 라운드의 것들을 섞고 꼬아 놓은 코스. 피버는 곡의 절정 두 곳에만 있다
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(6)')]); await ready();

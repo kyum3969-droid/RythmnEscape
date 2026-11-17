@@ -231,14 +231,6 @@ for (const C of Lg.COURSES) {
   const lv = Lg.buildLevel(C), tag = C.name.split(' · ')[0];
   const full = run(lv, lv.ref);
   ok(full.s.won && lv.fixed.length === 0, `[${tag}] ${C.name}: ${lv.bars}마디, 체크포인트 ${lv.cps.length}개(마디 ${lv.cps.map(c => c.bar).join(', ')}), 피버 ${lv.rides.map(r => `${r[0] / 16}~${r[1] / 16 - 1}`).join(' / ')} — 패턴대로 완주`);
-  if (C.alt) {
-    // 높이(3라운드부터): 구간마다 땅의 높이가 다르고 체크포인트 마디가 계단이다. 그림만 그렇다 — 계단은 장애물이 없는 마디에만, 피버 구간은 늘 높이 0
-    const P = Lg.altProfile(C, lv.cols), okBars = P.ramps.every(r => { for (let b = Math.floor(r.x0 / 16); b <= Math.floor((r.x1 - 1) / 16); b++) if (!['flat', 'cp', 'goal'].includes(C.bars[b])) return false; return true; });
-    const rideFlat = lv.rides.every(r => { for (let c = r[0] - 2; c < r[1] + 2; c++) if (P.elev[c] !== 0) return false; return true; });      // (피버 바로 앞 계단의 마지막 단은 피버가 시작하기 두 칸 앞에서 땅에 닿는다)
-    const steps = P.ramps.every(r => { const n = (r.x1 - r.x0) / 4, d = (r.e1 - r.e0) / n; for (let j = 1; j <= n; j++) if (P.elev[r.x0 + 4 * j] !== r.e0 + d * j || Math.abs(Lg.altSmooth(P, r.x0 + 4 * j) - P.elev[r.x0 + 4 * j]) > 1e-9) return false; return true; });      // 공이 닿는 자리(박마다)에서는 단의 높이와 비탈의 높이가 같다
-    const hs = [...new Set(C.bars.map((n, b) => P.elev[b * 16 + 8]))].sort((u, v) => u - v);
-    ok(P.any && okBars && rideFlat && steps && Math.max(...hs) >= 8, `[${tag}] 높이: 계단 ${P.ramps.length}곳은 모두 장애물 없는 마디에 있고, 피버 구간은 높이 0이다. 공이 닿는 자리마다 단을 딛는다. 구간의 높이 ${hs.join(' / ')}칸`);
-  }
   if (lv.rides.length) {
     if (lv.pads.size) {
       // 튕김판(공중에 뜬 파란 판): 패턴대로 가면 판에 닿아 누르지 않고도 꺾인다. 판은 죽이지 않는다(빨간 부분이 없다). 판이 있는 지점에서 눌러도 길이 그대로다. 판이 없어진 함정 마디에서는 안 누르면 죽는다
