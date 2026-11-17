@@ -794,7 +794,7 @@ const ROUND7 = {
     "g7_16", "g7_16", "g7_18", "g7_19",   "g7_19", "g7_21", "g7_22", "cp",
     // 성긴 리듬 — "앞에서 손 바꿈"을 소개한다: 두 번 되풀이 → 이번엔 첫 입력의 손이 반대. 이어서 새 마디 하나, 앞에서 뚝
     "g7_24", "g7_24", "g7_26", "g7_27",   "g7_28", "g7_28", "g7_30", "cp",
-    // 첫 절정 — 피버 하나(넓은 통로, 비스듬히 아래로): 튕김판을 소개한다(공중에 뜬 세모, 한 변만 파랗다 — 파란 변에 닿으면 누르지 않아도 꺾인다). 같은 마디가 세 번(헛다리) → 네 번째엔 판이 없다(눌러야 꺾인다). 통로는 두 번째 마디에서 아래로 굽고 함정 마디에서 펴진다
+    // 첫 절정 — 피버 하나(넓은 통로, 비스듬히 아래로): 튕김판을 소개한다(공중에 뜬 파란 판 — 닿으면 누르지 않아도 꺾인다). 같은 마디가 세 번(헛다리) → 네 번째엔 판이 없다(눌러야 꺾인다). 통로는 두 번째 마디에서 아래로 굽고 함정 마디에서 펴진다
     "wUp", "g7w33", "g7w33", "g7w33",   "g7w36", "wDn", "g7z38", "cp",
     // 절정이 이어진다 — 삼단 점프를 소개한다(이단 점프의 꼭대기에 충전 고리: 공중에서 한 번 더 뛴다): 한 번 보여 주고 앞에서 뚝 → 삼단 점프 두 번 → 미끼 고리(헛다리: 고리는 있는데 뛰면 안 된다) → 한 번 보여 주고 앞에서 손 바꿈
     "g7_40", "g7_41", "ring3", "ring3",   "ring3Bait", "g7_45", "g7_46", "cp",
@@ -864,18 +864,15 @@ function hazard(xt, ok, bad, top, gap = 1) {       // gap = 지나가는 공과 
   if (bad === top) return { kind: "ceil", xt, tip, far: top * ZIG_STEP + SIZE, w: TOOTH_W, x0: xt - TOOTH_W, x1: xt + TOOTH_W };
   return { kind: "float", xt, tip, far: up ? bad * ZIG_STEP + SIZE + 0.4 : bad * ZIG_STEP - 0.4, w: KITE_W, x0: xt - KITE_W, x1: xt + KITE_W };
 }
-// 튕김판(피버): 공중에 떠 있는 세모꼴 덩어리인데 한 변만 파랗다. 파란 변에 닿으면 누르지 않아도 튕겨서 되돌아가고(바닥·천장에 닿은 것과 같다), 나머지(빨간 몸통)에 닿으면 죽는다.
-//  - 반 박 지점 xt에서, 높이 단계 lv에 "from 방향으로 움직이며" 닿는 공을 되돌린다(from +1 = 올라오던 공 → 파란 변이 아래를 본다, -1 = 내려오던 공 → 파란 변이 위를 본다).
-//  - 파란 변(base)은 그때의 공에 딱 닿는 높이에 있고, 빨간 몸통은 그 뒤로 0.75칸 솟은 세모다. 반대쪽에서 그 높이로 오는 공은 몸통에 부딪힌다. 한 단계 너머로 지나가는 공은 닿지 않는다.
-const PAD_T = 0.75;
-function padHazard(xt, lv, from) {
-  const base = from > 0 ? lv * ZIG_STEP + SIZE : lv * ZIG_STEP;
-  return { kind: "pad", xt, tip: base, far: base + from * PAD_T, w: KITE_W, x0: xt - KITE_W, x1: xt + KITE_W, lv, from };
-}
+// 튕김판(피버): 공중에 떠 있는 얇은 파란 판. 판에 닿으면 누르지 않아도 튕겨서 되돌아간다(바닥·천장에 닿은 것과 같다). 닿아서 죽는 일은 없다.
+//  - 반 박 지점에서, 높이 단계 lv에 "from 방향으로 움직이며" 닿는 공을 되돌린다(from +1 = 올라오던 공 → 판이 공 바로 위에 있다, -1 = 내려오던 공 → 판이 공 바로 밑에 있다).
+//  - 한쪽으로만 막는 판이다: 반대쪽에서 오는 공은 그냥 지나간다(판은 얇아서, 한 단계 너머로 지나가는 공에는 닿지 않는다).
+//    처음에는 판 뒤에 빨간 몸통을 붙여 반대쪽에서 오면 죽게 했는데(한 변만 파란 세모), 파란 판만 있는 쪽이 깔끔하다는 의견으로 뺐다.
+//  - 판이 놓이는 높이(공이 닿는 면): from +1이면 lv 단계의 공 윗면, -1이면 공 밑면.
+const padFace = (q) => (q.from > 0 ? q.lv * ZIG_STEP + SIZE : q.lv * ZIG_STEP);
 // 장애물이 가운데에서 dx만큼 떨어진 곳에서 차지하는 높이 범위 [아래, 위]
 function hazardSpan(q, dx) {
   const a = Math.min(1, Math.abs(dx) / q.w), slope = TOOTH_H / TOOTH_W * q.w;      // 뾰족한 쪽 비탈: 이빨과 같은 기울기
-  if (q.kind === "pad") { const e = q.tip + (q.far - q.tip) * (1 - a); return q.far > q.tip ? [q.tip, e] : [e, q.tip]; }      // 파란 변(tip)에서 몸통 끝(far)까지의 세모
   if (q.kind === "floor") return [0, q.tip * (1 - a)];
   if (q.kind === "ceil") return [q.tip + (q.far - q.tip) * a, q.far];
   return q.far > q.tip ? [q.tip + slope * a, q.far - (q.far - q.tip - slope) * a] : [q.far + (q.tip - slope - q.far) * a, q.tip - slope * a];
@@ -924,7 +921,7 @@ function emptyLevel(course) {
           const c = k ? p.nodes[k - 1] : ".", xk = x0 + 2 * k, surface = zl <= lo || zl >= hi;
           if (surface && c !== ".") throw new Error(`바닥·천장에서는 고를 수 없다: ${name}의 ${k}번째 지점`);
           const nat = zl <= lo ? 1 : zl >= hi ? -1 : zin, dir = c === "F" || c === "B" ? -nat : nat;
-          if (c === "B") { pads.set(x0 / 2 + k, { lv: zl, from: zin }); reds.push(padHazard(xk, zl, zin)); }      // B = 튕김판: 누르지 않아도 여기서 되돌아간다
+          if (c === "B") pads.set(x0 / 2 + k, { lv: zl, from: zin, x: xk });      // B = 튕김판: 누르지 않아도 여기서 되돌아간다
           if (k) gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? dir : 0 });      // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
           gems.push({ x: xk + 1, h: (zl + dir / 2) * ZIG_STEP + HALF });
           if (c === "F" || c === "S") reds.push(hazard(xk + 2, zl + dir, zl - dir, top, p.gap));       // 다음 지점의 틀린 쪽을 막는다
@@ -1307,7 +1304,7 @@ function rushStep(L, s, press, ev, hold, r) {
     const n0 = r[0] / 2;
     const botAt = (k) => L.stairLo.get(n0 + k) || 0;
     const topAt = (k) => { const v = L.stairHi.get(n0 + k); return v === undefined ? (L.wideBars.has(Math.floor((r[0] + 2 * k) / 16)) ? WIDE_TOP : 2) : v; };
-    const padHit = (lev, zin, k) => { const q = L.pads.get(n0 + k); return !!q && q.lv === lev && q.from === zin; };      // 이 지점의 튕김판에 파란 변 쪽으로 닿는가
+    const padHit = (lev, zin, k) => { const q = L.pads.get(n0 + k); return !!q && q.lv === lev && q.from === zin; };      // 이 지점의 튕김판에 닿는가(판이 막는 쪽에서 왔는가)
     const dirAt = (lev, zin, tog, k) => (lev <= botAt(k) ? 1 : lev >= topAt(k) ? -1 : padHit(lev, zin, k) ? -zin : tog ? -zin : zin);
     while (local >= s.zk * SLOT + SLOT / 2) {              // 지난 지점의 선택을 굳히고, 다음 지점으로 넘어간다
       const d = dirAt(s.zlk, s.zin, s.ztog, s.zk);
@@ -1332,7 +1329,7 @@ function rushStep(L, s, press, ev, hold, r) {
     s.zv = Math.abs(s.zh - prev) * SUB;
     if (s.zh !== prev) s.zdir = s.zh > prev ? 1 : -1;
     if (local === tk && local > 0 && (s.zlk <= bot || s.zlk >= top) && ev) ev.push({ type: "rebound", top: s.zlk > bot, step: s.zlk > bot ? L.stairHi.has(n0 + s.zk) : bot > 0 });   // step = 파란 발판에 닿았다
-    else if (local === tk && local > 0 && padHit(s.zlk, s.zin, s.zk) && ev) ev.push({ type: "rebound", top: s.zin > 0, step: true, pad: true });      // 튕김판의 파란 변에 닿았다
+    else if (local === tk && local > 0 && padHit(s.zlk, s.zin, s.zk) && ev) ev.push({ type: "rebound", top: s.zin > 0, step: true, pad: true });      // 튕김판에 닿았다
     h = s.zh;
     if (h + SIZE > ceilAt(L, s.x) + 0.3) return die(s, "crash", ev);     // 넓은 통로에서 좁은 통로로 넘어갈 때 천장보다 높이 있으면 부딪힌다
   }
@@ -1608,4 +1605,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };

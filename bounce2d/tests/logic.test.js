@@ -233,7 +233,7 @@ for (const C of Lg.COURSES) {
   ok(full.s.won && lv.fixed.length === 0, `[${tag}] ${C.name}: ${lv.bars}마디, 체크포인트 ${lv.cps.length}개(마디 ${lv.cps.map(c => c.bar).join(', ')}), 피버 ${lv.rides.map(r => `${r[0] / 16}~${r[1] / 16 - 1}`).join(' / ')} — 패턴대로 완주`);
   if (lv.rides.length) {
     if (lv.pads.size) {
-      // 튕김판(공중에 뜬, 한 변만 파란 세모): 패턴대로 가면 파란 변에 닿아 누르지 않고도 꺾인다. 판이 있는 지점에서 눌러도 길이 그대로다. 판이 없어진 함정 마디에서는 안 누르면 죽는다
+      // 튕김판(공중에 뜬 파란 판): 패턴대로 가면 판에 닿아 누르지 않고도 꺾인다. 판은 죽이지 않는다(빨간 부분이 없다). 판이 있는 지점에서 눌러도 길이 그대로다. 판이 없어진 함정 마디에서는 안 누르면 죽는다
       const run2 = (extra, skip) => { const s2 = Lg.spawnState(lv, -1), inp2 = Lg.planInput(lv.ref); let pad = 0; while (!s2.dead && !s2.won) { const st = s2.step + 1, ev = []; Lg.stepState(lv, s2, (inp2.press.has(st) && !(skip && skip.has(st))) || (extra && extra.has(st)), ev, inp2.hold.has(st)); if (ev.some(e => e.type === 'rebound' && e.pad)) pad++; } return { s: s2, pad }; };
       const base = run2();
       const padSteps = new Set([...lv.pads.keys()].map(n => n * 48));
@@ -241,7 +241,7 @@ for (const C of Lg.COURSES) {
       const padBars = C.bars.map((n, b) => (Lg.PATTERNS[n] && Lg.PATTERNS[n].mode === 'rush' && /B/.test(Lg.PATTERNS[n].nodes || '') ? b : -1)).filter(b => b >= 0);
       const gone = C.bars.map((n, b) => { const u = Lg.PATTERNS[C.bars[b - 1]], v = Lg.PATTERNS[n]; if (!u || !v || u.mode !== 'rush' || v.mode !== 'rush' || !u.nodes || !v.nodes) return -1; const k = [...v.nodes].findIndex((c, i) => c !== u.nodes[i]); return k >= 0 && u.nodes[k] === 'B' && v.nodes[k] === 'F' ? b * 384 + (k + 1) * 48 : -1; }).filter(v => v >= 0);
       const died = gone.filter(st => { const r = run2(null, new Set([st])); return r.s.dead && Math.abs(r.s.x / 16 - st / 384) < 0.5; }).length;
-      ok(base.s.won && base.pad === lv.pads.size && mash.s.won && lv.reds.filter(q => q.kind === 'pad').length === lv.pads.size, `[${tag}] 튕김판 ${lv.pads.size}개(마디 ${padBars.join(', ')}): 패턴대로 가면 모두 파란 변에 닿아 저절로 꺾인다(${base.pad}번). 판에 닿는 순간에 눌러도 길은 그대로다`);
+      ok(base.s.won && base.pad === lv.pads.size && mash.s.won && lv.reds.every(q => q.kind !== 'pad') && [...lv.pads.values()].every(q => Math.abs(Lg.padFace(q) - (q.from > 0 ? q.lv * Lg.ZIG_STEP + Lg.SIZE : q.lv * Lg.ZIG_STEP)) < 1e-9), `[${tag}] 튕김판 ${lv.pads.size}개(마디 ${padBars.join(', ')}): 패턴대로 가면 모두 판에 닿아 저절로 꺾인다(${base.pad}번). 판에 닿는 순간에 눌러도 길은 그대로다. 판은 파란 판뿐이고 죽이는 부분이 없다`);
       ok(gone.length >= 1 && died === gone.length, `[${tag}] 판이 없어진 함정 ${gone.length}곳: 앞 마디처럼 누르지 않으면 그 자리에서 죽는다 (${died}/${gone.length})`);
     }
     // 피버의 이빨은 통로 밖으로 튀어나오지 않는다(피버가 끝나는 선에 걸친 이빨은 그 선에서 잘린 반쪽이다)
@@ -395,7 +395,7 @@ for (const C of Lg.COURSES) {
       // 넓은 통로: 천장이 두 배 높이, 높이 다섯 단계. 틀린 쪽이 공중이면 떠 있는 장애물이 놓인다
       const kinds = [...new Set(lv.reds.map(q => q.kind))].sort(), wb = [...lv.wideBars][0];
       const floats = lv.reds.filter(q => q.kind === 'float');
-      ok(kinds.includes('float') && kinds.every(k => ['ceil', 'float', 'floor', 'pad'].includes(k)) && floats.every(q => lv.wideBars.has(Math.floor((q.xt - 0.01) / 16))), `[${tag}] 넓은 통로 마디(${[...lv.wideBars].join(', ')})에는 바닥·천장 이빨 말고 가운데에 떠 있는 장애물도 나온다 (${floats.length}개)`);
+      ok(kinds.includes('float') && kinds.every(k => ['ceil', 'float', 'floor'].includes(k)) && floats.every(q => lv.wideBars.has(Math.floor((q.xt - 0.01) / 16))), `[${tag}] 넓은 통로 마디(${[...lv.wideBars].join(', ')})에는 바닥·천장 이빨 말고 가운데에 떠 있는 장애물도 나온다 (${floats.length}개)`);
       ok(Math.abs(Lg.ceilAt(lv, wb * 16 + 1) - (4 * Lg.ZIG_STEP + 0.8)) < 1e-9 && Math.abs(Lg.ceilAt(lv, C.bars.findIndex((n, b) => Lg.PATTERNS[n] && Lg.PATTERNS[n].mode === 'rush' && !lv.wideBars.has(b)) * 16 + 1) - Lg.ZIG_TOP) < 1e-9, `[${tag}] 넓은 통로의 천장은 ${Lg.ceilAt(lv, wb * 16 + 1).toFixed(1)}칸(보통 ${Lg.ZIG_TOP}칸)`);
       // 넓은 통로로는 파란 계단을 튕기며 올라가고(wUp), 안에서는 천장에서 시작해 천장에서 끝나며(w1: 바닥까지 갔다 온다), 계단으로 내려온다(wDn)
       const s2 = Lg.spawnState(lv, -1), inp2 = Lg.planInput(lv.ref), at2 = {}, bars2 = Lg.COURSES.find(c => c.name === lv.name).bars;
@@ -410,7 +410,7 @@ for (const C of Lg.COURSES) {
       if (bars2.includes('w5')) ok(seq('w5', [4, 3, 2, 3, 2, 3, 2, 3, 4]), `[${tag}] 넓은 통로의 연타(w5): 천장에서 내려와 가운데 두 단계 사이를 반 박마다 오가고(다섯 번 누름) 천장으로 돌아간다`);
       ok(s2.won && inside && steps >= 8 && lv.stairLo.size > 0 && lv.stairHi.size > 0, `[${tag}] 파란 발판은 닿아도 죽지 않고 튕기기만 한다(${steps}번 닿음). 공이 발판 속으로 들어가는 일은 없다`);
       ok([...lv.stairLo.keys(), ...lv.stairHi.keys()].every(n => lv.freeBars.has(Math.floor(n / 8))), `[${tag}] 파란 발판은 장애물이 없는 연출 마디에만 있다`);
-      ok(lv.reds.every(q => { const sp = Lg.hazardSpan(q, 0); return q.kind === 'pad' ? Math.abs(sp[1] - sp[0] - 0.75) < 1e-9 && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-9 : q.kind === 'floor' ? sp[0] === 0 && Math.abs(sp[1] - q.tip) < 1e-9 : q.kind === 'ceil' ? Math.abs(sp[0] - q.tip) < 1e-9 : (Math.abs(sp[1] - sp[0] - 3.2) < 1e-6 || Math.abs(sp[1] - sp[0] - 2.7) < 1e-6) && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-6; }), `[${tag}] 장애물 모양: 이빨은 삼각형, 떠 있는 것은 길이 3.2칸(연타 패턴에서는 2.7칸)의 마름모(양 끝이 뾰족)`);
+      ok(lv.reds.every(q => { const sp = Lg.hazardSpan(q, 0); return q.kind === 'floor' ? sp[0] === 0 && Math.abs(sp[1] - q.tip) < 1e-9 : q.kind === 'ceil' ? Math.abs(sp[0] - q.tip) < 1e-9 : (Math.abs(sp[1] - sp[0] - 3.2) < 1e-6 || Math.abs(sp[1] - sp[0] - 2.7) < 1e-6) && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-6; }), `[${tag}] 장애물 모양: 이빨은 삼각형, 떠 있는 것은 길이 3.2칸(연타 패턴에서는 2.7칸)의 마름모(양 끝이 뾰족)`);
     }
     if (lv.squeezes.some(q => !q.mid)) {      // (얇은 굴만 있고 조여드는 통로는 없는 라운드도 있다)
       // 조여드는 통로: 닿는 간격이 1박에서 1/32박까지 반씩 줄고, 통로 폭도 그만큼 좁아진다(끝에서는 공 크기와 거의 같다)

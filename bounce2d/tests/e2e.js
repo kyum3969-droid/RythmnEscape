@@ -357,7 +357,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `7라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     { const g7 = await G(() => { const L = window.__game.L; let rings = 0; for (let c = 0; c < L.cols; c++) if (L.grid.some((row, r) => row[c] === 'O' && (r === 0 || L.grid[r - 1][c] !== 'O'))) rings++; return { pads: L.pads.size, rings }; });
-      ok(g7.pads >= 8 && g7.rings === 6, `7라운드의 새 장치: 피버의 튕김판 ${g7.pads}개(한 변만 파란 세모), 바운스의 충전 고리 ${g7.rings}개(삼단 점프와 미끼 고리)`); }
+      ok(g7.pads >= 8 && g7.rings === 6, `7라운드의 새 장치: 피버의 튕김판 ${g7.pads}개(공중에 뜬 파란 판), 바운스의 충전 고리 ${g7.rings}개(삼단 점프와 미끼 고리)`); }
     { const c = cams7, near = (b, v) => c[b] && Math.abs(c[b].rot - v) < 1;
       ok(c[132] && c[132].mode === 'rush' && near(132, 0) && near(142, -45) && near(150, 0) && near(296, 90) && near(306, 45), `7라운드의 피버 둘: 첫 번째는 곧게 가다가 비스듬히 아래로(${c[142] && c[142].rot.toFixed(0)}도) 내려가서 펴지고, 두 번째는 곧장 위로(${c[296] && c[296].rot.toFixed(0)}도) 섰다가 비스듬히(${c[306] && c[306].rot.toFixed(0)}도) 눕는다`); }
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
