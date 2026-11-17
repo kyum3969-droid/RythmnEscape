@@ -121,20 +121,20 @@ TEMPLATES.R5 = {
   prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95,
   recipe: { g: '4d', gf: '4v', traps: 3, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
   sections(seed) {
-    const [s1, s2, s3, s4] = fillStretches([5, 2, 7, 3], this.recipe, seed);
+    const [s1, s3, s4] = fillStretches([5, 7, 2], this.recipe, seed);
     return [
       ['도입(조용함): 앞 라운드의 것들로 몸풀기', ['flat', 'flat', ...s1, 'cp']],
       ['첫 피버(곧은 통로): 피버의 함정 두 가지를 차례로. 되풀이 → 뚝, 되풀이 → 하나 더', [{ zm: 'A' }, { zr: 'A' }, { zt: 'A', kind: 'break' }, { zm: 'B' }, { zr: 'B' }, { zt: 'B', kind: 'add' }, { z: 1 }, { z: 1 }]],
       ['', ['cp']],
       ['둘째 피버(굽은 통로): 장애물 없는 마디에서 통로가 비스듬히 위로 굽는다. 중간에 아래로 굽고, 마지막 함정 마디에서 다시 곧게 펴진다', ['zF', { zm: 'C' }, { zr: 'C' }, { zt: 'C', kind: 'add' }, { zm: 'D' }, { zr: 'D' }, { zt: 'D', kind: 'break' }]],
-      ['가라앉음: 바운스의 새 함정. 박스 셋을 건너뛰고 그냥 떨어지기를 두 번 한 뒤, 떨어질 땅이 빨간 박스로 이어져 있다(박스를 떠나자마자 멈춰서 건넌다)', ['cp', 'fJump3', 'fJump3', 'fJ3G', 'gAfter', ...s2, 'cp']],
+      ['가라앉음: 징검다리. 이단 점프로 첫 돌에 올라타면 돌에서 돌로 저절로 튄다(두 마디). 그다음에는 빨간 돌이 섞인다 — 그 앞에서 멈추면 한 박 떠서 그다음 돌에 내린다', ['cp', 'stIn', 'stOut', 'stIn', 'stOutR', 'stInR', 'stOut', 'cp']],
       ['셋째 피버(솟는 통로): 계단을 오르며 통로가 곧장 위로 굽는다. 넓은 통로를 위로 달리고, 계단을 내려오며 다시 가로로. 끝의 두 마디는 조여드는 통로(곡이 점점 세지는 자리. 가늘어질수록 화면이 다가간다)', ['wUp', { wm: 'E' }, { wr: 'E' }, { wt: 'E', kind: 'break' }, 'wDn', 'zS1', 'zS2']],
       ['', ['cp']],
       ['넷째 피버: 아래로 굽었다가, 한가운데의 얇은 굴(통로가 가늘어져 화면이 다가간다)을 지나, 위로 굽는다', [{ zm: 'F' }, { zr: 'F' }, { zt: 'F', kind: 'add' }, 'zThin', { zm: 'G' }, { zr: 'G' }, { zt: 'G', kind: 'break' }]],
       ['', ['cp']],
       ['다섯째 피버(솟는 넓은 통로): 위로 굽고, 왼쪽 위로 넘어갔다가, 다시 가로로', ['wUp', { wm: 'H' }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }]],
       ['더 꽉 찬 리듬: 바운스. 손 함정과 높이 장치를 촘촘하게', ['cp', ...s3, 'cp']],
-      ['가라앉음: 박스 뒤 멈춰서 건너기를 한 번 더', ['fJump3', 'fJ3G', 'gAfter', ...s4, 'cp']],
+      ['가라앉음: 징검다리 세 마디. 가운데에 빨간 돌, 마지막 돌에서 내려올 땅이 빨간 박스(마지막으로 튄 뒤 멈춰서 건넌다)', ['stIn', 'stMidR', 'stOutG', 'gAfter', ...s4, 'cp']],
       ['마지막 피버: 위로, 아래로 굽이친다. 끝의 두 마디는 조여드는 통로, 곡의 끝맺는 한 방에 터져 나온다', [{ zm: 'I' }, { zr: 'I' }, { zt: 'I', kind: 'break' }, { zm: 'J' }, { zt: 'J', kind: 'add' }, 'zS1', 'zS2']],
       ['', ['goal', 'flat', 'flat']],
     ];
@@ -166,10 +166,10 @@ function generate(T, seed) {
   const made = {};                                     // 이번에 만든 패턴: 이름 → 정의
   const bars = [], notes = {};
   const isPat = (n) => Lg.PATTERNS[n] && Lg.PATTERNS[n].mode !== 'rush';
-  const ctxOf = (cand) => {                            // 이 마디를 시험할 짧은 코스: 앞의 두 마디(패턴이면) + 이 마디 + 평지
-    const prev = bars.slice(-2).map((n) => (isPat(n) ? n : 'flat'));
-    while (prev.length < 2) prev.unshift('flat');
-    return { bars: ['flat', ...prev, cand, 'flat', 'flat', 'goal'], at: 3 };
+  const ctxOf = (cand) => {                            // 이 마디를 시험할 짧은 코스: 앞의 네 마디(패턴이면) + 이 마디 + 평지. (징검다리처럼 앞 마디에서 이어지는 마디가 있어서 넉넉히 붙인다)
+    const prev = bars.slice(-4).map((n) => (isPat(n) ? n : 'flat'));
+    while (prev.length < 4) prev.unshift('flat');
+    return { bars: ['flat', ...prev, cand, 'flat', 'flat', 'goal'], at: 5 };
   };
   const build = (ctx) => Lg.buildLevel({ name: 't', bpm: T.bpm, bars: ctx.bars, floatReds: !!T.floatReds, vary: !!T.vary, sections: [{ bar: 0, id: 'a' }] });
   const run = (L, plan, until, from = 0) => {      // from = 높이를 재기 시작하는 스텝(앞 마디가 떠 있는 박스에서 높이 뛴 것은 세지 않는다)

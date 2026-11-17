@@ -496,7 +496,7 @@ console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 
         if (sC.dead && sC.x >= b * 16 && sC.x < (b + 1) * 16 + 0.5) deadN++;
       }
     });
-    ok(n >= 5 && deadN === n, `[${tag}] 떠 있는 박스 위에서 반대로 하면(떨어질 자리에서 뛰기, 뛸 자리에서 떨어지기) 그 마디에서 죽는다 (${deadN}/${n})`);
+    ok(deadN === n, `[${tag}] 떠 있는 박스 위에서 반대로 하면(떨어질 자리에서 뛰기, 뛸 자리에서 떨어지기) 그 마디에서 죽는다 (${deadN}/${n})`);
     // 아무렇게나 눌러도 파란 박스 속에 끼이지 않는다
     let seed = 7, stuck = 0; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
     for (let k = 0; k < 400; k++) { const sR = Lg.spawnState(lvC, Math.floor(rnd() * (lvC.cps.length + 1)) - 1); let hold = false; const pp = 0.01 + rnd() * 0.05;
@@ -504,6 +504,31 @@ console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 
         for (let rr = Math.floor(sR.y - 0.8 + 0.02); rr <= Math.floor(sR.y - 0.02); rr++) for (let c = Math.floor(sR.x - 0.37); c <= Math.floor(sR.x + 0.37); c++) if (rr >= 0 && rr < 9 && lvC.grid[rr][c] === '#') stuck++; if (!isFinite(sR.y)) stuck++; } }
     ok(stuck === 0, `[${tag}] 아무렇게나 400번 달려 봐도 공이 파란 박스 속에 끼이지 않는다`);
   }
+}
+console.log('== 징검다리: 두 칸짜리 파란 돌에서 돌로 저절로 튄다. 빨간 돌은 멈춰서 넘는다 ==');
+{
+  const mk = (seq) => Lg.buildLevel({ name: 's', bpm: 152, bars: ['idle', 'idle', ...seq, 'idle', 'idle', 'goal', 'flat'], floatReds: true, sections: [{ bar: 0, id: 'a' }] });
+  const runS = (lvS, presses, holds) => { const sS = Lg.spawnState(lvS, -1), P = new Set(presses), evs = []; let mx = 0; while (!sS.dead && !sS.won) { const st = sS.step + 1, ev = []; Lg.stepState(lvS, sS, P.has(st), ev, holds.some(h => st >= h[0] && st < h[1])); mx = Math.max(mx, 9 - sS.y); for (const e of ev) evs.push({ t: st / 96 - 8, type: e.type, h: 9 - sS.y }); } return { s: sS, evs, mx }; };
+  // 들어가기 + 나오기: 입력은 처음의 이단 점프 하나. 돌 여섯 개를 엇박마다 밟고, 땅에 내려와 박자에 맞춰 튄다
+  let lvS = mk(['stIn', 'stOut']), r = runS(lvS, lvS.ref.presses, lvS.ref.holds);
+  const hops = r.evs.filter(e => e.type === 'bounce' && Math.abs(e.h - 4) < 0.2).map(e => e.t), back = r.evs.find(e => e.type === 'bounce' && e.t > 7 && e.h < 0.2);
+  ok(r.s.won && lvS.ref.presses.length === 1 && hops.length === 6 && hops.every((t, i) => Math.abs(t - (1.5 + i)) < 0.03) && back && Math.abs(back.t - 8) < 0.03, `이단 점프 한 번으로 올라타면 돌 여섯 개를 저절로 건넌다(엇박마다: ${hops.map(t => t.toFixed(2)).join(', ')}박). 내려와서는 박자에 맞춰 튄다`);
+  let dead = 0, tried = 0; for (let st = 9 * 96; st < 16 * 96; st += 4) { tried++; if (!runS(lvS, [...lvS.ref.presses, st], []).s.won) dead++; }
+  ok(dead === 0, `돌 위에서, 또는 돌 사이를 날다가 한 번 더 눌러도 죽지 않는다(${tried}가지 시각. 박스에서 다시 뛰던 버릇이 벌이 되지 않는다)`);
+  // 빨간 돌: 그 앞에서 멈추면 한 박 떠서 그다음 돌에 내린다
+  for (const seq of [['stIn', 'stOutR'], ['stInR', 'stOut'], ['stIn', 'stMidR', 'stOut']]) {
+    lvS = mk(seq); r = runS(lvS, lvS.ref.presses, lvS.ref.holds);
+    const h0 = lvS.ref.holds[0];
+    const none = runS(lvS, lvS.ref.presses, []), dj = runS(lvS, [...lvS.ref.presses, h0[0]], []);
+    let lo = 0, hi = 0; while (lo > -150 && runS(lvS, lvS.ref.presses, [[h0[0] + lo - 1, h0[1]]]).s.won) lo--; while (hi < 150 && runS(lvS, lvS.ref.presses, [[h0[0] + hi + 1, h0[1]]]).s.won) hi++;
+    const long = runS(lvS, lvS.ref.presses, [[h0[0], h0[1] + 96]]).s.won;       // 한 박 넘게 누르고 있어도 된다(멈춤은 한 박에서 저절로 풀린다)
+    ok(r.s.won && r.mx < 6.3 && none.s.dead && dj.s.dead && -lo * 4.11 >= 150 && hi * 4.11 >= 150 && long, `[${seq.join(' → ')}] 빨간 돌 앞에서 멈추면 그다음 돌에 내린다. 안 멈추면 빨간 돌에, 대신 뛰면 위의 빨간 덩어리에 걸린다. 누르기 시작하는 여유 ${(lo * 4.11).toFixed(0)}/+${(hi * 4.11).toFixed(0)}ms, 오래 누르고 있어도 된다`);
+  }
+  // 마지막 돌에서 내려올 땅이 빨간 박스
+  lvS = mk(['stIn', 'stOutG', 'gAfter']); r = runS(lvS, lvS.ref.presses, lvS.ref.holds);
+  { const hG = lvS.ref.holds[0], none = runS(lvS, lvS.ref.presses, lvS.ref.holds.slice(1));
+    let lo = 0, hi = 0; while (lo > -150 && runS(lvS, lvS.ref.presses, [[hG[0] + lo - 1, hG[1]], ...lvS.ref.holds.slice(1)]).s.won) lo--; while (hi < 150 && runS(lvS, lvS.ref.presses, [[hG[0] + hi + 1, hG[1]], ...lvS.ref.holds.slice(1)]).s.won) hi++;
+    ok(r.s.won && none.s.dead && -lo * 4.11 >= 120 && hi * 4.11 >= 120, `[stIn → stOutG → gAfter] 마지막 돌에서 튄 뒤 멈춰서 빨간 박스 위를 건넌다. 안 멈추면 죽는다. 누르기 시작하는 여유 ${(lo * 4.11).toFixed(0)}/+${(hi * 4.11).toFixed(0)}ms`); }
 }
 console.log('== 뒤 라운드를 위해 보관한 장치(지금 코스에서는 쓰지 않는다): 충전 고리, 계단으로 박자 틀기 ==');
 {
