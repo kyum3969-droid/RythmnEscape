@@ -288,6 +288,19 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `5라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     ok(cams[46] && cams[46].mode === 'rush' && Math.abs(cams[46].rot) < 0.01 && cams[71] && Math.abs(cams[71].rot - 45) < 1 && cams[134] && Math.abs(cams[134].rot - 90) < 1 && cams[174.5] && cams[174.5].zoom > 1.25 && Math.abs(cams[174.5].rot) < 3, `굽은 통로: 첫 피버는 곧게(${cams[46] && cams[46].rot.toFixed(0)}도), 둘째는 비스듬히 위로(${cams[71] && cams[71].rot.toFixed(0)}도), 셋째는 곧장 위로(${cams[134] && cams[134].rot.toFixed(0)}도). 얇은 굴에서는 다가간다(${cams[174.5] && cams[174.5].zoom.toFixed(2)}배)`);
     ok(cams[102] && cams[102].mode === 'bounce' && cams[102].h > 5.5 && cams[113.5] && cams[113.5].mode === 'bounce' && cams[113.5].frozen && cams[113.5].h > 5.5, `징검다리: 돌에서 돌로 저절로 튀고(높이 ${cams[102] && cams[102].h.toFixed(2)}칸), 빨간 돌 앞에서는 멈춰서 그 위의 틈을 지난다(높이 ${cams[113.5] && cams[113.5].h.toFixed(2)}칸)`);
+    // 굽이를 지날 때 공이 화면에서 튀지 않는다(토막마다 다른 기울기로 그리면 토막의 이음매마다 튄다), 화면 밖의 토막은 그리지 않는다
+    const sm = await G(() => {
+      const g = window.__game; let now = 500, worst = 0, worstOld = 0, worstK = 0, prev = null, most = 0, total = 0;
+      for (let x = 16 * 16; x <= 24 * 16; x += 4 / 96) {
+        now += 60 / 152 / 96;
+        const a = g.ballAt(x, 2.4, now, true), o = g.ballAt(x, 2.4, now, false);
+        if (prev) { worst = Math.max(worst, Math.hypot(a.x - prev.a.x, a.y - prev.a.y)); worstOld = Math.max(worstOld, Math.hypot(o.x - prev.o.x, o.y - prev.o.y)); worstK = Math.max(worstK, Math.abs(a.k - prev.a.k)); }
+        most = Math.max(most, a.shown); total = Math.max(total, a.passes);
+        prev = { a, o };
+      }
+      return { worst, worstOld, worstK, most, total };
+    });
+    ok(sm.worst < 3 && sm.worstOld > 8 && sm.worstK < 0.01 && sm.most < sm.total, `굽이에서 공이 튀지 않는다: 한 스텝에 많아야 ${sm.worst.toFixed(1)}픽셀(토막 기울기로 그리면 ${sm.worstOld.toFixed(1)}픽셀), 배율은 ${sm.worstK.toFixed(4)}씩. 그리는 토막은 ${sm.total}개 중 많아야 ${sm.most}개`);
     // 개발자 기능: 코스 둘러보기(퍼센트로 이동)와 번호표
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     let ins = await G(() => { const g = window.__game; g.openInspect(); g.inspectAt(g.L.goalX * 0.24); const t = g.labels.map((o) => o.text); return { phase: g.phase, x: g.state.x, want: g.L.goalX * 0.24, pct: document.getElementById('insRange').value, info: document.getElementById('tries').textContent, n: t.length, uniq: new Set(t).size, red: t.filter((v) => /-R\d+$/.test(v)).length, blue: t.filter((v) => /-B\d+$/.test(v)).length, bar: document.getElementById('inspect').hidden, ov: document.getElementById('overlay').hidden }; });
