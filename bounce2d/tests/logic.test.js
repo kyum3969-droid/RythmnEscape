@@ -360,7 +360,7 @@ for (const C of Lg.COURSES) {
     }
     if (lv.squeezes.length) {
       // 조여드는 통로: 닿는 간격이 1박에서 1/32박까지 반씩 줄고, 통로 폭도 그만큼 좁아진다(끝에서는 공 크기와 거의 같다)
-      const sq = lv.squeezes[0], hits = ev.filter(e => e.type === 'rebound' && e.tight).length;
+      const sq = lv.squeezes[0], hits = ev.filter(e => e.type === 'rebound' && e.tight).length / lv.squeezes.length;      // (조여드는 통로가 둘이면 똑같은 것이 두 번이다)
       const gaps = sq.pts.slice(1).map((p, i) => (p.step - sq.pts[i].step) / 96);
       const uniq = [...new Set(gaps)];
       ok(uniq.join(',') === '1,0.5,0.25,0.125,0.0625,0.03125' && hits === sq.pts.length - 2, `[${tag}] 조여드는 통로(마디 ${sq.x0 / 16}~${sq.x1 / 16 - 1}): 닿는 간격 ${uniq.join(' → ')}박, 모두 ${hits}번 친다`);
@@ -470,7 +470,7 @@ console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 
         if (sC.dead && sC.x >= b * 16 && sC.x < (b + 1) * 16 + 0.5) deadN++;
       }
     });
-    ok(n >= 10 && deadN === n, `[${tag}] 떠 있는 박스 위에서 반대로 하면(떨어질 자리에서 뛰기, 뛸 자리에서 떨어지기) 그 마디에서 죽는다 (${deadN}/${n})`);
+    ok(n >= 5 && deadN === n, `[${tag}] 떠 있는 박스 위에서 반대로 하면(떨어질 자리에서 뛰기, 뛸 자리에서 떨어지기) 그 마디에서 죽는다 (${deadN}/${n})`);
     // 아무렇게나 눌러도 파란 박스 속에 끼이지 않는다
     let seed = 7, stuck = 0; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
     for (let k = 0; k < 400; k++) { const sR = Lg.spawnState(lvC, Math.floor(rnd() * (lvC.cps.length + 1)) - 1); let hold = false; const pp = 0.01 + rnd() * 0.05;

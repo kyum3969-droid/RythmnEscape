@@ -777,6 +777,22 @@
       ctx.globalAlpha = 1;
     }
 
+    // 피버 연출(코스의 cam 표): 통로를 기울이고(대각선·수직) 당기고 민다. 판정은 그대로이고 그림만 돈다 — 배경은 그대로 서 있어서, 통로가 위로 솟거나 비스듬히 뻗는 것으로 보인다.
+    // 공이 있는 자리의 통로 한가운데를 축으로 돌리고, 앞이 넉넉히 보이도록 그 축을 화면 안에서 옮긴다(위로 갈 때는 화면 아래쪽에, 아래로 갈 때는 위쪽에).
+    const cam = camAt(camX), camOn = Math.abs(cam.rot) > 0.01 || Math.abs(cam.zoom - 1) > 0.001;
+    let camK = 1, FAR = 40;
+    const applyCam = () => {
+      if (!camOn) return;
+      const a = cam.rot * Math.PI / 180, P0 = { x: view.px, y: view.groundY - ceilAt(L, camX) / 2 * T }, C = { x: w / 2, y: h / 2 };
+      const ox = P0.x - C.x, oy = P0.y - C.y, cs = Math.cos(-a), sn = Math.sin(-a);
+      const ax = Math.max(w * 0.22, Math.min(w * 0.78, C.x + ox * cs - oy * sn)), ay = Math.max(h * 0.24, Math.min(h * 0.78, C.y + ox * sn + oy * cs));
+      // 가는 쪽으로 화면 끝까지의 거리: 적어도 7칸(1.75박) 앞이 보이게 배율을 낮춘다
+      const dx = Math.cos(a), dy = -Math.sin(a);
+      const tx = dx > 1e-6 ? (w - ax) / dx : dx < -1e-6 ? -ax / dx : 1e9, ty = dy > 1e-6 ? (h - ay) / dy : dy < -1e-6 ? -ay / dy : 1e9;
+      camK = Math.max(0.45, Math.min(cam.zoom, Math.min(tx, ty) / (10.5 * T)));
+      ctx.translate(ax, ay); ctx.rotate(-a); ctx.scale(camK, camK); ctx.translate(-P0.x, -P0.y);
+    };
+    ctx.save(); applyCam();
     // 질주 구간: 스쳐 지나가는 빛줄
     if (round > 0) {
       ctx.lineCap = "round"; ctx.lineWidth = 2;
@@ -788,10 +804,12 @@
       }
     }
 
+    if (camOn) FAR = Math.hypot(w, h) / camK + 60;
     // 지형: 땅
-    const cA = Math.floor(camX - view.px / T) - 1, cB = Math.ceil(camX + (w - view.px) / T) + 1;
+    const nSide = camOn ? Math.ceil(Math.hypot(w, h) / (T * camK)) : 0;
+    const cA = camOn ? Math.floor(camX - nSide) - 1 : Math.floor(camX - view.px / T) - 1, cB = camOn ? Math.ceil(camX + nSide) + 1 : Math.ceil(camX + (w - view.px) / T) + 1;
     ctx.fillStyle = SIL;
-    ctx.fillRect(sx(cA) - 1, view.groundY - 0.5, sx(cB + 1) - sx(cA) + 2, h);
+    ctx.fillRect(sx(cA) - 1, view.groundY - 0.5, sx(cB + 1) - sx(cA) + 2, h + FAR);
     ctx.beginPath(); ctx.moveTo(sx(cA), view.groundY); ctx.lineTo(sx(cB + 1), view.groundY);
     ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5;
     ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 8 + 10 * pulse;
@@ -948,9 +966,9 @@
       const ca = Math.max(r[0], cA), cb = Math.min(r[1], cB + 1);
       {                                          // 천장: 공이 튕기는 면. 넓은 통로 마디에서는 두 배 높이로 물러난다
         ctx.fillStyle = SIL;
-        ctx.beginPath(); ctx.moveTo(sx(ca), -40);
+        ctx.beginPath(); ctx.moveTo(sx(ca), -FAR);
         for (let c = Math.floor(ca / 16) * 16; c < cb; c += 16) { const y = sy(ROWS - 1 - ceilAt(L, c + 1)); ctx.lineTo(sx(Math.max(c, ca)), y); ctx.lineTo(sx(Math.min(c + 16, cb)), y); }
-        ctx.lineTo(sx(cb), -40); ctx.closePath(); ctx.fill();
+        ctx.lineTo(sx(cb), -FAR); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5; ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 8 + 10 * pulse;
         ctx.beginPath();
         for (let c = Math.floor(ca / 16) * 16; c < cb; c += 16) { const y = sy(ROWS - 1 - ceilAt(L, c + 1)); ctx.lineTo(sx(Math.max(c, ca)), y); ctx.lineTo(sx(Math.min(c + 16, cb)), y); }
@@ -1273,6 +1291,7 @@
         ctx.beginPath(); ctx.moveTo(cx - T * 0.12, cy - T * 0.58); ctx.lineTo(cx, cy - T * 0.76); ctx.lineTo(cx + T * 0.12, cy - T * 0.58); ctx.closePath(); ctx.fill();
       }
     }
+    ctx.restore();                                     // (피버 연출의 기울임을 푼다)
     ctx.restore();
 
     {                                                  // 화면이 "확" 바뀌는 순간: 공에서 퍼지는 충격 고리와 바깥으로 뻗는 빛줄기
@@ -1294,7 +1313,7 @@
       }
     }
     if (dev && (phase === "inspect" || devLabels)) {      // 번호표: 마디 선과 이름, 상자마다 "마디-R/B번호"
-      ctx.save(); ctx.shadowBlur = 0; ctx.textBaseline = "middle";
+      ctx.save(); applyCam(); ctx.shadowBlur = 0; ctx.textBaseline = "middle";
       const fs = Math.max(10, Math.min(13, T * 0.3));
       for (let b = Math.max(0, Math.floor(cA / 16)); b <= Math.floor(cB / 16) && b < L.bars; b++) {
         const x = sx(b * 16);
@@ -1379,6 +1398,20 @@
     $("inspect").hidden = true; $("app").classList.remove("inspect");
     state = spawnState(L, -1); setModeLabel(); refreshHud();
     showTitle();
+  }
+  // 피버 연출 표: 코스의 cam = [{ bar, rot(도. 0 = 오른쪽으로, 90 = 위로, -45 = 비스듬히 아래로), zoom(배율), spin(그 마디 동안 더 도는 바퀴 수) }, ...]
+  // 그 마디의 첫 박 동안 앞의 값에서 새 값으로 "확" 넘어간다(살짝 지나쳤다가 제자리로). 피버 밖에서는 늘 0도·1배다(구간 끝 두 칸에서 풀린다).
+  const CAM_KEYS = (COURSE.cam || []).slice().sort((u, v) => u.bar - v.bar);
+  function camAt(x) {
+    let cur = null, prev = { rot: 0, zoom: 1 };
+    for (const k of CAM_KEYS) { if (k.bar * 16 > x) break; if (cur) prev = cur; cur = { bar: k.bar, rot: k.rot || 0, zoom: k.zoom || 1, spin: k.spin || 0 }; }
+    const ride = rideAt(L, x);
+    if (!cur || !ride) return { rot: 0, zoom: 1 };
+    const p = Math.max(0, Math.min(1, (x - cur.bar * 16) / 4)), e = 1 + 2.4 * Math.pow(p - 1, 3) + 1.4 * Math.pow(p - 1, 2);
+    let rot = prev.rot + (cur.rot - prev.rot) * e, zoom = prev.zoom + (cur.zoom - prev.zoom) * e;
+    if (cur.spin) { const q = Math.max(0, Math.min(1, (x - cur.bar * 16) / 16)); rot += 360 * cur.spin * (q * q * (3 - 2 * q)); }
+    const f = Math.max(0, Math.min(1, (x - ride[0]) / 2, (ride[1] - x) / 2));
+    return { rot: rot * f, zoom: 1 + (zoom - 1) * f };
   }
   const HIGH_NEED = new Float32Array(L.bars);       // 마디마다: 패턴대로 갈 때 공 윗면이 닿는 가장 높은 곳(칸). 피버와 계단 구간은 따로 물러나므로 뺀다
   if (REF_PATH) for (const t of REF_PATH) { const b = Math.floor(t.x / 16); if (b < L.bars && !inRide(L, t.x) && !L.tallBars.has(b)) HIGH_NEED[b] = Math.max(HIGH_NEED[b], t.h + SIZE); }
@@ -1550,7 +1583,7 @@
   // 자동 테스트용 훅
   window.__game = {
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
-    press, startFresh, respawn, pause, view, devJump, openInspect, closeInspect, inspectAt, get labels() { return LABELS; }, get inspectX() { return inspectX; }, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
+    press, startFresh, respawn, pause, view, devJump, cam: (x) => camAt(x), openInspect, closeInspect, inspectAt, get labels() { return LABELS; }, get inspectX() { return inspectX; }, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
     get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; }, round,
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },

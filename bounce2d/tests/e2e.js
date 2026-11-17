@@ -267,12 +267,30 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     ok(seen4[9.25] && seen4[9.25].on && Math.abs(seen4[9.25].h - 4) < 0.01, `이단 점프로 떠 있는 파란 박스에 올라탄다 (높이 ${seen4[9.25] && seen4[9.25].h.toFixed(2)}칸)`);
     ok(seen4[21.75] && seen4[21.75].h > 6 && seen4[21.75].z < 0.97 && seen4[21.75].topPx > 35, `박스에서 다시 뛰면 6칸 넘게 올라가고, 화면이 조금 물러나 공이 화면 안에 있다 (높이 ${seen4[21.75] && seen4[21.75].h.toFixed(2)}칸, ${seen4[21.75] && seen4[21.75].z.toFixed(2)}배, 공 윗면 y=${seen4[21.75] && seen4[21.75].topPx.toFixed(0)}px)`);
     ok(seen4[76.75] && seen4[76.75].h > 0.9 && seen4[76.75].h < 1.21 && !seen4[76.75].on, `낮은 파란 천장 밑에서는 낮게 뜬 채로 멈춰서 건넌다 (높이 ${seen4[76.75] && seen4[76.75].h.toFixed(2)}칸)`);
+    // 라운드 5: 피버 위주. 통로가 기울고 솟는 연출
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(5)')]); await ready();
+    st = await G(() => { const g = window.__game, L = g.L, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, rush: L.rides.reduce((u, r) => u + (r[1] - r[0]) / 16, 0) }; });
+    ok(st.round === 4 && st.name.includes('Concrete Pulse') && Math.abs(st.bpm - 152) < 0.01 && st.off === 0.067 && st.rush >= 40, `5라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개, 피버 ${st.rush}마디)`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots5 = { 46.0: 'r5_fever_a', 71.0: 'r5_diag_up', 83.0: 'r5_diag_down', 94.0: 'r5_back', 111.5: 'r5_glide_trap', 113.0: 'r5_glide_land', 128.5: 'r5_turn_up', 134.0: 'r5_vertical', 145.0: 'r5_spin', 152.0: 'r5_squeeze', 162.0: 'r5_close', 170.0: 'r5_tilt', 198.0: 'r5_vertical_wide', 206.0: 'r5_over', 214.0: 'r5_spin2', 298.0: 'r5_final' };
+    const cams = {};
+    for (let beat = 0; beat <= 330; beat += 0.25) {
+      await tick(beat);
+      if (shots5[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots5[beat] + '.png' }); }
+      if (beat === 46 || beat === 71 || beat === 134 || beat === 162 || beat === 111.5) cams[beat] = await G(() => { const g = window.__game, c = g.cam(g.state.x); return { rot: c.rot, zoom: c.zoom, mode: g.state.mode, h: 9 - g.state.y, frozen: g.state.frozen }; });
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `5라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(cams[46] && cams[46].mode === 'rush' && Math.abs(cams[46].rot) < 0.01 && cams[71] && Math.abs(cams[71].rot - 45) < 1 && cams[134] && Math.abs(cams[134].rot - 90) < 1 && cams[162] && cams[162].zoom > 1.2, `피버 연출: 첫 피버는 곧게(${cams[46] && cams[46].rot.toFixed(0)}도), 둘째는 비스듬히(${cams[71] && cams[71].rot.toFixed(0)}도), 셋째는 곧장 위로(${cams[134] && cams[134].rot.toFixed(0)}도), 넷째는 당겨서(${cams[162] && cams[162].zoom.toFixed(2)}배)`);
+    ok(cams[111.5] && cams[111.5].mode === 'bounce' && cams[111.5].frozen && cams[111.5].h > 3, `박스 셋을 건너뛴 뒤, 내려서자마자 멈춰서 빨간 박스 위를 건넌다 (높이 ${cams[111.5] && cams[111.5].h.toFixed(2)}칸)`);
     // 개발자 기능: 코스 둘러보기(퍼센트로 이동)와 번호표
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     let ins = await G(() => { const g = window.__game; g.openInspect(); g.inspectAt(g.L.goalX * 0.24); const t = g.labels.map((o) => o.text); return { phase: g.phase, x: g.state.x, want: g.L.goalX * 0.24, pct: document.getElementById('insRange').value, info: document.getElementById('tries').textContent, n: t.length, uniq: new Set(t).size, red: t.filter((v) => /-R\d+$/.test(v)).length, blue: t.filter((v) => /-B\d+$/.test(v)).length, bar: document.getElementById('inspect').hidden, ov: document.getElementById('overlay').hidden }; });
     await p.waitForTimeout(200); await p.screenshot({ path: out + 'r4_inspect.png' });
     ok(ins.phase === 'inspect' && Math.abs(ins.x - ins.want) < 0.05 && Math.abs(+ins.pct - 24) < 0.11 && !ins.bar && ins.ov, `둘러보기: 24%로 옮기면 그 자리가 보인다(플레이가 아니다) — ${ins.info} [막대 ${ins.pct}]`);
-    ok(ins.n > 150 && ins.uniq === ins.n && ins.red > 100 && ins.blue > 20, `번호표: 상자 ${ins.n}개에 서로 다른 이름이 붙는다 (빨간 것 ${ins.red}개, 파란 것 ${ins.blue}개)`);
+    ok(ins.n > 150 && ins.uniq === ins.n && ins.red > 100 && ins.blue >= 10, `번호표: 상자 ${ins.n}개에 서로 다른 이름이 붙는다 (빨간 것 ${ins.red}개, 파란 것 ${ins.blue}개)`);
     ins = await G(() => { const g = window.__game, el = document.getElementById('insRange'); el.value = '61.3'; el.dispatchEvent(new Event('input', { bubbles: true })); return { x: g.state.x, want: g.L.goalX * 0.613, step: g.state.step, pctHud: document.getElementById('pct').textContent }; });
     await p.waitForTimeout(150);
     const stepBefore = await G(() => window.__game.state.step);

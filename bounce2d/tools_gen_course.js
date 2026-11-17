@@ -115,6 +115,32 @@ TEMPLATES.R4 = {
   },
 };
 
+// 5라운드: 피버 위주. 피버의 짜임은 "새 마디 → 한 번 더 → 함정"이고, 함정은 뚝(누르던 자리에서 끊김)과 하나 더(안 누르던 자리에서 한 번 더) 두 가지다.
+// 통로가 기울고 솟는 연출은 코스의 cam 표에 있다(logic.js의 ROUND5). 바운스 구간은 4라운드와 같은 조건(밀도 95%, 변주)에 새 함정 fJ3G를 넣는다.
+TEMPLATES.R5 = {
+  prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95,
+  recipe: { g: '4d', gf: '4v', traps: 3, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
+  sections(seed) {
+    const [s1, s2, s3, s4] = fillStretches([5, 2, 7, 3], this.recipe, seed);
+    return [
+      ['도입(조용함): 앞 라운드의 것들로 몸풀기', ['flat', 'flat', ...s1, 'cp']],
+      ['첫 피버(곧은 통로): 피버의 함정 두 가지를 차례로. 되풀이 → 뚝, 되풀이 → 하나 더', [{ zm: 'A' }, { zr: 'A' }, { zt: 'A', kind: 'break' }, { zm: 'B' }, { zr: 'B' }, { zt: 'B', kind: 'add' }, { z: 1 }, { z: 1 }]],
+      ['', ['cp']],
+      ['둘째 피버(비스듬한 통로): 장애물 없는 마디에서 통로가 비스듬히 위로 기운다. 중간에 아래로 꺾이고, 마지막 함정 마디에서 다시 곧게 펴진다', ['zF', { zm: 'C' }, { zr: 'C' }, { zt: 'C', kind: 'add' }, { zm: 'D' }, { zr: 'D' }, { zt: 'D', kind: 'break' }]],
+      ['가라앉음: 바운스의 새 함정. 박스 셋을 건너뛰고 그냥 떨어지기를 두 번 한 뒤, 떨어질 땅이 빨간 박스로 이어져 있다(박스를 떠나자마자 멈춰서 건넌다)', ['cp', 'fJump3', 'fJump3', 'fJ3G', 'gAfter', ...s2, 'cp']],
+      ['셋째 피버(솟는 통로): 계단을 오르며 통로가 곧장 위로 선다. 넓은 통로를 위로 달리고, 계단을 내려오며 한 바퀴 돌아 제자리. 끝의 두 마디는 조여드는 통로(곡이 점점 세지는 자리)', ['wUp', { wm: 'E' }, { wr: 'E' }, { wt: 'E', kind: 'break' }, 'wDn', 'zS1', 'zS2']],
+      ['', ['cp']],
+      ['넷째 피버: 바짝 당겨서 시작하고, 누르는 도중에 아래로·위로 기운다', [{ zm: 'F' }, { zr: 'F' }, { zt: 'F', kind: 'add' }, { zm: 'G' }, { zr: 'G' }, { zr: 'G' }, { zt: 'G', kind: 'break' }]],
+      ['', ['cp']],
+      ['다섯째 피버(솟는 넓은 통로): 위로, 왼쪽 위로 넘어갔다가, 한 바퀴 돌아 곧은 통로로', ['wUp', { wm: 'H' }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }]],
+      ['더 꽉 찬 리듬: 바운스. 손 함정과 높이 장치를 촘촘하게', ['cp', ...s3, 'cp']],
+      ['가라앉음: 박스 뒤 멈춰서 건너기를 한 번 더', ['fJump3', 'fJ3G', 'gAfter', ...s4, 'cp']],
+      ['마지막 피버: 마디마다 기울기가 바뀐다. 끝의 두 마디는 조여드는 통로, 곡의 끝맺는 한 방에 터져 나온다', [{ zm: 'I' }, { zr: 'I' }, { zt: 'I', kind: 'break' }, { zm: 'J' }, { zt: 'J', kind: 'add' }, 'zS1', 'zS2']],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
@@ -295,14 +321,17 @@ function generate(T, seed) {
     bars.push(M.name); roles[b] = slot.t;              // soft: 함정을 못 만들면 그냥 한 번 더 한다
   };
   const breaksOf = (nodes, wide) => (wide ? wAll : zAll).filter((s) => { let k = 0; while (k < 8 && s[k] === nodes[k]) k++; return k >= 2 && k < 7 && nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => feverTry(s, wide));
+  const addsOf = (nodes, wide) => (wide ? wAll : zAll).filter((s) => { let k = 0; while (k < 8 && s[k] === nodes[k]) k++; return k >= 2 && k < 7 && nodes[k] !== 'F' && s[k] === 'F' && feverTry(s, wide); });
   const feverSlot = (slot, b) => {
     const wide = !!(slot.wm || slot.wr || slot.wt), key = slot.zm || slot.wm || slot.zr || slot.wr || slot.zt || slot.wt, all = wide ? wAll : zAll, name = `${T.prefix}${wide ? 'w' : 'z'}${b}`;
     if (slot.zr || slot.wr) { bars.push(motifs[key].name); roles[b] = key; return; }
-    if (slot.zt || slot.wt) {
-      const brk = breaksOf(motifs[key].nodes, wide);
-      if (!brk.length) throw new Error('끊기는 줄이 없다');
-      const nodes = pick(brk); made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
-      bars.push(name); trapList.push({ bar: b, kind: 'break', of: key }); roles[b] = key + '!'; return;
+    if (slot.zt || slot.wt) {                            // 피버의 함정: break = 누르던 자리에서 뚝 / add = 안 누르던 자리에서 하나 더(둘 다 앞쪽은 되풀이한 마디와 같다)
+      const M = motifs[key].nodes, adds = addsOf(M, wide), brk = breaksOf(M, wide);
+      const useAdd = slot.kind === 'add' && adds.length, pool = useAdd ? adds : brk;
+      if (!pool.length) throw new Error('피버 함정으로 쓸 줄이 없다');
+      const nodes = pick(pool); made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
+      notes[b] = useAdd ? `하나 더: 앞 마디(${M})와 같이 가다가 한 번 더 누른다` : `뚝: 앞 마디(${M})와 같이 가다가 끊긴다`;
+      bars.push(name); trapList.push({ bar: b, kind: useAdd ? 'fever-add' : 'break', of: key }); roles[b] = key + '!'; return;
     }
     const weight = (s) => Math.pow(count(s, 'F'), 2) + 4 * (s.match(/FF/g) || []).length, total = all.reduce((u, s) => u + weight(s), 0);
     for (let tries = 0; tries < 300; tries++) {

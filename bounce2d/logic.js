@@ -215,6 +215,47 @@ const PATTERNS = {
   g4_75: { holds: [], presses: [0.5, 2.375], tol: 0.18, tall: [0.5] },
   g4_77: { holds: [[2.375, 3.125]], presses: [0.5], tol: 0.18, tall: [0.5], traps: [{full: {presses: [0.5, 2.375], holds: []}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
   // </gen:patterns:R4>
+  // <gen:patterns:R5>
+  // 도구(tools_gen_course.js R5 6)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
+  g5_2: { holds: [], presses: [0.375, 2.5], tol: 0.18, tall: [2.5] },
+  g5_4: { holds: [], presses: [0.375], tol: 0.18, traps: [{full: {presses: [0.375, 2.5], holds: []}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g5_5: { holds: [], presses: [0.5, 2.5], tol: 0.18, tall: [0.5, 2.5] },
+  g5_6: { holds: [[0.625, 1.625]], presses: [2.625], tol: 0.18 },
+  g5z8: { mode: "rush", nodes: "S.F.S.F." },
+  g5z10: { mode: "rush", nodes: "S.S.F.F." },   // 뚝: 앞 마디(S.F.S.F.)와 같이 가다가 끊긴다
+  g5z11: { mode: "rush", nodes: "..F.S.F." },
+  g5z13: { mode: "rush", nodes: "..F.F.S." },   // 하나 더: 앞 마디(..F.S.F.)와 같이 가다가 한 번 더 누른다
+  g5z14: { mode: "rush", nodes: "F...S.F." },
+  g5z18: { mode: "rush", nodes: "F.F.S.S." },
+  g5z20: { mode: "rush", nodes: "F.F.F.F." },   // 하나 더: 앞 마디(F.F.S.S.)와 같이 가다가 한 번 더 누른다
+  g5z21: { mode: "rush", nodes: "F.S.F..." },
+  g5z23: { mode: "rush", nodes: "F.S.S.F." },   // 뚝: 앞 마디(F.S.F...)와 같이 가다가 끊긴다
+  g5_29: { holds: [[2.25, 3.25]], presses: [0.5], tol: 0.15, floats: [[4, 4, 4]], caps: [[9, 14, 2]], lava: [[10, 12]], traps: [{presses: [1.125]}] },
+  g5_30: { holds: [[2.5, 3.25]], presses: [0.625], tol: 0.18, caps: [[9, 15, 3]], traps: [{presses: [2.5], holds: []}] },
+  g5w33: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFFFFS." },
+  g5w35: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFSF..." },   // 뚝: 앞 마디(SFFFFFS.)와 같이 가다가 끊긴다
+  g5z40: { mode: "rush", nodes: "F.S.F.S." },
+  g5z42: { mode: "rush", nodes: "F.F.S..." },   // 하나 더: 앞 마디(F.S.F.S.)와 같이 가다가 한 번 더 누른다
+  g5z43: { mode: "rush", nodes: "F.F.F.F." },
+  g5z46: { mode: "rush", nodes: "F.F.S..." },   // 뚝: 앞 마디(F.F.F.F.)와 같이 가다가 끊긴다
+  g5w49: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFSFS.." },
+  g5w51: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFFFF.." },   // 하나 더: 앞 마디(SFFSFS..)와 같이 가다가 한 번 더 누른다
+  g5w52: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFSF.S." },
+  g5z54: { mode: "rush", nodes: "F.F.S..." },
+  g5z55: { mode: "rush", nodes: "F.S.F.S." },   // 뚝: 앞 마디(F.F.S...)와 같이 가다가 끊긴다
+  g5_57: { holds: [[0.5, 1.25], [2.5, 3.375]], presses: [], tol: 0.18 },
+  g5_58: { holds: [[0.375, 1.375], [2.375, 3.125]], presses: [], tol: 0.18 },
+  g5_60: { holds: [[0.375, 1.375]], presses: [], tol: 0.18, traps: [{full: {presses: [], holds: [[0.375, 1.375], [2.375, 3.125]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g5_61: { holds: [[0.25, 1.25], [2.5, 3.25]], presses: [], tol: 0.15, caps: [[1, 6, 2]], lava: [[2, 4]] },
+  g5_62: { holds: [[2.375, 3.375]], presses: [0.5], tol: 0.18, floats: [[4, 4, 4]], traps: [{presses: [1.125]}] },
+  g5_63: { holds: [[0.375, 1.125]], presses: [2.625], tol: 0.18 },
+  g5_68: { holds: [], presses: [0.625, 2.5], tol: 0.18, tall: [2.5] },
+  g5_70: { holds: [[2.5, 3.25]], presses: [0.625], tol: 0.18, traps: [{full: {presses: [0.625, 2.5], holds: []}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
+  g5z72: { mode: "rush", nodes: "F.F.S..." },
+  g5z74: { mode: "rush", nodes: "F.S.S.F." },   // 뚝: 앞 마디(F.F.S...)와 같이 가다가 끊긴다
+  g5z75: { mode: "rush", nodes: "F...F.S." },
+  g5z76: { mode: "rush", nodes: "F.F.F.F." },   // 하나 더: 앞 마디(F...F.S.)와 같이 가다가 한 번 더 누른다
+  // </gen:patterns:R5>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
   // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 바로 위의 빨간 덩어리에 부딪힌다
@@ -282,6 +323,11 @@ const PATTERNS = {
   fLateH: { holds: [[0.5, 1.25]], presses: [2.5], floats: [[12, 12, 4]], traps: [{ presses: [3.125] }], tol: 0.18 },         // 멈춤, 이어서 뒤쪽 박스에 올라타 떨어지기
   fLow3: { holds: [[2.0, 2.75]], presses: [1.5], floats: [[4, 4, 4]], traps: [{ presses: [0.5] }], tol: 0.18 },              // 올라가면 안 되는 박스를 밑으로 지나고, 이단 점프 뒤 멈춤
   fJump3: { holds: [], presses: [0.5, 1.125, 2.125], floats: [[4, 4, 4], [8, 8, 4], [12, 12, 4]], cue: true, tol: 0.18 },    // 올라타서 다시 뛰고, 공중에서 한 번 더 뛰어 셋째 박스까지(둘째 박스에 내리면 그 너머의 빨간 박스에 걸린다)                             // 낮은 천장: 낮게 뜬 채로 멈춰 빨간 바닥을 건넌다
+  // 박스에서 내려서자마자 멈춰서 건너기(5라운드의 함정. 4라운드를 하다가 찾은 것): 박스 셋을 건너뛴 뒤 그냥 떨어지면 다음 박에 땅에 닿는데,
+  // 여기서는 그 땅이 다음 마디의 첫 기둥 자리까지 빨간 박스로 이어져 있다. 셋째 박스를 떠나자마자 멈춰서 그 위를 건넌다(멈춤이 다음 마디로 넘어간다).
+  // redBox = [첫 칸, 끝 칸, 높이]: 손으로 놓는 빨간 박스(끝 칸이 15를 넘으면 다음 마디로 이어진다). loose = 그 멈춤을 빼먹는 달리기로는 빨간 덩어리를 따로 만들지 않는다(redBox가 막는다).
+  fJ3G: { holds: [[3.5, 4.5]], presses: [0.5, 1.125, 2.125], floats: [[4, 4, 4], [8, 8, 4], [12, 12, 4]], redBox: [[13, 17, 1.5]], loose: [3.5], cue: true, tol: 0.18 },
+  gAfter: { holds: [[2.0, 2.75]], presses: [1.5], tol: 0.18 },                                                             // 그 뒤의 마디: 첫 박에 내려서고, 이단 점프 뒤 멈춤
   // 조여드는 통로(연출): 바닥과 천장이 가운데로 모여들어, 공이 닿는 간격이 한 박 → 반 박 → … → 1/32박까지 빨라진다("타다다다닥" → "드르르륵").
   // squeeze = 닿는 간격(박)을 차례로 적은 것. 한 마디에 4박어치. 피버의 맨 끝에만 쓴다(통로가 좁아진 채로 끝난다).
   zS1: { mode: "rush", nodes: "........", free: true, squeeze: [1, 1, 0.5, 0.5, 0.5, 0.5] },
@@ -472,7 +518,71 @@ const ROUND4 = {
     { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 16, id: "d" }, { bar: 24, id: "intro" }, { bar: 32, id: "rush" }, { bar: 40, id: "b" }, { bar: 48, id: "c" }, { bar: 56, id: "rush" }, { bar: 64, id: "intro" }, { bar: 72, id: "d" }, { bar: 80, id: "outro" },
   ],
 };
-const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4];
+// 라운드 5: "Concrete Pulse". 분당 152박, 첫 박 0.067초. 마디 79의 첫 박에 끝맺는 한 방이 있고 여운이 한 마디쯤 남는다.
+// 박은 곡의 날카로운 소리 123곳으로 쟀다(어긋남 ±1ms). 게임 안 분석기는 이 곡도 틀리게 읽는다(171박).
+// 곡의 구간(마디, 여덟 마디씩): 0~7 조용한 도입 / 8~15 리듬 / 16~23 더 꽉 찬 리듬 / 24~30 가라앉음, 31 쌓아 올리는 굴림
+//                / 32~35 터짐, 36~38 점점 세짐, 39 빈 마디 / 40~46 리듬, 47 빈 마디 / 48~55 리듬 / 56~63 더 꽉 찬 리듬
+//                / 64~70 가라앉음, 71 굴림 / 72~75 터짐, 76~78 점점 세짐 / 79 끝맺는 한 방
+// 피버 위주의 라운드: 79마디 가운데 44마디가 피버다. 피버의 새것은 (1) 통로가 기울고 솟는 연출(cam: 대각선, 수직, 한 바퀴 돌기, 당기고 밀기), (2) 피버의 함정 "하나 더".
+// 바운스의 새 함정은 "박스에서 내려서자마자 멈춰서 건너기"(fJ3G).
+const ROUND5 = {
+  name: "ROUND 5 · Concrete Pulse",
+  bpm: 152.0,
+  track: { file: "music/concrete_pulse.mp3", offset: 0.067, measured: true },
+  floatReds: true, vary: true, density: 0.95,
+  // 피버 연출 표: 그 마디의 첫 박에 통로가 "확" 돈다. rot 0 = 오른쪽으로, 45 = 비스듬히 위로, 90 = 곧장 위로, -45 = 비스듬히 아래로. zoom = 배율, spin = 그 마디 동안 한 바퀴.
+  // 처음 보는 기울기는 장애물 없는 마디에서 돌리고(17, 32), 뒤로 갈수록 누르는 도중에, 함정 마디에서 돌린다(눈속임).
+  cam: [
+    { bar: 12, zoom: 1.2 }, { bar: 14, zoom: 1 },
+    { bar: 17, rot: 45 }, { bar: 20, rot: -45 }, { bar: 23, rot: 0 },
+    { bar: 32, rot: 90 }, { bar: 35, rot: 45 }, { bar: 36, rot: 0, spin: 1 },
+    { bar: 40, zoom: 1.25 }, { bar: 42, rot: -45 }, { bar: 44, rot: 45 }, { bar: 46, rot: 0 },
+    { bar: 48, rot: 90 }, { bar: 51, rot: 135 }, { bar: 52, rot: 90 }, { bar: 53, rot: 0, spin: -1 }, { bar: 54, zoom: 1.2 },
+    { bar: 72, rot: -45 }, { bar: 73, rot: 45 }, { bar: 74, rot: 90 }, { bar: 76, rot: 45 }, { bar: 77, rot: 0 },
+  ],
+  pal: {                                         // 이 라운드의 색: 콘크리트 잿빛에 주황·형광 연두
+    intro: { top: "#0c0d10", bottom: "#3a3d45", accent: "#ffb347", sun: "#ffd9a0" },
+    a:     { top: "#101216", bottom: "#4a4f5a", accent: "#ffa62b", sun: "#ffe0b0" },
+    b:     { top: "#0a0f0c", bottom: "#35503f", accent: "#c8ff5a", sun: "#eaffb0" },
+    c:     { top: "#14100c", bottom: "#6a4a30", accent: "#ffd27a", sun: "#ffb37a" },
+    d:     { top: "#150c0c", bottom: "#7a3a2a", accent: "#ffe08a", sun: "#ff9a5a" },
+    rush:  { top: "#08090c", bottom: "#5a5f6a", accent: "#ffffff", sun: "#ffb347" },
+  },
+  // 5라운드의 마디도 도구(tools_gen_course.js R5)가 뽑는다. 피버의 짜임(되풀이 → 함정)과 연출 마디의 자리는 틀(TEMPLATES.R5)에 정해 두었다.
+  bars: [
+    // <gen:bars:R5>
+    // 도입(조용함): 앞 라운드의 것들로 몸풀기
+    "flat", "flat", "g5_2", "g5_2",   "g5_4", "g5_5", "g5_6", "cp",
+    // 첫 피버(곧은 통로): 피버의 함정 두 가지를 차례로. 되풀이 → 뚝, 되풀이 → 하나 더
+    "g5z8", "g5z8", "g5z10", "g5z11",   "g5z11", "g5z13", "g5z14", "g5z14",
+    "cp",
+    // 둘째 피버(비스듬한 통로): 장애물 없는 마디에서 통로가 비스듬히 위로 기운다. 중간에 아래로 꺾이고, 마지막 함정 마디에서 다시 곧게 펴진다
+    "zF", "g5z18", "g5z18", "g5z20",   "g5z21", "g5z21", "g5z23",
+    // 가라앉음: 바운스의 새 함정. 박스 셋을 건너뛰고 그냥 떨어지기를 두 번 한 뒤, 떨어질 땅이 빨간 박스로 이어져 있다(박스를 떠나자마자 멈춰서 건넌다)
+    "cp", "fJump3", "fJump3", "fJ3G",   "gAfter", "g5_29", "g5_30", "cp",
+    // 셋째 피버(솟는 통로): 계단을 오르며 통로가 곧장 위로 선다. 넓은 통로를 위로 달리고, 계단을 내려오며 한 바퀴 돌아 제자리. 끝의 두 마디는 조여드는 통로(곡이 점점 세지는 자리)
+    "wUp", "g5w33", "g5w33", "g5w35",   "wDn", "zS1", "zS2",
+    "cp",
+    // 넷째 피버: 바짝 당겨서 시작하고, 누르는 도중에 아래로·위로 기운다
+    "g5z40", "g5z40", "g5z42", "g5z43",   "g5z43", "g5z43", "g5z46",
+    "cp",
+    // 다섯째 피버(솟는 넓은 통로): 위로, 왼쪽 위로 넘어갔다가, 한 바퀴 돌아 곧은 통로로
+    "wUp", "g5w49", "g5w49", "g5w51",   "g5w52", "wDn", "g5z54", "g5z55",
+    // 더 꽉 찬 리듬: 바운스. 손 함정과 높이 장치를 촘촘하게
+    "cp", "g5_57", "g5_58", "g5_58",   "g5_60", "g5_61", "g5_62", "g5_63",   "cp",
+    // 가라앉음: 박스 뒤 멈춰서 건너기를 한 번 더
+    "fJump3", "fJ3G", "gAfter", "g5_68",   "g5_68", "g5_70", "cp",
+    // 마지막 피버: 마디마다 기울기가 바뀐다. 끝의 두 마디는 조여드는 통로, 곡의 끝맺는 한 방에 터져 나온다
+    "g5z72", "g5z72", "g5z74", "g5z75",   "g5z76", "zS1", "zS2",
+    "goal", "flat", "flat",
+    // </gen:bars:R5>
+  ],
+  sections: [
+    { bar: 0, id: "intro" }, { bar: 8, id: "rush" }, { bar: 16, id: "a" }, { bar: 17, id: "rush" }, { bar: 24, id: "intro" }, { bar: 32, id: "rush" }, { bar: 39, id: "c" }, { bar: 40, id: "rush" }, { bar: 47, id: "b" }, { bar: 48, id: "rush" },
+    { bar: 56, id: "d" }, { bar: 64, id: "intro" }, { bar: 72, id: "rush" }, { bar: 79, id: "outro" },
+  ],
+};
+const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5];
 const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
@@ -743,6 +853,7 @@ function buildLevel(course) {
       for (const k of WRONG_SHIFT) wrong.push({ presses: [...rest, t + k], holds: p.holds });
     });
     p.holds.forEach((h, i) => {
+      if (p.loose && p.loose.includes(h[0])) return;      // 손으로 놓은 빨간 박스가 막는 멈춤
       const rest = p.holds.filter((_, j) => j !== i);
       wrong.push({ presses: p.presses, holds: rest }, { presses: [...p.presses, h[0]], holds: rest });
       for (const k of WRONG_SHIFT) wrong.push({ presses: p.presses, holds: [...rest, [h[0] + k, h[1] + k]] });
@@ -839,6 +950,11 @@ function buildLevel(course) {
   }
   // 파란 천장 위의 빨간 덩어리: 파란 박스 윗면부터 하늘까지
   for (const [c, h] of L.capRed) { L.ceilH[c] = Math.min(L.ceilH[c], h); L.ceilTop[c] = 99; }
+  // 손으로 놓는 빨간 박스(redBox): 패턴에 적힌 칸에 그 높이로 선다(파란 박스가 있는 칸은 뺀다)
+  course.bars.forEach((name, b) => {
+    const p = PATTERNS[name];
+    if (p && p.redBox) for (const [a, z, hh] of p.redBox) for (let c = b * 16 + a; c <= b * 16 + z && c < L.cols; c++) if (!isSolid(L, c, ROWS - 2)) L.floorH[c] = Math.max(L.floorH[c], hh);
+  });
   // 빨간 바닥(lava): 패턴에 적힌 칸의 땅은 닿으면 죽는다. 그 위에 놓인 파란 박스만 디딜 수 있다.
   course.bars.forEach((name, b) => {
     const p = PATTERNS[name];
