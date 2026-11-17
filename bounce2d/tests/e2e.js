@@ -80,12 +80,12 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     await tick(beat);
     if (shots[beat]) { await p.waitForTimeout(80); await p.screenshot({ path: out + shots[beat] + '.png' }); }
     if (beat === 160) shardsSeen = await G(() => window.__game.gems);
-    if (beat === 100 || beat === 120 || beat === 160) modeSeen[beat] = await G(() => window.__game.state.mode + ':' + document.querySelector('#zoneL span').textContent + ' / ' + document.querySelector('#zoneR span').textContent);
+    if (beat === 100 || beat === 120 || beat === 160) modeSeen[beat] = await G(() => window.__game.state.mode + ':' + getComputedStyle(document.getElementById('zoneL')).visibility + ':' + document.querySelectorAll('.zone span').length);
     if (await G(() => window.__game.phase) !== 'running') break;
   }
   st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cause: window.__game.state.cause, x: window.__game.state.x }));
   ok(st.phase === 'won' && st.cp === 3, '패턴대로 누르면 완주, 체크포인트 4개 통과' + (st.phase === 'won' ? '' : ` (${st.cause} @마디 ${Math.floor(st.x / 16)})`));
-  ok(modeSeen[100].startsWith('bounce:누르고 있기 = 멈춤') && modeSeen[120] === 'rush:어디든 누르면 = 위아래 방향이 바뀐다 / 누르는 즉시 바뀐다' && modeSeen[160] === modeSeen[100], `피버 구간(마디 28~38)에서는 원버튼이 되고 조작 안내가 바뀐다 (${modeSeen[120]})`);
+  ok(modeSeen[100] === 'bounce:visible:0' && modeSeen[120] === 'rush:hidden:0' && modeSeen[160] === modeSeen[100], `피버 구간(마디 28~38)에서는 원버튼이 되고 아래쪽 아이콘이 숨는다. 아래쪽 설명 글자는 없다 (${modeSeen[120]})`);
   ok(shardsSeen && shardsSeen.got >= shardsSeen.passed - 2 && shardsSeen.passed > 200, `패턴대로 가면 길 위의 수정을 전부 뚫는다 (피버가 끝날 때까지 ${shardsSeen && shardsSeen.got}/${shardsSeen && shardsSeen.passed}개)`);
   await p.waitForTimeout(200);
   ok((await p.textContent('#ovTitle')).includes('CLEAR') && (await p.textContent('#pct')) === '100%', '완주 화면, 진행률 100%');
@@ -200,16 +200,13 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     await p.screenshot({ path: out + 'r2_title.png' });
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
     const shots2 = { 33.25: 'r2_a', 96.75: 'r2_free_in', 98.5: 'r2_free', 105.25: 'r2_fever', 125.5: 'r2_free_out', 226.5: 'r2_peak', 257: 'r2_final_free', 281.5: 'r2_squeeze1', 285.5: 'r2_squeeze2', 287.5: 'r2_squeeze3', 288: 'r2_burst' };
-    let label = null;
     for (let beat = 0; beat <= 300; beat += 0.25) {
       await tick(beat);
       if (shots2[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots2[beat] + '.png' }); }
-      if (beat === 98) label = await G(() => document.querySelector('#zoneL span').textContent + ' / ' + document.querySelector('#zoneR span').textContent);
       if (await G(() => window.__game.phase) !== 'running') break;
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === 4 && st.gems.got === st.gems.total, `2라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
-    ok(label === '장애물이 없는 구간 / 저절로 달려요', `피버의 연출 구간에서는 안내가 바뀐다 (${label})`);
     await G(() => { const g = window.__game; g.setBot(null); g.devJump(1); });     // 체크포인트 2 = 첫 피버 바로 앞
     const f0 = await G(() => window.__game.L.rides[0][0] / 4);
     for (let beat = await G(() => window.__game.state.step / 96); beat <= f0 + 1.25; beat += 0.125) await tick(beat);

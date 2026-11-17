@@ -66,8 +66,7 @@
   .zone b { font-size: 26px; font-weight: 700; line-height: 1; }
   .zone.on { color: var(--text); text-shadow: 0 0 14px var(--accent); }
   #zoneL { left: 0; border-right: 1px dashed rgba(255, 255, 255, 0.12); }
-  #app.one #zoneL { border-right-color: transparent; }
-  #app.one .zone.on { color: var(--text); }
+  #app.one .zone { visibility: hidden; }              /* 피버는 원버튼(화면 어디든)이라 왼쪽·오른쪽 아이콘을 숨긴다 */
   #app.nozones .zone { visibility: hidden; }          /* 개발자 기능: 아래쪽 버튼 안내 끄기(누르는 것은 그대로 된다) */
   #devOpts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #devOpts .btn.small { color: var(--text); }
@@ -138,8 +137,8 @@
       <button class="btn icon" id="pauseBtn" aria-label="일시정지">II</button>
     </div>
   </div>
-  <div class="zone" id="zoneL"><b>II</b><span>누르고 있기 = 멈춤</span></div>
-  <div class="zone" id="zoneR"><b>▲</b><span>누르기 = 점프 · 공중에선 이단 점프</span></div>
+  <div class="zone" id="zoneL"><b>II</b></div>
+  <div class="zone" id="zoneR"><b>▲</b></div>
   <div id="toast"></div>
 
   <div class="layer" id="overlay">
@@ -1134,10 +1133,6 @@
     if (L.goalX >= cA && L.goalX <= cB) beam(L.goalX, true, "FINISH");
     ctx.shadowBlur = 0;
 
-    // 코스 위 안내 글자
-    ctx.font = `${T * 0.42}px "Black Han Sans", sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.strokeStyle = "rgba(7,7,15,0.75)"; ctx.lineWidth = T * 0.12; ctx.lineJoin = "round";
-    for (const [col, text] of HINTS) if (col > cA - 8 && col < cB + 8) { ctx.strokeText(text, sx(col), view.groundY - T * 4.25); ctx.fillText(text, sx(col), view.groundY - T * 4.25); }
 
     // 입자
     for (const p of fx.particles) {
@@ -1240,16 +1235,6 @@
     const since = now - fx.cpFlash;
     if (since < 0.4) { ctx.fillStyle = css(pal.accent, (1 - since / 0.4) * 0.22); ctx.fillRect(0, 0, w, h); }
   }
-  // 안내 글자: 그 조각이 처음 나오는 마디 위에 띄운다
-  const HINT_TEXT = {
-    hA: "II 표시에서 왼쪽을 누르고 있기 = 공중에서 멈춤", glideHigh: "두 번 이어서 멈춤", dj1: "▲ 표시에서 오른쪽 누르기 = 공중에서 한 번 더 점프", peak: "두 번 이어서 점프",
-    mix: "멈춤, 그다음 점프", mix2: "점프, 그다음 멈춤", skyGlide: "점프하고, 그 꼭대기에서 멈춤",
-    zF: "장애물이 없는 구간 · 저절로 달려요", zT: "파란 발판은 닿아도 괜찮아요 · 튕기기만 해요", box: "파란 박스는 닿아도 괜찮아요 · 밟고 튀어요", ring1: "고리 앞에서 누르면 한 번 더 뛰어요", ringWave: "탁, 탁, 탁 · 고리마다 한 번씩", upStairs: "박스는 높을수록 일찍 닿아요 · 박자가 당겨져요", skyHold: "꼭대기에서는 킥에 맞춰 눌러요", lavaHop: "빨간 바닥은 안 돼요 · 멈춰서 파란 섬으로", lavaLeap: "이단 점프로 높은 섬에", lavaGlide: "박스를 밟고, 멈춰서 건너가요", w3: "넓은 통로 · 떠 있는 장애물은 비켜 가요", zS1: "통로가 조여들어요 · 저절로 달려요", z1: "피버! 화살표에서 화면 어디든 누르면 방향이 바뀌어요", z2: "화살표가 없으면 그대로 · 이빨 사이로",
-    glideLow: "떨어지다 낮은 곳에서 멈춤", weave: "멈춤 → 이단 점프 → 멈춤", lowThenUp: "낮게 멈췄다가 바로 이단 점프", roller: "두 번 뛰고, 멈춰서 틈으로",
-  };
-  const HINTS = [];
-  for (const [name, text] of Object.entries(HINT_TEXT)) { const b = COURSE.bars.indexOf(name); if (b >= 0) HINTS.push([b * 16 + 2.5, text]); }
-  if (L.talls.length) HINTS.push([Math.floor(L.talls[0].x / 16) * 16 + 2.5, "높은 빨간 박스는 멈춤으로는 못 넘어요 · 이단 점프로만"]);
   const REF_PATH = L.ref ? traceRun(L, L.ref).trace : null;
   const GATES = new Map(L.switches.map((sw) => [sw.col, sw.mode]));
   // 지금 손을 떼고 아무것도 안 하면 공이 닿을 자리. 그 전에 죽는다면 없음.
@@ -1335,9 +1320,6 @@
   function setModeLabel() {
     const rush = state.mode === "rush";
     $("app").classList.toggle("one", rush);        // 피버 모드는 원버튼: 화면 어디든
-    const free = rush && L.freeBars.has(Math.floor(state.x / 16));
-    $("zoneL").querySelector("span").textContent = free ? "장애물이 없는 구간" : rush ? "어디든 누르면 = 위아래 방향이 바뀐다" : "누르고 있기 = 멈춤";
-    $("zoneR").querySelector("span").textContent = free ? "저절로 달려요" : rush ? "누르는 즉시 바뀐다" : "누르기 = 점프 · 공중에선 이단 점프";
   }
   const oneButton = () => phase === "running" && state.mode === "rush";
   canvas.addEventListener("pointerdown", (e) => {
