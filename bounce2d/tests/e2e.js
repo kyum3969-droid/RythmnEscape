@@ -322,23 +322,24 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
       ok(x2 > x1 && x2 % 16 === 0, `"마디 ▶"는 다음 마디의 첫 박으로 간다 (${x2}칸 = 마디 ${x2 / 16})`); }
     await p.click('#insClose');
     ok(await G(() => window.__game.phase === 'title' && document.getElementById('inspect').hidden && !document.getElementById('overlay').hidden), '닫으면 처음 화면으로 돌아온다');
-    // 6라운드(리믹스): 앞 라운드의 것들을 섞은 코스. 피버 네 번이 저마다 다른 통로를 보여 준다
+    // 6라운드(리믹스): 앞 라운드의 것들을 섞고 꼬아 놓은 코스. 피버는 곡의 절정 두 곳에만 있다
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(6)')]); await ready();
-    st = await G(() => { const g = window.__game, L = g.L, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, rush: L.rides.reduce((u, r) => u + (r[1] - r[0]) / 16, 0), thin: L.squeezes.filter((q) => q.mid).length, sq: L.squeezes.filter((q) => !q.mid).length }; });
-    ok(st.round === 5 && st.name.includes('Streetlight Velocity') && Math.abs(st.bpm - 152) < 0.01 && st.off === 0.056 && st.cps === 9 && st.rush === 28 && st.thin === 1 && st.sq === 0, `6라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개, 피버 ${st.rush}마디, 얇은 굴 ${st.thin}개)`);
+    st = await G(() => { const g = window.__game, L = g.L, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, rides: L.rides.length, rush: L.rides.reduce((u, r) => u + (r[1] - r[0]) / 16, 0), thin: L.squeezes.filter((q) => q.mid).length, sq: L.squeezes.filter((q) => !q.mid).length }; });
+    ok(st.round === 5 && st.name.includes('Streetlight Velocity') && Math.abs(st.bpm - 152) < 0.01 && st.off === 0.056 && st.cps === 9 && st.rides === 2 && st.rush === 14 && st.thin === 1 && st.sq === 0, `6라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개, 피버 ${st.rides}번 ${st.rush}마디, 얇은 굴 ${st.thin}개)`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots6 = { 10.0: 'r6_intro', 37.0: 'r6_float', 57.5: 'r6_ceiling', 65.0: 'r6_pads', 74.0: 'r6_bend_up', 82.0: 'r6_bend_down', 98.5: 'r6_bass', 105.0: 'r6_lava', 113.5: 'r6_stones', 130.0: 'r6_turn_up', 137.0: 'r6_up', 165.0: 'r6_quiet', 205.5: 'r6_thin', 229.0: 'r6_full', 266.0: 'r6_stone_gap', 290.0: 'r6_final_up', 303.0: 'r6_over', 309.0: 'r6_back' };
+    const shots6 = { 10.0: 'r6_intro', 37.0: 'r6_float', 58.5: 'r6_ceiling_flip', 66.0: 'r6_island', 74.5: 'r6_island_cap', 105.0: 'r6_stones_in', 114.25: 'r6_stone_lid', 119.25: 'r6_stone_gap', 134.0: 'r6_bend_down', 142.5: 'r6_thin', 151.0: 'r6_bend_up', 173.0: 'r6_bluff', 218.75: 'r6_flip', 229.0: 'r6_full', 283.0: 'r6_exit_lid', 290.0: 'r6_final_up', 303.0: 'r6_over', 309.0: 'r6_back' };
     const cams6 = {};
     for (let beat = 0; beat <= 330; beat += 0.25) {
       await tick(beat);
       if (shots6[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots6[beat] + '.png' }); }
-      if (beat === 66 || beat === 76 || beat === 137 || beat === 205.5 || beat === 303) cams6[beat] = await G(() => { const g = window.__game, c = g.cam(g.state.x); return { rot: c.rot, zoom: c.zoom, mode: g.state.mode }; });
+      if (beat === 66 || beat === 138 || beat === 142.5 || beat === 151 || beat === 296 || beat === 303) cams6[beat] = await G(() => { const g = window.__game, c = g.cam(g.state.x); return { rot: c.rot, zoom: c.zoom, mode: g.state.mode }; });
       if (await G(() => window.__game.phase) !== 'running') break;
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `6라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
-    ok(cams6[66] && cams6[66].mode === 'rush' && Math.abs(cams6[66].rot) < 0.01 && cams6[76] && Math.abs(cams6[76].rot - 45) < 1 && cams6[137] && Math.abs(cams6[137].rot - 90) < 1 && cams6[205.5] && cams6[205.5].zoom > 1.25 && cams6[303] && Math.abs(cams6[303].rot - 135) < 1, `6라운드의 피버 넷: 비스듬히 위로(${cams6[76] && cams6[76].rot.toFixed(0)}도), 곧장 위로(${cams6[137] && cams6[137].rot.toFixed(0)}도), 얇은 굴(${cams6[205.5] && cams6[205.5].zoom.toFixed(2)}배), 왼쪽 위로(${cams6[303] && cams6[303].rot.toFixed(0)}도)`);
+    { const c = cams6, near = (b, v) => c[b] && Math.abs(c[b].rot - v) < 1;
+      ok(c[66] && c[66].mode === 'bounce' && near(138, -45) && c[142.5] && c[142.5].zoom > 1.25 && near(151, 45) && near(296, 90) && near(303, 135), `6라운드의 피버 둘: 첫 번째는 비스듬히 아래로(${c[138] && c[138].rot.toFixed(0)}도) → 얇은 굴(${c[142.5] && c[142.5].zoom.toFixed(2)}배) → 비스듬히 위로(${c[151] && c[151].rot.toFixed(0)}도), 두 번째는 곧장 위로(${c[296] && c[296].rot.toFixed(0)}도) → 왼쪽 위로(${c[303] && c[303].rot.toFixed(0)}도). 앞의 꽉 찬 리듬(마디 16)은 피버가 아니다`); }
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');
