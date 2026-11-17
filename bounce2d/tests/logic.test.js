@@ -297,7 +297,7 @@ for (const C of Lg.COURSES) {
       }
       ok(caught === total, `[${tag}] 함정 마디(${trapBars.join(', ')}): 버릇대로 누르면 그 마디에서 죽는다 (${caught}/${total})`);
       // 한 번 더 누르면 죽는 함정(뚝)은 그 자리 바로 위에 빨간 덩어리가 매달려 있다
-      const stopBars = trapBars.filter(b => Lg.PATTERNS[C.bars[b]].traps.some(t => !t.full && t.presses));
+      const stopBars = trapBars.filter(b => !Lg.PATTERNS[C.bars[b]].caps && Lg.PATTERNS[C.bars[b]].traps.some(t => !t.full && t.presses));   // (파란 천장 마디는 빨간 덩어리 대신 천장이 막는다)
       const hang = stopBars.filter(b => { const p9 = Lg.PATTERNS[C.bars[b]]; for (const t of p9.traps) for (const v of t.presses || []) { const c = b * 16 + Math.round(v * 4); for (let k = c - 1; k <= c + 3; k++) if (lv.ceilH[k] < 90) return true; } return false; });
       ok(hang.length === stopBars.length && trapBars.every(b => !Lg.PATTERNS[C.bars[b]].sneaky), `[${tag}] "한 번 더 누르면 죽는" 함정 자리마다 바로 위에 빨간 덩어리가 매달려 있다 — ${hang.length}/${stopBars.length}`);
       // 도구가 뽑은 함정: 같은 마디를 두 번 한 바로 다음에 오고, 그 마디의 입력과 한 군데만 다르다

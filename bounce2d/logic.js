@@ -231,6 +231,12 @@ const PATTERNS = {
   fJump: { holds: [], presses: [0.5, 1.125], floats: [[4, 4, 4], [8, 8, 4]], tol: 0.18 },                              // 올라타서 다시 뛰어 다음 박스로, 거기서 떨어진다(안 뛰면 박스 너머의 빨간 기둥에 걸린다)
   fGlide: { holds: [[1.5, 2.0]], presses: [0.5], floats: [[4, 4, 4]], tol: 0.18 },                                     // 올라타서 떨어지자마자 멈춰, 밑의 빨간 기둥 위를 건넌다
   fLow: { holds: [], presses: [2.5], floats: [[4, 4, 4]], traps: [{ presses: [0.5] }], tol: 0.18 },                    // 박스가 있지만 올라가면 안 된다(박스 앞을 빨간 박스가 막고 있다). 밑으로 지나간다
+  // 파란 천장(caps: [첫 칸, 끝 칸, 밑면 높이]): 하늘에서 내려온 파란 박스. 그 밑에서는 점프 높이가 막힌다(머리가 닿으면 그대로 떨어진다).
+  // 밑면 3칸: 보통으로 튀는 것은 그대로지만 이단 점프는 소용없다(올라가지 못하고 떨어진다). 그래서 멈춤으로만 건널 수 있다 — 높은 박스(이단 점프로만)의 반대.
+  // 밑면 2칸: 보통으로 튀는 것도 막혀 낮게만 튄다. 낮게 뜬 채로 멈춰서 빨간 바닥 위를 미끄러지듯 건넌다.
+  cHold: { holds: [[0.5, 1.25]], presses: [], caps: [[1, 7, 3]], traps: [{ presses: [0.5], holds: [] }], tol: 0.18 },      // 천장 밑: 멈춤으로 건넌다(버릇대로 이단 점프하면 천장에 막혀 기둥에 떨어진다)
+  cHoldL: { holds: [[2.5, 3.25]], presses: [], caps: [[9, 15, 3]], traps: [{ presses: [2.5], holds: [] }], tol: 0.18 },   // 같은 것을 마디의 뒤쪽에서
+  cLow: { holds: [[0.25, 1.25]], presses: [], caps: [[1, 6, 2]], lava: [[2, 4]], tol: 0.15 },                             // 낮은 천장: 낮게 뜬 채로 멈춰 빨간 바닥을 건넌다
   // 조여드는 통로(연출): 바닥과 천장이 가운데로 모여들어, 공이 닿는 간격이 한 박 → 반 박 → … → 1/32박까지 빨라진다("타다다다닥" → "드르르륵").
   // squeeze = 닿는 간격(박)을 차례로 적은 것. 한 마디에 4박어치. 피버의 맨 끝에만 쓴다(통로가 좁아진 채로 끝난다).
   zS1: { mode: "rush", nodes: "........", free: true, squeeze: [1, 1, 0.5, 0.5, 0.5, 0.5] },
@@ -371,7 +377,7 @@ const ROUND3 = {
 };
 // 시험 코스: 떠 있는 파란 박스와 떠 있는 빨간 박스. 4라운드 곡이 오기 전까지 2라운드 곡을 빌려 쓴다.
 const ROUND4 = {
-  name: "ROUND 4 · 시험 (떠 있는 박스)",
+  name: "ROUND 4 · 시험 (떠 있는 박스, 파란 천장)",
   bpm: 151.9867,
   track: { file: "music/terminal_pursuit.mp3", offset: 0.2809 },
   lab: true,                                     // 시험 코스: 라운드의 짜임새(밀도, 함정의 차례)를 따지는 검사는 건너뛴다
@@ -383,11 +389,13 @@ const ROUND4 = {
     "fJump", "fJump", "fDrop", "fGlide",   "fGlide", "fDrop", "fTwice", "cp",
     // 올라타기를 두 번 한 뒤, 올라가면 안 되는 박스. 보통 함정(매달린 덩어리가 떠 있는 박스로 나온다)
     "fDrop", "fDrop", "fLow", "fJump",   "goStop", "fJump", "holdStop", "cp",
+    // 파란 천장: 이단 점프를 두 번 한 뒤, 같은 자리에 천장이 있다(멈춤으로 건넌다). 낮은 천장 밑에서는 낮게 떠서 빨간 바닥을 건넌다
+    "dj1", "dj1", "cHold", "cLow",   "cLow", "cHoldL", "fDrop", "cp",
     // 섞기
-    "fGlide", "fJump", "fLow", "fTwice",   "fJump", "fDrop", "fGlide", "fJump",
+    "fGlide", "fJump", "cHold", "fTwice",   "cLow", "fLow", "fJump", "cHoldL",
     "goal", "flat", "flat",
   ],
-  sections: [{ bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 16, id: "d" }, { bar: 24, id: "b" }, { bar: 32, id: "outro" }],
+  sections: [{ bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 16, id: "d" }, { bar: 24, id: "c" }, { bar: 32, id: "b" }, { bar: 40, id: "outro" }],
 };
 const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4];
 const COURSE = ROUND1;
@@ -503,6 +511,8 @@ function emptyLevel(course) {
     if (p && p.boxes) for (const [a, z, hh] of p.boxes) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "#";
     // 떠 있는 파란 박스: [첫 칸, 끝 칸, 윗면 높이]. 두께는 한 칸이고 밑은 비어 있다(밑으로 지나갈 수 있다).
     if (p && p.floats) for (const [a, z, hh] of p.floats) { if (hh < 2) throw new Error("떠 있는 박스는 밑으로 공이 지나갈 수 있어야 한다(윗면 2칸 이상): " + name); for (let c = x0 + a; c <= x0 + z; c++) grid[ROWS - 1 - hh][c] = "#"; }
+    // 파란 천장: [첫 칸, 끝 칸, 밑면 높이]. 하늘에서 그 높이까지 내려온 파란 박스. 공이 그보다 높이 못 올라간다(머리가 닿으면 그대로 떨어진다. 죽지 않는다).
+    if (p && p.caps) for (const [a, z, hb] of p.caps) { if (hb < 2) throw new Error("파란 천장 밑으로 공이 튈 수 있어야 한다(밑면 2칸 이상): " + name); for (let c = x0 + a; c <= x0 + z; c++) for (let r = 0; r < ROWS - 1 - hb; r++) grid[r][c] = "#"; }
     if (p && p.rings) for (const [c, hh] of p.rings) grid[ROWS - 2 - hh][x0 + c] = "O";
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
     else if (name === "goal") goalX = b * 16 + 8;
@@ -799,9 +809,10 @@ function sawY(w, beat) {
   return low - SAW_TRAVEL * (w.kind === "even" ? 1 - k : 1 + k) / 2;
 }
 
-function groundY(L, col) {
-  for (let r = 0; r < ROWS; r++) if (isSolid(L, col, r)) return r;
-  return ROWS - 1;
+function groundY(L, col) {                             // 그 칸에서 딛는 땅(땅에서 쌓아 올린 박스의 꼭대기). 떠 있는 박스와 파란 천장은 세지 않는다
+  let r = ROWS - 1;
+  while (r > 0 && isSolid(L, col, r - 1)) r--;
+  return r;
 }
 
 // cp = -1이면 처음부터. 체크포인트에서는 한 박자 앞 평지에서 다시 시작한다.
@@ -897,7 +908,7 @@ function stepState(L, s, press, ev, hold) {
     } else {
       const head = s.y - SIZE, B = Math.ceil(head);
       if (B <= prevFeet - SIZE + 1e-9 && B > head) {
-        for (let c = c0; c <= c1; c++) if (isSolid(L, c, B - 1)) { s.y = B + SIZE; s.vy = 0; break; }
+        for (let c = c0; c <= c1; c++) if (isSolid(L, c, B - 1)) { s.y = B + SIZE; s.vy = 0; if (ev) ev.push({ type: "bonk" }); break; }
       }
     }
   }

@@ -598,6 +598,7 @@
       }
       else if (e.type === "double") { fx.jumpAt = now; ring(state.x, state.y); }
       else if (e.type === "climb") { puff(state.x, state.y, 4, 0.5); fx.stepAt = now; }
+      else if (e.type === "bonk") { puff(state.x, state.y - SIZE, 4, 0.5); fx.bonkAt = now; }     // 파란 박스 밑면에 머리가 닿음
       else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "FEVER" : "BOUNCE"); fx.cpFlash = now; fx.chain = 0;
         if (e.mode !== "rush" && squeezeGap(L, state.x - 0.2) !== null) {     // 조여든 통로 끝에서 터져 나온다
           for (let k = 0; k < 5; k++) burst(state.x, state.y - HALF, 12, k % 2 ? "white" : "accent", 16, true);
@@ -880,18 +881,25 @@
         c = e;
       }
     }
-    // 떠 있는 파란 박스: 밑이 비어 있다. 위에 내려앉으면 구르다가 끝에서 떨어지고, 누르면 거기서 다시 뛴다. 밑에서 부딪혀도 죽지 않는다.
+    // 떠 있는 파란 박스와 파란 천장: 밑이 비어 있다. 위에 내려앉으면 구르다가 끝에서 떨어지고, 누르면 거기서 다시 뛴다. 밑에서 부딪혀도 죽지 않는다(머리가 닿고 떨어진다).
+    // 파란 천장은 맨 위(화면 밖)까지 이어진 박스다. 머리가 닿으면 번쩍인다.
     {
       const floating = (c, r) => { if (r < 0 || r >= ROWS - 1 || !isSolid(L, c, r)) return false; for (let k = r + 1; k < ROWS; k++) if (!isSolid(L, c, k)) return true; return false; };
-      const hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25);
+      const hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25), bonk = Math.max(0, 1 - (now - (fx.bonkAt || -9)) / 0.25);
       for (let r = 0; r < ROWS - 1; r++) for (let c = cA; c <= cB; c++) {
-        if (!floating(c, r) || floating(c - 1, r)) continue;
-        let e = c; while (floating(e + 1, r)) e++;
-        const xa = sx(c), xb = sx(e + 1), ya = sy(r), yb = sy(r + 1), on = hit > 0 && state.onGround && state.y === r && state.x > c - 0.5 && state.x < e + 1.5 ? hit : 0;
-        const bg = ctx.createLinearGradient(0, yb, 0, ya);
-        bg.addColorStop(0, "#0b2a5e"); bg.addColorStop(1, on > 0 ? `rgb(${40 + 60 * on},${110 + 80 * on},255)` : "#1f6ee0");
+        if (!floating(c, r) || floating(c - 1, r) || floating(c, r - 1)) continue;
+        let e = c; while (floating(e + 1, r) && !floating(e + 1, r - 1)) e++;
+        let rb = r; const rowAll = (k) => { for (let q = c; q <= e; q++) if (!floating(q, k)) return false; return true; };
+        while (rowAll(rb + 1)) rb++;
+        const sky = r === 0, xa = sx(c), xb = sx(e + 1), ya = sky ? -40 : sy(r), yb = sy(rb + 1), near = state.x > c - 0.5 && state.x < e + 1.5;
+        const on = near ? (state.onGround && state.y === r ? hit : Math.abs(state.y - SIZE - (rb + 1)) < 0.3 ? bonk : 0) : 0;
+        const bg = ctx.createLinearGradient(0, yb, 0, Math.max(ya, yb - T * (sky ? 1.4 : 3)));     // 천장은 밑면 쪽만 밝고 위는 어둡다(화면을 덮지 않게)
+        bg.addColorStop(0, on > 0 ? `rgb(${40 + 60 * on},${110 + 80 * on},255)` : "#1f6ee0"); bg.addColorStop(1, sky ? "#0a1f47" : "#0b2a5e");
         ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fillRect(xa, ya, xb - xa, yb - ya);
-        ctx.strokeStyle = "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(xa, (ya + yb) / 2); ctx.lineTo(xb, (ya + yb) / 2); ctx.stroke();
+        ctx.save(); ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya); ctx.clip();
+        ctx.strokeStyle = "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath();
+        for (let y = yb - T * 0.48; y > ya; y -= T * 0.48) { ctx.moveTo(xa, y); ctx.lineTo(xb, y); }
+        ctx.stroke(); ctx.restore();
         ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; ctx.shadowBlur = 10 + 8 * pulse + 16 * on;
         ctx.strokeRect(xa, ya, xb - xa, yb - ya); ctx.shadowBlur = 0;
         c = e;
