@@ -178,7 +178,8 @@ TEMPLATES.R6 = {
 //   들쭉날쭉    함정 앞의 되풀이가 한 번·두 번·세 번
 //   앞에서 뚝 / 앞에서 손 바꿈   마디의 끝이 아니라 첫 입력이 다르다(처음 나오는 자리는 체크포인트 바로 뒤, 두 번 되풀이한 다음)
 // 되풀이할 마디에도 높이 장치(떠 있는 박스, 파란 천장)가 섞인다 — 함정은 장치가 달리지 않은 입력에 건다.
-// 피버는 절정 두 곳에만, 둘 다 넓은 통로(좁은 통로의 줄은 바닥났다): 세 번 되풀이 → 뚝(헛다리 뒤의 함정) / 한 번 보여 주고 뚝, 그리고 함정 없이 끝나는 되풀이(헛다리).
+// 피버는 절정 두 곳에만. 새 장치 튕김판(B: 공중에 뜬, 한 변만 파란 세모. 파란 변에 닿으면 누르지 않아도 꺾인다)이 나온다: 판이 있는 마디를 세 번 → 네 번째엔 판이 없다(눌러야 한다).
+// 좁은 통로의 줄(19가지)은 바닥났지만, 튕김판이 있는 줄은 새것이라 좁은 통로에도 쓴다. 바운스에는 삼단 점프(충전 고리)와 미끼 고리를 넣었다.
 TEMPLATES.R7 = {
   prefix: 'g7', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true,
   recipe: { g: '7v', gf: '7v', traps: 13, from: 0, kinds: { 'stop-last': 3, 'hand-last': 3, 'stop-first': 3, 'hand-first': 3 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
@@ -196,12 +197,12 @@ TEMPLATES.R7 = {
       ['리듬 — 헛다리를 소개한다: 같은 마디가 세 번 온다(세 번째에 함정이 없다). 이어지는 마디는 세 번 되풀이한 뒤에야 함정이 온다', [...feint(3), ...phrase('hand-last', 3), 'cp']],
       ['더 꽉 찬 리듬 — "앞에서 뚝"을 소개한다: 두 번 되풀이 → 이번엔 첫 입력이 없다. 이어서 헛다리(두 번 하고 그냥 넘어간다), 한 번 보여 주고 함정', [...phrase(['stop-first'], 2), ...feint(2), ...phrase('stop-last', 1), 'cp']],
       ['성긴 리듬 — "앞에서 손 바꿈"을 소개한다: 두 번 되풀이 → 이번엔 첫 입력의 손이 반대. 이어서 새 마디 하나, 앞에서 뚝', [...phrase(['hand-first'], 2), one(), ...phrase('stop-first', 2), 'cp']],
-      ['첫 절정 — 피버 하나(넓은 통로, 비스듬히 아래로): 같은 마디가 세 번(헛다리) → 네 번째에 뚝. 통로는 두 번째 마디에서 아래로 굽고 함정 마디에서 펴진다', ['wUp', { wm: 'A', calm: 1, run: 2 }, { wr: 'A' }, { wr: 'A' }, { wt: 'A', kind: 'break' }, 'wDn', { z: 1 }, 'cp']],
-      ['절정이 이어진다 — 예측할 수 없게: 한 번 보여 주고 앞에서 뚝 → 세 번 하고 그냥 넘어가기(헛다리) → 한 번 보여 주고 앞에서 손 바꿈', [...phrase('stop-first', 1), ...feint(3), ...phrase('hand-first', 1), 'cp']],
-      ['아주 조용함(오르골): 손 함정 하나, 그리고 징검다리(빨간 돌 하나). 돌 위에서는 저절로 튄다', [...phrase('hand-last', 2), 'stIn', 'stMidR', 'stMid', 'stOut', 'cp']],
+      ['첫 절정 — 피버 하나(넓은 통로, 비스듬히 아래로): 튕김판을 소개한다(공중에 뜬 세모, 한 변만 파랗다 — 파란 변에 닿으면 누르지 않아도 꺾인다). 같은 마디가 세 번(헛다리) → 네 번째엔 판이 없다(눌러야 꺾인다). 통로는 두 번째 마디에서 아래로 굽고 함정 마디에서 펴진다', ['wUp', { wm: 'A', pads: 1, calm: 1, run: 2, kind: 'pad' }, { wr: 'A' }, { wr: 'A' }, { wt: 'A', kind: 'pad' }, 'wDn', { zm: 'Z1', pads: 1, kind: 'none' }, 'cp']],
+      ['절정이 이어진다 — 삼단 점프를 소개한다(이단 점프의 꼭대기에 충전 고리: 공중에서 한 번 더 뛴다): 한 번 보여 주고 앞에서 뚝 → 삼단 점프 두 번 → 미끼 고리(헛다리: 고리는 있는데 뛰면 안 된다) → 한 번 보여 주고 앞에서 손 바꿈', [...phrase('stop-first', 1), 'ring3', 'ring3', 'ring3Bait', ...phrase('hand-first', 1), 'cp']],
+      ['아주 조용함(오르골): 손 함정 하나, 그리고 삼단 점프를 섞는다 — 꼭대기에서 멈춰 긴 벽 건너기 → 미끼 고리 → 이번엔 진짜(미끼 다음이라 망설이면 걸린다)', [...phrase('hand-last', 2), 'ring3Far', 'ring3Bait', 'ring3', one(), 'cp']],
       ['리듬 다시: 헛다리(두 번 하고 그냥 넘어간다) → 세 번 되풀이한 뒤 앞에서 손 바꿈 → 새 마디 하나', [...feint(2), ...phrase('hand-first', 3), one(), 'cp']],
       ['더 꽉 찬 리듬: 한 번 보여 주고 앞에서 뚝 → 두 번 되풀이 뒤 끝에서 손 바꿈 → 헛다리(함정 없이 피버로 들어간다)', [...phrase('stop-first', 1), ...phrase('hand-last', 2), ...feint(2), 'cp']],
-      ['마지막 절정 — 피버 둘(넓은 통로, 곧장 위로 섰다가 계단처럼 눕는다): 한 번 보여 주고 뚝 → 새 마디를 두 번 하고 함정 없이 끝난다(헛다리). 곡이 끝맺는 소리에 결승선', ['wUp', { wm: 'B' }, { wt: 'B', kind: 'break' }, { wm: 'C', calm: 1, run: 2 }, { wr: 'C' }, 'wDn', { z: 1 }]],
+      ['마지막 절정 — 피버 둘(넓은 통로, 곧장 위로 섰다가 계단처럼 눕는다): 한 번 보여 주고 뚝 → 새 마디를 두 번 하고 함정 없이 끝난다(헛다리). 곡이 끝맺는 소리에 결승선', ['wUp', { wm: 'B' }, { wt: 'B', kind: 'break' }, { wm: 'C', pads: 1, calm: 1, run: 2, kind: 'none' }, { wr: 'C' }, 'wDn', { zm: 'Z2', pads: 1, kind: 'none' }]],
       ['', ['goal', 'flat', 'flat']],
     ];
   },
@@ -316,9 +317,9 @@ function generate(T, seed) {
 
   // ---- 피버: 가능한 글자 줄을 모두 구해 두고 거기서 뽑는다
   const walk = (str, top, start) => { let zl = start, zin = start === 0 ? -1 : 1; const path = [zl];
-    for (let k = 0; k < 8; k++) { const c = k ? str[k - 1] : '.', surf = zl <= 0 || zl >= top; if (surf && c !== '.') return null; const nat = zl <= 0 ? 1 : zl >= top ? -1 : zin, dir = c === 'F' ? -nat : nat; zl += dir; zin = dir; path.push(zl); }
+    for (let k = 0; k < 8; k++) { const c = k ? str[k - 1] : '.', surf = zl <= 0 || zl >= top; if (surf && c !== '.') return null; const nat = zl <= 0 ? 1 : zl >= top ? -1 : zin, dir = c === 'F' || c === 'B' ? -nat : nat; zl += dir; zin = dir; path.push(zl); }
     return str[7] === '.' && zl === start ? path : null; };
-  const allStr = (top, start) => { const out = []; const rec = (pre) => { if (pre.length === 8) { if (walk(pre, top, start)) out.push(pre); return; } for (const c of 'FS.') rec(pre + c); }; rec(''); return out; };
+  const allStr = (top, start, abc = 'FS.') => { const out = []; const rec = (pre) => { if (pre.length === 8) { if (walk(pre, top, start)) out.push(pre); return; } for (const c of abc) rec(pre + c); }; rec(''); return out; };
   const count = (s, c) => s.split(c).length - 1;
   const zAll = allStr(2, 0).filter((s) => count(s, 'F') >= 2 && count(s, '.') <= 5), wAll = allStr(4, 4).filter((s) => count(s, 'F') >= 2 && count(s, 'F') + count(s, 'S') >= 4);
   const feverOk = {};
@@ -342,7 +343,11 @@ function generate(T, seed) {
   const worn = (s, wide) => !!T.fresh && !wide && usedZ.has(s);      // 바로 앞 라운드에 나온 좁은 통로의 줄(되도록 피한다)
   const stalePair = (a, s, wide) => !!T.fresh && usedPairs.has((wide ? 'w' : 'z') + a + '>' + s);
   const took = (s, wide) => usedHere.add((wide ? 'w' : 'z') + s);
-  const feverDef = (nodes, wide) => { const d = { mode: 'rush', nodes }; if (wide) d.wide = true; if (/[FS][FS]/.test(nodes)) d.gap = 1.5; d.holds = []; d.presses = []; for (let k = 1; k <= 8; k++) if (nodes[k - 1] === 'F') d.presses.push(k * 0.5); return d; };
+  // 튕김판(B)이 있는 줄: 필요할 때만 구한다. 판은 한 마디에 한두 개, 누르는 자리는 둘 이상
+  let zPad = null, wPad = null;
+  const padPool = (wide) => (wide ? (wPad = wPad || allStr(4, 4, 'FSB.').filter((s) => count(s, 'B') >= 1 && count(s, 'B') <= 2 && count(s, 'F') >= 2 && count(s, 'F') + count(s, 'S') + count(s, 'B') >= 4)) : (zPad = zPad || allStr(2, 0, 'FSB.').filter((s) => count(s, 'B') >= 1 && count(s, 'F') >= 2)));
+  const padTraps = (M, wide, lim) => { const out = []; for (let i = 2; i < 7; i++) if (M[i] === 'B') { const q = M.slice(0, i) + 'F' + M.slice(i + 1); if (fits(q, lim) && !stale(q, wide) && feverTry(q, wide)) out.push(q); } return out; };      // 판 하나를 없애고 그 자리를 "눌러야 하는 자리"로
+  const feverDef = (nodes, wide) => { const d = { mode: 'rush', nodes }; if (wide) d.wide = true; if (/[FSB][FSB]/.test(nodes)) d.gap = 1.5; d.holds = []; d.presses = []; for (let k = 1; k <= 8; k++) if (nodes[k - 1] === 'F') d.presses.push(k * 0.5); return d; };
   const feverTry = (nodes, wide) => {                  // 입력 여유가 0.16박(약 62ms) 이상이고, 입력이 모두 꼭 필요한가
     const key = (wide ? 'w' : 'z') + nodes;
     if (key in feverOk) return feverOk[key];
@@ -430,9 +435,16 @@ function generate(T, seed) {
   // 굽은 통로의 마디는 성기게: calm = 마디 앞쪽의 이만큼(반 박 단위)은 누르지 않는다(굽이를 볼 틈), run = 반 박 간격으로 이어 누르는 횟수의 한도
   const fits = (s, o) => !o || ((!o.calm || /^\.*$/.test(s.slice(0, o.calm))) && (!o.run || !new RegExp('F{' + (o.run + 1) + '}').test(s)));
   const feverSlot = (slot, b) => {
-    const wide = !!(slot.wm || slot.wr || slot.wt), key = slot.zm || slot.wm || slot.zr || slot.wr || slot.zt || slot.wt, all = wide ? wAll : zAll, name = `${T.prefix}${wide ? 'w' : 'z'}${b}`;
+    const wide = !!(slot.wm || slot.wr || slot.wt), key = slot.zm || slot.wm || slot.zr || slot.wr || slot.zt || slot.wt, all = slot.pads ? padPool(wide) : wide ? wAll : zAll, name = `${T.prefix}${wide ? 'w' : 'z'}${b}`;
     if (slot.zr || slot.wr) { bars.push(motifs[key].name); roles[b] = key; return; }
     if (slot.zt || slot.wt) {                            // 피버의 함정: break = 누르던 자리에서 뚝 / add = 안 누르던 자리에서 하나 더(둘 다 앞쪽은 되풀이한 마디와 같다)
+      if (slot.kind === 'pad') {                         // 튕김판의 함정: 앞 마디에서 저절로 튕기던 자리의 판이 없다. 이번엔 거기서 눌러야 꺾인다(안 누르면 그대로 가서 걸린다)
+        const M0 = motifs[key].nodes, pool0 = padTraps(M0, wide, motifs[key].lim);
+        if (!pool0.length) throw new Error('튕김판 함정으로 쓸 줄이 없다');
+        const nodes = pick(pool0); took(nodes, wide); made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
+        notes[b] = `함정(판이 없다): 앞 마디(${M0})에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다`;
+        bars.push(name); trapList.push({ bar: b, kind: 'pad', of: key }); roles[b] = key + '!'; return;
+      }
       const M = motifs[key].nodes, lim = motifs[key].lim, fresh = (q) => !stale(q, wide) && !stalePair(M, q, wide), adds = addsOf(M, wide).filter((q) => fits(q, lim) && fresh(q)), brk = breaksOf(M, wide).filter((q) => fits(q, lim) && fresh(q));
       const useAdd = slot.kind === 'add' && adds.length, pool = useAdd ? adds : brk;
       if (!pool.length) throw new Error('피버 함정으로 쓸 줄이 없다');
@@ -444,7 +456,8 @@ function generate(T, seed) {
     for (let tries = 0; tries < 300; tries++) {
       let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } }
       const lim = slot.calm || slot.run ? { calm: slot.calm, run: slot.run } : null;
-      if (!fits(s, lim) || stale(s, wide) || (tries < 200 && worn(s, wide)) || !feverTry(s, wide) || Object.values(motifs).some((mm) => mm.nodes === s) || (slot.kind !== 'add' && !breaksOf(s, wide).filter((q) => fits(q, lim) && !stale(q, wide) && !stalePair(s, q, wide)).length)) continue;
+      if (!fits(s, lim) || stale(s, wide) || (tries < 200 && worn(s, wide)) || !feverTry(s, wide) || Object.values(motifs).some((mm) => mm.nodes === s) || (slot.kind !== 'add' && slot.kind !== 'pad' && slot.kind !== 'none' && !breaksOf(s, wide).filter((q) => fits(q, lim) && !stale(q, wide) && !stalePair(s, q, wide)).length)) continue;
+      if (slot.kind === 'pad' && !padTraps(s, wide, lim).length) continue;
       if (slot.kind === 'add' && !addsOf(s, wide).filter((q) => fits(q, lim) && !stale(q, wide) && !stalePair(s, q, wide)).length) continue;      // 이 마디의 함정을 "하나 더"로 낼 거면 그럴 줄이 있어야 한다
       took(s, wide); made[name] = Lg.PATTERNS[name] = feverDef(s, wide); bars.push(name); motifs[key] = { name, nodes: s, wide, lim }; roles[b] = key; return;
     }
