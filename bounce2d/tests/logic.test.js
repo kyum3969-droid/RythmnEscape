@@ -231,6 +231,29 @@ for (const C of Lg.COURSES) {
   const lv = Lg.buildLevel(C), tag = C.name.split(' · ')[0];
   const full = run(lv, lv.ref);
   ok(full.s.won && lv.fixed.length === 0, `[${tag}] ${C.name}: ${lv.bars}마디, 체크포인트 ${lv.cps.length}개(마디 ${lv.cps.map(c => c.bar).join(', ')}), 피버 ${lv.rides.map(r => `${r[0] / 16}~${r[1] / 16 - 1}`).join(' / ')} — 패턴대로 완주`);
+  if (lv.reds.some(q => q.mv)) {
+    // 움직이는 장애물(9라운드부터): 공이 지나가는 순간에는 원래 자리에 있고, 겹치는 동안(± 0.375박)에는 공 쪽으로 다가오지 않는다(늘 물러나 있거나 제자리)
+    const mv = lv.reds.filter(q => q.mv), kinds = {};
+    let closer = 0, pumpHidden = 0, decoyOut = 0, decoyIn = 0, nPump = 0, nDecoy = 0;
+    for (const q of mv) {
+      kinds[q.mv.kind + ':' + q.kind] = (kinds[q.mv.kind + ':' + q.kind] || 0) + 1;
+      const away = q.kind === 'floor' ? -1 : q.kind === 'ceil' ? 1 : Math.sign(q.far - q.tip);
+      for (let d = -0.375; d <= 0.375; d += 1 / 96) if (Lg.hazardOff(q, q.mv.t + d) * away < -1e-9) closer++;
+      if (q.mv.kind === 'pump') { nPump++; if (Math.abs(Lg.hazardOff(q, q.mv.t)) < 1e-9 && Math.abs(Lg.hazardOff(q, q.mv.t - 0.5)) >= q.mv.A - 1e-9) pumpHidden++; }
+      if (q.mv.kind === 'decoy') { nDecoy++; if (Math.abs(Lg.hazardOff(q, q.mv.t - 1)) < 1e-9) decoyOut++; if (Math.abs(Lg.hazardOff(q, q.mv.t)) >= q.mv.A - 1e-9) decoyIn++;
+        // 나와 있을 때는 맞는 길을 막는다(그래서 겁이 난다): 공이 지나가는 높이의 공 상자와 겹친다
+        const s2 = Lg.spawnState(lv, -1), inp = Lg.planInput(lv.ref); while (!s2.dead && !s2.won && s2.x < q.xt) Lg.stepState(lv, s2, inp.press.has(s2.step + 1), null, inp.hold.has(s2.step + 1));
+        const h = 9 - s2.y, sp = Lg.hazardSpan(q, 0); if (!(h + 0.8 > sp[0] && h < sp[1])) decoyOut -= 1000; }
+    }
+    // 움직임 때문에 입력 여유가 줄지 않는다: 움직이는 장애물이 있는 피버 마디마다, 움직임을 뺀 같은 마디와 여유를 견준다
+    const { measure } = require('./windows.js');
+    let worse = 0, n = 0; const seen = new Set();
+    for (const name of C.bars) { const p = Lg.PATTERNS[name]; if (!p || !p.move || seen.has(name)) continue; seen.add(name); n++;
+      const a = measure(name, C.bpm); Lg.PATTERNS.__nomove = { ...p }; delete Lg.PATTERNS.__nomove.move; const b = measure('__nomove', C.bpm); delete Lg.PATTERNS.__nomove;
+      if (!a.ok || !b.ok || Math.abs(a.min - b.min) > 1) worse++; }
+    ok(closer === 0 && nPump >= 20 && pumpHidden === nPump && nDecoy >= 10 && decoyOut === nDecoy && decoyIn === nDecoy && worse === 0,
+      `[${tag}] 움직이는 장애물 ${mv.length}개(${Object.entries(kinds).map(([k, v]) => k + ' ' + v).join(', ')}): 찌르는 것은 공이 지나는 박에 나와 있고 반 박 앞뒤에는 숨어 있다(${pumpHidden}/${nPump}). 비켜 주는 이빨은 한 박 앞에 맞는 길을 막고 있다가 지나는 박에는 들어가 있다(${decoyIn}/${nDecoy}). 겹치는 동안 공 쪽으로 다가오는 일은 없고, 입력 여유도 움직임이 없을 때와 같다(마디 ${n}개)`);
+  }
   if (lv.cps.some(c => c.snap)) {
     // 패턴이 있는 체크포인트(5~8라운드, 개발하는 동안): 체크포인트 마디에도 누를 것이 있다. 거기서 다시 시작하면 패턴대로 달렸을 때의 그 순간에서 시작하고(땅에 서 있거나 막 튀어 오른 순간, 멈춘 채가 아니다),
     // 화면은 한 마디 앞에서 시작해 저절로 달린다. 체크포인트마다: 거기서 패턴대로 가면 완주하고, 아무것도 안 누르면 그 마디 언저리에서 죽는다

@@ -1096,6 +1096,9 @@
     // (여기서부터는 낱개로 놓인 것들: 굽은 길에서는 제 토막에서만, 테두리로 자르지 않고 통째로 그린다. 안 그러면 토막의 이음매에 걸친 것이 두 겹으로 보인다)
     for (const q of L.reds) {
       if (q.x1 < cA || q.x0 > cB || !inPass(q.xt)) continue;
+      // 움직이는 장애물: 지금 자리로 옮겨 그린다. 이빨은 벽 속으로 들어가므로, 통로(바닥 선과 천장 선 사이) 안쪽만 보이게 자른다
+      const o = q.mv ? hazardOff(q, beat) : 0;
+      if (q.mv) { ctx.save(); if (q.kind !== "float") { const yc = sy(ROWS - 1 - ceilAt(L, q.xt)); ctx.beginPath(); ctx.rect(sx(q.xt - q.w) - 4, yc, sx(q.xt + q.w) - sx(q.xt - q.w) + 8, view.groundY - yc); ctx.clip(); } ctx.translate(0, -o * T); }
       const xa = sx(q.xt - q.w), xt = sx(q.xt), xb = sx(q.xt + q.w), yTip = sy(ROWS - 1 - q.tip), yFar = sy(ROWS - 1 - q.far), rr = T * 0.16;
       const yMid = q.kind === "float" ? sy(ROWS - 1 - (q.far > q.tip ? hazardSpan(q, q.w)[0] : hazardSpan(q, q.w)[1])) : yFar;     // 마름모의 가장 넓은 곳
       const path = () => {
@@ -1114,6 +1117,11 @@
       for (let x = xa - span; x < xb; x += T * 0.36) { ctx.moveTo(x, top + span); ctx.lineTo(x + span, top); }
       ctx.stroke(); ctx.restore();
       path(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.shadowColor = DANGER; ctx.shadowBlur = 10 + 8 * pulse; ctx.stroke(); ctx.shadowBlur = 0;
+      if (q.mv) {
+        // 움직이는 장애물이 나오는 자리(벽의 구멍): 들어가 있을 때도 어디서 나올지 보이게 벽에 빨간 틈을 긋는다
+        ctx.restore();
+        if (q.kind !== "float") { const yw = q.kind === "floor" ? view.groundY : sy(ROWS - 1 - ceilAt(L, q.xt)); ctx.strokeStyle = css([255, 107, 144], 0.55 + 0.35 * Math.min(1, Math.abs(o) / q.mv.A)); ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(xa + T * 0.15, yw); ctx.lineTo(xb - T * 0.15, yw); ctx.stroke(); ctx.lineCap = "butt"; }
+      }
     }
     // 튕김판(피버): 공중에 뜬 얇은 파란 판. 닿으면 누르지 않아도 튕겨서 되돌아간다(양쪽 면 다). 그림은 판정 그대로다(두께 PAD_TH, 반 너비 PAD_W)
     for (const q of L.pads.values()) {

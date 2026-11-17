@@ -425,6 +425,63 @@ const PATTERNS = {
   g8_63: { holds: [], presses: [0.5], tol: 0.18, floats: [[5, 7, 2], [9, 11, 3]], lava: [[1, 13]], stair: true, cp: true },   // 체크포인트 마디. 계단: 이단 점프로 2 → 3 → 0
   g8_71: { holds: [], presses: [0.5], tol: 0.18, floats: [[5, 7, 3], [10, 11, 2]], lava: [[1, 13]], stair: true, cp: true },   // 체크포인트 마디. 계단: 이단 점프로 3 → 2 → 0
   // </gen:patterns:R8>
+  // <gen:patterns:R9>
+  // 도구(tools_gen_course.js R9 4)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
+  g9_2: { holds: [[0.5, 1.25]], presses: [2.375], tol: 0.18, caps: [[1, 7, 3]], traps: [{presses: [0.5], holds: []}] },
+  g9_4: { holds: [[0.5, 1.25]], presses: [], tol: 0.18, caps: [[1, 7, 3]], traps: [{full: {presses: [2.375], holds: [[0.5, 1.25]]}}, {presses: [0.5], holds: []}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g9_5: { holds: [[0.375, 1.125], [2.625, 3.5]], presses: [], tol: 0.18 },
+  g9_6: { holds: [[2.5, 3.25]], presses: [0.625], tol: 0.18, caps: [[9, 15, 3]], traps: [{presses: [2.5], holds: []}] },
+  g9_7: { holds: [[0.25, 1.25]], presses: [2.5], tol: 0.15, tall: [2.5], cp: true, caps: [[1, 6, 2]], lava: [[2, 4]] },   // 체크포인트 마디
+  g9z8: { mode: "rush", nodes: "F.S.F.S.", move: "..p...p." },   // 움직이는 장애물: ..p...p.
+  g9z10: { mode: "rush", nodes: "F.S.S.F.", move: "..p...p." },   // 뚝: 앞 마디(F.S.F.S.)와 같이 가다가 끊긴다
+  g9z11: { mode: "rush", nodes: "F.S...F.", move: "p.p...p." },   // 움직이는 장애물: p.p...p.
+  g9z13: { mode: "rush", nodes: "F.S.F...", move: "p.p...p." },   // 하나 더: 앞 마디(F.S...F.)와 같이 가다가 한 번 더 누른다
+  g9z14: { mode: "rush", nodes: "F.F.F.F.", move: "..p.p.p." },   // 움직이는 장애물: ..p.p.p.
+  g9_15: { holds: [[0.5, 1.125]], presses: [2.5], tol: 0.18, tall: [2.5], cp: true },   // 체크포인트 마디
+  g9z16: { mode: "rush", nodes: "S.F.F...", move: "d.d....." },   // 움직이는 장애물: d.d.....
+  g9z18: { mode: "rush", nodes: "S.S.F.F.", move: "d.d....." },   // 뚝: 앞 마디(S.F.F...)와 같이 가다가 끊긴다
+  g9z19: { mode: "rush", nodes: "S.F.S.F.", move: "d.p.p.d." },   // 움직이는 장애물: d.p.p.d.
+  g9z22: { mode: "rush", nodes: "S.F.F.S.", move: "d.p.p.d." },   // 하나 더: 앞 마디(S.F.S.F.)와 같이 가다가 한 번 더 누른다
+  g9_23: { holds: [[0.625, 1.25], [2.25, 3.25]], presses: [], tol: 0.15, cp: true, caps: [[9, 14, 2]], lava: [[10, 12]] },   // 체크포인트 마디
+  g9w25: { mode: "rush", wide: true, gap: 1.5, nodes: ".SF.FFS.", move: "..p.ppp." },   // 움직이는 장애물: ..p.ppp.
+  g9w27: { mode: "rush", wide: true, gap: 1.5, nodes: ".SF.S.F.", move: "..p.ppp." },   // 뚝: 앞 마디(.SF.FFS.)와 같이 가다가 끊긴다
+  g9w28: { mode: "rush", wide: true, gap: 1.5, nodes: "SFBFFFS.", move: "p..p...." },   // 움직이는 장애물: p..p....
+  g9w29: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFFFFS.", move: "p..p...." },   // 함정(판이 없다): 앞 마디(SFBFFFS.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g9_31: { holds: [[2.5, 3.25]], presses: [0.5], tol: 0.18, cp: true, floats: [[4, 4, 4]], caps: [[9, 15, 3]], traps: [{presses: [1.125]}, {presses: [2.5], holds: []}] },   // 체크포인트 마디
+  g9_32: { holds: [[0.375, 1.25]], presses: [2.625], tol: 0.18 },
+  g9_34: { holds: [], presses: [0.375, 2.625], tol: 0.18, tall: [0.375], traps: [{full: {presses: [2.625], holds: [[0.375, 1.25]]}}] },   // 함정(앞에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
+  g9_35: { holds: [[0.5, 1.25], [2.625, 3.375]], presses: [], tol: 0.18, caps: [[1, 7, 3]], traps: [{presses: [0.5], holds: [[2.625, 3.375]]}] },
+  g9_36: { holds: [[0.625, 1.125], [2.5, 3.25]], presses: [], tol: 0.18, caps: [[9, 15, 3]], traps: [{presses: [2.5], holds: [[0.625, 1.125]]}] },
+  g9_37: { holds: [[2.5, 3.25]], presses: [], tol: 0.18, caps: [[9, 15, 3]], traps: [{full: {presses: [], holds: [[0.625, 1.125], [2.5, 3.25]]}}, {presses: [2.5], holds: []}] },   // 함정(앞에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g9_38: { holds: [], presses: [0.5, 2.5], tol: 0.18, tall: [2.5], floats: [[4, 4, 4]], traps: [{presses: [1.125]}] },
+  g9_39: { holds: [[0.5, 1.25], [2.25, 3.25]], presses: [], tol: 0.15, cp: true, caps: [[1, 7, 3], [9, 14, 2]], lava: [[10, 12]], traps: [{presses: [0.5], holds: [[2.25, 3.25]]}] },   // 체크포인트 마디
+  g9w41: { mode: "rush", wide: true, gap: 1.5, nodes: ".FBBFF..", move: "....pp.." },   // 움직이는 장애물: ....pp..
+  g9w43: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBFF..", move: "....pp.." },   // 함정(판이 없다): 앞 마디(.FBBFF..)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g9w44: { mode: "rush", wide: true, gap: 1.5, nodes: "S.FS..F.", move: "p.pp..d." },   // 움직이는 장애물: p.pp..d.
+  g9w45: { mode: "rush", wide: true, gap: 1.5, nodes: "S.FFF...", move: "p.pp..d." },   // 하나 더: 앞 마디(S.FS..F.)와 같이 가다가 한 번 더 누른다
+  g9_47: { holds: [[2.625, 3.625]], presses: [0.5], tol: 0.18, cp: true, floats: [[4, 4, 4]], traps: [{presses: [1.125]}] },   // 체크포인트 마디
+  g9_48: { holds: [[2.5, 3.375]], presses: [0.5], tol: 0.18, tall: [0.5] },
+  g9_50: { holds: [[0.5, 1.25]], presses: [2.5], tol: 0.18, tall: [2.5], caps: [[1, 7, 3]], traps: [{presses: [0.5], holds: []}] },
+  g9_52: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18, caps: [[1, 7, 3]], traps: [{full: {presses: [2.5], holds: [[0.5, 1.25]]}}, {presses: [0.5], holds: [[2.5, 3.25]]}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
+  g9_53: { holds: [[0.5, 1.5], [2.375, 2.875]], presses: [], tol: 0.18 },
+  g9_54: { holds: [[0.5, 1.375]], presses: [2.625], tol: 0.18 },
+  g9_55: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18, cp: true, caps: [[1, 7, 3], [9, 15, 3]], traps: [{presses: [0.5], holds: [[2.5, 3.25]]}, {presses: [2.5], holds: [[0.5, 1.25]]}] },   // 체크포인트 마디
+  g9z56: { mode: "rush", nodes: "..S.F.F.", move: "..d.d.d." },   // 움직이는 장애물: ..d.d.d.
+  g9z58: { mode: "rush", nodes: "..F.F.S.", move: "..d.d.d." },   // 하나 더: 앞 마디(..S.F.F.)와 같이 가다가 한 번 더 누른다
+  g9z59: { mode: "rush", nodes: "F.F.B.B.", move: "d.d....." },   // 움직이는 장애물: d.d.....
+  g9z61: { mode: "rush", nodes: "F.F.B.F.", move: "d.d....." },   // 함정(판이 없다): 앞 마디(F.F.B.B.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g9z62: { mode: "rush", nodes: "F...F.S.", move: "d.....d." },   // 움직이는 장애물: d.....d.
+  g9_63: { holds: [], presses: [0.5, 2.375], tol: 0.18, tall: [0.5], cp: true },   // 체크포인트 마디
+  g9_64: { holds: [], presses: [0.5, 2.625], tol: 0.18 },
+  g9_66: { holds: [], presses: [0.5], tol: 0.18, traps: [{full: {presses: [0.5, 2.625], holds: []}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g9_67: { holds: [[2.375, 3.25]], presses: [0.5], tol: 0.18 },
+  g9_69: { holds: [[0.5, 1.25], [2.375, 3.25]], presses: [], tol: 0.18, traps: [{full: {presses: [0.5], holds: [[2.375, 3.25]]}}] },   // 함정(앞에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
+  g9_70: { holds: [[0.625, 1.375], [2.5, 3.25]], presses: [], tol: 0.18, caps: [[9, 15, 3]], traps: [{presses: [2.5], holds: [[0.625, 1.375]]}] },
+  g9_71: { holds: [], presses: [0.625, 2.5], tol: 0.18, tall: [2.5], cp: true },   // 체크포인트 마디
+  g9w73: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFSF.S.", move: ".pppp.d." },   // 움직이는 장애물: .pppp.d.
+  g9w75: { mode: "rush", wide: true, gap: 1.5, nodes: ".FS..FS.", move: ".pppp.d." },   // 뚝: 앞 마디(.FFSF.S.)와 같이 가다가 끊긴다
+  g9z77: { mode: "rush", nodes: "F.F.S...", move: "d.d.p..." },   // 움직이는 장애물: d.d.p...
+  // </gen:patterns:R9>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
   // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 바로 위의 빨간 덩어리에 부딪힌다
@@ -962,7 +1019,65 @@ const ROUND8 = {
     { bar: 56, id: "d" }, { bar: 64, id: "intro" }, { bar: 72, id: "b" }, { bar: 78, id: "outro" },
   ],
 };
-const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8];
+// ---- 9라운드: Midnight Asphalt Rush (Gemini가 만든 곡. 150.00 BPM 고정, 첫 박 0.078초, 129.2초)
+// 박은 곡의 날카로운 소리 199곳으로 쟀다(어긋남 ±2ms, 곡 끝까지 밀림 1ms 안쪽). 게임 안 분석기에 맡기지 않는다(measured).
+// 곡의 구간(마디): 0~2 크게 한 번 치고, 3~7 가라앉았다 쌓아 올림 / 8~15 질주 / 16~23 낮게 깔린 그루브 / 24~31 질주(30~31 쌓아 올림)
+//                / 32~34 떨어짐, 35~39 숨 고르기(높은 소리만) / 40~47 가장 센 절정 / 48~55 거의 무음 / 56~63 질주 / 64~71 그루브와 쌓아 올림
+//                / 72~77 마지막 절정 / 78 끝맺는 한 방
+// 속도감 있는 곡이라 피버 위주: 80마디 가운데 41마디가 피버다. 새것은 움직이는 장애물(피버) — 찌르는 이빨, 들썩이는 마름모, 비켜 주는 이빨(logic.js의 hazardOff).
+// 체크포인트 마디에도 패턴이 있다(개발하는 동안. cp: true).
+const ROUND9 = {
+  name: "ROUND 9 · Midnight Asphalt Rush",
+  bpm: 150.0,
+  track: { file: "music/midnight_asphalt_rush.mp3", offset: 0.078, measured: true },
+  floatReds: true, vary: true, density: 0.95,
+  goalAt: 0,                                       // 곡이 끝맺는 한 방(마디 78의 첫 박)에 결승선을 지난다
+  cam: [
+    { bar: 26, rot: 45 }, { bar: 28, rot: 0 },
+    { bar: 42, rot: -45 }, { bar: 44, rot: 45 }, { bar: 46, rot: 0 },
+    { bar: 58, rot: 45 }, { bar: 60, rot: -45 }, { bar: 62, rot: 0 },
+    { bar: 73, rot: 90 }, { bar: 75, rot: 45 }, { bar: 76, rot: 0 },
+  ],
+  pal: {                                         // 이 라운드의 색: 한밤의 아스팔트 — 검푸른 회색에 노란 차선, 청록 네온. 주황·분홍은 쓰지 않는다(빨간 장애물과 헷갈린다)
+    intro: { top: "#06070b", bottom: "#23272f", accent: "#ffe14d", sun: "#fff4b8" },
+    a:     { top: "#05080f", bottom: "#1b2f45", accent: "#5ee6ff", sun: "#d8f8ff" },
+    b:     { top: "#08080c", bottom: "#33343a", accent: "#ffe14d", sun: "#ffffff" },
+    c:     { top: "#060a0a", bottom: "#1d3a36", accent: "#7dffcf", sun: "#e0fff4" },
+    d:     { top: "#0a0a12", bottom: "#2d2c4e", accent: "#c9b8ff", sun: "#fff4b8" },
+    rush:  { top: "#030406", bottom: "#262a33", accent: "#ffffff", sun: "#ffe14d" },
+  },
+  // 9라운드의 마디도 도구(tools_gen_course.js R9)가 뽑는다. 짜임은 틀(TEMPLATES.R9)에 정해 두었다.
+  bars: [
+    // <gen:bars:R9>
+    // 도입: 곡이 크게 한 번 치고 가라앉는다. 바운스로 몸풀기
+    "flat", "flat", "g9_2", "g9_2",   "g9_4", "g9_5", "g9_6", "g9_7",
+    // 첫 질주 — 찌르는 이빨을 소개한다: 이빨이 벽 속에 숨어 있다가, 공이 지나가는 박에 맞춰 튀어나온다(벽의 빨간 틈이 나올 자리). 되풀이 → 뚝, 되풀이 → 하나 더
+    "g9z8", "g9z8", "g9z10", "g9z11",   "g9z11", "g9z13", "g9z14", "g9_15",
+    // 낮게 깔린 그루브 — 비켜 주는 이빨을 소개한다: 맞는 길을 막고 있던 이빨이, 공이 오기 직전에 벽 속으로 들어간다(가는 길이 막혀 보여도 겁먹지 말 것). 이어서 섞어서
+    "g9z16", "g9z16", "g9z18", "g9z19",   "g9z19", "g9z19", "g9z22", "g9_23",
+    // 둘째 질주 — 넓은 통로: 떠 있는 마름모가 박자에 맞춰 들썩인다. 이어서 튕김판(판이 있는 마디 → 판이 없다)
+    "wUp", "g9w25", "g9w25", "g9w27",   "g9w28", "g9w29", "wDn", "g9_31",
+    // 떨어짐과 숨 고르기: 바운스. 앞에서 손 바꿈, 앞에서 뚝
+    "g9_32", "g9_32", "g9_34", "g9_35",   "g9_36", "g9_37", "g9_38", "g9_39",
+    // 가장 센 절정 — 넓은 통로에 모두 섞는다: 들썩이는 마름모, 찌르는 이빨, 비켜 주는 이빨, 튕김판
+    "wUp", "g9w41", "g9w41", "g9w43",   "g9w44", "g9w45", "wDn", "g9_47",
+    // 거의 무음: 바운스. 헛다리, 끝에서 손 바꿈
+    "g9_48", "g9_48", "g9_50", "g9_50",   "g9_52", "g9_53", "g9_54", "g9_55",
+    // 다시 질주 — 좁은 통로에 모두 섞는다(비켜 주는 이빨 → 하나 더, 튕김판 → 판이 없다)
+    "g9z56", "g9z56", "g9z58", "g9z59",   "g9z59", "g9z61", "g9z62", "g9_63",
+    // 그루브와 쌓아 올림: 바운스. 끝에서 뚝, 앞에서 손 바꿈
+    "g9_64", "g9_64", "g9_66", "g9_67",   "g9_67", "g9_69", "g9_70", "g9_71",
+    // 마지막 절정 — 넓은 통로가 굽이친다(찌르는 이빨과 비켜 주는 이빨), 좁은 통로로 내려와 결승선
+    "wUp", "g9w73", "g9w73", "g9w75",   "wDn", "g9z77",
+    "goal", "flat", "flat",
+    // </gen:bars:R9>
+  ],
+  sections: [
+    { bar: 0, id: "intro" }, { bar: 8, id: "rush" }, { bar: 15, id: "a" }, { bar: 16, id: "rush" }, { bar: 23, id: "b" }, { bar: 24, id: "rush" }, { bar: 31, id: "c" },
+    { bar: 40, id: "rush" }, { bar: 47, id: "d" }, { bar: 56, id: "rush" }, { bar: 63, id: "a" }, { bar: 72, id: "rush" }, { bar: 78, id: "outro" },
+  ],
+};
+const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8, ROUND9];
 const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
@@ -1021,6 +1136,20 @@ function hazard(xt, ok, bad, top, gap = 1) {       // gap = 지나가는 공과 
 //  - 처음에는 판 뒤에 빨간 몸통을 붙여 반대쪽에서 오면 죽게 했다가(한 변만 파란 세모), 파란 판만 있는 쪽이 깔끔하다는 의견으로 뺐다. 그 뒤로 뒷면은 그냥 지나가게 했다가, 양쪽 다 튕기게 바꿨다.
 const PAD_TH = ZIG_STEP / 2 - SIZE, PAD_W = 1;
 const padFace = (q) => (q.from > 0 ? q.lv * ZIG_STEP + SIZE : q.lv * ZIG_STEP);
+// ---- 움직이는 장애물(피버, 9라운드부터). 장애물에 mv = { kind, t: 공이 그 장애물의 가운데를 지나는 박, A: 물러나는 거리(칸) }이 붙는다.
+//   공의 자리는 시간에 묶여 있다(x = 4 × 박). 그래서 장애물이 어떻게 움직이든, 공이 지나가는 순간의 자리만 판정에 쓰인다. 움직임은 그 순간을 읽게 하는 것이다.
+//   어떤 움직임이든 공이 장애물과 겹치는 동안(지나는 박 ± 0.375박)에는 원래 자리보다 공 쪽으로 다가오지 않는다(늘 물러나 있거나 제자리) — 그래서 타이밍 여유가 줄지 않는다.
+//   pump  찌르는 이빨(떠 있는 마름모는 들썩이는 마름모): 벽 속(마름모는 바깥쪽)으로 물러나 있다가, 공이 지나가는 박에 맞춰 튀어나온다. 한 박마다
+//   decoy 비켜 주는 이빨: 맞는 길을 막고 있다가 공이 오기 직전에 벽 속으로 들어간다. 두 박마다(공이 오기 한 박 전에는 나와 있다)
+const smooth01 = (a, b, v) => { const u = Math.max(0, Math.min(1, (v - a) / (b - a))); return u * u * (3 - 2 * u); };
+function hazardOff(q, beat) {
+  const m = q.mv;
+  if (!m) return 0;
+  const away = q.kind === "floor" ? -1 : q.kind === "ceil" ? 1 : Math.sign(q.far - q.tip);      // 공에서 멀어지는 쪽
+  const P = m.kind === "decoy" ? 2 : 1, d = Math.abs((((beat - m.t) % P) + 1.5 * P) % P - P / 2);      // 지나는 박에서 얼마나 떨어졌나(주기 안에서)
+  const r = m.kind === "decoy" ? 1 - smooth01(0.5, 0.8, d) : smooth01(0.18, 0.42, d);
+  return away * m.A * r;
+}
 // 장애물이 가운데에서 dx만큼 떨어진 곳에서 차지하는 높이 범위 [아래, 위]
 function hazardSpan(q, dx) {
   const a = Math.min(1, Math.abs(dx) / q.w), slope = TOOTH_H / TOOTH_W * q.w;      // 뾰족한 쪽 비탈: 이빨과 같은 기울기
@@ -1075,7 +1204,14 @@ function emptyLevel(course) {
           if (c === "B") pads.set(x0 / 2 + k, { lv: zl, from: zin, x: xk });      // B = 튕김판: 누르지 않아도 여기서 되돌아간다
           if (k) gems.push({ x: xk, h: zl * ZIG_STEP + HALF, flip: c === "F" ? dir : 0 });      // flip = 여기서 눌러야 한다(+1 위로, -1 아래로 바뀜)
           gems.push({ x: xk + 1, h: (zl + dir / 2) * ZIG_STEP + HALF });
-          if (c === "F" || c === "S") reds.push(hazard(xk + 2, zl + dir, zl - dir, top, p.gap));       // 다음 지점의 틀린 쪽을 막는다
+          if (c === "F" || c === "S") {
+            const q = hazard(xk + 2, zl + dir, zl - dir, top, p.gap), mv = p.move ? p.move[k - 1] : ".", tArr = (xk + 2) / TPB;       // 다음 지점의 틀린 쪽을 막는다
+            if (mv === "p") q.mv = { kind: "pump", t: tArr, A: q.kind === "float" ? 0.9 : Math.abs(q.far - q.tip) + 0.2 };
+            reds.push(q);
+            // 비켜 주는 이빨: 맞는 길(다음 지점의 높이)이 벽에 붙어 있으면, 그 벽에서도 이빨이 나와 막고 있다가 공이 오기 직전에 들어간다
+            const nxt = zl + dir;
+            if (mv === "d" && (nxt === 0 || nxt === top) && zl - dir >= lo && zl - dir <= hi) { const dq = hazard(xk + 2, zl - dir, nxt, top, p.gap); dq.mv = { kind: "decoy", t: tArr, A: Math.abs(dq.far - dq.tip) + 0.2 }; reds.push(dq); }
+          }
           zl += dir; zin = dir;
         }
         const next = PATTERNS[course.bars[b + 1]];
@@ -1105,6 +1241,8 @@ function emptyLevel(course) {
     if (q.x1 > r[1] + 1e-9) { q.x1 = r[1]; q.cut = 1; }
     if (q.x0 < r[0] - 1e-9) { q.x0 = r[0]; q.cut = -1; }
   }
+  // 결승선 너머의 수정은 뺀다(피버가 결승선 바로 앞에서 끝나면, 마지막 마디 끝의 수정이 결승선 너머에 놓여 아무도 못 먹는다)
+  for (let i = gems.length - 1; i >= 0; i--) if (gems[i].x > goalX) gems.splice(i, 1);
   return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, tallBars, talls, capRed, squeezes, stairLo, stairHi, pads, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
@@ -1524,8 +1662,8 @@ function rushStep(L, s, press, ev, hold, r) {
   const xa = s.x - HALF_RUSH * 0.8, xb = s.x + HALF_RUSH * 0.8, lo = h + 0.06, hi = h + SIZE - 0.06;
   for (const q of L.reds) {
     if (xb <= q.x0 || xa >= q.x1) continue;
-    const span = hazardSpan(q, Math.max(xa, Math.min(q.xt, xb)) - q.xt);       // 공에서 장애물 가운데에 가장 가까운 x에서 본다
-    if (hi > span[0] && lo < span[1]) return die(s, "spike", ev);
+    const span = hazardSpan(q, Math.max(xa, Math.min(q.xt, xb)) - q.xt), o = q.mv ? hazardOff(q, s.step / SUB) : 0;       // 공에서 장애물 가운데에 가장 가까운 x에서 본다(움직이는 장애물은 지금 자리로)
+    if (hi > span[0] + o && lo < span[1] + o) return die(s, "spike", ev);
   }
 }
 
@@ -1793,4 +1931,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, hazardOff, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
