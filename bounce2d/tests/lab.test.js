@@ -1,13 +1,14 @@
-// 시안(LAB) A~D 검사. 실행: node bounce2d/tests/lab.test.js
-// 모든 시안에서: 패턴대로 가면 완주하고, 틀리게(버릇대로) 누르면 바로 그 마디에서 죽는다.
+// 시안 · 박자 악보 검사. 실행: node bounce2d/tests/lab.test.js
+// 공이 정박에 닿는 자리마다 기존 장치로 만든 기호가 하나씩 선다. 정답대로 가면 지나가고, 기호마다 다른 손을 쓰면 그 마디에서 죽는다.
 const Lg = require('../logic.js');
 let fails = 0;
 const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') + msg); if (!c) fails++; };
 const SUB = Lg.SUB, BAR = 4 * SUB;
-const [A, B, C, D] = Lg.LABS;
+const C = Lg.LABS[0], L = Lg.buildLevel(C);
+const ms = (beats) => Math.round(beats * 60000 / C.bpm);
 
-// b번 마디의 입력만 acts(마디 안의 박)로 바꿔서 처음부터 달린다. 끝난 상태를 돌려준다.
-function runWith(L, b, acts) {
+// b번 마디의 입력만 acts(마디 안의 박)로 바꿔서 처음부터 달린다
+function runWith(b, acts) {
   const ref = Lg.planInput(L.ref), lo = b * BAR, hi = lo + BAR;
   const press = new Set(acts.presses.map((t) => lo + Math.round(t * SUB)));
   const holds = acts.holds.map(([a, z]) => [lo + Math.round(a * SUB), lo + Math.round(z * SUB)]);
@@ -18,100 +19,62 @@ function runWith(L, b, acts) {
   }
   return s;
 }
-const diesIn = (L, b, acts) => { const s = runWith(L, b, acts); return s.dead && Math.floor(s.x / 16) === b; };
-const inputs = (name) => ({ presses: Lg.PATTERNS[name].presses, holds: Lg.PATTERNS[name].holds });
-const gemsIn = (L, b) => L.gems.filter((g) => g.x >= b * 16 && g.x < b * 16 + 16).length;
+const diesIn = (b, acts) => { const s = runWith(b, acts); return s.dead && s.step >= b * BAR && s.step < (b + 1) * BAR + SUB / 2; };
+const P = (b) => Lg.PATTERNS[C.bars[b]];
+const noteBars = C.bars.map((n, b) => b).filter((b) => P(b) && P(b).notes);
 
-for (const Cs of Lg.LABS) {
-  const L = Lg.buildLevel(Cs), { end } = Lg.traceRun(L, L.ref);
-  ok(end.won && L.fixed.length === 0, `${Cs.name}: 패턴대로 가면 완주한다(걷어 낸 장애물 없음)`);
+console.log('== 코스 ==');
+{
+  const { end } = Lg.traceRun(L, L.ref);
+  ok(end.won && L.fixed.length === 0, `패턴대로 가면 완주한다 (${C.bars.length}마디, 악보 마디 ${noteBars.length}개, 걷어 낸 장애물 없음)`);
+  const used = new Set(noteBars.flatMap((b) => P(b).notes.split('')));
+  ok(['o', 'T', 'S', 'B', 'R'].every((c) => used.has(c)), `기호를 다 쓴다: ${[...used].join(' ')}`);
+  ok(noteBars.every((b) => Lg.noteCheck(P(b).notes).ok), '모든 악보 마디가 따로 만들어 봐도 통과한다(정답만 살아남는다)');
 }
 
-console.log('== A 따라 치기 ==');
+console.log('== 박마다 맞는 손은 하나 ==');
 {
-  const L = Lg.buildLevel(A), tr = Lg.traceRun(L, L.ref).trace, hAt = new Map(tr.map((t, i) => [i + 1, t.h]));
-  const calls = A.bars.map((n, b) => [n, b]).filter(([n]) => Lg.PATTERNS[n] && Lg.PATTERNS[n].call);
-  // 유령은 언제나 맞게 친다: 부르는 마디의 유령 자취 = 다음 마디에서 패턴대로 친 공의 자취
-  let worst = 0, same = true;
-  for (const [n, b] of calls) {
-    const next = A.bars[b + 1], q = Lg.PATTERNS[n].call;
-    if (JSON.stringify(inputs(next)) !== JSON.stringify(inputs(q))) same = false;
-    for (let k = 1; k <= BAR; k++) { const g = L.ghost.get(b * BAR + k), r = hAt.get((b + 1) * BAR + k); if (g && r !== undefined) worst = Math.max(worst, Math.abs(g.h - r)); else same = false; }
+  // 코스 안에서 다시 확인: 입력을 하나 빼거나, 이단 점프 ↔ 멈춤으로 손을 바꾸면 그 마디에서 죽는다
+  let tries = 0, died = 0;
+  for (const b of noteBars) {
+    const p = P(b), ring = p.notes.includes('R');
+    p.presses.forEach((t) => { tries++; if (diesIn(b, { presses: p.presses.filter((v) => v !== t), holds: p.holds })) died++; });
+    p.holds.forEach((h) => { tries++; if (diesIn(b, { presses: p.presses, holds: p.holds.filter((v) => v !== h) })) died++; });
+    // (고리에서 뛰는 누름은 멈춤으로 바꿔도 지나간다 — 일부러 허용한 것. logic.js의 R 설명 참고)
+    p.presses.filter((t) => !(ring && p.presses.includes(t - 0.875))).forEach((t) => { tries++; if (diesIn(b, { presses: p.presses.filter((v) => v !== t), holds: [...p.holds, [t, t + 0.875]] })) died++; });
+    p.holds.forEach((h) => { tries++; if (diesIn(b, { presses: [...p.presses, h[0]].sort((u, v) => u - v), holds: p.holds.filter((v) => v !== h) })) died++; });
   }
-  ok(same && worst < 1e-6, `유령이 보여 준 것 = 다음 마디의 정답 (부르는 마디 ${calls.length}개, 높이 차이 최대 ${worst.toExponential(1)})`);
-  ok(calls.every(([n, b]) => !gemsIn(L, b) && !L.floorH.slice(b * 16, b * 16 + 16).some((v) => v > 0) && !L.ceilH.slice(b * 16, b * 16 + 16).some((v) => v < 90)), '부르는 마디에는 장애물도 길잡이도 없다(유령만 친다)');
-  const resp = A.bars.map((n, b) => [n, b]).filter(([n]) => n.startsWith('b_'));
-  ok(resp.every(([, b]) => gemsIn(L, b) === 0), `따라 치는 마디 ${resp.length}개에는 길잡이가 없다`);
-  ok(resp.every(([, b]) => diesIn(L, b, { presses: [], holds: [] })), '따라 치는 마디는 아무것도 안 누르면 죽는다(유령을 봐야 한다)');
-  // 버릇 함정: 앞의 따라 치기(두 마디 앞)대로 누르면 그 마디에서 죽는다
-  for (const name of ['b_goStop', 'b_holdStop', 'b_mix2']) {
-    const b = A.bars.indexOf(name), habit = A.bars[b - 2];
-    ok(diesIn(L, b, inputs(habit)), `${name}(마디 ${b}): 앞에서 따라 치던 ${habit}대로 누르면 죽는다 — 유령은 다르게 쳐 보였다`);
-  }
+  ok(died === tries, `입력을 빼거나 손을 바꾸면 그 마디에서 죽는다 (${died}/${tries})`);
 }
 
-console.log('== B 사라지는 장애물 ==');
+console.log('== 리듬이 섞인다 ==');
 {
-  const L = Lg.buildLevel(B), hid = B.bars.map((n, b) => [n, b]).filter(([n]) => Lg.PATTERNS[n] && Lg.PATTERNS[n].hidden);
-  ok(hid.every(([, b]) => gemsIn(L, b) === 0), `흐려지는 마디 ${hid.length}개에는 길잡이가 없다`);
-  ok(hid.every(([, b]) => L.floorH.slice(b * 16, b * 16 + 16).some((v) => v > 0) || L.ceilH.slice(b * 16, b * 16 + 16).some((v) => v < 90)), '흐려지는 마디에도 빨간 덩어리가 있다(멀리서는 보인다)');
-  ok(hid.every(([, b]) => diesIn(L, b, { presses: [], holds: [] })), '흐려지는 마디는 아무것도 안 누르면 죽는다');
-  for (const name of ['h_goStop', 'h_holdStop']) for (let b = B.bars.indexOf(name); b >= 0; b = B.bars.indexOf(name, b + 1)) {
-    const habit = B.bars[b - 1];
-    ok(diesIn(L, b, inputs(habit)), `${name}(마디 ${b}): 바로 앞의 ${habit}대로 누르면 죽는다`);
-  }
+  const frac = new Map();
+  for (const b of noteBars) { for (const t of P(b).presses) frac.set(t % 1, (frac.get(t % 1) || 0) + 1); for (const h of P(b).holds) frac.set(h[0] % 1, (frac.get(h[0] % 1) || 0) + 1); }
+  const list = [...frac.entries()].sort((u, v) => u[0] - v[0]).map(([f, n]) => `${f}박 ${n}번`);
+  ok(frac.size >= 2 && frac.has(0.5) && frac.has(0.375), `누르는 자리가 한 가지가 아니다: ${list.join(', ')} (0.5 = 보통 꼭대기, 0.375 = 파란 섬이 당긴 꼭대기·고리)`);
+  const perBar = noteBars.map((b) => new Set(P(b).notes.replace('~', '').split('').filter((c) => c !== '.' && c !== 'o')).size);
+  ok(perBar.filter((n) => n >= 2).length >= 10, `서로 다른 기호 둘 이상이 섞인 마디 ${perBar.filter((n) => n >= 2).length}개`);
 }
 
-console.log('== C 정지·변속 ==');
-{
-  const L = Lg.buildLevel(C);
-  const blk = (b) => JSON.stringify([Array.from(L.floorH.slice(b * 16, b * 16 + 16)), Array.from(L.ceilH.slice(b * 16, b * 16 + 16))]);
-  const mixB = C.bars.indexOf('mix'), s2 = C.bars.indexOf('s2_mix'), s05 = C.bars.indexOf('s05_mix');
-  ok(blk(mixB) === blk(s2) && blk(mixB) === blk(s05) && Lg.PATTERNS.s2_mix.scroll === 2 && Lg.PATTERNS.s05_mix.scroll === 0.5, '늘린 마디·줄인 마디의 장애물은 보통 mix와 칸마다 똑같다(그림만 바뀐다)');
-  const lids = C.bars.map((n, b) => [n, b]).filter(([n]) => n === 's_lid');
-  for (const [, b] of lids) {
-    ok(diesIn(L, b, inputs('peak')), `멈춘 마디의 뚜껑(마디 ${b}): 이어 치던 peak대로 이단 점프하면 죽는다`);
-    ok([0.5, 1.5, 2.5, 3.5].every((t) => diesIn(L, b, { presses: [t], holds: [] })), `  (마디 ${b}) 어느 박에 이단 점프해도 뚜껑에 걸린다`);
-  }
+console.log('== 버릇 함정 ==');
+for (let b = 2; b < C.bars.length; b++) {
+  if (!P(b) || !P(b).notes || !P(b - 1) || !P(b - 2) || !P(b - 1).notes || P(b - 1).notes !== P(b - 2).notes || P(b).notes === P(b - 1).notes) continue;
+  ok(diesIn(b, { presses: P(b - 1).presses, holds: P(b - 1).holds }), `마디 ${b} ${P(b).notes}: 앞의 ${P(b - 1).notes}를 두 번 친 버릇대로 치면 죽는다`);
 }
 
-console.log('== D 박자 악보 ==');
+console.log('== 타이밍은 어렵지 않다 ==');
 {
-  const L = Lg.buildLevel(D), act = { o: 'none', T: 'jump', S: 'hold' };
-  const doing = (kind, k) => kind === 'jump' ? { presses: [k - 0.5], holds: [] } : kind === 'hold' ? { presses: [], holds: [[k - 0.5, k + 0.375]] } : { presses: [], holds: [] };
-  // 기호마다 맞는 손은 하나뿐: 같은 마디의 다른 박은 정답대로 두고, 그 박만 세 가지(그냥 / 이단 점프 / 멈춤)로 해 본다
-  let right = 0, wrong = 0, total = 0;
-  const wins = { T: [], S: [] };
-  D.bars.forEach((name, b) => {
-    const p = Lg.PATTERNS[name];
-    if (!p || !p.notes) return;
-    for (let k = 1; k < 4; k++) {
-      const c = p.notes[k], prev = p.notes[k - 1], next = p.notes[k + 1];
-      if ((prev === 'T' || prev === 'S')) continue;              // 동작 바로 뒤 박은 쉬는 자리(공이 아직 그 동작 중이다)
-      const others = { presses: p.presses.filter((t) => Math.abs(t - (k - 0.5)) > 1e-9), holds: p.holds.filter((h) => Math.abs(h[0] - (k - 0.5)) > 1e-9) };
-      for (const kind of ['none', 'jump', 'hold']) {
-        const d = doing(kind, k), s = runWith(L, b, { presses: [...others.presses, ...d.presses], holds: [...others.holds, ...d.holds] });
-        const died = s.dead && Math.floor(s.x / 16) === b;
-        total++;
-        if (kind === act[c] ? !s.dead || Math.floor(s.x / 16) > b : died) (kind === act[c] ? right++ : wrong++);
-      }
-      if (c === 'T' || c === 'S') {                               // 누르는 여유
-        const pass = (dt) => { const d = doing(act[c], k); if (d.presses.length) d.presses[0] += dt; else d.holds[0] = [d.holds[0][0] + dt, d.holds[0][1]]; const s = runWith(L, b, { presses: [...others.presses, ...d.presses], holds: [...others.holds, ...d.holds] }); return !(s.dead && Math.floor(s.x / 16) === b); };
-        let e = 0, z = 0; while (e < 0.4 && pass(-(e + 0.01))) e += 0.01; while (z < 0.4 && pass(z + 0.01)) z += 0.01;
-        wins[c].push([e, z]);
-      }
-    }
-  });
-  ok(right + wrong === total, `박마다 맞는 손 하나로만 지나가고, 나머지 둘은 그 마디에서 죽는다 (${right + wrong}/${total})`);
-  const ms = (v) => Math.round(v * 60000 / D.bpm);
-  for (const c of ['T', 'S']) { const e = Math.min(...wins[c].map((w) => w[0])), z = Math.min(...wins[c].map((w) => w[1])); ok(e >= 0.15 && z >= 0.15, `${c === 'T' ? '기둥(이단 점프)' : '틈(멈춤 시작)'}의 여유: 일찍 ${ms(e)}ms, 늦게 ${ms(z)}ms 이상`); }
-  // 버릇 함정: 같은 악보를 두 번 친 뒤의 마디를, 앞 마디대로 치면 죽는다
-  for (const name of ['n_oToS', 'n_oSoo', 'n_ooSo']) {
-    const b = D.bars.findIndex((n, i) => n === name && i > 8 && D.bars[i - 1] !== 'cp' && Lg.PATTERNS[D.bars[i - 1]].notes !== Lg.PATTERNS[n].notes);
-    if (b < 0) continue;
-    ok(diesIn(L, b, inputs(D.bars[b - 1])), `${name}(마디 ${b}): 앞 마디(${Lg.PATTERNS[D.bars[b - 1]].notes})대로 치면 죽는다`);
+  let worst = { e: 9, z: 9, at: '' };
+  for (const b of noteBars) {
+    const p = P(b);
+    const shift = (kind, i, d) => kind === 'p' ? { presses: p.presses.map((v, j) => (j === i ? v + d : v)), holds: p.holds } : { presses: p.presses, holds: p.holds.map((h, j) => (j === i ? [h[0] + d, h[1]] : h)) };
+    const win = (kind, i) => { const pass = (d) => !runWith(b, shift(kind, i, d)).dead; let e = 0, z = 0; while (e < 0.4 && pass(-(e + 0.01))) e += 0.01; while (z < 0.4 && pass(z + 0.01)) z += 0.01; return { e, z }; };
+    const take = (w, tag) => { if (Math.min(w.e, w.z) < Math.min(worst.e, worst.z)) worst = { ...w, at: tag }; };
+    p.presses.forEach((t, i) => take(win('p', i), `${p.notes} ${t}박 누름`));
+    p.holds.forEach((h, i) => take(win('h', i), `${p.notes} ${h[0]}박 멈춤`));
   }
-  ok(D.bars.every((n) => !Lg.PATTERNS[n] || !Lg.PATTERNS[n].notes || Lg.PATTERNS[n].notes.split('').every((c, k) => Lg.NOTE_SHAPES[c].length > 0)), '모든 박에 기호가 하나씩 있다(빈 박이 없다)');
+  ok(ms(worst.e) >= 75 && ms(worst.z) >= 75, `가장 빡빡한 입력(${worst.at})도 일찍 ${ms(worst.e)}ms, 늦게 ${ms(worst.z)}ms 여유가 있다`);
 }
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);

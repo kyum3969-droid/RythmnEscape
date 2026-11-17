@@ -925,125 +925,6 @@ const ROUND8 = {
 const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8];
 const COURSE = ROUND1;
 
-// ===================== 시안(LAB): 새 기믹 A~D를 따로 해 보는 짧은 시험 코스 =====================
-// 라운드가 아니다(COURSES에 넣지 않는다). 라운드 고르기 목록의 뒤에 "시안"으로 붙는다. 곡은 1라운드 것을 빌려 쓴다.
-// 조사(docs/research/01-rhythm-gimmicks.md)에서 고른 넷:
-//   A 따라 치기  — 앞 마디에서 유령 공이 먼저 쳐 보이고(call), 다음 마디는 안내 없이 내가 친다. 유령은 언제나 맞게 친다.
-//   B 사라지는 장애물(Hidden) — 빨간 덩어리가 멀리서는 보이다가 가까이 오면 흐려진다. 멀리서 읽어 둔 사람만 피한다.
-//   C 정지·변속(그림만) — 박자와 판정은 그대로, 화면에서 흐르는 빠르기만 바뀐다(scroll). 멈춘 마디에서는 세상이 서고 공만 제자리에서 튄다.
-//   D 박자 악보 — 공이 닿는 자리(박마다)에 기호가 하나씩 선다. 공중 덩어리 = 그냥 튄다, 기둥 = 이단 점프로 넘는다, 틈 = 떠서(멈춤) 사이로 지나간다.
-//                 기호마다 맞는 손이 하나뿐이다. 마디를 악보처럼 읽는다. (처음에는 오르내리는 문으로 만들었다가, 움직이는 것은 별로라는 의견으로 바꿨다)
-// 새 필드(이 코스들에서만 쓴다)
-//   call: "패턴 이름"  이 마디에서 유령 공이 그 패턴대로 쳐 보인다. 이 마디 자체는 누를 것도 장애물도 없다.
-//   hidden: true      이 마디의 빨간 덩어리는 공에 다가오면 흐려진다(그림만). 수정·누르는 표시도 없다(blind와 함께 쓴다).
-//   scroll: k         이 마디가 화면에서 흐르는 빠르기(1 = 보통, 2 = 두 배로 늘려 그림, 0.12 = 거의 멈춤). 그림만 바뀐다.
-//   notes: "oToS"     박자 악보(시안 D). 글자 하나가 한 박: 그 박에 공이 닿는 자리(마디 안의 칸 4k)에 기호가 선다.
-//                     o = 공중 덩어리(그냥 튄다) / T = 기둥(그 반 박 앞 꼭대기에서 이단 점프) / S = 틈(그 반 박 앞부터 멈춤으로 떠서 지나간다) / - = 아무것도 없음
-//                     누르는 것(presses·holds)은 noteBar가 악보에서 만든다. 동작 뒤 한 박은 쉰다(이단 점프·멈춤 뒤에는 그다음 박에 땅에서 다시 튄다).
-//   manual: true      도구가 장애물을 만들지 않는다(문이나 손으로 놓은 덩어리만 쓴다).
-// 박자 악보의 기호: 칸 x(공이 정박에 닿는 자리)를 가운데로 한 칸 너비의 빨간 덩어리들 [아래, 위]
-//   o 공중 덩어리 [2.6, 4.6]: 그냥 튀는 공은 정박 언저리에서 윗면이 2.27칸 아래라 밑으로 지나간다. 이단 점프(4.1칸 위)·멈춤(윗면 3.05칸)은 걸린다
-//   T 기둥 [0, 2.5]: 높은 박스와 같다. 멈춤(바닥 2.25칸)으로는 못 넘고 이단 점프로만 넘는다
-//   S 틈 = 낮은 기둥 [0, 1.75] + 뚜껑 [3.3, 5.3]: 그냥 튀면 기둥에, 이단 점프하면 뚜껑에 걸린다. 꼭대기에서 멈춰(2.25~3.05칸) 사이로 지나간다
-const NOTE_SHAPES = { o: [[2.6, 4.6]], T: [[0, 2.5]], S: [[0, 1.75], [3.3, 5.3]], "-": [] };
-function noteBar(notes, extra = {}) {
-  if (notes.length !== 4) throw new Error("악보는 한 마디에 네 박: " + notes);
-  const presses = [], holds = [];
-  let last = -9;
-  for (let k = 0; k < 4; k++) {
-    const c = notes[k];
-    if (!(c in NOTE_SHAPES)) throw new Error("모르는 기호: " + c);
-    if (c !== "T" && c !== "S") continue;
-    if (k === 0 || k - last < 2) throw new Error("동작은 둘째 박부터, 두 박에 한 번까지: " + notes);
-    if (c === "T") presses.push(k - 0.5); else holds.push([k - 0.5, k + 0.375]);
-    last = k;
-  }
-  return { holds, presses, tol: 0.18, manual: true, notes, ...extra };
-}
-const blindOf = (name, extra = {}) => ({ ...PATTERNS[name], blind: true, ...extra });
-Object.assign(PATTERNS, {
-  // A 따라 치기: c_X = 유령이 X를 쳐 보이는 마디, b_X = X를 안내 없이 치는 마디
-  c_mix: { holds: [], presses: [], call: "mix" }, c_peak: { holds: [], presses: [], call: "peak" }, c_glideHigh: { holds: [], presses: [], call: "glideHigh" },
-  c_goStop: { holds: [], presses: [], call: "goStop" }, c_holdStop: { holds: [], presses: [], call: "holdStop" }, c_mix2: { holds: [], presses: [], call: "mix2" },
-  b_mix: blindOf("mix"), b_peak: blindOf("peak"), b_glideHigh: blindOf("glideHigh"), b_goStop: blindOf("goStop"), b_holdStop: blindOf("holdStop"), b_mix2: blindOf("mix2"),
-  // B 사라지는 장애물
-  h_hA: blindOf("hA", { hidden: true }), h_dj1: blindOf("dj1", { hidden: true }), h_mix: blindOf("mix", { hidden: true }), h_glideHigh: blindOf("glideHigh", { hidden: true }),
-  h_goStop: blindOf("goStop", { hidden: true }), h_holdStop: blindOf("holdStop", { hidden: true }), h_peak: blindOf("peak", { hidden: true }),
-  // C 정지·변속(그림만)
-  s_stop: { holds: [], presses: [], scroll: 0.12 },                                                   // 멈춘 마디: 누를 것 없음
-  s_lid: { holds: [], presses: [], scroll: 0.12, redFloat: [[0, 15, 3.4, 6]] },                       // 멈춘 마디 + 머리 위의 뚜껑: 그냥 튀면 지나가고, 이단 점프하면 뚜껑에 걸린다
-  s2_mix: { ...PATTERNS.mix, scroll: 2 }, s05_mix: { ...PATTERNS.mix, scroll: 0.5 },
-  s2_glideHigh: { ...PATTERNS.glideHigh, scroll: 2 }, s05_peak: { ...PATTERNS.peak, scroll: 0.5 },
-  // D 박자 악보
-  n_oToT: noteBar("oToT"), n_oSoS: noteBar("oSoS"), n_oooo: noteBar("oooo"),
-  n_oToS: noteBar("oToS", { blind: true }), n_oSoT: noteBar("oSoT", { blind: true }), n_oToTb: noteBar("oToT", { blind: true }), n_oSoSb: noteBar("oSoS", { blind: true }),
-  n_oToo: noteBar("oToo", { blind: true }), n_oSoo: noteBar("oSoo", { blind: true }), n_ooTo: noteBar("ooTo", { blind: true }), n_ooSo: noteBar("ooSo", { blind: true }),
-  n_oooT: noteBar("oooT", { blind: true }), n_oooS: noteBar("oooS", { blind: true }),
-});
-const LAB_BASE = { bpm: ROUND1.bpm, track: ROUND1.track, lab: true };
-const LAB_A = {
-  ...LAB_BASE, name: "시안 A · 따라 치기",
-  bars: [
-    "flat", "flat",
-    // 유령이 먼저 쳐 보이고(c_), 그대로 따라 친다. 처음 한 번은 안내가 있고, 그다음부터는 안내 없이(b_)
-    "c_mix", "mix", "c_mix", "b_mix",   "c_peak", "b_peak", "cp",
-    // 버릇 만들기: 유령을 두 번 따라 친 뒤, 유령이 한 번 덜 친다(뚝). 유령은 언제나 맞게 친다
-    "c_peak", "b_peak", "c_peak", "b_peak", "c_goStop", "b_goStop", "cp",
-    "c_glideHigh", "b_glideHigh", "c_glideHigh", "b_glideHigh", "c_holdStop", "b_holdStop", "cp",
-    // 손 바꿈: mix 두 번 뒤에 mix2(앞뒤가 바뀐다)
-    "c_mix", "b_mix", "c_mix", "b_mix", "c_mix2", "b_mix2",
-    "goal", "flat", "flat",
-  ],
-  sections: [{ bar: 0, id: "intro" }, { bar: 9, id: "a" }, { bar: 16, id: "b" }, { bar: 23, id: "c" }, { bar: 29, id: "outro" }],
-};
-const LAB_B = {
-  ...LAB_BASE, name: "시안 B · 사라지는 장애물",
-  bars: [
-    "flat", "flat",
-    // 보이는 것 → 같은 것이 다가오면 흐려진다(멀리서 읽어 둔다)
-    "hA", "idle", "h_hA", "idle",   "dj1", "idle", "h_dj1", "cp",
-    // 버릇 함정을 흐린 마디에서: 두 번 친 뒤, 멀리서는 보였던 "뚝"
-    "peak", "peak", "h_goStop", "idle",   "mix", "mix", "h_holdStop", "cp",
-    // 흐린 마디를 이어서
-    "glideHigh", "h_glideHigh", "h_glideHigh", "h_holdStop",   "peak", "h_peak", "h_goStop", "cp",
-    "goal", "flat", "flat",
-  ],
-  sections: [{ bar: 0, id: "intro" }, { bar: 10, id: "a" }, { bar: 18, id: "d" }, { bar: 26, id: "outro" }],
-};
-const LAB_C = {
-  ...LAB_BASE, name: "시안 C · 정지·변속",
-  bars: [
-    "flat", "flat",
-    // 멈춘 마디: 세상이 서고 공만 제자리에서 튄다(누를 것 없음)
-    "hA", "s_stop", "hA", "idle", "cp",
-    // 같은 손, 다른 그림: 같은 mix를 두 배로 늘려서, 반으로 줄여서
-    "mix", "mix", "s2_mix", "s05_mix", "mix", "cp",
-    // 멈춘 마디의 함정: 이단 점프를 이어 치다가, 멈춘 동안 머리 위에 뚜껑(그냥 튀어야 한다)
-    "peak", "peak", "s_lid", "peak", "cp",
-    // 섞기
-    "glideHigh", "s2_glideHigh", "s_stop", "s05_peak", "peak", "s_lid",
-    "goal", "flat", "flat",
-  ],
-  sections: [{ bar: 0, id: "intro" }, { bar: 7, id: "b" }, { bar: 13, id: "c" }, { bar: 18, id: "d" }, { bar: 24, id: "outro" }],
-};
-const LAB_D = {
-  ...LAB_BASE, name: "시안 D · 박자 악보",
-  // 공이 닿는 자리마다 기호가 하나씩: o 공중 덩어리(그냥) / T 기둥(이단 점프) / S 틈(멈춤). 마디를 악보처럼 읽는다.
-  bars: [
-    "flat", "flat",
-    // 기호 하나씩: 기둥 두 번 → 공중 덩어리만 → 틈 두 번 → 공중 덩어리만 (처음 둘은 안내가 있다)
-    "n_oToT", "n_oooo", "n_oSoS", "n_oooo",   "n_oToS", "n_oSoT", "cp",
-    // 버릇: 같은 악보를 두 번 → 끝에서 손 바꿈 / 끝에서 뚝
-    "n_oToTb", "n_oToTb", "n_oToS",   "n_oSoSb", "n_oSoSb", "n_oSoo", "cp",
-    // 자리 옮기기: 동작이 셋째 박(가운데)과 넷째 박(끝)으로
-    "n_ooTo", "n_ooTo", "n_ooSo", "n_oooT", "n_oooS", "n_oToS", "cp",
-    // 읽기만: 섞인 악보를 이어서
-    "n_oSoT", "n_ooTo", "n_oToo", "n_oooS", "n_oToT", "n_oSoo", "n_ooSo", "n_oSoT",
-    "goal", "flat", "flat",
-  ],
-  sections: [{ bar: 0, id: "intro" }, { bar: 9, id: "a" }, { bar: 16, id: "c" }, { bar: 23, id: "d" }, { bar: 31, id: "outro" }],
-};
-const LABS = [LAB_A, LAB_B, LAB_C, LAB_D];
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
 // 속도: 물리는 다른 구간과 똑같이 한 박에 4칸이고, 화면에서 이 구간의 가로를 RUSH_STRETCH배로 늘려 그린다 → 눈에는 2배로 달리지만 박자(음악)와는 그대로 맞는다.
@@ -1164,7 +1045,7 @@ function emptyLevel(course) {
         gems.push({ x: x0 + 16, h: zl * ZIG_STEP + HALF });
       }
     }
-    if (p && p.notes) for (let k = 0; k < 4; k++) for (const [lo, hi] of NOTE_SHAPES[p.notes[k]]) blocks.push({ x: x0 + 4 * k, w: 1, lo, hi, note: p.notes[k] });
+    if (p && p.nblocks) for (const [c, lo, hi] of p.nblocks) blocks.push({ x: x0 + c, w: 1, lo, hi });      // 손으로 놓는 빨간 네모(가운데 칸, 아래, 위). 박자 악보(시안)가 쓴다
     if (p && p.tall === true) tallBars.add(b);          // (계단 구간의 tall: true는 화면이 물러나야 하는 마디)
     if (p && Array.isArray(p.tall)) for (const t of p.tall) talls.push({ x: x0 + TPB * (t + 0.5), w: TALL_W, h: TALL_H });
     if (p && p.boxes) for (const [a, z, hh] of p.boxes) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "#";
@@ -1480,27 +1361,6 @@ function buildLevel(course) {
     const blindAt = (x) => { const p = PATTERNS[course.bars[Math.floor(x / 16)]]; return !!(p && p.blind); };
     for (const r of recs) if (active.has(r.air) && !blindAt(r.x)) L.gems.push(r.mark === "jump" ? { x: r.x, h: r.h, flip: 1 } : r.mark === "hold" ? { x: r.x, h: r.h, hold: true } : { x: r.x, h: r.h });
     L.gems.sort((u, v) => u.x - v.x);
-  }
-  // 유령 공(시안 A, call 마디): 그 마디의 시작 상태에서 부른 패턴대로 달려 본 자취. 스텝 → { h 공 바닥 높이, frozen, act "jump" | "hold" | "" }
-  L.ghost = new Map();
-  const calls = [];
-  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.call) calls.push([b, PATTERNS[p.call]]); });
-  if (calls.length) {
-    const starts = [], s = spawnState(L, -1);
-    while (!s.dead && !s.won) { if (s.step % BAR === 0) starts[s.step / BAR] = { ...s }; stepState(L, s, base.press.has(s.step + 1), null, base.hold.has(s.step + 1)); }
-    const F = L.floorH, Bs = L.blocks;
-    L.floorH = null; L.blocks = [];                      // 유령은 장애물에 걸리지 않는다(부르는 마디에는 원래 장애물이 없다)
-    for (const [b, q] of calls) {
-      if (!starts[b]) continue;
-      const g = { ...starts[b] }, lo = b * BAR, hi = lo + BAR;
-      const pr = new Set(q.presses.map((t) => lo + Math.round(t * SUB))), hl = q.holds.map(([a, z]) => [lo + Math.round(a * SUB), lo + Math.round(z * SUB)]);
-      while (g.step < hi && !g.dead) {
-        const ev = [], st = g.step + 1;
-        stepState(L, g, pr.has(st), ev, hl.some((h) => st >= h[0] && st < h[1]));
-        L.ghost.set(g.step, { h: (ROWS - 1) - g.y, frozen: g.frozen, act: ev.some((e) => e.type === "double" || e.type === "jump") ? "jump" : ev.some((e) => e.type === "freeze") ? "hold" : "" });
-      }
-    }
-    L.floorH = F; L.blocks = Bs;
   }
   return L;
 }
@@ -1869,4 +1729,139 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { LABS, NOTE_SHAPES, noteBar, TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+// ===================== 시안: 박자 악보 =====================
+// 공이 정박에 닿는 자리(마디 안의 칸 4k, 박 k)마다 기호를 하나씩 놓는다. 기호는 이미 있는 장치로 만든다. 한 마디 = 네 글자.
+//   .  아무것도 없음 — 그냥 튄다(정박)
+//   o  공중 빨간 덩어리 [2.6, 4.6] — 그냥 튄다(밑으로 지나간다). 이단 점프·멈춤은 걸린다
+//   T  빨간 기둥(높은 박스) [0, 2.5] — 앞 꼭대기에서 이단 점프
+//   S  파란 천장(밑면 3칸) + 밑의 낮은 빨간 기둥 [0, 1.75] — 앞 꼭대기부터 멈춰 사이로 지나간다(이단 점프는 천장에 막혀 기둥에 떨어진다)
+//   B  빨간 바닥 속의 파란 섬(한 칸 높이) — 그냥 튀면 섬에 1/8박 일찍 내려앉아 박이 당겨진다(다음 꼭대기도 1/8박 이르다). 이단 점프하면 섬을 넘어 빨간 바닥에
+//   R~ 충전 고리(두 박) — 빨간 바닥 위에 빨간 기둥, 그 뒤에 고리. 이단 점프로 기둥을 넘고, 고리에서 한 번 더(16분 음표) 뛰어 빨간 바닥을 건넌다
+//      (기둥이 없으면 멈춤으로 떠서 고리까지 가도 지나가졌다. 고리에서 뛰는 대신 멈춰서 떠 가는 것은 막지 못한다:
+//       고리 뒤에 높은 기둥을 세우면 막히지만, 첫 점프를 조금 일찍 누르면 고리에서 낮게 뛰게 되어 여유가 ±79ms에 못 미친다)
+// 누르는 것은 손으로 적지 않는다: 마디를 실제로 달려 보며 "그 기호 앞의 마지막 꼭대기"를 찾아 거기에 놓는다(파란 섬 뒤에서는 1/8박 당겨진다).
+// 어떤 악보가 되는지도 손으로 고르지 않는다: noteCheck가 달려 보고, 정답대로 가면 지나가고 + 기호마다 다른 손을 쓰면 그 마디에서 죽는 것만 통과시킨다.
+const NOTE_KINDS = ".oTSBR";
+const NOTE_TOL = 0.2;
+function noteGeometry(notes) {
+  const g = { nblocks: [], caps: [], boxes: [], lava: [], rings: [] };
+  for (let k = 0; k < 4; k++) {
+    const c = notes[k], X = 4 * k;
+    if (c === "o") g.nblocks.push([X, 2.6, 4.6]);
+    else if (c === "T") g.nblocks.push([X, 0, 2.5]);
+    else if (c === "S") { g.nblocks.push([X, 0, 1.75]); g.caps.push([X - 1, X, 3]); }
+    else if (c === "B") { g.boxes.push([X - 2, X - 1, 1]); g.lava.push([X - 3, X + 2]); }
+    else if (c === "R") { g.lava.push([X - 2, X + 4]); g.rings.push([X + 2, 1], [X + 2, 2]); g.nblocks.push([X, 0, 2.5]); }
+  }
+  for (const k of Object.keys(g)) if (!g[k].length) delete g[k];
+  return g;
+}
+const noteCtx = (name) => ({ name: "note", bpm: 152, bars: ["flat", name, "flat", "flat", "goal"], sections: [{ bar: 0, id: "a" }] });
+// b번 마디의 입력을 acts로 달린다. 결과: { s 끝난 상태, apex: [마디 안의 박, ...] 꼭대기 시각들, bounceAtEnd 다음 마디 첫 박에 땅에서 튀었나 }
+function noteRun(L, b, acts) {
+  const lo = b * 4 * SUB, hi = lo + 4 * SUB;
+  const press = new Set(acts.presses.map((t) => lo + Math.round(t * SUB)));
+  const holds = acts.holds.map(([a, z]) => [lo + Math.round(a * SUB), lo + Math.round(z * SUB)]);
+  const s = spawnState(L, -1), apex = [];
+  let bounceAtEnd = false;
+  while (!s.dead && !s.won) {
+    const st = s.step + 1, vy0 = s.vy, ev = [];
+    stepState(L, s, press.has(st), ev, holds.some((h) => st >= h[0] && st < h[1]));
+    if (st > lo && st <= hi && !s.onGround && !s.frozen && vy0 < 0 && s.vy >= 0) apex.push((st - lo) / SUB);
+    if (st === hi && ev.some((e) => e.type === "bounce") && (ROWS - 1) - s.y < 0.5) bounceAtEnd = true;
+  }
+  return { s, apex, bounceAtEnd };
+}
+const noteDies = (r, b) => r.s.dead && r.s.step >= b * 4 * SUB && r.s.step < (b + 1) * 4 * SUB + SUB / 2;
+// 악보 하나를 만들어 보고 확인한다. 결과: { ok, why, pattern }
+function noteCheck(notes) {
+  const bad = (why) => ({ ok: false, why });
+  if (notes.length !== 4) return bad("네 글자가 아니다");
+  if (!"o.".includes(notes[0])) return bad("첫 박은 쉰다(앞 마디에서 누를 수 없다)");
+  for (let k = 0; k < 4; k++) {
+    const c = notes[k];
+    if (c === "~") { if (notes[k - 1] !== "R") return bad("~는 R 뒤에만"); continue; }
+    if (!NOTE_KINDS.includes(c)) return bad("모르는 기호 " + c);
+    if (c === "R" && notes[k + 1] !== "~") return bad("R은 두 박(R~)");
+  }
+  const P = { holds: [], presses: [], tol: 0.18, manual: true, notes, ...noteGeometry(notes) }, tmp = "__note";
+  PATTERNS[tmp] = P;
+  try {
+    const L = buildLevel(noteCtx(tmp)), b = 1, acts = { presses: [], holds: [] };
+    // 누를 것: 동작 기호마다, 그 박 앞의 마지막 꼭대기(지금까지 정한 입력대로 달렸을 때)
+    for (let k = 1; k < 4; k++) {
+      const c = notes[k];
+      if (!"TSR".includes(c)) continue;
+      const ap = noteRun(L, b, acts).apex.filter((t) => t < k && t > k - 1);
+      if (!ap.length) return bad(`${k}박 앞에 꼭대기가 없다(앞 동작이 아직 끝나지 않았다)`);
+      const t = Math.round(ap[ap.length - 1] * 8) / 8;
+      if (c === "T") acts.presses.push(t);
+      else if (c === "S") acts.holds.push([t, t + 0.875]);
+      else acts.presses.push(t, k + 0.375);
+    }
+    acts.presses.sort((u, v) => u - v);
+    P.presses = acts.presses; P.holds = acts.holds;
+    const L2 = buildLevel(noteCtx(tmp)), ref = noteRun(L2, b, acts);
+    if (ref.s.dead) return bad("정답대로 가도 죽는다");
+    if (L2.fixed.length) return bad("걷어 낸 장애물이 있다");
+    if (!ref.bounceAtEnd) return bad("다음 마디 첫 박에 땅에서 튀지 않는다");
+    // 다른 손은 죽어야 한다: 동작 기호는 나머지 두 손, 쉬는 기호(o)는 이단 점프·멈춤, 파란 섬은 이단 점프
+    for (let k = 1; k < 4; k++) {
+      const c = notes[k];
+      if (c === "." || c === "~") continue;
+      const ap = ref.apex.filter((t) => t < k && t > k - 1);
+      const pAt = c === "R" || c === "T" ? acts.presses.find((t) => t < k && t > k - 1) : undefined, hAt = c === "S" ? acts.holds.find((h) => h[0] < k && h[0] > k - 1) : undefined;
+      const base = { presses: acts.presses.filter((t) => t !== pAt && !(c === "R" && t === k + 0.375)), holds: acts.holds.filter((h) => h !== hAt) };
+      const t = pAt ?? (hAt ? hAt[0] : ap.length ? Math.round(ap[ap.length - 1] * 8) / 8 : null);
+      if (t === null) continue;                          // (앞 동작의 공중에 있다: 이 박에서는 손을 쓸 수 없다)
+      const tries = [];
+      if (c === "R") {                                   // 고리: 첫 누름을 빼거나 멈춤으로 바꾸면, 고리의 누름을 빼면 죽는다
+        const r2 = k + 0.375, keep2 = { presses: [...base.presses, r2].sort((u, v) => u - v), holds: base.holds };
+        tries.push(keep2, { presses: keep2.presses, holds: [...base.holds, [t, t + 0.875]] });
+        tries.push({ presses: [...base.presses, t].sort((u, v) => u - v), holds: base.holds });      // (고리에서 멈추는 것은 확인하지 않는다: 위 설명)
+      } else {
+        if (c !== "T") tries.push({ presses: [...base.presses, t].sort((u, v) => u - v), holds: base.holds });
+        if (c !== "S") tries.push({ presses: base.presses, holds: [...base.holds, [t, t + 0.875]] });
+        if (c === "T" || c === "S") tries.push(base);
+        if (c === "B") tries.splice(1);                  // 파란 섬은 이단 점프만 막는다(멈춰서 넘는 것은 막지 못한다)
+      }
+      for (const w of tries) if (!noteDies(noteRun(L2, b, w), b)) return bad(`${k}박(${c}): 다른 손으로도 지나간다`);
+    }
+    // 타이밍은 어렵지 않아야 한다: 입력마다 NOTE_TOL박(152박에서 약 79ms) 일찍·늦게 눌러도 지나간다(멈춤은 시작만 옮긴다)
+    for (const d of [-NOTE_TOL, NOTE_TOL]) {
+      for (let i = 0; i < acts.presses.length; i++) if (noteRun(L2, b, { presses: acts.presses.map((v, j) => (j === i ? v + d : v)), holds: acts.holds }).s.dead) return bad(`${acts.presses[i]}박 누름의 여유가 모자란다`);
+      for (let i = 0; i < acts.holds.length; i++) if (noteRun(L2, b, { presses: acts.presses, holds: acts.holds.map((h, j) => (j === i ? [h[0] + d, h[1]] : h)) }).s.dead) return bad(`${acts.holds[i][0]}박 멈춤의 여유가 모자란다`);
+    }
+    delete P.notes;
+    return { ok: true, pattern: { ...P, notes } };
+  } finally { delete PATTERNS[tmp]; }
+}
+// 악보를 패턴으로 등록한다(이름 "n:악보", 안내 없는 것은 "n:악보!")
+function notePattern(notes, blind = true) {
+  const name = "n:" + notes + (blind ? "!" : "");
+  if (!PATTERNS[name]) {
+    const r = noteCheck(notes);
+    if (!r.ok) throw new Error(`악보 ${notes}: ${r.why}`);
+    PATTERNS[name] = { ...r.pattern, blind };
+  }
+  return name;
+}
+const LAB_NOTES = [
+  // 기호를 하나씩(처음 보는 기호는 안내가 있다): 기둥 → 쉼 → 파란 천장 → 쉼 → 파란 섬 → 고리
+  ["oToT", 0], ["oooo"], ["oSoS", 0], ["oooo"], ["o.B.", 0], [".BoB"], ["oR~o", 0], ["o.R~"], "cp",
+  // 정박(그냥 튀기)과 점프·멈춤·당겨진 박을 한 마디에 섞는다
+  ["oToS"], ["oBoT"], ["oSBo"], ["o.TB"], "cp",
+  // 버릇: 같은 악보 두 번 → 한 군데만 다르게(손 바꿈 / 뚝 / 앞에서 손 바꿈 / 하나 더)
+  ["oBoT"], ["oBoT"], ["oBoS"],   ["oToB"], ["oToB"], ["oToS"], "cp",
+  ["oSBB"], ["oSBB"], ["oTBB"],   ["oBoB"], ["oBoB"], ["oBoT"], "cp",
+  // 이어 읽기
+  ["oSBo"], ["oR~B"], [".TB."], ["o.R~"], ["ooTB"], ["oBoS"], [".TBB"], ["oSoT"], ["oToT"],
+];
+const LAB_D = {
+  name: "시안 · 박자 악보", bpm: ROUND1.bpm, track: ROUND1.track, lab: true,
+  bars: ["flat", "flat", ...LAB_NOTES.map((e) => (e === "cp" ? "cp" : notePattern(e[0], e[1] !== 0))), "goal", "flat", "flat"],
+  sections: [{ bar: 0, id: "intro" }, { bar: 11, id: "a" }, { bar: 16, id: "c" }, { bar: 23, id: "b" }, { bar: 30, id: "d" }, { bar: 38, id: "outro" }],
+};
+const LABS = [LAB_D];
+
+if (typeof module !== "undefined") module.exports = { LABS, NOTE_KINDS, notePattern, noteCheck, TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
