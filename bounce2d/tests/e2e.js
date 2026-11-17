@@ -360,6 +360,26 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
       ok(g7.pads >= 8 && g7.rings === 6, `7라운드의 새 장치: 피버의 튕김판 ${g7.pads}개(공중에 뜬 파란 판), 바운스의 충전 고리 ${g7.rings}개(삼단 점프와 미끼 고리)`); }
     { const c = cams7, near = (b, v) => c[b] && Math.abs(c[b].rot - v) < 1;
       ok(c[132] && c[132].mode === 'rush' && near(132, 0) && near(142, -45) && near(150, 0) && near(296, 90) && near(306, 45), `7라운드의 피버 둘: 첫 번째는 곧게 가다가 비스듬히 아래로(${c[142] && c[142].rot.toFixed(0)}도) 내려가서 펴지고, 두 번째는 곧장 위로(${c[296] && c[296].rot.toFixed(0)}도) 섰다가 비스듬히(${c[306] && c[306].rot.toFixed(0)}도) 눕는다`); }
+    // 8라운드(계단의 라운드): 공이 공중에 뜬 파란 박스를 실제로 딛고 오르내리고, 카메라가 따라 오르내린다
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(8)')]); await ready();
+    st = await G(() => { const g = window.__game, L = g.L, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, rides: L.rides.length, bands: L.bands.size, climb: g.climb(0).any }; });
+    ok(st.round === 7 && st.name.includes('Velocity of a Thousand Suns') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.073 && st.cps === 9 && st.rides === 1 && st.bands > 60 && st.climb, `8라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개, 피버 ${st.rides}번, 계단의 빨간 덩어리 ${st.bands}칸)`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots8 = { 9.0: 'r8_first_steps', 13.5: 'r8_jump_step', 21.0: 'r8_red_step', 34.0: 'r8_hill', 41.0: 'r8_trap_lid', 50.0: 'r8_two_bar', 66.0: 'r8_down', 83.0: 'r8_shift_trap', 99.0: 'r8_mountain_up', 103.0: 'r8_mountain_top', 108.0: 'r8_mountain_down', 122.0: 'r8_swap_trap', 166.0: 'r8_fever', 200.0: 'r8_sync', 262.0: 'r8_mountain2', 292.0: 'r8_final_up', 296.0: 'r8_final_top', 312.0: 'r8_finish' };
+    const cams8 = {}; let hi8 = 0, top8 = 1e9;
+    for (let beat = 0; beat <= 330; beat += 0.25) {
+      await tick(beat);
+      if (shots8[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots8[beat] + '.png' }); }
+      const q = await G(() => { const g = window.__game, c = g.climb(g.state.x), cv = document.getElementById('view'), T = g.view.zT || g.view.T; return { phase: g.phase, h: 9 - g.state.y, at: c.at, cam: c.cam, y: g.view.groundY - (9 - g.state.y - c.cam + 0.8) * T, mode: g.state.mode }; });
+      if (q.mode === 'bounce') { hi8 = Math.max(hi8, q.h); top8 = Math.min(top8, q.y); }
+      if (beat === 103 || beat === 30 || beat === 170) { await p.waitForTimeout(400); cams8[beat] = await G(() => { const g = window.__game, c = g.climb(g.state.x); return { at: c.at, cam: c.cam, mode: g.state.mode }; }); }      // (카메라는 실제 시간으로 따라가므로 잠깐 기다렸다가 잰다)
+      if (q.phase !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === st.cps - 1, `8라운드도 패턴대로 누르면 완주`);
+    ok(hi8 > 9 && cams8[103] && cams8[103].at >= 6 && cams8[30] && Math.abs(cams8[30].cam) < 0.5 && cams8[170] && cams8[170].mode === 'rush' && Math.abs(cams8[170].cam) < 0.2, `계단: 공이 ${hi8.toFixed(1)}칸 높이까지 올라가고(큰 산의 꼭대기에서 딛는 높이 ${cams8[103] && cams8[103].at.toFixed(1)}칸), 카메라가 따라 올라간다(${cams8[103] && cams8[103].cam.toFixed(1)}칸). 땅에서와 피버에서는 내려와 있다(${cams8[30] && cams8[30].cam.toFixed(2)}칸, ${cams8[170] && cams8[170].cam.toFixed(2)}칸 ${cams8[170] && cams8[170].mode})`);
+    ok(top8 > -40, `카메라가 따라가서, 가장 높이 뛰었을 때도 공이 화면 위로 멀리 나가지 않는다(공 윗면의 가장 높은 자리 y=${top8.toFixed(0)}px)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');

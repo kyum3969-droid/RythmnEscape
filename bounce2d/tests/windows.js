@@ -9,8 +9,8 @@ function measure(name, bpm = 96) {
   const rush = Lg.PATTERNS[name].mode === 'rush';
   const wide = rush && Lg.PATTERNS[name].wide;       // 넓은 통로의 패턴은 계단으로 올라가서 시작하고 계단으로 내려온다
   const pat = Lg.PATTERNS[name];
-  // 앞 마디에 기대는 패턴은 그 상태에서 잰다: 계단 꼭대기의 패턴(sky)은 계단을 올라가서, 고리 연타 뒤의 패턴(after)은 연타에 이어서
-  const bars = pat.sky ? ['flat', 'upStairs', name, 'downStairs', 'idle', 'goal'] : pat.lead ? ['flat', ...pat.lead, name, 'flat', 'flat', 'goal'] : pat.after ? ['flat', pat.after, name, 'flat', 'flat', 'goal']
+  // 앞뒤 마디에 기대는 패턴은 그 상태에서 잰다(lead = 앞에 와야 하는 마디, tail = 뒤에 이어져야 하는 마디: 여러 마디에 걸친 계단): 계단 꼭대기의 패턴(sky)은 계단을 올라가서, 고리 연타 뒤의 패턴(after)은 연타에 이어서
+  const bars = pat.sky ? ['flat', 'upStairs', name, 'downStairs', 'idle', 'goal'] : pat.lead || pat.tail ? ['flat', ...(pat.lead || []), name, ...(pat.tail || []), 'flat', 'flat', 'goal'] : pat.after ? ['flat', pat.after, name, 'flat', 'flat', 'goal']
     : rush ? ['flat', wide ? 'wUp' : 'zE', name, wide ? 'wDn' : 'zE', 'flat', 'goal'] : ['flat', name, 'flat', 'flat', 'goal'];
   const lv = Lg.buildLevel({ name, bpm, tol: process.env.TOL ? +process.env.TOL : Lg.COURSE.tol, bars, sections: [{ bar: 0, id: 'a' }] });
   const ms = 60000 / bpm / Lg.SUB;

@@ -332,6 +332,59 @@ const PATTERNS = {
   g7w75: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBFFS." },
   g7z78: { mode: "rush", nodes: "F.F.F.B." },
   // </gen:patterns:R7>
+  // <gen:patterns:R8>
+  // 도구(tools_gen_course.js R8 3)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
+  g8_2: { holds: [], presses: [], tol: 0.18, boxes: [[2, 4, 1], [10, 12, 1]], stair: true, floats: [[6, 7, 2]], lava: [[1, 13]] },   // 계단: 1 → 2 → 1 → 0
+  g8_3: { holds: [], presses: [0.5], tol: 0.18, stair: true, floats: [[5, 7, 3], [10, 11, 2]], lava: [[1, 13]] },   // 계단: 이단 점프로 3 → 2 → 0
+  g8_5: { holds: [[1.375, 2.375]], presses: [], tol: 0.18, boxes: [[2, 4, 1]], bands: [[6, 7, 1, 2], [6, 7, 4.6, 6.4]], stair: true, floats: [[8, 11, 3]], lava: [[1, 13]] },   // 계단: 1 → 빨간 단을 건너뛰어 3 → 0
+  g8_8: { holds: [], presses: [0.5], tol: 0.18, stair: true, floats: [[4, 6, 4], [9, 11, 3]], lava: [[1, 13]] },   // 계단: 이단 점프로 4 → 3 → 0
+  g8_10: { holds: [], presses: [1.375], tol: 0.18, boxes: [[2, 4, 1]], bands: [[2, 2, 3.6, 5.4]], stair: true, floats: [[9, 11, 3]], lava: [[1, 13]], traps: [{presses: [0.5]}] },   // 함정(낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다)
+  g8_11: { holds: [], presses: [0.5, 2.25], tol: 0.18, tail: ["g8_12"], stair: true, floats: [[5, 7, 2], [12, 14, 4]], lava: [[1, 15]] },   // 계단: 이단 점프로 2 → 이단 점프로 4 → 빨간 단을 건너뛰어 6 → 3 → 0
+  g8_12: { holds: [[0, 1]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [0, 2, 7.6, 9.4]], lead: ["g8_11"], stair: true, floats: [[3, 5, 6], [9, 11, 3]], lava: [[0, 13]] },
+  g8_16: { holds: [[2, 3], [3.75, 4.75]], presses: [0.5], tol: 0.18, bands: [[8, 10, 4, 5], [8, 10, 7.6, 9.4]], loose: [3.75], tail: ["g8_17"], stair: true, floats: [[4, 6, 4], [11, 13, 6]], lava: [[1, 15]] },   // 계단: 이단 점프로 4 → 빨간 단을 건너뛰어 6 → 빨간 단을 건너뛰어 4 → 1 → 0
+  g8_17: { holds: [], presses: [], tol: 0.18, boxes: [[10, 12, 1]], bands: [[0, 2, 4, 5], [0, 2, 9.6, 11.4]], lead: ["g8_16"], stair: true, floats: [[4, 6, 4]], lava: [[0, 13]] },
+  g8_20: { holds: [[2, 3]], presses: [0.5], tol: 0.18, bands: [[8, 10, 4, 5], [8, 10, 7.6, 9.4]], tail: ["g8_21"], stair: true, floats: [[4, 6, 4], [11, 13, 6]], lava: [[1, 15]], traps: [{holds: [[2, 3], [3.75, 4.75]]}] },   // 함정(밀린 빨간 단: 건너뛰던 자리는 파란 단이고 그다음이 빨갛다. 버릇대로 먼저 멈추면 빨간 단에 내려앉는다)
+  g8_21: { holds: [[0.875, 1.875]], presses: [], tol: 0.18, bands: [[5, 6, 3, 4], [5, 6, 8.6, 10.4]], lead: ["g8_20"], stair: true, floats: [[0, 2, 5], [8, 11, 3]], lava: [[0, 13]] },
+  g8_22: { holds: [], presses: [0.5], tol: 0.18, boxes: [[10, 12, 1]], stair: true, floats: [[5, 7, 3]], lava: [[1, 13]] },   // 계단: 이단 점프로 3 → 1 → 0
+  g8_24: { holds: [[0.5, 1.5]], presses: [2.25, 3.875], tol: 0.18, bands: [[2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], tail: ["g8_25","g8_26","g8_27"], stair: true, floats: [[5, 7, 2], [12, 14, 5]], lava: [[1, 15]] },   // 계단: 빨간 단을 건너뛰어 2 → 이단 점프로 5 → 이단 점프로 8 → 빨간 단을 건너뛰어 8 → 7 → 빨간 단을 건너뛰어 5 → 4 → 3 → 빨간 단을 건너뛰어 1 → 0
+  g8_25: { holds: [[1.5, 2.5]], presses: [], tol: 0.18, bands: [[7, 8, 7, 8], [7, 8, 11.6, 13.4]], lead: ["g8_24"], tail: ["g8_26","g8_27"], stair: true, floats: [[2, 4, 8], [10, 12, 8], [15, 15, 7]], lava: [[0, 15]] },
+  g8_26: { holds: [[0.625, 1.625]], presses: [], tol: 0.18, bands: [[4, 5, 5, 6], [4, 5, 10.6, 12.4]], lead: ["g8_24","g8_25"], tail: ["g8_27"], stair: true, floats: [[0, 1, 7], [7, 10, 5], [13, 14, 4]], lava: [[0, 15]] },
+  g8_27: { holds: [[1.125, 2.125]], presses: [], tol: 0.18, boxes: [[9, 12, 1]], bands: [[6, 7, 1, 2], [6, 7, 6.6, 8.4]], lead: ["g8_24","g8_25","g8_26"], stair: true, floats: [[1, 3, 3]], lava: [[0, 13]] },
+  g8_28: { holds: [], presses: [0.5], tol: 0.18, boxes: [[10, 12, 1]], stair: true, floats: [[4, 6, 4]], lava: [[1, 13]] },   // 계단: 이단 점프로 4 → 1 → 0
+  g8_30: { holds: [[0.5, 1.5], [2.25, 3.25]], presses: [], tol: 0.18, bands: [[2, 4, 3.6, 5.4], [10, 12, 5.6, 7.4]], redBox: [[2, 4, 1], [10, 12, 1]], stair: true, floats: [[5, 7, 2]], lava: [[1, 13]], traps: [{presses: [0.5], holds: [[2.25, 3.25]]}] },   // 함정(손 바꿈: 이단 점프로 오르던 자리에 빨간 단. 멈춰서 건너뛴다(뛰면 걸린다))
+  g8_32: { holds: [[3.625, 4.625]], presses: [0.5, 2.125], tol: 0.18, loose: [3.625], tail: ["g8_33"], stair: true, floats: [[5, 7, 3], [10, 13, 7]], lava: [[1, 15]] },   // 계단: 이단 점프로 3 → 이단 점프로 7 → 빨간 단을 건너뛰어 5 → 2 → 0
+  g8_33: { holds: [], presses: [], tol: 0.18, bands: [[0, 1, 5, 6], [0, 1, 10.6, 12.4]], lead: ["g8_32"], stair: true, floats: [[3, 6, 5], [9, 11, 2]], lava: [[0, 13]] },
+  g8_34: { holds: [[3.125, 4.125]], presses: [1.375], tol: 0.18, boxes: [[2, 4, 1]], bands: [[14, 15, 1, 2], [2, 2, 3.6, 5.4], [14, 15, 6.6, 8.4]], loose: [3.125], tail: ["g8_35"], stair: true, floats: [[9, 11, 3]], lava: [[1, 15]], traps: [{presses: [0.5]}] },   // 함정(낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다)
+  g8_35: { holds: [[1.375, 2.375]], presses: [], tol: 0.18, boxes: [[1, 4, 1]], bands: [[6, 7, 1, 2], [6, 7, 4.6, 6.4]], lead: ["g8_34"], stair: true, floats: [[8, 11, 3]], lava: [[0, 13]] },
+  g8_36: { holds: [[0.5, 1.5]], presses: [], tol: 0.18, bands: [[2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], stair: true, floats: [[5, 7, 2], [10, 11, 2]], lava: [[1, 13]] },   // 계단: 빨간 단을 건너뛰어 2 → 2 → 0
+  g8_38: { holds: [[0.5, 1.5]], presses: [], tol: 0.18, bands: [[2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], stair: true, floats: [[5, 7, 2], [9, 11, 3]], lava: [[1, 13]] },   // 계단: 빨간 단을 건너뛰어 2 → 3 → 0
+  g8w41: { mode: "rush", wide: true, gap: 1.5, nodes: ".SBSFF.." },
+  g8w43: { mode: "rush", wide: true, gap: 1.5, nodes: ".SFSFF.." },   // 함정(판이 없다): 앞 마디(.SBSFF..)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g8z45: { mode: "rush", nodes: "F.F.B.F." },
+  g8z46: { mode: "rush", nodes: "B.F.F.F." },
+  g8_48: { holds: [], presses: [0.5, 2.125], tol: 0.18, tail: ["g8_49"], stair: true, floats: [[5, 7, 3], [11, 13, 6]], lava: [[1, 15]] },   // 계단: 이단 점프로 3 → 이단 점프로 6 → 3 → 빨간 단을 건너뛰어 1 → 0
+  g8_49: { holds: [[1.125, 2.125]], presses: [], tol: 0.18, boxes: [[9, 12, 1]], bands: [[6, 7, 1, 2], [6, 7, 6.6, 8.4]], lead: ["g8_48"], stair: true, floats: [[1, 3, 3]], lava: [[0, 13]] },
+  g8_52: { holds: [], presses: [0.5, 2.125], tol: 0.18, tail: ["g8_53"], stair: true, floats: [[5, 7, 3], [11, 13, 6]], lava: [[1, 15]] },
+  g8_53: { holds: [[2.25, 3.25]], presses: [], tol: 0.18, bands: [[10, 12, 5.6, 7.4]], redBox: [[10, 12, 1]], lead: ["g8_52"], stair: true, floats: [[1, 3, 3], [6, 7, 2]], lava: [[0, 13]], traps: [{holds: [[2.25, 3.25], [1.125, 2.125]]}] },   // 함정(밀린 빨간 단: 건너뛰던 자리는 파란 단이고 그다음이 빨갛다. 버릇대로 먼저 멈추면 빨간 단에 내려앉는다)
+  g8_54: { holds: [], presses: [0.5], tol: 0.18, stair: true, floats: [[5, 7, 3], [9, 11, 3]], lava: [[1, 13]] },   // 계단: 이단 점프로 3 → 3 → 0
+  g8_56: { holds: [], presses: [0.5], tol: 0.18, stair: true, floats: [[5, 7, 2], [10, 11, 2]], lava: [[1, 13]] },   // 계단: 이단 점프로 2 → 2 → 0
+  g8_59: { holds: [[0.5, 1.5]], presses: [2.25], tol: 0.18, bands: [[2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], tail: ["g8_60"], stair: true, floats: [[5, 7, 2], [12, 14, 5]], lava: [[1, 15]] },   // 계단: 빨간 단을 건너뛰어 2 → 이단 점프로 5 → 5 → 빨간 단을 건너뛰어 3 → 0
+  g8_60: { holds: [[0.875, 1.875]], presses: [], tol: 0.18, bands: [[5, 6, 3, 4], [5, 6, 8.6, 10.4]], lead: ["g8_59"], stair: true, floats: [[0, 2, 5], [8, 11, 3]], lava: [[0, 13]] },
+  g8_61: { holds: [[0.5, 1.5], [2.25, 3.25]], presses: [], tol: 0.18, bands: [[9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g8_62"], stair: true, floats: [[5, 7, 2], [12, 14, 4]], lava: [[1, 15]], traps: [{presses: [2.25], holds: [[0.5, 1.5]]}] },   // 함정(손 바꿈: 이단 점프로 오르던 자리에 빨간 단. 멈춰서 건너뛴다(뛰면 걸린다))
+  g8_62: { holds: [[1.25, 2.25]], presses: [], tol: 0.18, bands: [[6, 7, 1, 2], [6, 7, 5.6, 7.4]], lead: ["g8_61"], stair: true, floats: [[2, 3, 2], [9, 11, 2]], lava: [[0, 13]] },
+  g8_64: { holds: [[0.5, 1.5]], presses: [2.25], tol: 0.18, bands: [[2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], tail: ["g8_65","g8_66","g8_67"], stair: true, floats: [[5, 7, 2], [12, 14, 4]], lava: [[1, 15]] },   // 계단: 빨간 단을 건너뛰어 2 → 이단 점프로 4 → 빨간 단을 건너뛰어 6 → 빨간 단을 건너뛰어 8 → 빨간 단을 건너뛰어 8 → 빨간 단을 건너뛰어 6 → 빨간 단을 건너뛰어 4 → 1 → 0
+  g8_65: { holds: [[0, 1], [1.75, 2.75], [3.5, 4.5]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [7, 9, 6, 7], [15, 15, 7, 8], [0, 2, 7.6, 9.4], [7, 9, 9.6, 11.4], [15, 15, 11.6, 13.4]], loose: [3.5], lead: ["g8_64"], tail: ["g8_66","g8_67"], stair: true, floats: [[3, 5, 6], [10, 12, 8]], lava: [[0, 15]] },
+  g8_66: { holds: [[1.5, 2.5], [3.75, 4.75]], presses: [], tol: 0.18, bands: [[0, 0, 7, 8], [7, 9, 6, 7], [0, 0, 11.6, 13.4], [7, 9, 11.6, 13.4]], loose: [3.75], lead: ["g8_64","g8_65"], tail: ["g8_67"], stair: true, floats: [[2, 4, 8], [11, 13, 6]], lava: [[0, 15]] },
+  g8_67: { holds: [], presses: [], tol: 0.18, boxes: [[10, 12, 1]], bands: [[0, 2, 4, 5], [0, 2, 9.6, 11.4]], lead: ["g8_64","g8_65","g8_66"], stair: true, floats: [[4, 6, 4]], lava: [[0, 13]] },
+  g8_68: { holds: [[0.5, 1.5], [2.25, 3.25]], presses: [], tol: 0.18, bands: [[2, 4, 3.6, 5.4], [10, 12, 5.6, 7.4]], redBox: [[2, 4, 1], [10, 12, 1]], stair: true, floats: [[5, 7, 2]], lava: [[1, 13]] },   // 계단: 빨간 단을 건너뛰어 2 → 빨간 단을 건너뛰어 0
+  g8_70: { holds: [[1.375, 2.375]], presses: [], tol: 0.18, boxes: [[2, 4, 1]], bands: [[6, 7, 1, 2], [6, 7, 4.6, 6.4]], stair: true, floats: [[8, 11, 3]], lava: [[1, 13]], traps: [{holds: [[1.375, 2.375], [0.5, 1.5]]}] },   // 함정(밀린 빨간 단: 건너뛰던 자리는 파란 단이고 그다음이 빨갛다. 버릇대로 먼저 멈추면 빨간 단에 내려앉는다)
+  g8_72: { holds: [[1.375, 2.375]], presses: [3.125], tol: 0.18, boxes: [[2, 4, 1]], bands: [[6, 7, 1, 2], [6, 7, 4.6, 6.4]], tail: ["g8_73","g8_74","g8_75"], stair: true, floats: [[8, 11, 3]], lava: [[1, 15]] },   // 계단: 1 → 빨간 단을 건너뛰어 3 → 이단 점프로 5 → 이단 점프로 7 → 8 → 빨간 단을 건너뛰어 8 → 빨간 단을 건너뛰어 6 → 3 → 빨간 단을 건너뛰어 1 → 0
+  g8_73: { holds: [[3.5, 4.5]], presses: [0.875], tol: 0.18, bands: [[15, 15, 7, 8], [15, 15, 11.6, 13.4]], loose: [3.5], lead: ["g8_72"], tail: ["g8_74","g8_75"], stair: true, floats: [[0, 2, 5], [7, 9, 7], [11, 12, 8]], lava: [[0, 15]] },
+  g8_74: { holds: [[1.5, 2.5]], presses: [], tol: 0.18, bands: [[0, 0, 7, 8], [7, 9, 6, 7], [0, 0, 11.6, 13.4], [7, 9, 11.6, 13.4]], lead: ["g8_72","g8_73"], tail: ["g8_75"], stair: true, floats: [[2, 4, 8], [11, 13, 6]], lava: [[0, 15]] },
+  g8_75: { holds: [[1.125, 2.125]], presses: [], tol: 0.18, boxes: [[9, 12, 1]], bands: [[6, 7, 1, 2], [6, 7, 6.6, 8.4]], lead: ["g8_72","g8_73","g8_74"], stair: true, floats: [[1, 3, 3]], lava: [[0, 13]] },
+  g8_76: { holds: [[2.25, 3.25]], presses: [0.5], tol: 0.18, bands: [[9, 11, 2, 3], [9, 11, 5.6, 7.4]], tail: ["g8_77"], stair: true, floats: [[5, 7, 2], [12, 14, 4]], lava: [[1, 15]] },   // 계단: 이단 점프로 2 → 빨간 단을 건너뛰어 4 → 빨간 단을 건너뛰어 6 → 3 → 0
+  g8_77: { holds: [[0, 1]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [0, 2, 7.6, 9.4]], lead: ["g8_76"], stair: true, floats: [[3, 5, 6], [9, 11, 3]], lava: [[0, 13]] },
+  // </gen:patterns:R8>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
   // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 바로 위의 빨간 덩어리에 부딪힌다
@@ -814,7 +867,62 @@ const ROUND7 = {
     { bar: 56, id: "a" }, { bar: 64, id: "b" }, { bar: 72, id: "rush" }, { bar: 79, id: "outro" },
   ],
 };
-const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7];
+// ---- 8라운드: Velocity of a Thousand Suns (Gemini가 만든 곡. 150.00 BPM 고정 — 앞의 곡들(152)과 다르다 —, 첫 박 0.073초, 129.1초)
+// 박은 곡의 날카로운 소리 295곳으로 쟀다(어긋남 ±4ms, 곡 끝까지 밀림 1ms 안쪽). 게임 안 분석기에 맡기지 않는다(measured).
+// 곡의 구간(마디): 0~7 조용한 도입 / 8~13 리듬, 14~15 끊김 / 16~22 더 꽉 찬 리듬, 23 끊김 / 24~31 조용함
+//                / 32~37 리듬, 38~39 끊김 / 40~46 가장 센 절정, 47 채움 / 48~55 엇박 베이스 / 56~63 엇박 베이스, 더 꽉 차게
+//                / 64~71 조용함 / 72~77 마지막 절정 / 78 끝맺는 소리와 여운
+// 계단의 라운드: 평지는 처음·체크포인트·결승선뿐이고, 바운스 구간은 전부 공중에 뜬 파란 박스의 계단이다. **공이 실제로 딛고 오르내린다**(그림만 올리는 것이 아니다).
+//   딛는 높이가 튀는 박을 바꾼다(한 칸 높을 때마다 1/8박 일찍): 한 칸 위의 단에는 0.875박 만에, 한 칸 아래에는 1.125박 만에 닿는다. 그래서 오를 때는 리듬이 당겨지고 내려올 때는 늘어진다.
+//   높은 단(두~네 칸 위)은 꼭대기에서 이단 점프로 오르고, 빨간 단은 꼭대기에서 멈춰서 건너뛴다. 계단 밑은 빨간 바닥이다(떨어지면 죽는다).
+//   함정은 오르면서도 내려오면서도 나온다: 낮아진 단(뚜껑), 손 바꿈(이단 점프 자리에 빨간 단), 한 칸 뒤로 밀린 빨간 단.
+// 카메라는 공이 딛는 높이를 따라 오르내린다(climb). 여덟 칸 높이의 큰 산이 세 번 나온다. 피버는 가장 센 절정 한 곳뿐이다.
+const ROUND8 = {
+  name: "ROUND 8 · Velocity of a Thousand Suns",
+  bpm: 150.0,
+  track: { file: "music/velocity_of_a_thousand_suns.mp3", offset: 0.073, measured: true },
+  floatReds: true, density: 0.9, climb: true,
+  cam: [{ bar: 42, rot: 45 }, { bar: 44, rot: 0 }],
+  pal: {                                         // 이 라운드의 색: 천 개의 해 — 짙은 남색 하늘에 금빛·흰빛. 주황·분홍은 쓰지 않는다(빨간 장애물과 헷갈린다)
+    intro: { top: "#07060f", bottom: "#2c2048", accent: "#ffd84d", sun: "#fff3b0" },
+    a:     { top: "#0a0a1c", bottom: "#1f3f7a", accent: "#7fe0ff", sun: "#fff0a0" },
+    b:     { top: "#100a1e", bottom: "#4a2f80", accent: "#ffe27a", sun: "#ffffff" },
+    c:     { top: "#0c1016", bottom: "#27506a", accent: "#9ff0d0", sun: "#fff6c8" },
+    d:     { top: "#140f08", bottom: "#5a4416", accent: "#fff0a0", sun: "#ffd84d" },
+    rush:  { top: "#05050c", bottom: "#3a3070", accent: "#ffffff", sun: "#ffd84d" },
+  },
+  // 8라운드의 마디도 도구(tools_gen_course.js R8)가 뽑는다. 계단은 tools_stairs.js가 짠다. 짜임은 틀(TEMPLATES.R8)에 정해 두었다.
+  bars: [
+    // <gen:bars:R8>
+    // 도입(조용함): 계단을 하나씩 보여 준다. 그냥 딛고 오르내리기(누를 것이 없다) → 높은 단은 이단 점프로 ×2 → 빨간 단은 멈춰서 건너뛰기 ×2
+    "flat", "flat", "g8_2", "g8_3",   "g8_3", "g8_5", "g8_5", "cp",
+    // 리듬 — 오르면서 함정: 한 마디짜리 계단을 두 번 → 이단 점프로 오르던 단이 낮아졌다. 이어서 두 마디짜리 계단을 두 번(헛다리: 함정이 없다)
+    "g8_8", "g8_8", "g8_10", "g8_11",   "g8_12", "g8_11", "g8_12", "cp",
+    // 더 꽉 찬 리듬 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 내려오는 길의 빨간 단이 한 칸 뒤로 밀렸다. 이어서 새 계단 하나
+    "g8_16", "g8_17", "g8_16", "g8_17",   "g8_20", "g8_21", "g8_22", "cp",
+    // 조용함 — 큰 산: 네 마디에 걸쳐 여덟 칸 높이까지 올랐다가 내려온다. 이어서 한 마디짜리를 두 번 → 손 바꿈(이단 점프로 오르던 자리에 빨간 단)
+    "g8_24", "g8_25", "g8_26", "g8_27",   "g8_28", "g8_28", "g8_30", "cp",
+    // 다시 꽉 찬 리듬 — 한 번만 보여 주고 함정(오르면서), 이어서 헛다리(두 번 하고 그냥 넘어간다)와 새 계단
+    "g8_32", "g8_33", "g8_34", "g8_35",   "g8_36", "g8_36", "g8_38", "cp",
+    // 가장 센 절정 — 피버 하나(넓은 통로, 튕김판): 판이 있는 마디를 두 번 → 판이 없다(눌러야 꺾인다). 끝은 좁은 통로의 튕김판
+    "wUp", "g8w41", "g8w41", "g8w43",   "wDn", "g8z45", "g8z46", "cp",
+    // 엇박 베이스 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 밀린 빨간 단. 이어서 새 계단 하나
+    "g8_48", "g8_49", "g8_48", "g8_49",   "g8_52", "g8_53", "g8_54", "cp",
+    // 엇박 베이스, 더 꽉 차게 — 헛다리(같은 계단 세 번), 이어서 한 번만 보여 주고 함정
+    "g8_56", "g8_56", "g8_56", "g8_59",   "g8_60", "g8_61", "g8_62", "cp",
+    // 조용함 — 두 번째 큰 산, 이어서 한 마디짜리를 두 번 → 밀린 빨간 단
+    "g8_64", "g8_65", "g8_66", "g8_67",   "g8_68", "g8_68", "g8_70", "cp",
+    // 마지막 절정 — 세 번째 큰 산을 넘고, 두 마디짜리 계단 하나를 더 넘어 결승선으로
+    "g8_72", "g8_73", "g8_74", "g8_75",   "g8_76", "g8_77",
+    "goal", "flat", "flat",
+    // </gen:bars:R8>
+  ],
+  sections: [
+    { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 16, id: "b" }, { bar: 24, id: "intro" }, { bar: 32, id: "c" }, { bar: 40, id: "rush" }, { bar: 47, id: "a" },
+    { bar: 56, id: "d" }, { bar: 64, id: "intro" }, { bar: 72, id: "b" }, { bar: 78, id: "outro" },
+  ],
+};
+const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8];
 const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
@@ -980,6 +1088,7 @@ function hazardAt(L, s) {
     if (c < 0 || c >= L.cols || !(s.x + half - grace > c + 0.1 && s.x - half + grace < c + 0.9)) continue;
     if (fh + 0.06 < L.floorH[c] && (!L.floorLo || fh + SIZE - 0.06 > L.floorLo[c])) return { c, kind: "floor" };
     if (fh + SIZE - 0.06 > L.ceilH[c] && (!L.ceilTop || fh + 0.06 < L.ceilTop[c])) return { c, kind: "ceil" };
+    if (L.bands) { const q = L.bands.get(c); if (q) for (const [lo, hi] of q) if (fh + SIZE - 0.06 > lo && fh + 0.06 < hi) return { c, kind: "band" }; }      // 계단의 빨간 단과 그 위의 뚜껑(한 칸에 여러 개 놓일 수 있다)
   }
   return null;
 }
@@ -1029,7 +1138,7 @@ function buildLevel(course) {
     return s;
   };
   const patternBars = [];
-  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.mode !== "rush" && (p.holds.length || p.presses.length || (p.traps && !p.sneaky)) && snaps[b]) patternBars.push([b, p]); });   // 피버 구간의 장애물은 패턴에서 바로 나온다
+  course.bars.forEach((name, b) => { const p = PATTERNS[name]; if (p && p.mode !== "rush" && !p.stair && (p.holds.length || p.presses.length || (p.traps && !p.sneaky)) && snaps[b]) patternBars.push([b, p]); });      // (계단 마디(stair)에는 장애물을 따로 만들지 않는다: 빨간 단·뚜껑·빨간 바닥을 손으로 다 놓았다)   // 피버 구간의 장애물은 패턴에서 바로 나온다
 
   // 1) 통로
   for (const [b, p] of patternBars) {
@@ -1109,8 +1218,9 @@ function buildLevel(course) {
     });
     // 함정: 버릇대로 한 번 더 누른 달리기. 이것을 막는 덩어리(누르면 안 되는 자리 위에 매달린 것)를 남긴다
     // (full = 앞 마디의 입력을 통째로 다시 누른 달리기)
-    if (!p.sneaky) for (const t of p.traps || []) wrong.push(t.full || { presses: [...p.presses, ...(t.presses || [])], holds: t.holds || p.holds });
-    const nTrap = !p.sneaky && p.traps ? p.traps.length : 0, name = course.bars[b];
+    // (계단 마디(stair)의 함정은 손으로 놓은 빨간 단·뚜껑이 막는다. 여기서 덩어리를 따로 만들지 않는다)
+    if (!p.sneaky && !p.stair) for (const t of p.traps || []) wrong.push(t.full || { presses: [...p.presses, ...(t.presses || [])], holds: t.holds || p.holds });
+    const nTrap = !p.sneaky && !p.stair && p.traps ? p.traps.length : 0, name = course.bars[b];
     // 갈래: 0번(아무것도 안 누름)과 "하나 빼먹음"은 A, 손을 바꾸거나 크게 어긋난 것은 B, 맨 뒤 nTrap개(함정)는 T
     const catOf = (w, wi) => (wi >= wrong.length - nTrap ? "T" : wi === 0 || w.presses.length + w.holds.length < p.presses.length + p.holds.length ? "A" : "B");
     const nearBlue = (c) => { for (let k = c - 3; k <= c + 3; k++) for (let r = 0; r < ROWS - 1; r++) if (isSolid(L, k, r)) return true; return false; };
@@ -1204,6 +1314,12 @@ function buildLevel(course) {
     const p = PATTERNS[name];
     if (p && p.redBox) for (const [a, z, hh] of p.redBox) for (let c = b * 16 + a; c <= b * 16 + z && c < L.cols; c++) if (!isSolid(L, c, ROWS - 2)) L.floorH[c] = Math.max(L.floorH[c], hh);
   });
+  // 계단의 빨간 덩어리(bands: [첫 칸, 끝 칸, 밑면, 윗면]): 한 칸에 몇 개든 놓을 수 있다(redFloat는 한 칸에 아래쪽 하나, 위쪽 하나뿐이다 — 계단에서는 빨간 단과 그 위의 뚜껑이 어느 높이에든 겹친다)
+  L.bands = new Map();
+  for (let b = 0; b < L.bars; b++) {
+    const p = PATTERNS[course.bars[b]];
+    if (p && p.bands) for (const [a, z, lo, hi] of p.bands) for (let c = b * 16 + a; c <= b * 16 + z && c < L.cols; c++) { if (!L.bands.has(c)) L.bands.set(c, []); L.bands.get(c).push([lo, hi]); }
+  }
   // 손으로 놓는 떠 있는 빨간 박스(redFloat: [첫 칸, 끝 칸, 밑면, 윗면]): 파란 징검돌 자리에 놓는 빨간 돌
   course.bars.forEach((name, b) => {
     const p = PATTERNS[name];
