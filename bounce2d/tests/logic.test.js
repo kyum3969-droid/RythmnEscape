@@ -382,7 +382,7 @@ for (const C of Lg.COURSES) {
       const kinds = [...new Set(lv.reds.map(q => q.kind))].sort(), wb = [...lv.wideBars][0];
       const floats = lv.reds.filter(q => q.kind === 'float');
       ok(kinds.join(',') === 'ceil,float,floor' && floats.every(q => lv.wideBars.has(Math.floor((q.xt - 0.01) / 16))), `[${tag}] 넓은 통로 마디(${[...lv.wideBars].join(', ')})에는 바닥·천장 이빨 말고 가운데에 떠 있는 장애물도 나온다 (${floats.length}개)`);
-      ok(Math.abs(Lg.ceilAt(lv, wb * 16 + 1) - (4 * Lg.ZIG_STEP + 0.8)) < 1e-9 && Math.abs(Lg.ceilAt(lv, lv.rides[0][0] + 1) - Lg.ZIG_TOP) < 1e-9, `[${tag}] 넓은 통로의 천장은 ${Lg.ceilAt(lv, wb * 16 + 1).toFixed(1)}칸(보통 ${Lg.ZIG_TOP}칸)`);
+      ok(Math.abs(Lg.ceilAt(lv, wb * 16 + 1) - (4 * Lg.ZIG_STEP + 0.8)) < 1e-9 && Math.abs(Lg.ceilAt(lv, C.bars.findIndex((n, b) => Lg.PATTERNS[n] && Lg.PATTERNS[n].mode === 'rush' && !lv.wideBars.has(b)) * 16 + 1) - Lg.ZIG_TOP) < 1e-9, `[${tag}] 넓은 통로의 천장은 ${Lg.ceilAt(lv, wb * 16 + 1).toFixed(1)}칸(보통 ${Lg.ZIG_TOP}칸)`);
       // 넓은 통로로는 파란 계단을 튕기며 올라가고(wUp), 안에서는 천장에서 시작해 천장에서 끝나며(w1: 바닥까지 갔다 온다), 계단으로 내려온다(wDn)
       const s2 = Lg.spawnState(lv, -1), inp2 = Lg.planInput(lv.ref), at2 = {}, bars2 = Lg.COURSES.find(c => c.name === lv.name).bars;
       let inside = true, steps = 0;
