@@ -231,7 +231,7 @@ const PATTERNS = {
   fJump: { holds: [], presses: [0.5, 1.125], floats: [[4, 4, 4], [8, 8, 4]], tol: 0.18 },                              // 올라타서 다시 뛰어 다음 박스로, 거기서 떨어진다(안 뛰면 박스 너머의 빨간 기둥에 걸린다)
   fGlide: { holds: [[1.5, 2.0]], presses: [0.5], floats: [[4, 4, 4]], tol: 0.18 },                                     // 올라타서 떨어지자마자 멈춰, 밑의 빨간 기둥 위를 건넌다
   fLow: { holds: [], presses: [2.5], floats: [[4, 4, 4]], traps: [{ presses: [0.5] }], tol: 0.18 },                    // 박스가 있지만 올라가면 안 된다(박스 앞을 빨간 박스가 막고 있다). 밑으로 지나간다
-  // 파란 천장(caps: [첫 칸, 끝 칸, 밑면 높이]): 하늘에서 내려온 파란 박스. 그 밑에서는 점프 높이가 막힌다(머리가 닿으면 그대로 떨어진다).
+  // 파란 천장(caps: [첫 칸, 끝 칸, 밑면 높이]): 밑면에 파란 박스를 깐 빨간 천장. 그 밑에서는 점프 높이가 막힌다(파란 면에 머리가 닿으면 그대로 떨어진다).
   // 밑면 3칸: 보통으로 튀는 것은 그대로지만 이단 점프는 소용없다(올라가지 못하고 떨어진다). 그래서 멈춤으로만 건널 수 있다 — 높은 박스(이단 점프로만)의 반대.
   // 밑면 2칸: 보통으로 튀는 것도 막혀 낮게만 튄다. 낮게 뜬 채로 멈춰서 빨간 바닥 위를 미끄러지듯 건넌다.
   cHold: { holds: [[0.5, 1.25]], presses: [], caps: [[1, 7, 3]], traps: [{ presses: [0.5], holds: [] }], tol: 0.18 },      // 천장 밑: 멈춤으로 건넌다(버릇대로 이단 점프하면 천장에 막혀 기둥에 떨어진다)
@@ -461,6 +461,7 @@ function emptyLevel(course) {
   for (let r = 0; r < ROWS; r++) grid.push(new Array(cols).fill(r === ROWS - 1 ? "#" : "."));
   const cps = [], rides = [], reds = [], gems = [], freeBars = new Set(), wideBars = new Set(), tallBars = new Set(), squeezes = [];
   const talls = [];                                     // 높은 박스: { x 가운데, w 너비, h 높이 }
+  const capRed = new Map();                             // 파란 천장: 칸 → 그 위 빨간 덩어리의 밑면 높이
   const stairLo = new Map(), stairHi = new Map();       // 파란 발판: 반 박 지점 번호(x / 2) → 바닥 쪽·천장 쪽 높이 단계
   let goalX = cols - 8;
   let zl = 0, zin = -1;                                 // 피버: 패턴대로 갈 때, 반 박 지점에서의 높이 단계(0 = 바닥)와 거기로 들어온 방향
@@ -511,15 +512,16 @@ function emptyLevel(course) {
     if (p && p.boxes) for (const [a, z, hh] of p.boxes) for (let c = x0 + a; c <= x0 + z; c++) for (let r = ROWS - 1 - hh; r < ROWS - 1; r++) grid[r][c] = "#";
     // 떠 있는 파란 박스: [첫 칸, 끝 칸, 윗면 높이]. 두께는 한 칸이고 밑은 비어 있다(밑으로 지나갈 수 있다).
     if (p && p.floats) for (const [a, z, hh] of p.floats) { if (hh < 2) throw new Error("떠 있는 박스는 밑으로 공이 지나갈 수 있어야 한다(윗면 2칸 이상): " + name); for (let c = x0 + a; c <= x0 + z; c++) grid[ROWS - 1 - hh][c] = "#"; }
-    // 파란 천장: [첫 칸, 끝 칸, 밑면 높이]. 하늘에서 그 높이까지 내려온 파란 박스. 공이 그보다 높이 못 올라간다(머리가 닿으면 그대로 떨어진다. 죽지 않는다).
-    if (p && p.caps) for (const [a, z, hb] of p.caps) { if (hb < 2) throw new Error("파란 천장 밑으로 공이 튈 수 있어야 한다(밑면 2칸 이상): " + name); for (let c = x0 + a; c <= x0 + z; c++) for (let r = 0; r < ROWS - 1 - hb; r++) grid[r][c] = "#"; }
+    // 파란 천장: [첫 칸, 끝 칸, 밑면 높이]. 그 높이에 한 칸 두께의 파란 박스가 깔리고, 그 위는 하늘까지 빨간 덩어리다.
+    // 밑에서는 파란 면에만 닿으므로 죽지 않고 머리가 닿아 떨어진다(점프 높이가 막힌다). 옆이나 위에서 빨간 부분에 닿으면 죽는다.
+    if (p && p.caps) for (const [a, z, hb] of p.caps) { if (hb < 2) throw new Error("파란 천장 밑으로 공이 튈 수 있어야 한다(밑면 2칸 이상): " + name); for (let c = x0 + a; c <= x0 + z; c++) { grid[ROWS - 2 - hb][c] = "#"; capRed.set(c, hb + 1); } }
     if (p && p.rings) for (const [c, hh] of p.rings) grid[ROWS - 2 - hh][x0 + c] = "O";
     if (name === "cp") cps.push({ col: b * 16 + 6, beat: (b * 16 + 6) / TPB, bar: b });
     else if (name === "goal") goalX = b * 16 + 8;
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
   for (const sq of squeezes) { const e = sq.pts[sq.pts.length - 1]; sq.pts.push({ step: Math.round(sq.x1 / TPB * SUB), x: sq.x1, g: e.g, top: !e.top }); }   // 끝에서 한 번 더 닿는다
-  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, tallBars, talls, squeezes, stairLo, stairHi, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
+  return { grid, cols, cps, rides, reds, gems, freeBars, wideBars, tallBars, talls, capRed, squeezes, stairLo, stairHi, track: course.track || null, saws: [], sawCols: new Map(), switches: [], goalX, bpm: course.bpm, bars: course.bars.length, sections: course.sections, name: course.name };
 }
 
 // 패턴대로 달린 공의 자취(스텝마다 위치·상태)
@@ -673,6 +675,8 @@ function buildLevel(course) {
       }
     }
   }
+  // 파란 천장 위의 빨간 덩어리: 파란 박스 윗면부터 하늘까지
+  for (const [c, h] of L.capRed) { L.ceilH[c] = Math.min(L.ceilH[c], h); L.ceilTop[c] = 99; }
   // 빨간 바닥(lava): 패턴에 적힌 칸의 땅은 닿으면 죽는다. 그 위에 놓인 파란 박스만 디딜 수 있다.
   course.bars.forEach((name, b) => {
     const p = PATTERNS[name];

@@ -841,7 +841,7 @@
         const span = yMax - yMin, gap = T * 0.36;
         for (let x = Math.floor((x0 - span) / gap) * gap - ((camX * T) % gap); x < x1; x += gap) { ctx.moveTo(x, yMax); ctx.lineTo(x + span, yMin); }
         ctx.stroke(); ctx.restore();
-        trace();
+        trace(); if (typeof base === "function") ctx.closePath();       // 떠 있는 박스는 네 변을 다 두른다(땅·하늘에 붙은 덩어리는 붙은 쪽을 비운다)
         ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; ctx.shadowBlur = 9 + 8 * pulse; ctx.stroke();
         ctx.lineJoin = "round"; ctx.shadowBlur = 0;
         c = e;
