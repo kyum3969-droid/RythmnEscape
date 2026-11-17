@@ -396,7 +396,7 @@ for (const C of Lg.COURSES) {
       const ringCols = new Set(); ringBars.forEach(b => Lg.PATTERNS[bars4[b]].rings.forEach(([c]) => ringCols.add(b * 16 + c)));
       if (ringBars.length) ok(rings.size === ringCols.size && groundInRing === 0, `[${tag}] 충전 고리 마디(${ringBars.join(', ')}): 고리 ${ringCols.size}개를 모두 지나며, 고리로 건너는 구간에서는 땅에 닿지 않는다 (지난 고리 ${rings.size}개, 땅에 닿은 스텝 ${groundInRing})`);
       // 높이가 튀는 박을 정한다: h칸 높이에서는 h/8박 이른 박에 튄다
-      ok(bounces.length > 100 && bounces.every(b => (b.step + b.h * 12) % 96 <= 12), `[${tag}] 어느 높이에서든 그 높이의 박에 튄다: 땅은 정박, 한 칸 높을 때마다 1/8박씩 이르게 (${bounces.length}번 확인)`);
+      ok(bounces.length > 60 && bounces.every(b => (b.step + b.h * 12) % 96 <= 12), `[${tag}] 어느 높이에서든 그 높이의 박에 튄다: 땅은 정박, 한 칸 높을 때마다 1/8박씩 이르게 (${bounces.length}번 확인)`);
       if (tallBars.length) {
       const up = bars4.indexOf('upStairs'), at = (b, t) => bounces.find(x => x.step === b * 384 + Math.round(t * 96));
       ok(up >= 0 && [[0, 0], [0.875, 1], [1.75, 2], [2.625, 3], [3.5, 4]].every(([t, h]) => { const x = at(up, t); return x && x.h === h; }), `[${tag}] 계단을 오르면 0.875박마다 튄다(0 → 0.875 → 1.75 → 2.625 → 3.5박): 한 박보다 조금씩 빨라져, 네 단 위에서는 반 박이 당겨진다`);
@@ -507,6 +507,36 @@ for (const C of Lg.COURSES) {
   }
 }
 
+console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시간보다 공중에서 멈추는 시간 ==');
+{
+  // 충전 고리는 이단 점프와 멈춤(1박)을 다시 채운다: 멈춤을 다 쓴 뒤에도 고리를 지나면 또 멈출 수 있다
+  const Lr = Lg.buildLevel({ name: 't', bpm: 150, bars: ['flat', 'flat', 'airStep', 'airRing', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const sr = Lg.spawnState(Lr, -1), ir = Lg.planInput(Lr.ref); let refill = 0, before = -1;
+  while (!sr.dead && !sr.won) { const e = []; before = sr.freeze; Lg.stepState(Lr, sr, ir.press.has(sr.step + 1), e, ir.hold.has(sr.step + 1)); if (e.some((x) => x.type === 'ring') && before < Lg.FREEZE_STEPS && sr.freeze >= Lg.FREEZE_STEPS - 1) refill++; }
+  ok(sr.won && refill === 2, `충전 고리가 멈춤을 다시 채운다(그림의 공중 사슬: 고리 둘에서 ${refill}번 채움)`);
+  // 그림의 공중 사슬(airStep → airRing): 두 마디 동안 멈춤 셋, 땅은 한 번도 안 밟는다(파란 단에서 한 번 튈 뿐). 입력마다 ±14스텝 흔들어도 지나가고 빼면 죽는다
+  const BAR = 384, P = Lr.ref.presses, H = Lr.ref.holds;
+  const go = (pr, ho) => { const inp = Lg.planInput({ presses: pr, holds: ho }), s = Lg.spawnState(Lr, -1); let ground = 0;
+    while (!s.dead && !s.won) { const e = []; Lg.stepState(Lr, s, inp.press.has(s.step + 1), e, inp.hold.has(s.step + 1)); if (s.step > 2 * BAR + 48 && s.step < 4 * BAR - 96 && s.onGround && 9 - s.y < 0.1) ground++; } return { won: s.won, ground }; };
+  const mine = (v) => v >= 2 * BAR && v < 4 * BAR;
+  let bad = 0, n = 0;
+  P.forEach((v, i) => { if (!mine(v)) return; n++; if (go(P.filter((_, j) => j !== i), H).won) bad++; for (const d of [-14, 14]) if (!go(P.map((q, j) => (j === i ? q + d : q)), H).won) bad++; });
+  H.forEach((h, i) => { if (!mine(h[0])) return; n++; if (go(P, H.filter((_, j) => j !== i)).won) bad++; for (const d of [-14, 14]) for (const e of [0, 1]) if (!go(P, H.map((q, j) => (j === i ? (e ? [q[0], q[1] + d] : [q[0] + d, q[1]]) : q))).won) bad++; });
+  const r0 = go(P, H);
+  ok(r0.won && r0.ground === 0 && n === 6 && bad === 0, `그림의 공중 사슬: 입력 ${n}개(멈춤 셋, 점프 셋)가 모두 꼭 필요하고, 하나씩 ±0.15박 흔들어도 지나간다. 사슬 동안 땅을 밟지 않는다`);
+  // 라운드마다: 바운스 구간에서 멈춰 있는 시간의 비율과 멈춤 길이의 함정. 2라운드부터 가볍게 시작해 늘어난다
+  const share = [], lenTraps = [];
+  for (const C of Lg.COURSES) {
+    const L = Lg.buildLevel(C), inp = Lg.planInput(L.ref), s = Lg.spawnState(L, -1); let all = 0, fr = 0;
+    while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.mode !== 'bounce') continue; const n = C.bars[Math.floor(s.x / 16)], p = Lg.PATTERNS[n]; if (!p || p.mode === 'rush' || n === 'flat' || n === 'goal') continue; all++; if (s.frozen) fr++; }
+    share.push(fr / all);
+    lenTraps.push(C.bars.filter((n) => { const p = Lg.PATTERNS[n]; return p && p.mode !== 'rush' && (p.traps || []).some((t) => t.full && t.full.holds.length === p.holds.length && JSON.stringify(t.full.presses) === JSON.stringify(p.presses) && t.full.holds.some((h, i) => h[0] === p.holds[i][0] && h[1] !== p.holds[i][1])); }).length);
+  }
+  const pct = share.map((v) => Math.round(v * 100));
+  ok(pct[0] <= 15 && pct.slice(1).every((v) => v >= 18) && pct.slice(2).every((v) => v >= 20) && Math.max(...pct.slice(4)) >= 25, `멈춰 있는 시간(바운스 구간): ${pct.map((v, i) => `${i + 1}라운드 ${v}%`).join(', ')} — 1라운드는 그대로, 2라운드부터 늘어난다`);
+  ok(lenTraps.slice(1, 7).every((v) => v >= 2) && lenTraps.slice(1).reduce((u, v) => u + v, 0) >= 20, `멈춤 길이의 함정(앞 마디와 똑같이 가다가 놓는 순간만 다르다): ${lenTraps.map((v, i) => `${i + 1}라운드 ${v}`).join(', ')}`);
+  ok(['ROUND 5', 'ROUND 6', 'ROUND 7', 'ROUND 8', 'ROUND 9'].every((r) => Lg.COURSES.find((c) => c.name.startsWith(r)).bars.includes('airStep')) && !Lg.COURSES.slice(0, 4).some((c) => c.bars.includes('airStep')), '그림의 공중 사슬은 5라운드부터 나온다');
+}
 console.log('== 이후 라운드용으로 보관한 함정(매달린 덩어리 없이, 착지 자리의 빨간 바닥으로 죽는다) ==');
 for (const [name, lead] of [['goStopB', 'peak'], ['stopGoB', 'peak'], ['holdStopB', 'mix'], ['ringFake', 'ringWave'], ['ringStopB', 'ringRun']]) {
   const p10 = Lg.PATTERNS[name], lvB = Lg.buildLevel({ name: 't', bpm: 152, bars: ['flat', lead, name, 'flat', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
@@ -552,7 +582,7 @@ console.log('== 높은 박스: 이단 점프로만 넘는 빨간 박스 ==');
       while (!sC.dead && !sC.won && sC.step < pressStep + 96 * 3) { const st = sC.step + 1; Lg.stepState(lvC, sC, P.has(st), null, H.some(h => st >= h[0] && st < h[1])); }
       if (sC.dead && Math.abs(sC.x - t.x) < 1.2) habitDead++;
     }
-    ok(lvC.talls.length >= 3 && cleared === lvC.talls.length && habitDead === lvC.talls.length, `[${tag}] 높은 박스 ${lvC.talls.length}개: 모두 패턴의 이단 점프 바로 앞에 서 있고, 그 자리를 멈춤으로 누르면 그 박스에서 죽는다 (${habitDead}/${lvC.talls.length})`);
+    ok(lvC.talls.length >= 1 && cleared === lvC.talls.length && habitDead === lvC.talls.length, `[${tag}] 높은 박스 ${lvC.talls.length}개: 모두 패턴의 이단 점프 바로 앞에 서 있고, 그 자리를 멈춤으로 누르면 그 박스에서 죽는다 (${habitDead}/${lvC.talls.length})`);
   }
 }
 console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 떠 있는 빨간 박스 ==');

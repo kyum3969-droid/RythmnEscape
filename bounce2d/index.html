@@ -1150,7 +1150,7 @@
           // 아랫면의 빛줄(곧 내려찍는다는 경고)
           if (warn > 0 || impact > 0) { ctx.strokeStyle = `rgba(255,220,230,${0.4 + 0.6 * Math.max(warn, impact)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(xa + 2, yb - T * 0.08); ctx.lineTo(xb - 2, yb - T * 0.08); ctx.stroke(); }
           // 땅에 닿는 순간: 먼지와 흔들림(한 번만)
-          if (ph < 0.06 && m._slam !== n) { m._slam = n; const cx = (q.x0 + q.x1) / 2; burst(cx, ROWS - 1, 10, "white", 6, false); puff(cx - 0.8, ROWS - 1, 5, 1.4); puff(cx + 0.8, ROWS - 1, 5, 1.4); if (Math.abs(cx - camX) < 14) fx.shake = Math.max(fx.shake, 0.1); }
+          if (ph < 0.3 && m._slam !== n) { m._slam = n; /* 그리는 순간이 내려찍는 순간과 딱 맞지 않아도 한 번은 터지게: 내려찍은 뒤 0.3박 안에 처음 그릴 때 */ const cx = (q.x0 + q.x1) / 2; burst(cx, ROWS - 1, 10, "white", 6, false); puff(cx - 0.8, ROWS - 1, 5, 1.4); puff(cx + 0.8, ROWS - 1, 5, 1.4); if (Math.abs(cx - camX) < 14) fx.shake = Math.max(fx.shake, 0.1); }
         } else if (m.kind === "saw") {
           // 지나는 길: 레일(끊긴 선과 양 끝의 볼트) 또는 궤도(끊긴 원과 가운데 축, 축에서 톱날까지 사슬)
           ctx.save(); ctx.setLineDash([T * 0.18, T * 0.14]); ctx.strokeStyle = "rgba(255,143,171,0.35)"; ctx.lineWidth = 2;

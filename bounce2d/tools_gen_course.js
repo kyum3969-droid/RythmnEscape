@@ -22,13 +22,13 @@ const TEMPLATES = {
     prefix: 'g2', bpm: 151.9867,
     sections: [
       ['도입: 앞에서 배운 동작을 섞어서. 끝에서 곡이 잠깐 빠지는 자리만 쉰다', ['flat', 'flat', G(1), G(1), G(1), G(1), 'box', 'cp']],
-      ['첫 큰 구간', [G(2), G(2), G(2), G(2), G(2), G(2), G(2), G(2)]],
-      ['', [G(2), G(2), G(2), G(2), G(2), G(2), G(2), 'cp']],
+      ['첫 큰 구간(멈춤의 철학: 긴 멈춤과 가벼운 공중 사슬, 멈춤 길이의 함정이 처음 나온다)', [G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), G('a2')]],
+      ['', [G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), G('a2'), 'cp']],
       ['밝고 가벼운 구간: 첫 피버. 파란 발판 → 좁은 통로 → 계단으로 올라가 넓은 통로 → 계단으로 내려와 다시 좁은 통로', ['zT', { z: 1 }, { z: 1 }, 'wUp', { w: 1 }, { w: 1 }, 'wDn', { z: 1 }]],
       ['새 장치(빨간 바닥과 파란 섬)를 하나씩 보여 주고, 사이는 뽑은 패턴으로 채운다', ['lavaHop', G(2), 'lavaLeap', G(2), 'lavaGlide', G(2), G(2), 'cp']],
-      ['두 번째 큰 구간: 뽑은 패턴에 빨간 바닥 마디가 섞인다', [G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1)]],
+      ['두 번째 큰 구간: 뽑은 패턴에 빨간 바닥 마디가 섞인다', [G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1)]],
       ['', [G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), 'cp']],
-      ['절정', [G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), G(3, 1), 'cp']],
+      ['절정', [G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1), G('a2', 1), 'cp']],
       ['가장 센 절정: 마지막 피버. 들어서자마자 계단으로 넓은 통로에 올라간다. 끝의 두 마디는 연출만 — 통로가 조여들며 타다다다닥, 끝맺는 한 방에 터져 나온다', ['wUp', { w: 1 }, { w: 1 }, { w: 1 }, 'wDn', { z: 1 }, 'zS1', 'zS2']],
       ['', ['goal', 'flat', 'flat']],
     ],
@@ -46,7 +46,8 @@ function fillStretches(lens, R, seed) {
   const K = () => 'M' + key++;
   // 손을 바꾸는 함정: 오른쪽 → 왼쪽이면 머리 위 덩어리에 걸리고, 왼쪽 → 오른쪽이면 그 자리에 높은 박스가 서서 멈춤으로는 못 넘는다
   // hard = 소개하는 함정: 반드시 그 종류로 만든다(못 만들면 이 씨앗은 버린다). 나머지는 안 되면 다른 종류, 그것도 안 되면 그냥 한 번 더
-  const phrase = (reps, kind, hard) => { const k = K(), others = Object.keys(R.kinds).filter((x) => x !== kind && x !== 'add'); return [{ m: k, g: R.g, add: kind === 'add' }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: kind === 'add' || hard ? [kind] : [kind, ...others], soft: !hard }]; };
+  const phrase = (reps, kind, hard) => { const k = K(), others = Object.keys(R.kinds).filter((x) => x !== kind && x !== 'add'); const hk = /^(long|short)-/.test(kind), alt = kind.startsWith('long') ? kind.replace('long', 'short') : kind.replace('short', 'long');      // 멈춤 길이 함정: 되풀이할 마디가 멈춤으로 끝나고(또는 시작하고) 그 함정이 성립하는 것만 뽑는다
+    return [{ m: k, g: R.g, add: kind === 'add', ...(hk ? { need: [kind, alt], [kind.endsWith('last') ? 'last' : 'first']: 'L' } : {}) }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: kind === 'add' || hard ? [kind] : hk ? [kind, alt, ...others] : [kind, ...others], soft: !hard }]; };
   const GF = R.gf || R.g; const filler = (room) => { const kind = pickW(R.fill); if (kind === 'pair' && room >= 2) { const k = K(); return [{ m: k, g: GF }, { r: k }]; } if (kind === 'set') return [SETS[Math.floor(rng() * SETS.length)]]; if (kind === 'rest') return [['box', 'twin', 'stairs'][Math.floor(rng() * 3)]]; return [{ m: K(), g: GF }]; };
   // 함정을 구간들에 나눈다: 소개하는 것부터 놓고, 나머지는 긴 구간부터 하나씩
   const plan = lens.map(() => []);
@@ -71,7 +72,7 @@ function fillStretches(lens, R, seed) {
 // 3라운드: 버릇 묶음(2~6라운드)의 둘째. 앞 라운드의 "끝에서 뚝"에 더해 "끝에서 손 바꿈"과 "하나 더"를 소개한다
 TEMPLATES.R3 = {
   prefix: 'g3', bpm: 152.0183,
-  recipe: { g: '2t', traps: 6, from: 1, kinds: { 'stop-last': 3, 'hand-last': 4, add: 3 }, reps: { 2: 7, 3: 3 }, intro: [{ stretch: 1, kind: 'hand-last' }, { stretch: 2, kind: 'add' }], fill: { one: 6, pair: 2, set: 1.2, rest: 0.6 } },
+  recipe: { g: 'a3', traps: 8, from: 1, kinds: { 'stop-last': 1, 'hand-last': 2, add: 2, 'short-last': 4, 'long-last': 3 }, reps: { 2: 7, 3: 3 }, intro: [{ stretch: 1, kind: 'hand-last' }, { stretch: 2, kind: 'add' }, { stretch: 3, kind: 'short-last' }], fill: { one: 6, pair: 2, set: 1.2, rest: 0.6 } },
   sections(seed) {
     const [s0, s1, s2, s3, s4, s5, s6, s7] = fillStretches([4, 7, 7, 7, 6, 7, 7, 7], this.recipe, seed);
     s0.splice(0, s0.length, ...[1, 1, '1t', '1t'].map((g) => ({ g, plain: true })));     // 도입은 함정도 되풀이도 없이 쉬운 것만. 뒤의 두 마디에서 높은 박스를 먼저 보여 준다
@@ -79,7 +80,7 @@ TEMPLATES.R3 = {
       ['도입(조용함): 쉬운 패턴만. 뒤의 두 마디에서 높은 박스(이단 점프로만 넘는다)를 처음 보여 준다. 구간의 마지막 마디마다 체크포인트', ['flat', 'flat', ...s0, 'cp']],
       ['본 리듬: 새 함정 "끝에서 손 바꿈"을 체크포인트 바로 뒤에서 소개한다(두 번 되풀이 → 마지막 입력의 손이 반대)', [...s1, 'cp']],
       ['더 밝게: 새 함정 "하나 더"를 소개한다(두 번 되풀이 → 이번엔 하나 더 눌러야 한다)', [...s2, 'cp']],
-      ['낮게 깔림: 배운 함정들을 섞는다', [...s3, 'cp']],
+      ['낮게 깔림: 새 함정 "멈춤이 짧다"를 소개한다(두 번 되풀이 → 마지막 멈춤을 일찍 놓아야 한다). 배운 함정들을 섞는다', [...s3, 'cp']],
       ['첫 절정: 피버. 좁은 통로 → 계단으로 올라가 넓은 통로 → 계단으로 내려와 다시 좁은 통로', [{ z: 1 }, { z: 1 }, 'wUp', { w: 1 }, { w: 1 }, 'wDn', { z: 1 }, { z: 1 }]],
       ['가라앉는 구간', ['cp', ...s4, 'cp']],
       ['본 리듬 다시', [...s5, 'cp']],
@@ -96,7 +97,7 @@ TEMPLATES.R3 = {
 TEMPLATES.R4 = {
   prefix: 'g4', bpm: 152.005, floatReds: true, vary: true, density: 0.95,
   // g = 되풀이 → 함정 짜임에 쓰는 단계(높이 장치 없음), gf = 그 사이를 채우는 마디의 단계(높이 장치를 섞는다)
-  recipe: { g: '4d', gf: '4v', traps: 5, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 },      // ("하나 더"는 되풀이하는 마디의 절반이 비게 돼서 뺐다)
+  recipe: { g: 'a4', gf: 'a4', traps: 7, from: 0, kinds: { 'stop-last': 1, 'hand-last': 1, 'short-last': 5, 'long-last': 4 },      // ("하나 더"는 되풀이하는 마디의 절반이 비게 돼서 뺐다)
     reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
   sections(seed) {
     const [s1, s2, s3, s4, s5, s6, s7] = fillStretches([4, 2, 2, 3, 7, 4, 4], this.recipe, seed);
@@ -119,12 +120,12 @@ TEMPLATES.R4 = {
 // 5라운드: 피버 위주. 피버의 짜임은 "새 마디 → 한 번 더 → 함정"이고, 함정은 뚝(누르던 자리에서 끊김)과 하나 더(안 누르던 자리에서 한 번 더) 두 가지다.
 // 통로의 굽이는 코스의 cam 표에 있다(logic.js의 ROUND5). 굽이가 걸리는 넓은 통로의 짜임(H와 그 뒤 마디)은 성기게 뽑는다(calm: 마디의 첫 박은 누르지 않는다, run: 반 박 간격으로 이어 누르기는 두 번까지) — 굽이를 볼 틈이 있어야 한다. 좁은 통로는 원래 한 박에 한 번까지라 그대로 둔다. 바운스 구간은 4라운드와 같은 조건(밀도 95%, 변주)에 새 함정 fJ3G를 넣는다.
 TEMPLATES.R5 = {
-  prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95, cpFill: true, cpLevel: '4v',      // cpFill = 체크포인트 마디에도 패턴(개발하는 동안)
-  recipe: { g: '4d', gf: '4v', traps: 3, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
+  prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95, cpFill: true, cpLevel: 'a5',      // cpFill = 체크포인트 마디에도 패턴(개발하는 동안)
+  recipe: { g: 'a5', gf: 'a5', traps: 4, from: 0, kinds: { 'stop-last': 2, 'hand-last': 2, 'short-last': 3, 'long-last': 3, 'short-first': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
   sections(seed) {
-    const [s1, s3, s4] = fillStretches([5, 7, 2], this.recipe, seed);
+    const [s1, s3, s4] = fillStretches([3, 5, 2], this.recipe, seed);
     return [
-      ['도입(조용함): 앞 라운드의 것들로 몸풀기', ['flat', 'flat', ...s1, 'cp']],
+      ['도입(조용함): 그려 준 공중 사슬을 소개한다 — 높이 떠서 멈추고, 파란 단에 내려 튀어 또 멈추고, 충전 고리로 다시 올라 멈추고, 고리로 크게 뛰어 땅으로(두 마디 동안 거의 땅을 밟지 않는다)', ['flat', 'flat', 'airStep', 'airRing', ...s1, 'cp']],
       ['첫 피버(곧은 통로): 피버의 함정 두 가지를 차례로. 되풀이 → 뚝, 되풀이 → 하나 더', [{ zm: 'A' }, { zr: 'A' }, { zt: 'A', kind: 'break' }, { zm: 'B' }, { zr: 'B' }, { zt: 'B', kind: 'add' }, { z: 1 }, { z: 1 }]],
       ['', ['cp']],
       ['둘째 피버(굽은 통로): 장애물 없는 마디에서 통로가 비스듬히 위로 굽는다. 중간에 아래로 굽고, 마지막 함정 마디에서 다시 곧게 펴진다', ['zF', { zm: 'C' }, { zr: 'C' }, { zt: 'C', kind: 'add' }, { zm: 'D' }, { zr: 'D' }, { zt: 'D', kind: 'break' }]],
@@ -134,7 +135,7 @@ TEMPLATES.R5 = {
       ['넷째 피버: 아래로 굽었다가, 한가운데의 얇은 굴(통로가 가늘어져 화면이 다가간다)을 지나, 위로 굽는다', [{ zm: 'F' }, { zr: 'F' }, { zt: 'F', kind: 'add' }, 'zThin', { zm: 'G' }, { zr: 'G' }, { zt: 'G', kind: 'break' }]],
       ['', ['cp']],
       ['다섯째 피버(솟는 넓은 통로): 위로 굽고, 왼쪽 위로 넘어갔다가, 다시 가로로', ['wUp', { wm: 'H', calm: 2, run: 2 }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1, calm: 2, run: 2 }, 'wDn', { z: 1 }, { z: 1 }]],
-      ['더 꽉 찬 리듬: 바운스. 손 함정과 높이 장치를 촘촘하게', ['cp', ...s3, 'cp']],
+      ['더 꽉 찬 리듬: 바운스. 공중 사슬을 한 번 더, 이어서 멈춤 길이의 함정과 손 함정', ['cp', 'airStep', 'airRing', ...s3, 'cp']],
       ['가라앉음: 징검다리 세 마디. 가운데에 빨간 돌, 마지막 돌에서 내려올 땅이 빨간 박스(마지막으로 튄 뒤 멈춰서 건넌다)', ['stIn', 'stMidR', 'stOutG', 'gAfter', ...s4, 'cp']],
       ['마지막 피버: 위로, 아래로 굽이친다. 끝의 두 마디는 조여드는 통로, 곡의 끝맺는 한 방에 터져 나온다', [{ zm: 'I' }, { zr: 'I' }, { zt: 'I', kind: 'break' }, { zm: 'J' }, { zt: 'J', kind: 'add' }, 'zS1', 'zS2']],
       ['', ['goal', 'flat', 'flat']],
@@ -146,28 +147,28 @@ TEMPLATES.R5 = {
 // 피버는 곡의 절정 두 곳에만 둔다(남발하지 않는다): 얇은 굴이 있는 굽은 통로 / 왼쪽 위로 넘어가는 넓은 통로. 굽이는 코스의 cam 표에 있다(logic.js의 ROUND6).
 // 조여드는 통로는 없다(곡에 점점 세지는 자리가 없다). 징검다리는 구간의 끝(체크포인트 앞)이나 gAfter 앞에 둔다.
 TEMPLATES.R6 = {
-  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: '4v',      // fresh = 앞 라운드에 나온 피버 문제를 다시 내지 않는다
-  recipe: { g: '4d', gf: '4v', traps: 9, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
+  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a6',      // fresh = 앞 라운드에 나온 피버 문제를 다시 내지 않는다
+  recipe: { g: 'a6', gf: 'a6', traps: 9, from: 0, kinds: { 'stop-last': 2, 'hand-last': 3, 'short-last': 3, 'long-last': 3 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
   sections() {
     // 뽑을 마디의 자리를 손으로 정한다(무작위로 나누면 같은 함정이 연달아 나오거나, 한 마디만 세 번 되풀이하고 끝나는 구간이 생긴다).
     //   one() 높이 장치를 섞은 새 마디 하나 / phrase(함정) 새 마디 → 한 번 더 → 함정(안 되면 다른 종류) / quick(함정) 새 마디 → 곧바로 함정(한 번만 보여 준다)
     //   twice() 새 마디 → 한 번 더 → 끝에서 뚝 → 다시 원래대로 → 끝에서 손 바꿈 (한 마디로 함정 둘. 처음부터 뒤쪽 구간만큼 어렵게 하려고 도입에 쓴다)
     let key = 0;
-    const one = () => ({ m: 'f' + key++, g: '4v' });
-    const kindsOf = (kind) => (kind === 'stop-last' ? ['stop-last', 'hand-last'] : ['hand-last', 'stop-last']);
-    const phrase = (kind) => { const k = 'p' + key++; return [{ m: k, g: '4d', need: kindsOf(kind) }, { r: k }, { t: k, kind: kindsOf(kind) }]; };
-    const quick = (kind) => { const k = 'p' + key++; return [{ m: k, g: '4d', need: kindsOf(kind) }, { t: k, kind: kindsOf(kind) }]; };
-    const twice = () => { const k = 'p' + key++; return [{ m: k, g: '4d', need: [['stop-last'], ['hand-last']] }, { r: k }, { t: k, kind: ['stop-last'] }, { r: k }, { t: k, kind: ['hand-last'] }]; };
+    const one = () => ({ m: 'f' + key++, g: 'a6' });
+    const kindsOf = (kind) => ({ 'stop-last': ['stop-last', 'hand-last'], 'hand-last': ['hand-last', 'stop-last'], 'short-last': ['short-last', 'long-last', 'stop-last'], 'long-last': ['long-last', 'short-last', 'hand-last'] })[kind];      // (멈춤 길이 함정이 안 되면 다른 길이, 그다음 손 함정)
+    const phrase = (kind) => { const k = 'p' + key++; return [{ m: k, g: 'a6', need: kindsOf(kind) }, { r: k }, { t: k, kind: kindsOf(kind) }]; };
+    const quick = (kind) => { const k = 'p' + key++; return [{ m: k, g: 'a6', need: kindsOf(kind) }, { t: k, kind: kindsOf(kind) }]; };
+    const twice = () => { const k = 'p' + key++; return [{ m: k, g: 'a6', need: [['short-last', 'long-last'], ['hand-last', 'stop-last']] }, { r: k }, { t: k, kind: ['short-last', 'long-last'] }, { r: k }, { t: k, kind: ['hand-last', 'stop-last'] }]; };
     return [
-      ['도입(조용함)이지만 쉬어 가지 않는다: 한 마디로 함정 둘. 두 번 되풀이 → 끝에서 뚝 → 다시 원래대로 → 끝에서 손 바꿈', ['flat', 'flat', ...twice(), 'cp']],
+      ['도입(조용함)이지만 쉬어 가지 않는다: 한 마디로 함정 둘. 두 번 되풀이 → 끝의 멈춤 길이가 다르다 → 다시 원래대로 → 끝에서 손 바꿈', ['flat', 'flat', ...twice(), 'cp']],
       ['리듬: 마디마다 다르다. 떠 있는 박스에서 다시 뛰기 두 번 → 같은 박스에서 그냥 떨어지기 → 이단 점프로 기둥 → 앞에 파란 천장(멈춤으로) → 천장이 뒤에(앞뒤 뒤집기) → 천장 없이 원래대로', ['fJump', 'fJump', 'fDropH', 'djT', 'cHoldT', 'cHoldLDx', 'djT', 'cp']],
-      ['더 꽉 찬 리듬: 빨간 바닥과 파란 섬. 섬에서 한 번 더 뛰어 둘째 빨간 바닥을 넘기 두 번 → 그 위에 파란 천장(멈춤으로). 뒤는 높이 장치 마디와 손 함정', ['lavaLeap2', 'lavaLeap2', 'lavaCap', one(), ...phrase('hand-last'), 'cp']],      // (천장 뒤에 섬 마디를 한 번 더 놓는 것은 뺐다: 거기서는 멈춤으로도 건너져서 함정이 되지 않고, 못 건너게 막으면 누르는 여유가 40ms로 줄어든다)
-      ['낮게 깔린 베이스: 한 번만 보여 주고 함정, 이어서 징검다리. 빨간 돌을 멈춰서 넘고 → 같은 자리가 파란 돌인데 위에 빨간 뚜껑(멈추면 걸린다) → 내려올 땅이 빨간 박스(멈춰서 건넌다)', [...quick('stop-last'), 'stIn', 'stMidR', 'stMidL', 'stOutG', 'gAfter', 'cp']],
+      ['더 꽉 찬 리듬: 빨간 바닥과 파란 섬. 섬에서 한 번 더 뛰어 둘째 빨간 바닥을 넘기 두 번 → 그 위에 파란 천장(멈춤으로). 뒤는 높이 장치 마디와 손 함정', ['lavaLeap2', 'lavaLeap2', 'lavaCap', one(), ...phrase('short-last'), 'cp']],      // (천장 뒤에 섬 마디를 한 번 더 놓는 것은 뺐다: 거기서는 멈춤으로도 건너져서 함정이 되지 않고, 못 건너게 막으면 누르는 여유가 40ms로 줄어든다)
+      ['낮게 깔린 베이스: 한 번만 보여 주고 함정, 이어서 징검다리. 빨간 돌을 멈춰서 넘고 → 같은 자리가 파란 돌인데 위에 빨간 뚜껑(멈추면 걸린다) → 내려올 땅이 빨간 박스(멈춰서 건넌다)', [...quick('short-last'), 'stIn', 'stMidR', 'stMidL', 'stOutG', 'gAfter', 'cp']],
       ['첫 절정 — 피버 하나(얇은 굴): 위로 굽었다가, 한가운데의 얇은 굴을 지나, 아래로 굽는다. 되풀이 → 뚝, 되풀이 → 하나 더. 곡이 뚝 끊기는 마디가 체크포인트', [{ zm: 'F' }, { zr: 'F' }, { zt: 'F', kind: 'break' }, 'zThin', { zm: 'G', kind: 'add' }, { zr: 'G' }, { zt: 'G', kind: 'add' }, 'cp']],
-      ['조용함: 떠 있는 박스에 올라타 떨어지며 멈추기 두 번 → 올라가면 안 되는 박스 → 다시 원래대로(함정 뒤에 또 함정일 줄 알았다면 걸린다). 뒤는 손 함정', ['fGlide', 'fGlide', 'fLow3', 'fGlide', ...phrase('stop-last'), 'cp']],
-      ['꽉 찬 리듬: 손 함정, 이어서 앞에서 박스·뒤에서 멈춤을 두 번 → 앞뒤 뒤집기(앞에서 멈춤·뒤에서 박스)', [one(), ...phrase('hand-last'), 'fDropH', 'fDropH', 'fLateHx', 'cp']],      // (뒤집기 마디는 구간의 끝에: 박스에서 떨어진 공은 한 틱 늦게 땅에 닿아서 바로 뒤에 뽑은 마디를 붙일 수 없다)
-      ['꽉 찬 리듬: 손 함정 둘을 촘촘하게', [...phrase('stop-last'), one(), ...phrase('hand-last'), 'cp']],
-      ['가라앉음: 징검다리 두 번. 처음엔 내려올 땅이 빨간 박스라 멈춰서 건넌다 → 두 번째엔 땅이 멀쩡하고, 멈추면 떠서 가는 길에 빨간 뚜껑이 있다(그냥 내려온다)', [...quick('hand-last'), 'stIn', 'stOutG', 'gAfter', 'stIn', 'stOutL', 'cp']],
+      ['조용함: 떠 있는 박스에 올라타 떨어지며 멈추기 두 번 → 올라가면 안 되는 박스 → 다시 원래대로(함정 뒤에 또 함정일 줄 알았다면 걸린다). 뒤는 손 함정', ['fGlide', 'fGlide', 'fLow3', 'fGlide', ...phrase('long-last'), 'cp']],
+      ['꽉 찬 리듬: 그림의 공중 사슬 → 한 번 보여 주고 멈춤이 길다, 이어서 앞에서 박스·뒤에서 멈춤을 두 번 → 앞뒤 뒤집기(앞에서 멈춤·뒤에서 박스)', ['airStep', 'airRing', ...quick('long-last'), 'fDropH', 'fDropH', 'fLateHx', 'cp']],      // (뒤집기 마디는 구간의 끝에: 박스에서 떨어진 공은 한 틱 늦게 땅에 닿아서 바로 뒤에 뽑은 마디를 붙일 수 없다)
+      ['꽉 찬 리듬: 손 함정 둘을 촘촘하게', [...phrase('short-last'), one(), ...phrase('hand-last'), 'cp']],
+      ['가라앉음: 한 번 보여 주고 멈춤이 길다 → 그림의 공중 사슬 → 징검다리(내려올 땅이 빨간 박스라 멈춰서 건넌다)', [...quick('long-last'), 'airStep', 'airRing', 'stIn', 'stOutG', 'gAfter', 'cp']],
       ['마지막 절정 — 피버 둘(비스듬한 넓은 통로): 계단을 오르며 비스듬히 위로, 함정 마디에서 크게 휘어 아래로, 계단을 내려오며 다시 가로로. 곡의 끝맺는 한 방에 결승선', ['wUp', { wm: 'H', calm: 1, run: 2, kind: 'add' }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1 }, 'wDn', { z: 1 }]],
       ['', ['goal', 'flat', 'flat']],
     ];
@@ -182,27 +183,27 @@ TEMPLATES.R6 = {
 // 피버는 절정 두 곳에만. 새 장치 튕김판(B: 공중에 뜬 파란 판. 닿으면 누르지 않아도 꺾인다)이 나온다: 판이 있는 마디를 세 번 → 네 번째엔 판이 없다(눌러야 한다).
 // 좁은 통로의 줄(19가지)은 바닥났지만, 튕김판이 있는 줄은 새것이라 좁은 통로에도 쓴다. 바운스에는 삼단 점프(충전 고리)와 미끼 고리를 넣었다.
 TEMPLATES.R7 = {
-  prefix: 'g7', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: '7v',
-  recipe: { g: '7v', gf: '7v', traps: 13, from: 0, kinds: { 'stop-last': 3, 'hand-last': 3, 'stop-first': 3, 'hand-first': 3 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
+  prefix: 'g7', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
+  recipe: { g: 'a7', gf: 'a7', traps: 13, from: 0, kinds: { 'stop-last': 2, 'hand-last': 2, 'stop-first': 2, 'hand-first': 2, 'short-last': 2, 'long-last': 2, 'short-first': 2, 'long-first': 2 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
   sections() {
     //   one() 새 마디 하나 / phrase(함정, 되풀이 횟수) 새 마디를 그만큼 되풀이한 뒤 함정 / feint(횟수) 헛다리: 그만큼 되풀이하고 함정 없이 넘어간다
     //   함정의 종류를 배열로 주면 그 종류로만 만든다(처음 소개하는 자리), 글자로 주면 안 될 때 다른 종류로 바꾼다
     let key = 0;
-    const one = () => ({ m: 'f' + key++, g: '7v' });
-    const ALL = ['stop-last', 'hand-last', 'stop-first', 'hand-first'];
+    const one = () => ({ m: 'f' + key++, g: 'a7' });
+    const ALL = ['short-last', 'long-last', 'stop-last', 'hand-last', 'short-first', 'long-first', 'stop-first', 'hand-first'];      // (멈춤 길이 함정을 먼저 해 본다)
     const kindsOf = (kind) => (Array.isArray(kind) ? kind : [kind, ...ALL.filter((x) => x !== kind && x.slice(-5) === kind.slice(-5))]);      // 안 되면 같은 자리(앞·끝)의 다른 종류로. 자리는 바꾸지 않는다(앞에서 걸 함정은 앞에서)
-    const phrase = (kind, reps = 2) => { const k = 'p' + key++; return [{ m: k, g: '7v', need: kindsOf(kind) }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: kindsOf(kind) }]; };
-    const feint = (reps) => { const k = 'h' + key++; return [{ m: k, g: '7v' }, ...Array.from({ length: reps - 1 }, () => ({ r: k }))]; };
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++; return [{ m: k, g: 'a7', need: kindsOf(kind) }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: kindsOf(kind) }]; };
+    const feint = (reps) => { const k = 'h' + key++; return [{ m: k, g: 'a7' }, ...Array.from({ length: reps - 1 }, () => ({ r: k }))]; };
     return [
       ['도입(조용함)이지만 쉬어 가지 않는다: 두 번 되풀이 → 끝에서 뚝, 한 번 보여 주고 → 끝에서 손 바꿈', ['flat', 'flat', ...phrase('stop-last', 2), ...phrase('hand-last', 1), 'cp']],
-      ['리듬 — 헛다리를 소개한다: 같은 마디가 세 번 온다(세 번째에 함정이 없다). 이어지는 마디는 세 번 되풀이한 뒤에야 함정이 온다', [...feint(3), ...phrase('hand-last', 3), 'cp']],
+      ['리듬 — 헛다리를 소개한다: 같은 마디가 세 번 온다(세 번째에 함정이 없다). 이어지는 마디는 세 번 되풀이한 뒤에야 함정이 온다(끝의 멈춤이 길다)', [...feint(3), ...phrase('long-last', 3), 'cp']],
       ['더 꽉 찬 리듬 — "앞에서 뚝"을 소개한다: 두 번 되풀이 → 이번엔 첫 입력이 없다. 이어서 헛다리(두 번 하고 그냥 넘어간다), 한 번 보여 주고 함정', [...phrase(['stop-first'], 2), ...feint(2), ...phrase('stop-last', 1), 'cp']],
       ['성긴 리듬 — "앞에서 손 바꿈"을 소개한다: 두 번 되풀이 → 이번엔 첫 입력의 손이 반대. 이어서 새 마디 하나, 앞에서 뚝', [...phrase(['hand-first'], 2), one(), ...phrase('stop-first', 2), 'cp']],
       ['첫 절정 — 피버 하나(넓은 통로, 비스듬히 아래로): 튕김판을 소개한다(공중에 뜬 파란 판 — 닿으면 누르지 않아도 꺾인다). 같은 마디가 세 번(헛다리) → 네 번째엔 판이 없다(눌러야 꺾인다). 통로는 두 번째 마디에서 아래로 굽고 함정 마디에서 펴진다', ['wUp', { wm: 'A', pads: 1, calm: 1, run: 2, kind: 'pad' }, { wr: 'A' }, { wr: 'A' }, { wt: 'A', kind: 'pad' }, 'wDn', { zm: 'Z1', pads: 1, kind: 'none' }, 'cp']],
       ['절정이 이어진다 — 삼단 점프를 소개한다(이단 점프의 꼭대기에 충전 고리: 공중에서 한 번 더 뛴다): 한 번 보여 주고 앞에서 뚝 → 삼단 점프 두 번 → 미끼 고리(헛다리: 고리는 있는데 뛰면 안 된다) → 한 번 보여 주고 앞에서 손 바꿈', [...phrase('stop-first', 1), 'ring3', 'ring3', 'ring3Bait', ...phrase('hand-first', 1), 'cp']],
-      ['아주 조용함(오르골): 손 함정 하나, 그리고 삼단 점프를 섞는다 — 꼭대기에서 멈춰 긴 벽 건너기 → 미끼 고리 → 이번엔 진짜(미끼 다음이라 망설이면 걸린다)', [...phrase('hand-last', 2), 'ring3Far', 'ring3Bait', 'ring3', one(), 'cp']],
-      ['리듬 다시: 헛다리(두 번 하고 그냥 넘어간다) → 세 번 되풀이한 뒤 앞에서 손 바꿈 → 새 마디 하나', [...feint(2), ...phrase('hand-first', 3), one(), 'cp']],
-      ['더 꽉 찬 리듬: 한 번 보여 주고 앞에서 뚝 → 두 번 되풀이 뒤 끝에서 손 바꿈 → 헛다리(함정 없이 피버로 들어간다)', [...phrase('stop-first', 1), ...phrase('hand-last', 2), ...feint(2), 'cp']],
+      ['아주 조용함(오르골): 손 함정 하나, 그리고 삼단 점프를 섞는다 — 꼭대기에서 멈춰 긴 벽 건너기 → 미끼 고리 → 이번엔 진짜(미끼 다음이라 망설이면 걸린다)', [...phrase('short-last', 2), 'ring3Far', 'ring3Bait', 'ring3', one(), 'cp']],
+      ['리듬 다시: 그림의 공중 사슬(두 마디 동안 멈춤 셋) → 세 번 되풀이한 뒤 앞의 멈춤이 짧다 → 새 마디 하나', ['airStep', 'airRing', ...phrase('short-first', 3), one(), 'cp']],
+      ['더 꽉 찬 리듬: 한 번 보여 주고 앞에서 뚝 → 두 번 되풀이 뒤 끝에서 손 바꿈 → 헛다리(함정 없이 피버로 들어간다)', [...phrase('stop-first', 1), ...phrase('long-last', 2), ...feint(2), 'cp']],
       ['마지막 절정 — 피버 둘(넓은 통로, 곧장 위로 섰다가 계단처럼 눕는다): 한 번 보여 주고 뚝 → 새 마디를 두 번 하고 함정 없이 끝난다(헛다리). 곡이 끝맺는 소리에 결승선', ['wUp', { wm: 'B' }, { wt: 'B', kind: 'break' }, { wm: 'C', pads: 1, calm: 1, run: 2, kind: 'none' }, { wr: 'C' }, 'wDn', { zm: 'Z2', pads: 1, kind: 'none' }]],
       ['', ['goal', 'flat', 'flat']],
     ];
@@ -215,7 +216,7 @@ TEMPLATES.R7 = {
 // 계단 하나는 땅에서 시작해 땅에서 끝나고, 길이는 한 마디·두 마디·네 마디(큰 산: 여덟 칸 높이까지). 짜임은 7라운드와 같다(되풀이 → 함정, 헛다리, 한 번 보여 주고 함정).
 // 피버는 곡의 가장 센 절정 한 곳(40~46)에만 둔다. 마지막 절정은 큰 산을 넘어 결승선으로 간다.
 TEMPLATES.R8 = {
-  prefix: 'g8', bpm: 150.0, floatReds: true, fresh: true, density: 0.9, cpFill: true, cpStairs: true,
+  prefix: 'g8', bpm: 150.0, floatReds: true, fresh: true, density: 0.9, cpFill: true, cpStairs: true, holdW: 5,      // holdW: 멈춰서 건너뛰는 단을 5배 자주(공중에서 멈추는 시간을 늘린다)
   recipe: { traps: 8, intro: [] },
   sections() {
     const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
@@ -231,7 +232,7 @@ TEMPLATES.R8 = {
       ['엇박 베이스 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 밀린 빨간 단. 이어서 새 계단 하나', [...hill('J', 2, { peak: 5, need: { kind: ['shift'], where: 'down' } }), ...rep('J', 2), ...trap('J', 2, ['shift'], 'down'), ...hill('K', 1), 'cp']],
       ['엇박 베이스, 더 꽉 차게 — 헛다리(같은 계단 세 번), 이어서 한 번만 보여 주고 함정', [...hill('L', 1), ...rep('L', 1), ...rep('L', 1), ...hill('N', 2, { peak: 5, need: { kind: ['lidJ', 'swap', 'shift'] } }), ...trap('N', 2, ['lidJ', 'swap', 'shift']), 'cp']],
       ['조용함 — 두 번째 큰 산, 이어서 한 마디짜리를 두 번 → 밀린 빨간 단', [...hill('M2', 4, { peak: 8 }), ...hill('P', 1, { need: { kind: ['shift'] } }), ...rep('P', 1), ...trap('P', 1, ['shift']), 'cp']],
-      ['마지막 절정 — 세 번째 큰 산을 넘고, 두 마디짜리 계단 하나를 더 넘어 결승선으로', [...hill('M3', 4, { peak: 8 }), ...hill('Q', 2, { peak: 6 })]],
+      ['마지막 절정 — 세 번째 큰 산을 넘고, 그림의 공중 사슬(파란 단에 내려 튀며 멈추고, 충전 고리로 다시 올라 멈추고)을 지나 결승선으로', [...hill('M3', 4, { peak: 8 }), 'airStep', 'airRing']],
       ['', ['goal', 'flat', 'flat']],
     ];
   },
@@ -244,21 +245,22 @@ TEMPLATES.R8 = {
 //   충전 고리(삼단 점프)와 높이 장치(떠 있는 박스, 징검다리)도 움직이는 장애물과 섞는다: fJumpP, stPress, ring3Saw, ring3, ring3Far, ring3Bait.
 //   피버는 다섯 곳(질주 구간). 지난 시안의 "움직이는 이빨"은 뺐다(벽 속의 이빨이 튀어나오는 것은 읽기 어렵고 세련돼 보이지 않았다).
 TEMPLATES.R9 = {
-  prefix: 'g9', bpm: 150.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: '7v',
+  prefix: 'g9', bpm: 150.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
   recipe: { g: '7v', gf: '7v', traps: 4, from: 0, kinds: { 'stop-last': 3, 'hand-last': 3, 'stop-first': 3, 'hand-first': 3 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
   sections() {
     let key = 0;
-    const one = () => ({ m: 'f' + key++, g: '7v' });
+    const one = () => ({ m: 'f' + key++, g: 'a7' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a7', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
     return [
-      ['도입: 곡이 크게 한 번 치고 가라앉는다. 프레스를 소개한다 — 프레스 둘 밑을 지나 기둥을 뛰어 넘기 ×2 → 뒤집기: 기둥 자리에 프레스(뛰면 머리를 박는다). 이어서 떠 있는 박스를 딛는 동안 지나온 박스를 프레스가 내리찍고, 충전 고리로 솟는 톱날 위를 넘는다', ['flat', 'flat', 'pressHop', 'pressHop', 'pressRow', 'fJumpP', 'ring3Saw', 'cp']],
+      ['도입: 곡이 크게 한 번 치고 가라앉는다. 프레스를 소개한다 — 프레스 둘 밑을 지나 기둥을 뛰어 넘기 ×2 → 뒤집기: 기둥 자리에 프레스(뛰면 머리를 박는다). 이어서 프레스 밑을 멈춰서 미끄러지듯 건너고(멈춤의 라운드), 충전 고리로 솟는 톱날 위를 넘는다', ['flat', 'flat', 'pressHop', 'pressHop', 'pressRow', 'pressGlide', 'ring3Saw', 'cp']],
       ['첫 질주 — 피버 하나(좁은 통로): 되풀이 → 뚝, 되풀이 → 하나 더', [{ zm: 'A' }, { zr: 'A' }, { zt: 'A', kind: 'break' }, { zm: 'B', kind: 'add' }, { zr: 'B' }, { zt: 'B', kind: 'add' }, { zm: 'B2', kind: 'none' }, 'cp']],
-      ['낮게 깔린 그루브 — 톱날: 내려설 자리로 내리꽂히는 톱날 ×2 → 뒤집기(첫 톱날이 안 내려온다). 이어서 오가는 톱날 밑을 멈춰서, 도는 톱날, 충전 고리와 미끼 고리', ['sawGate', 'sawGate', 'sawGateT', 'sawDive', 'sawOrbit', 'ring3', 'ring3Bait', 'cp']],
+      ['낮게 깔린 그루브 — 톱날: 내려설 자리로 내리꽂히는 톱날 ×2 → 뒤집기(첫 톱날이 안 내려온다). 이어서 오가는 톱날 밑을 멈춰서, 도는 톱날, 프레스 밑을 멈춰서 미끄러지기, 미끼 고리', ['sawGate', 'sawGate', 'sawGateT', 'sawDive', 'sawOrbit', 'pressGlide', 'ring3Bait', 'cp']],
       ['둘째 질주 — 넓은 통로, 이어서 튕김판(판이 있는 마디 → 판이 없다)', ['wUp', { wm: 'E', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'break' }, { wm: 'F', pads: 1, kind: 'pad' }, { wt: 'F', kind: 'pad' }, 'wDn', 'cp']],
-      ['떨어짐과 숨 고르기 — 발판: 빨간 바닥 위를 실어 나르는 파란 발판 ×2 → 뒤집기(발판이 높다: 뛰어서 올라탄다). 이어서 풍차 막대, 충전 고리 꼭대기에서 멈춰 긴 벽 건너기, 미끼 고리', ['platRide', 'platRide', 'platRideT', 'barSpin', 'ring3Far', 'ring3Bait', one(), 'cp']],
+      ['떨어짐과 숨 고르기 — 발판: 빨간 바닥 위를 실어 나르는 파란 발판 ×2 → 뒤집기(발판이 높다: 뛰어서 올라탄다). 이어서 풍차 막대, 충전 고리 꼭대기에서 멈춰 긴 벽 건너기, 프레스 밑을 멈춰서 미끄러지기', ['platRide', 'platRide', 'platRideT', 'barSpin', 'ring3Far', 'pressGlide', one(), 'cp']],
       ['가장 센 절정 — 넓은 통로: 튕김판 ×2 → 판이 없다, 이어서 하나 더', ['wUp', { wm: 'G', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'G' }, { wt: 'G', kind: 'pad' }, { wm: 'H', kind: 'add' }, { wt: 'H', kind: 'add' }, 'wDn', 'cp']],
-      ['거의 무음 — 높은 곳: 징검다리에 올라 프레스 밑을 지난다(공이 떠나자마자 돌을 내리찍는다) ×2, 내려올 땅이 빨간 박스(멈춰서 건넌다). 이어서 박스 건너기와 삼단 점프', ['stIn', 'stPress', 'stPress', 'stOutG', 'gAfter', 'fJumpP', 'ring3', 'cp']],
+      ['거의 무음 — 높은 곳: 징검다리에 올라 프레스 밑을 지난다(공이 떠나자마자 돌을 내리찍는다) ×2, 내려올 땅이 빨간 박스(멈춰서 건넌다). 이어서 그림의 공중 사슬(멈춤 셋)', ['stIn', 'stPress', 'stPress', 'stOutG', 'gAfter', 'airStep', 'airRing', 'cp']],
       ['다시 질주 — 좁은 통로(하나 더 → 튕김판 → 판이 없다)', [{ zm: 'I', kind: 'add' }, { zr: 'I' }, { zt: 'I', kind: 'add' }, { zm: 'J', pads: 1, kind: 'pad' }, { zr: 'J' }, { zt: 'J', kind: 'pad' }, { zm: 'K', kind: 'none' }, 'cp']],
-      ['그루브와 쌓아 올림 — 모든 장애물을 한 번씩: 프레스 줄, 오가는 톱날, 풍차, 높은 발판, 도는 톱날, 솟는 톱날 위의 삼단 점프', ['pressRow', 'sawDive', 'barSpin', 'platRideT', 'sawOrbit', 'ring3Saw', one(), 'cp']],
+      ['그루브와 쌓아 올림 — 장애물을 한 번씩(프레스 밑 미끄러지기, 오가는 톱날, 풍차), 이어서 멈춤 길이의 함정(두 번 되풀이 → 끝의 멈춤이 짧다)', ['pressGlide', 'sawDive', 'barSpin', ...phrase('short-last'), one(), 'cp']],
       ['마지막 절정 — 넓은 통로가 굽이치고, 좁은 통로로 내려와 결승선', ['wUp', { wm: 'L', calm: 1, run: 2 }, { wr: 'L' }, { wt: 'L', kind: 'break' }, 'wDn', { zm: 'M', kind: 'none' }]],
       ['', ['goal', 'flat', 'flat']],
     ];
@@ -280,6 +282,14 @@ const LEVELS = {
   '4v': { plain: 0.03, H: 0.2, D: 0.13, DH: 0.04, HD: 0, T: 0.14, FD: 0.2, CH: 0.13, CL: 0.13, hs: [0.375, 0.5, 0.625], hd: [0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875] },
   // 7v: 4v에서 낮은 천장(CL)을 줄인 것. 낮은 천장 마디는 멈춤을 일찍(1/4박에) 시작해야 해서 여유가 좁다 — 되풀이하는 마디에 자주 나오면 타이밍 싸움이 된다
   '7v': { plain: 0.03, H: 0.22, D: 0.15, DH: 0.04, HD: 0, T: 0.15, FD: 0.22, CH: 0.15, CL: 0.04, hs: [0.375, 0.5, 0.625], hd: [0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875] },
+  // ---- 공중 단계(멈춤의 라운드부터): 땅에서 그냥 튀는 시간보다 공중에서 멈추는 시간을 늘린다. 라운드마다 조금씩 많아진다
+  //   ch1 = 사슬의 첫 멈춤 길이, ch2 = 고리 뒤 멈춤 길이(충전 고리가 멈춤을 다시 채운다). 멈춤은 길게(hd 0.75~1박)
+  a2: { plain: 0.06, H: 0.4, D: 0.14, DH: 0.12, T: 0.06, HDH: 0.14, HRH: 0.08, hs: [0.5], hd: [0.625, 0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75], ch1: [0.5], ch2: [0.5, 0.75] },
+  a3: { plain: 0.04, H: 0.34, D: 0.1, DH: 0.12, T: 0.06, HDH: 0.14, HRH: 0.14, DHRH: 0.06, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625], ch2: [0.5, 0.75] },
+  a4: { plain: 0.02, H: 0.34, D: 0.03, DH: 0.1, T: 0.04, FD: 0.04, CH: 0.05, HDH: 0.12, HRH: 0.16, DHRH: 0.1, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
+  a5: { plain: 0.02, H: 0.26, D: 0.04, DH: 0.08, T: 0.05, FD: 0.05, CH: 0.04, HDH: 0.12, HRH: 0.18, DHRH: 0.16, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
+  a6: { plain: 0.02, H: 0.32, D: 0.02, DH: 0.06, T: 0.03, FD: 0.04, CH: 0.03, HDH: 0.1, HRH: 0.2, DHRH: 0.18, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
+  a7: { plain: 0.02, H: 0.32, D: 0.02, DH: 0.06, T: 0.03, FD: 0.04, CH: 0.03, CL: 0.01, HDH: 0.09, HRH: 0.2, DHRH: 0.18, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
   3: { plain: 0.1, H: 0.28, D: 0.28, DH: 0.2, HD: 0.14, hs: [0.375, 0.5, 0.625], hd: [0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625, 0.75], dhd: [0.5, 0.75, 0.875], hdd: [0.375, 0.5, 0.625] },
   // 어려움: 쉬는 박이 거의 없고, 엮인 동작이 많고, 통로가 좁다(tol = 장애물을 만들 때 봐주는 타이밍 오차. 작을수록 빡빡하다)
   4: { plain: 0.05, H: 0.22, D: 0.25, DH: 0.26, HD: 0.22, hs: [0.25, 0.375, 0.5, 0.625, 0.75], hd: [0.375, 0.5, 0.625, 0.75, 0.875, 1.0], dt: [0.25, 0.375, 0.5, 0.625, 0.75], dhd: [0.375, 0.5, 0.75, 0.875], hdd: [0.25, 0.375, 0.5, 0.625], tol: 0.13 },
@@ -341,7 +351,7 @@ function generate(T, seed) {
       if (!taus.length) break;
       const tau = taus[0]; decided.add(tau);
       let r = rng(), kind = 'plain';
-      for (const k of ['plain', 'H', 'D', 'DH', 'HD', 'T', 'FD', 'CH', 'CL']) { if (r < (cfg[k] || 0)) { kind = k; break; } r -= cfg[k] || 0; }
+      for (const k of ['plain', 'H', 'D', 'DH', 'HD', 'T', 'FD', 'CH', 'CL', 'HDH', 'HRH', 'DHRH']) { if (r < (cfg[k] || 0)) { kind = k; break; } r -= cfg[k] || 0; }
       const tb = Math.round(tau * 8) / 8;               // 높이 장치는 칸에 맞춰 놓는다(떠 있는 박스에서 떨어진 뒤에는 한 틱 늦게 튀므로 반올림)
       if ((kind === 'FD' && tb > 2.75) || ((kind === 'CH' || kind === 'CL') && tb > 2) || (kind === 'CL' && def.tall) || ((kind === 'FD' || kind === 'CH' || kind === 'CL') && tb !== Math.round(tb))) kind = 'D';
       if (kind === 'FD' || kind === 'CH' || kind === 'CL') (def.__dev = def.__dev || []).push({ kind, tb, t: kind === 'CL' ? tb + 0.25 : tb + 0.5 });      // 이 입력에 높이 장치가 달렸다(함정으로 바꿀 때 건드리지 않는다)
@@ -353,22 +363,55 @@ function generate(T, seed) {
       else if (kind === 'DH') { const t = tau + 0.5, d = pick(cfg.dhd); if (t + 0.5 + d <= 4) { def.presses.push(q8(t)); def.holds.push([q8(t + 0.5), q8(t + 0.5 + d)]); } }
       else if (kind === 'T') { const t = tau + 0.5; if (t < 4) { def.presses.push(q8(t)); (def.tall = def.tall || []).push(q8(t)); } }      // 높은 박스: 꼭대기에서 이단 점프해야만 넘는다(멈춤으로는 못 넘는다)
       else if (kind === 'HD') { const d = pick(cfg.hdd), t = tau + 0.5 + d + 0.125; if (t < 4) { def.holds.push([tau + 0.5, q8(tau + 0.5 + d)]); def.presses.push(q8(t)); } }
+      // ---- 공중 사슬(2라운드부터 조금씩, 뒤로 갈수록 많이): 땅에 내려오지 않고 멈춤 → 점프 → 멈춤. 멈춤은 늘 꼭대기에서 시작한다(높이가 타이밍에 덜 흔들린다)
+      //   HDH   꼭대기에서 멈춤 → 놓고 곧 이단 점프 → 새 꼭대기에서 또 멈춤(두 멈춤을 합해 1박 안)
+      //   HRH   HDH와 같은데, 이단 점프 자리에 충전 고리가 있어 멈춤이 다시 1박 채워진다(둘째 멈춤이 길다)
+      //   DHRH  이단 점프로 높이 올라 멈춤 → 충전 고리에서 한 번 더 점프 → 더 높은 꼭대기에서 멈춤(그림의 "고리로 다시 오르며 멈춤")
+      else if (kind === 'HDH' || kind === 'HRH' || kind === 'DHRH') {
+        const dj = kind === 'DHRH', t1 = tau + (dj ? 1.0 : 0.5), d1 = pick(cfg.ch1 || [0.5]), g = pick([0.125, 0.25]), p = q8(t1 + d1 + g);
+        const d2 = pick(kind === 'HDH' ? [Math.min(0.5, 1 - d1)] : cfg.ch2 || [0.5, 0.75]), t2 = q8(p + 0.5), fall = dj ? 0.95 : 0.75;
+        if (t2 + d2 + fall <= 3.95 && t2 + d2 + fall >= 3.05 && d1 + (kind === 'HDH' ? d2 : 0) <= 1) {      // (마디의 끝 박 직전에 내려와야 한다: 일찍 내려오면 마지막 박이 빈다)
+          if (dj) def.presses.push(q8(tau + 0.5));
+          def.holds.push([q8(t1), q8(t1 + d1)]); def.presses.push(p); def.holds.push([t2, q8(t2 + d2)]);
+          if (kind !== 'HDH') (def.__rings = def.__rings || []).push(p);
+        } else if (tau + 1.25 <= 3.25) def.holds.push([q8(tau + 0.5), q8(tau + 0.5 + Math.min(1, d1 + 0.25))]);      // (자리가 맞지 않으면 꼭대기에서 긴 멈춤 하나)
+      }
+    }
+    // 충전 고리를 그 점프 자리에 놓는다: 패턴대로 달려 누르는 순간의 공의 자리를 재고, ±0.1박 일찍·늦게 눌러도 고리에 닿게 세로로 길게(2~3칸)
+    if (def.__rings) {
+      const L = build(ctx), inp = Lg.planInput(L.ref), s = Lg.spawnState(L, -1), at = new Map();
+      const want = new Set(def.__rings.map((p) => lo + Math.round(p * SUB) - 1));
+      while (!s.dead && !s.won && s.step < lo + BAR) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (want.has(s.step)) at.set(s.step, { x: s.x - ctx.at * 16, h: 9 - s.y }); }
+      def.rings = [];
+      for (const [, q] of at) { const c = Math.round(q.x - 0.5); for (let r = Math.max(0, Math.floor(q.h - 1.1)); r <= Math.floor(q.h + 0.5); r++) def.rings.push([c, r]); }
+      if (at.size !== def.__rings.length) return null;
+      def.chain = def.__rings.length;
+      delete def.__rings;
     }
     // 파란 천장 밑에서 버릇대로 이단 점프하면(멈춤 대신) 죽어야 한다: 그 멈춤을 누르기로 바꾼 달리기를 함정으로 적는다
     for (const t of def.__ch || []) (def.traps = def.traps || []).push({ presses: [t], holds: def.holds.filter((h) => h[0] !== t) });
     delete def.__ch;
+    { const hs = def.holds.slice().sort((u, v) => u[0] - v[0]);      // 멈춤이 겹치거나 멈춤 사이에 누름이 끼면 버린다(앞의 동작이 뜻대로 안 됐을 때 생긴다)
+      for (let i = 1; i < hs.length; i++) if (hs[i][0] < hs[i - 1][1] + 0.125) return null;
+      if (def.presses.some((t) => hs.some((h) => t > h[0] && t < h[1]))) return null; }
     const n = def.holds.length + def.presses.length;
     return n >= 2 || (n === 1 && (cfg.one || rng() < 0.15)) ? def : null;      // 2단계부터는 대개 한 마디에 두 번 이상 누른다
   };
   const inputsOf = (def) => [...def.presses.map((t) => ({ t, k: 'R', tall: !!(def.tall && def.tall.includes(t)) })), ...def.holds.map(([a, z]) => ({ t: a, z, k: 'L' }))].sort((u, v) => u.t - v.t);
   const trapOf = (A) => {                              // 함정으로 바꾸기: 마지막 입력을 빼거나(뚝), 마지막 입력의 손을 바꾼다
     const ins = inputsOf(A), last = ins[ins.length - 1], rest = ins.slice(0, -1);
-    const base = { holds: rest.filter((i) => i.k === 'L').map((i) => [i.t, i.z]), presses: rest.filter((i) => i.k === 'R').map((i) => i.t), tol: A.tol };
+    const base = { holds: rest.filter((i) => i.k === 'L').map((i) => [i.t, i.z]), presses: rest.filter((i) => i.k === 'R').map((i) => i.t), tol: A.tol , ...(A.rings ? { rings: A.rings, chain: A.chain } : {}) };
     const habit = { presses: A.presses.slice(), holds: A.holds.map((h) => h.slice()) };
     const out = [];
     if (rest.length) out.push({ ...base, traps: [{ full: habit }], how: 'stop' });
     if (last.k === 'R' && last.t + 0.75 <= 4) out.push({ ...base, holds: [...base.holds, [last.t, q8(last.t + 0.75)]], traps: [{ full: habit }], how: 'toL' });
     if (last.k === 'L') out.push({ ...base, presses: [...base.presses, last.t], traps: [{ full: habit }], how: 'toR' });
+    // 멈춤 길이의 함정: 마지막 멈춤이 1/4~3/8박 짧거나 길다(앞의 두 마디와 똑같이 가다가 놓는 순간만 다르다)
+    if (last.k === 'L') for (const dd of [-0.375, -0.25, 0.25, 0.375]) {
+      const z = q8(last.z + dd), used = A.holds.reduce((u, h) => u + h[1] - h[0], 0);
+      if (z - last.t < 0.25 || z > 3.75 || (dd > 0 && used + dd > 1 && !A.chain)) continue;
+      out.push({ ...base, holds: [...base.holds, [last.t, z]], traps: [{ full: habit }], how: dd > 0 ? 'long' : 'short' });
+    }
     return out;
   };
 
@@ -424,7 +467,8 @@ function generate(T, seed) {
   const toDef = (list, tol) => { const d = { holds: list.filter((i) => i.k === 'L').map((i) => [i.t, i.z]), presses: list.filter((i) => i.k === 'R').map((i) => i.t), tol }, tall = list.filter((i) => i.k === 'R' && i.tall).map((i) => i.t); if (tall.length) d.tall = tall; return d; };
   // 높이 장치(떠 있는 박스, 파란 천장)가 있는 마디도 함정으로 바꿀 수 있다: 장치가 달린 입력은 건드리지 않고, 장치와 그 장치의 함정을 그대로 가져간다
   const carry = (A, d) => {
-    for (const k of ['floats', 'caps', 'lava']) if (A[k]) d[k] = JSON.parse(JSON.stringify(A[k]));
+    for (const k of ['floats', 'caps', 'lava', 'rings']) if (A[k]) d[k] = JSON.parse(JSON.stringify(A[k]));
+    if (A.chain) d.chain = A.chain;
     if (A.__dev) { d.__dev = A.__dev; for (const v of A.__dev) d.traps.push(v.kind === 'FD' ? { presses: [v.tb + 1.125] } : v.kind === 'CH' ? { presses: [v.t], holds: d.holds.filter((h) => h[0] !== v.t) } : null); d.traps = d.traps.filter(Boolean); }
     return d;
   };
@@ -437,8 +481,22 @@ function generate(T, seed) {
     else if (kind === 'stop-first' && ins.length >= 2 && free(ins[0])) list = ins.slice(1);
     else if (kind === 'hand-last' && free(ins[ins.length - 1])) { const x = sw(ins[ins.length - 1]); if (x) list = [...ins.slice(0, -1), x]; }
     else if (kind === 'hand-first' && ins.length >= 2 && free(ins[0])) { const x = sw(ins[0]); if (x) list = [x, ...ins.slice(1)]; }
+    // 멈춤 길이의 함정(2라운드부터): 되풀이하던 마디와 똑같이 가다가, 마지막(또는 첫) 멈춤만 길이가 다르다. 버릇대로 놓으면(또는 계속 누르면) 걸린다
+    //   long  멈춤이 1/4~3/8박 길다(버릇대로 일찍 놓으면 떨어진다) / short 1/4~3/8박 짧다(버릇대로 계속 누르면 앞의 덩어리에 걸린다)
+    else if (/^(long|short)-(last|first)/.test(kind)) {
+      const hs = ins.filter((i) => i.k === 'L' && free(i)), h = kind.endsWith('last') ? hs[hs.length - 1] : hs[0];
+      if (h) {
+        const k = ins.indexOf(h), nxt = ins[k + 1], used = ins.filter((i) => i.k === 'L').reduce((u, i) => u + i.z - i.t, 0);
+        for (const dd of [+(kind.split(':')[1] || 0.25)]) {
+          const z = q8(kind.startsWith('long') ? h.z + dd : h.z - dd);
+          if (z - h.t < 0.25 || z > 3.75 || (nxt && z > nxt.t - 0.125) || (kind.startsWith('long') && used + dd > 1 && !A.chain)) continue;
+          list = ins.map((i) => (i === h ? { ...i, z } : i)); break;
+        }
+      }
+    }
     return list && list.length ? carry(A, { ...toDef(list, A.tol), traps: [{ full: habit }] }) : null;
   };
+  const spread = (kinds) => kinds.flatMap((k) => (/^(long|short)-/.test(k) && !k.includes(':') ? [k + ':0.25', k + ':0.375'] : [k]));      // 멈춤 길이 함정은 길이 차이 둘(1/4, 3/8박)을 차례로 해 본다
   const phraseSlot = (slot, b) => {
     const name = `${T.prefix}_${b}`;
     if (slot.m) {
@@ -452,7 +510,7 @@ function generate(T, seed) {
         if (slot.need) {                               // 이 마디를 두 번 한 뒤에 놓을 함정이 성립하는 것만 받는다(안 그러면 함정 자리에서 통째로 실패한다)
           const tn = `${T.prefix}_${b + 2}`; bars.push(name, name);
           const groups = Array.isArray(slot.need[0]) ? slot.need : [slot.need];      // 함정을 둘 낼 마디는 묶음 둘: 묶음마다 하나씩은 성립해야 한다
-          const okT = groups.every((g) => g.some((kind) => { const d = variant(def, kind); if (!d) return false; Lg.PATTERNS[tn] = d; const v2 = validate(tn, d.traps[0].full); delete Lg.PATTERNS[tn]; return !!(v2 && v2.clean); }));
+          const okT = groups.every((g) => spread(g).some((kind) => { const d = variant(def, kind); if (!d) return false; Lg.PATTERNS[tn] = d; const v2 = validate(tn, d.traps[0].full); delete Lg.PATTERNS[tn]; return !!(v2 && v2.clean); }));
           bars.length -= 2;
           if (!okT) continue;
         }
@@ -473,15 +531,16 @@ function generate(T, seed) {
       Lg.PATTERNS[name] = def; made[name] = def; bars.push(name); trapList.push({ bar: b, kind: 'blind', of: slot.r }); roles[b] = slot.r + '?'; return;
     }
     if (slot.r) { bars.push(motifs[slot.r].name); roles[b] = slot.r; return; }
-    const M = motifs[slot.t], KO = { 'stop-last': '끝에서 뚝', 'stop-first': '앞에서 뚝', 'hand-last': '끝에서 손 바꿈', 'hand-first': '앞에서 손 바꿈', add: '하나 더' };
-    for (const kind of [].concat(slot.kind)) {         // 종류를 여러 개 주면 차례로 해 보고, 통과한 첫 번째를 쓴다
+    const M = motifs[slot.t], KO = { 'stop-last': '끝에서 뚝', 'stop-first': '앞에서 뚝', 'hand-last': '끝에서 손 바꿈', 'hand-first': '앞에서 손 바꿈', add: '하나 더', 'long-last': '끝의 멈춤이 길다', 'short-last': '끝의 멈춤이 짧다', 'long-first': '앞의 멈춤이 길다', 'short-first': '앞의 멈춤이 짧다' };
+    for (const kind of spread([].concat(slot.kind))) {         // 종류를 여러 개 주면 차례로 해 보고, 통과한 첫 번째를 쓴다
       const def = kind === 'add' ? (M.full ? { ...JSON.parse(JSON.stringify(M.full)), traps: [{ full: { presses: M.def.presses.slice(), holds: M.def.holds.map((h) => h.slice()) } }] } : null) : variant(M.def, kind);
       if (!def) continue;
       Lg.PATTERNS[name] = def;
       const v = validate(name, def.traps[0].full);
       if (!v || !v.clean) { delete Lg.PATTERNS[name]; continue; }
-      made[name] = def; bars.push(name); trapList.push({ bar: b, kind, of: slot.t }); roles[b] = slot.t + '!';
-      notes[b] = `함정(${KO[kind]}): 앞 마디와 같이 가다가 한 군데가 다르다`;
+      if (process.env.DBGT) console.error('  함정', b, JSON.stringify(slot.kind), '→', kind);
+      made[name] = def; bars.push(name); trapList.push({ bar: b, kind: kind.split(':')[0], of: slot.t }); roles[b] = slot.t + '!';
+      notes[b] = `함정(${KO[kind.split(':')[0]]}${kind.includes(':') ? ' ' + kind.split(':')[1] + '박' : ''}): 앞 마디와 같이 가다가 한 군데가 다르다`;
       return;
     }
     if (!slot.soft) throw new Error('함정이 통과하지 못했다(마디 ' + b + '): ' + slot.kind);
@@ -514,6 +573,7 @@ function generate(T, seed) {
       let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } }
       const lim = slot.calm || slot.run ? { calm: slot.calm, run: slot.run } : null;
       if (!fits(s, lim) || stale(s, wide) || (tries < 200 && worn(s, wide)) || !feverTry(s, wide) || Object.values(motifs).some((mm) => mm.nodes === s) || (slot.kind !== 'add' && slot.kind !== 'pad' && slot.kind !== 'none' && !breaksOf(s, wide).filter((q) => fits(q, lim) && !stale(q, wide) && !stalePair(s, q, wide)).length)) continue;
+      { const pp = Lg.PATTERNS[bars[bars.length - 1]]; if (pp && pp.mode === 'rush' && pp.nodes && !!pp.wide === wide && pp.nodes !== s && stalePair(pp.nodes, s, wide)) continue; }      // 바로 앞 피버 마디와의 짝도 앞 라운드에 없던 것
       if (slot.kind === 'pad' && !padTraps(s, wide, lim).length) continue;
       if (slot.kind === 'add' && !addsOf(s, wide).filter((q) => fits(q, lim) && !stale(q, wide) && !stalePair(s, q, wide)).length) continue;      // 이 마디의 함정을 "하나 더"로 낼 거면 그럴 줄이 있어야 한다
       took(s, wide); made[name] = Lg.PATTERNS[name] = feverDef(s, wide); bars.push(name); motifs[key] = { name, nodes: s, wide, lim }; roles[b] = key;
@@ -561,7 +621,7 @@ function generate(T, seed) {
     }
     const n = slot.bars || 1;
     for (let tries = 0; tries < 400; tries++) {
-      const hops = slot.hops || St.randomHill(4 * n, rng, { peak: slot.peak, max: slot.max, inputs: slot.inputs });
+      const hops = slot.hops || St.randomHill(4 * n, rng, { peak: slot.peak, max: slot.max, inputs: slot.inputs, holdW: T.holdW });
       if (!hops) continue;
       if (!slot.hops && Object.values(stairs).some((q) => JSON.stringify(q.hops) === JSON.stringify(hops))) continue;      // 같은 계단을 두 번 뽑지 않는다
       const put = putHill(hops, b);
@@ -586,7 +646,7 @@ function generate(T, seed) {
     const name = `${T.prefix}_${b}`;
     for (let tries = 0; tries < 300; tries++) {
       if (T.cpStairs) {
-        const hops = St.randomHill(4, rng, { inputs: 1 });
+        const hops = St.randomHill(4, rng, { inputs: 1, holdW: T.holdW });
         if (!hops) continue;
         const put = putHill(hops, b);
         if (!put) continue;
@@ -609,6 +669,7 @@ function generate(T, seed) {
   }
 
   let A = null, reps = 0, feverA = null, feverReps = 0, lastHow = '';
+  const flatSlots = T.sections.flatMap(([, slots]) => slots);
   T.sections.forEach(([, slots]) => slots.forEach((slot) => {
     const b = bars.length;
     if (slot === 'cp' && T.cpFill) { cpSlot(b); A = null; reps = 0; return; }
@@ -640,10 +701,11 @@ function generate(T, seed) {
     // ① 같은 마디를 두 번 한 뒤에는 함정(한 군데만 다른 마디)
     if (A && reps === 2 && !slot.plain && rng() < 0.95) {
       const cands = trapOf(A.def).filter((c) => c.how !== lastHow || rng() < 0.3);
-      for (const c of cands.sort(() => rng() - 0.5)) {
+      for (const c of cands.map((c) => [c, rng() - (c.how === 'long' || c.how === 'short' ? 0.45 : 0)]).sort((u, v) => u[1] - v[1]).map((u) => u[0])) {      // (멈춤 길이의 함정을 먼저 해 본다)
         const { how, ...def } = c; Lg.PATTERNS[name] = def;
-        const v = validate(name, def.traps[0].full);
-        if (v) { def.__clean = v.clean; made[name] = def; bars.push(name); notes[b] = how === 'stop' ? '함정(뚝): 앞의 두 마디와 같이 가다가 마지막은 누르지 않는다' : how === 'toL' ? '함정(손 바꿈): 마지막이 오른쪽이 아니라 왼쪽' : '함정(손 바꿈): 마지막이 왼쪽이 아니라 오른쪽'; lastHow = how; A = null; reps = 0; return; }
+        const v = validate(name, def.traps[0].full), nx = flatSlots[b + 1];
+        if (v && !v.clean && typeof nx === 'string' && Lg.PATTERNS[nx] && Lg.PATTERNS[nx].mode !== 'rush' && !['flat', 'cp', 'goal', 'idle'].includes(nx)) { delete Lg.PATTERNS[name]; continue; }
+        if (v) { def.__clean = v.clean; made[name] = def; bars.push(name); notes[b] = how === 'stop' ? '함정(뚝): 앞의 두 마디와 같이 가다가 마지막은 누르지 않는다' : how === 'toL' ? '함정(손 바꿈): 마지막이 오른쪽이 아니라 왼쪽' : how === 'toR' ? '함정(손 바꿈): 마지막이 왼쪽이 아니라 오른쪽' : how === 'long' ? '함정(멈춤이 길다): 앞의 두 마디보다 더 오래 멈춰야 한다' : '함정(멈춤이 짧다): 앞의 두 마디보다 일찍 놓아야 한다'; lastHow = how; A = null; reps = 0; return; }
         delete Lg.PATTERNS[name];
       }
     }
@@ -658,6 +720,7 @@ function generate(T, seed) {
       if (A && JSON.stringify([def.holds, def.presses]) === JSON.stringify([A.def.holds, A.def.presses])) continue;
       const v = validate(name);
       if (v && T.density && !(v.clean && v.startClean)) continue;      // 촘촘한 라운드: 마디가 땅에서 박자에 맞춰 시작하고 끝나야 한다(다음 마디의 높이 장치가 어긋나지 않게)
+      { const nx = flatSlots[b + 1]; if (v && !v.clean && typeof nx === 'string' && Lg.PATTERNS[nx] && Lg.PATTERNS[nx].mode !== 'rush' && !['flat', 'cp', 'goal', 'idle'].includes(nx)) continue; }      // 다음 마디가 손으로 놓은 장치(박스, 빨간 바닥)면 땅에서 박자에 맞춰 끝나야 한다
       if (v) { def.__clean = v.clean; made[name] = def; bars.push(name); A = { name, def, clean: v.clean, startClean: v.startClean }; reps = 1; notes[b] = ''; return; }
     }
     delete Lg.PATTERNS[name];
@@ -695,7 +758,7 @@ function fillCp(T, course0) {
     console.error(`씨앗 ${seed}: ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'}, 체크포인트 ${L.cps.length}개(패턴 있는 것 ${L.cps.filter((c) => c.snap).length})`);
     if (!s.won || L.fixed.length || !solved || !snaps || !trapOk) { for (const n of Object.keys(g.made)) delete Lg.PATTERNS[n]; continue; }
     let src = fs.readFileSync(FILE, 'utf8');
-    const lines = Object.entries(g.made).map(([name, d]) => `  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''}${d.stair ? ', stair: true' : ''}, cp: true },   // ${g.notes[+name.replace(/^\D+\d*\D/, '')] || '체크포인트 마디'}`);
+    const lines = Object.entries(g.made).map(([name, d]) => `  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.rings ? ', rings: ' + fmt(d.rings) : ''}${d.chain ? ', chain: ' + d.chain : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''}${d.stair ? ', stair: true' : ''}, cp: true },   // ${g.notes[+name.replace(/^\D+\d*\D/, '')] || '체크포인트 마디'}`);
     const z = `  // </gen:patterns:${round}>`, zi = src.indexOf(z);
     if (zi < 0) throw new Error('표시가 없다: ' + z);
     src = src.slice(0, zi) + `  // 체크포인트 마디(tools_gen_course.js ${round} fillcp ${seed}): 개발하는 동안 체크포인트로 쓰는 마디에도 패턴을 넣었다. cp: true를 빼면 그냥 마디다\n` + lines.join('\n') + '\n' + src.slice(zi);
@@ -748,7 +811,7 @@ const lines = [`  // 도구(tools_gen_course.js ${round} ${result.seed})가 무�
 for (const [name, d] of Object.entries(result.made)) {
   const b = +name.replace(/^\D+\d*\D/, ''), note = result.notes[b];
   if (d.mode === 'rush') lines.push(`  ${name}: { mode: "rush"${d.wide ? ', wide: true' : ''}${d.gap ? ', gap: ' + d.gap : ''}, nodes: "${d.nodes}" },${note ? '   // ' + note : ''}`);
-  else lines.push(`  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.lead ? ', lead: ' + JSON.stringify(d.lead) : ''}${d.tail ? ', tail: ' + JSON.stringify(d.tail) : ''}${d.stair ? ', stair: true' : ''}${d.cp ? ', cp: true' : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''} },${note ? '   // ' + note : ''}`);
+  else lines.push(`  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.lead ? ', lead: ' + JSON.stringify(d.lead) : ''}${d.tail ? ', tail: ' + JSON.stringify(d.tail) : ''}${d.stair ? ', stair: true' : ''}${d.cp ? ', cp: true' : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.rings ? ', rings: ' + fmt(d.rings) : ''}${d.chain ? ', chain: ' + d.chain : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''} },${note ? '   // ' + note : ''}`);
 }
 const barLines = [];
 let at = 0;

@@ -89,7 +89,7 @@ function randomHill(slots, rng, opt = {}) {
     let lv = 0, left = slots, phase = 'up', plain = 0, ok = true;
     while (left > 0 && ok) {
       const opts = [];
-      const add = (hp, w) => { const n = SLOTS(hp); if (n <= left) opts.push([hp, w]); };
+      const add = (hp, w) => { const n = SLOTS(hp); if (n <= left) opts.push([hp, w * (hp.how === 'h' ? opt.holdW || 1 : 1)]); };      // holdW = 멈춰서 건너뛰는 단을 더 자주(멈춤의 라운드부터)
       const canDown = (l, s) => l >= 1 && l <= 3 * s && s >= 1;            // 남은 칸 안에 땅까지 내려올 수 있는가(한 칸에 많아야 세 칸 내려간다)
       if (phase === 'up') {
         if (lv + 1 <= maxLv && plain < 2) add({ to: lv + 1 }, 1.2);
