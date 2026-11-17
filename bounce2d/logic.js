@@ -236,7 +236,7 @@ const PATTERNS = {
   g5w35: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFSF..." },   // 뚝: 앞 마디(SFFFFFS.)와 같이 가다가 끊긴다
   g5z40: { mode: "rush", nodes: "F.S.F.S." },
   g5z42: { mode: "rush", nodes: "F.F.S..." },   // 하나 더: 앞 마디(F.S.F.S.)와 같이 가다가 한 번 더 누른다
-  g5z43: { mode: "rush", nodes: "F.F.F.F." },
+  g5z44: { mode: "rush", nodes: "F.F.F.F." },
   g5z46: { mode: "rush", nodes: "F.F.S..." },   // 뚝: 앞 마디(F.F.F.F.)와 같이 가다가 끊긴다
   g5w49: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFSFS.." },
   g5w51: { mode: "rush", wide: true, gap: 1.5, nodes: "SFFFFF.." },   // 하나 더: 앞 마디(SFFSFS..)와 같이 가다가 한 번 더 누른다
@@ -333,6 +333,8 @@ const PATTERNS = {
   zS1: { mode: "rush", nodes: "........", free: true, squeeze: [1, 1, 0.5, 0.5, 0.5, 0.5] },
   // 둘째 마디: 한 박마다 간격을 반으로. 마지막 박에는 1/32박(약 12ms)마다 닿아 통로가 공 크기와 거의 같아진다(폭 0.92칸, 공 0.8칸)
   zS2: { mode: "rush", nodes: "........", free: true, squeeze: [...Array(4).fill(1 / 4), ...Array(8).fill(1 / 8), ...Array(16).fill(1 / 16), ...Array(32).fill(1 / 32)] },
+  // 얇은 굴(연출): 피버 한가운데에서 통로가 가늘어졌다가 다시 넓어진다(닿는 간격 한 박 → 반 박 → 반의 반 박 → 반 박 → 한 박). 화면이 그만큼 다가간다. mid = 뒤에 피버가 이어져도 된다
+  zThin: { mode: "rush", nodes: "........", free: true, mid: true, squeeze: [1, 0.5, 0.25, 0.25, 0.25, 0.25, 0.5, 1] },      // (처음과 끝은 보통 폭이라야 앞뒤 마디와 바닥에서 이어진다)
   z1: { mode: "rush", nodes: "..S.F.F." },
   z2: { mode: "rush", nodes: "F.S.F.S." },
   z3: { mode: "rush", nodes: "S.F.S.F." },
@@ -523,22 +525,22 @@ const ROUND4 = {
 // 곡의 구간(마디, 여덟 마디씩): 0~7 조용한 도입 / 8~15 리듬 / 16~23 더 꽉 찬 리듬 / 24~30 가라앉음, 31 쌓아 올리는 굴림
 //                / 32~35 터짐, 36~38 점점 세짐, 39 빈 마디 / 40~46 리듬, 47 빈 마디 / 48~55 리듬 / 56~63 더 꽉 찬 리듬
 //                / 64~70 가라앉음, 71 굴림 / 72~75 터짐, 76~78 점점 세짐 / 79 끝맺는 한 방
-// 피버 위주의 라운드: 79마디 가운데 44마디가 피버다. 피버의 새것은 (1) 통로가 기울고 솟는 연출(cam: 대각선, 수직, 한 바퀴 돌기, 당기고 밀기), (2) 피버의 함정 "하나 더".
+// 피버 위주의 라운드: 79마디 가운데 44마디가 피버다. 피버의 새것은 (1) 굽은 통로(cam: 비스듬히, 곧장 위로, 왼쪽 위로 넘어가기), (2) 얇은 굴(가늘어진 통로로 들어가면 화면이 다가간다), (3) 피버의 함정 "하나 더".
 // 바운스의 새 함정은 "박스에서 내려서자마자 멈춰서 건너기"(fJ3G).
 const ROUND5 = {
   name: "ROUND 5 · Concrete Pulse",
   bpm: 152.0,
   track: { file: "music/concrete_pulse.mp3", offset: 0.067, measured: true },
   floatReds: true, vary: true, density: 0.95,
-  // 피버 연출 표: 그 마디의 첫 박에 통로가 "확" 돈다. rot 0 = 오른쪽으로, 45 = 비스듬히 위로, 90 = 곧장 위로, -45 = 비스듬히 아래로. zoom = 배율, spin = 그 마디 동안 한 바퀴.
-  // 처음 보는 기울기는 장애물 없는 마디에서 돌리고(17, 32), 뒤로 갈수록 누르는 도중에, 함정 마디에서 돌린다(눈속임).
+  // 굽은 통로: 그 마디가 시작하는 곳부터 통로가 그 기울기로 굽는다(rot 0 = 오른쪽, 45 = 비스듬히 위, 90 = 곧장 위, 135 = 왼쪽 위, -45 = 비스듬히 아래. turn = 굽이의 길이, 안 적으면 45도마다 8칸).
+  // 화면은 돌지 않는다. 통로가 굽어 있고, 공이 그리로 들어간다. 처음 보는 굽이는 장애물 없는 마디에 두고(17, 32), 뒤로 갈수록 누르는 도중에, 함정 마디에 둔다.
+  // 곧장 위로 서는 굽이는 넓은 통로의 계단 마디에 둔다(넓은 통로는 원래 물러나서 보이므로 앞이 넉넉히 보인다).
   cam: [
-    { bar: 12, zoom: 1.2 }, { bar: 14, zoom: 1 },
     { bar: 17, rot: 45 }, { bar: 20, rot: -45 }, { bar: 23, rot: 0 },
-    { bar: 32, rot: 90 }, { bar: 35, rot: 45 }, { bar: 36, rot: 0, spin: 1 },
-    { bar: 40, zoom: 1.25 }, { bar: 42, rot: -45 }, { bar: 44, rot: 45 }, { bar: 46, rot: 0 },
-    { bar: 48, rot: 90 }, { bar: 51, rot: 135 }, { bar: 52, rot: 90 }, { bar: 53, rot: 0, spin: -1 }, { bar: 54, zoom: 1.2 },
-    { bar: 72, rot: -45 }, { bar: 73, rot: 45 }, { bar: 74, rot: 90 }, { bar: 76, rot: 45 }, { bar: 77, rot: 0 },
+    { bar: 32, rot: 90 }, { bar: 36, rot: 0 },
+    { bar: 41, rot: -45 }, { bar: 43, rot: 0 }, { bar: 45, rot: 45 }, { bar: 46, rot: 0 },
+    { bar: 48, rot: 90 }, { bar: 51, rot: 135 }, { bar: 52, rot: 90 }, { bar: 53, rot: 0 },
+    { bar: 72, rot: 45 }, { bar: 74, rot: -45 }, { bar: 76, rot: 0 },
   ],
   pal: {                                         // 이 라운드의 색: 콘크리트 잿빛에 주황·형광 연두
     intro: { top: "#0c0d10", bottom: "#3a3d45", accent: "#ffb347", sun: "#ffd9a0" },
@@ -556,23 +558,23 @@ const ROUND5 = {
     // 첫 피버(곧은 통로): 피버의 함정 두 가지를 차례로. 되풀이 → 뚝, 되풀이 → 하나 더
     "g5z8", "g5z8", "g5z10", "g5z11",   "g5z11", "g5z13", "g5z14", "g5z14",
     "cp",
-    // 둘째 피버(비스듬한 통로): 장애물 없는 마디에서 통로가 비스듬히 위로 기운다. 중간에 아래로 꺾이고, 마지막 함정 마디에서 다시 곧게 펴진다
+    // 둘째 피버(굽은 통로): 장애물 없는 마디에서 통로가 비스듬히 위로 굽는다. 중간에 아래로 굽고, 마지막 함정 마디에서 다시 곧게 펴진다
     "zF", "g5z18", "g5z18", "g5z20",   "g5z21", "g5z21", "g5z23",
     // 가라앉음: 바운스의 새 함정. 박스 셋을 건너뛰고 그냥 떨어지기를 두 번 한 뒤, 떨어질 땅이 빨간 박스로 이어져 있다(박스를 떠나자마자 멈춰서 건넌다)
     "cp", "fJump3", "fJump3", "fJ3G",   "gAfter", "g5_29", "g5_30", "cp",
-    // 셋째 피버(솟는 통로): 계단을 오르며 통로가 곧장 위로 선다. 넓은 통로를 위로 달리고, 계단을 내려오며 한 바퀴 돌아 제자리. 끝의 두 마디는 조여드는 통로(곡이 점점 세지는 자리)
+    // 셋째 피버(솟는 통로): 계단을 오르며 통로가 곧장 위로 굽는다. 넓은 통로를 위로 달리고, 계단을 내려오며 다시 가로로. 끝의 두 마디는 조여드는 통로(곡이 점점 세지는 자리. 가늘어질수록 화면이 다가간다)
     "wUp", "g5w33", "g5w33", "g5w35",   "wDn", "zS1", "zS2",
     "cp",
-    // 넷째 피버: 바짝 당겨서 시작하고, 누르는 도중에 아래로·위로 기운다
-    "g5z40", "g5z40", "g5z42", "g5z43",   "g5z43", "g5z43", "g5z46",
+    // 넷째 피버: 아래로 굽었다가, 한가운데의 얇은 굴(통로가 가늘어져 화면이 다가간다)을 지나, 위로 굽는다
+    "g5z40", "g5z40", "g5z42", "zThin",   "g5z44", "g5z44", "g5z46",
     "cp",
-    // 다섯째 피버(솟는 넓은 통로): 위로, 왼쪽 위로 넘어갔다가, 한 바퀴 돌아 곧은 통로로
+    // 다섯째 피버(솟는 넓은 통로): 위로 굽고, 왼쪽 위로 넘어갔다가, 다시 가로로
     "wUp", "g5w49", "g5w49", "g5w51",   "g5w52", "wDn", "g5z54", "g5z55",
     // 더 꽉 찬 리듬: 바운스. 손 함정과 높이 장치를 촘촘하게
     "cp", "g5_57", "g5_58", "g5_58",   "g5_60", "g5_61", "g5_62", "g5_63",   "cp",
     // 가라앉음: 박스 뒤 멈춰서 건너기를 한 번 더
     "fJump3", "fJ3G", "gAfter", "g5_68",   "g5_68", "g5_70", "cp",
-    // 마지막 피버: 마디마다 기울기가 바뀐다. 끝의 두 마디는 조여드는 통로, 곡의 끝맺는 한 방에 터져 나온다
+    // 마지막 피버: 위로, 아래로 굽이친다. 끝의 두 마디는 조여드는 통로, 곡의 끝맺는 한 방에 터져 나온다
     "g5z72", "g5z72", "g5z74", "g5z75",   "g5z76", "zS1", "zS2",
     "goal", "flat", "flat",
     // </gen:bars:R5>
@@ -660,7 +662,7 @@ function emptyLevel(course) {
       if (p.squeeze) {                                  // 조여드는 통로: 닿는 시각과 그때의 통로 폭(공이 오르내리는 거리)을 적어 둔다
         if (zl !== 0) throw new Error("조여드는 통로는 바닥에서 시작해야 한다: " + name);
         let sq = squeezes[squeezes.length - 1];
-        if (!sq || sq.x1 !== x0) { sq = { x0, x1: x0, pts: [] }; squeezes.push(sq); }
+        if (!sq || sq.x1 !== x0 || sq.mid || p.mid) { sq = { x0, x1: x0, pts: [], mid: !!p.mid }; squeezes.push(sq); }
         let t = 0;
         for (const iv of p.squeeze) {
           const prev = sq.pts[sq.pts.length - 1];
@@ -669,7 +671,7 @@ function emptyLevel(course) {
         }
         if (Math.abs(t - 4) > 1e-9) throw new Error("squeeze는 한 마디에 4박어치여야 한다: " + name);
         sq.x1 = x0 + 16;
-      } else if (squeezes.length && squeezes[squeezes.length - 1].x1 === x0) throw new Error("조여드는 통로 뒤에는 피버가 끝나야 한다: " + name);
+      } else if (squeezes.length && squeezes[squeezes.length - 1].x1 === x0 && !squeezes[squeezes.length - 1].mid) throw new Error("조여드는 통로 뒤에는 피버가 끝나야 한다: " + name);
       else {
         const top = p.wide ? WIDE_TOP : 2;
         if (zl !== (p.start ?? (p.wide ? WIDE_TOP : 0))) throw new Error("이 마디가 시작하는 높이가 앞 마디와 맞지 않는다: " + name);

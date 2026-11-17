@@ -273,17 +273,17 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => { const g = window.__game, L = g.L, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, rush: L.rides.reduce((u, r) => u + (r[1] - r[0]) / 16, 0) }; });
     ok(st.round === 4 && st.name.includes('Concrete Pulse') && Math.abs(st.bpm - 152) < 0.01 && st.off === 0.067 && st.rush >= 40, `5라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 체크포인트 ${st.cps}개, 피버 ${st.rush}마디)`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots5 = { 46.0: 'r5_fever_a', 71.0: 'r5_diag_up', 83.0: 'r5_diag_down', 94.0: 'r5_back', 111.5: 'r5_glide_trap', 113.0: 'r5_glide_land', 128.5: 'r5_turn_up', 134.0: 'r5_vertical', 145.0: 'r5_spin', 152.0: 'r5_squeeze', 162.0: 'r5_close', 170.0: 'r5_tilt', 198.0: 'r5_vertical_wide', 206.0: 'r5_over', 214.0: 'r5_spin2', 298.0: 'r5_final' };
+    const shots5 = { 46.0: 'r5_fever_a', 67.0: 'r5_bend_ahead', 69.0: 'r5_bend_in', 71.0: 'r5_diag_up', 81.0: 'r5_bend_down', 83.0: 'r5_diag_down', 93.0: 'r5_back', 111.5: 'r5_glide_trap', 127.5: 'r5_up_ahead', 130.0: 'r5_turn_up', 134.0: 'r5_vertical', 145.5: 'r5_turn_back', 154.5: 'r5_squeeze', 173.0: 'r5_thin_in', 174.5: 'r5_thin', 198.0: 'r5_vertical_wide', 205.0: 'r5_over', 213.0: 'r5_down', 298.0: 'r5_final' };
     const cams = {};
     for (let beat = 0; beat <= 330; beat += 0.25) {
       await tick(beat);
       if (shots5[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots5[beat] + '.png' }); }
-      if (beat === 46 || beat === 71 || beat === 134 || beat === 162 || beat === 111.5) cams[beat] = await G(() => { const g = window.__game, c = g.cam(g.state.x); return { rot: c.rot, zoom: c.zoom, mode: g.state.mode, h: 9 - g.state.y, frozen: g.state.frozen }; });
+      if (beat === 46 || beat === 71 || beat === 134 || beat === 174.5 || beat === 111.5) cams[beat] = await G(() => { const g = window.__game, c = g.cam(g.state.x); return { rot: c.rot, zoom: c.zoom, mode: g.state.mode, h: 9 - g.state.y, frozen: g.state.frozen }; });
       if (await G(() => window.__game.phase) !== 'running') break;
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `5라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
-    ok(cams[46] && cams[46].mode === 'rush' && Math.abs(cams[46].rot) < 0.01 && cams[71] && Math.abs(cams[71].rot - 45) < 1 && cams[134] && Math.abs(cams[134].rot - 90) < 1 && cams[162] && cams[162].zoom > 1.2, `피버 연출: 첫 피버는 곧게(${cams[46] && cams[46].rot.toFixed(0)}도), 둘째는 비스듬히(${cams[71] && cams[71].rot.toFixed(0)}도), 셋째는 곧장 위로(${cams[134] && cams[134].rot.toFixed(0)}도), 넷째는 당겨서(${cams[162] && cams[162].zoom.toFixed(2)}배)`);
+    ok(cams[46] && cams[46].mode === 'rush' && Math.abs(cams[46].rot) < 0.01 && cams[71] && Math.abs(cams[71].rot - 45) < 1 && cams[134] && Math.abs(cams[134].rot - 90) < 1 && cams[174.5] && cams[174.5].zoom > 1.25 && Math.abs(cams[174.5].rot) < 3, `굽은 통로: 첫 피버는 곧게(${cams[46] && cams[46].rot.toFixed(0)}도), 둘째는 비스듬히 위로(${cams[71] && cams[71].rot.toFixed(0)}도), 셋째는 곧장 위로(${cams[134] && cams[134].rot.toFixed(0)}도). 얇은 굴에서는 다가간다(${cams[174.5] && cams[174.5].zoom.toFixed(2)}배)`);
     ok(cams[111.5] && cams[111.5].mode === 'bounce' && cams[111.5].frozen && cams[111.5].h > 3, `박스 셋을 건너뛴 뒤, 내려서자마자 멈춰서 빨간 박스 위를 건넌다 (높이 ${cams[111.5] && cams[111.5].h.toFixed(2)}칸)`);
     // 개발자 기능: 코스 둘러보기(퍼센트로 이동)와 번호표
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });

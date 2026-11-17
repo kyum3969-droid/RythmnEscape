@@ -360,7 +360,7 @@ for (const C of Lg.COURSES) {
     }
     if (lv.squeezes.length) {
       // 조여드는 통로: 닿는 간격이 1박에서 1/32박까지 반씩 줄고, 통로 폭도 그만큼 좁아진다(끝에서는 공 크기와 거의 같다)
-      const sq = lv.squeezes[0], hits = ev.filter(e => e.type === 'rebound' && e.tight).length / lv.squeezes.length;      // (조여드는 통로가 둘이면 똑같은 것이 두 번이다)
+      const sq = lv.squeezes.find(q => !q.mid), allHits = ev.filter(e => e.type === 'rebound' && e.tight).length, others = lv.squeezes.filter(q => q !== sq).reduce((u, q) => u + q.pts.length - 2, 0), hits = allHits - others;      // (조여드는 통로가 여럿이면 나머지 것들이 치는 횟수를 뺀다. mid = 피버 한가운데의 얇은 굴)
       const gaps = sq.pts.slice(1).map((p, i) => (p.step - sq.pts[i].step) / 96);
       const uniq = [...new Set(gaps)];
       ok(uniq.join(',') === '1,0.5,0.25,0.125,0.0625,0.03125' && hits === sq.pts.length - 2, `[${tag}] 조여드는 통로(마디 ${sq.x0 / 16}~${sq.x1 / 16 - 1}): 닿는 간격 ${uniq.join(' → ')}박, 모두 ${hits}번 친다`);
