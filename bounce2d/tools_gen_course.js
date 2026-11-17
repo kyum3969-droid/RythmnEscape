@@ -145,25 +145,29 @@ TEMPLATES.R5 = {
 // 피버는 곡의 절정 두 곳에만 둔다(남발하지 않는다): 얇은 굴이 있는 굽은 통로 / 왼쪽 위로 넘어가는 넓은 통로. 굽이는 코스의 cam 표에 있다(logic.js의 ROUND6).
 // 조여드는 통로는 없다(곡에 점점 세지는 자리가 없다). 징검다리는 구간의 끝(체크포인트 앞)이나 gAfter 앞에 둔다.
 TEMPLATES.R6 = {
-  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95,
-  recipe: { g: '4d', gf: '4v', traps: 5, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
+  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true,      // fresh = 앞 라운드에 나온 피버 문제를 다시 내지 않는다
+  recipe: { g: '4d', gf: '4v', traps: 9, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
   sections() {
     // 뽑을 마디의 자리를 손으로 정한다(무작위로 나누면 같은 함정이 연달아 나오거나, 한 마디만 세 번 되풀이하고 끝나는 구간이 생긴다).
-    //   one() = 높이 장치를 섞은 새 마디 하나 / phrase(먼저 해 볼 함정) = 새 마디 → 한 번 더 → 함정(안 되면 다른 종류)
+    //   one() 높이 장치를 섞은 새 마디 하나 / phrase(함정) 새 마디 → 한 번 더 → 함정(안 되면 다른 종류) / quick(함정) 새 마디 → 곧바로 함정(한 번만 보여 준다)
+    //   twice() 새 마디 → 한 번 더 → 끝에서 뚝 → 다시 원래대로 → 끝에서 손 바꿈 (한 마디로 함정 둘. 처음부터 뒤쪽 구간만큼 어렵게 하려고 도입에 쓴다)
     let key = 0;
     const one = () => ({ m: 'f' + key++, g: '4v' });
-    const phrase = (kind) => { const k = 'p' + key++; const kinds = kind === 'stop-last' ? ['stop-last', 'hand-last'] : ['hand-last', 'stop-last']; return [{ m: k, g: '4d', need: kinds }, { r: k }, { t: k, kind: kinds }]; };
+    const kindsOf = (kind) => (kind === 'stop-last' ? ['stop-last', 'hand-last'] : ['hand-last', 'stop-last']);
+    const phrase = (kind) => { const k = 'p' + key++; return [{ m: k, g: '4d', need: kindsOf(kind) }, { r: k }, { t: k, kind: kindsOf(kind) }]; };
+    const quick = (kind) => { const k = 'p' + key++; return [{ m: k, g: '4d', need: kindsOf(kind) }, { t: k, kind: kindsOf(kind) }]; };
+    const twice = () => { const k = 'p' + key++; return [{ m: k, g: '4d', need: [['stop-last'], ['hand-last']] }, { r: k }, { t: k, kind: ['stop-last'] }, { r: k }, { t: k, kind: ['hand-last'] }]; };
     return [
-      ['도입(조용함): 손 함정과 높이 장치로 몸풀기', ['flat', 'flat', ...phrase('stop-last'), one(), one(), 'cp']],
-      ['리듬: 높이 함정 둘. 떠 있는 박스에서 다시 뛰기 두 번 → 같은 박스에서 그냥 떨어지기. 이단 점프로 기둥 넘기 두 번 → 앞에 파란 천장(멈춤으로) → 이번엔 천장이 뒤에(앞뒤 뒤집기)', ['fJump', 'fJump', 'fDropH', 'djT', 'djT', 'cHoldT', 'cHoldLDx', 'cp']],
-      ['더 꽉 찬 리듬: 빨간 바닥과 파란 섬. 섬에서 한 번 더 뛰어 둘째 빨간 바닥을 넘기 두 번 → 그 위에 파란 천장(멈춤으로). 뒤는 손 함정', ['lavaLeap2', 'lavaLeap2', 'lavaCap', one(), ...phrase('hand-last'), 'cp']],
-      ['낮게 깔린 베이스: 징검다리. 빨간 돌을 멈춰서 넘고 → 같은 자리가 파란 돌인데 위에 빨간 뚜껑(멈추면 걸린다) → 내려올 땅이 빨간 박스(멈춰서 건넌다)', [one(), one(), 'stIn', 'stMidR', 'stMidL', 'stOutG', 'gAfter', 'cp']],
-      ['첫 절정 — 피버 하나(얇은 굴): 아래로 굽었다가, 한가운데의 얇은 굴을 지나, 위로 굽는다. 되풀이 → 하나 더, 되풀이 → 뚝. 곡이 뚝 끊기는 마디가 체크포인트', [{ zm: 'F' }, { zr: 'F' }, { zt: 'F', kind: 'add' }, 'zThin', { zm: 'G' }, { zr: 'G' }, { zt: 'G', kind: 'break' }, 'cp']],
+      ['도입(조용함)이지만 쉬어 가지 않는다: 한 마디로 함정 둘. 두 번 되풀이 → 끝에서 뚝 → 다시 원래대로 → 끝에서 손 바꿈', ['flat', 'flat', ...twice(), 'cp']],
+      ['리듬: 마디마다 다르다. 떠 있는 박스에서 다시 뛰기 두 번 → 같은 박스에서 그냥 떨어지기 → 이단 점프로 기둥 → 앞에 파란 천장(멈춤으로) → 천장이 뒤에(앞뒤 뒤집기) → 천장 없이 원래대로', ['fJump', 'fJump', 'fDropH', 'djT', 'cHoldT', 'cHoldLDx', 'djT', 'cp']],
+      ['더 꽉 찬 리듬: 빨간 바닥과 파란 섬. 섬에서 한 번 더 뛰어 둘째 빨간 바닥을 넘기 두 번 → 그 위에 파란 천장(멈춤으로). 뒤는 높이 장치 마디와 손 함정', ['lavaLeap2', 'lavaLeap2', 'lavaCap', one(), ...phrase('hand-last'), 'cp']],      // (천장 뒤에 섬 마디를 한 번 더 놓는 것은 뺐다: 거기서는 멈춤으로도 건너져서 함정이 되지 않고, 못 건너게 막으면 누르는 여유가 40ms로 줄어든다)
+      ['낮게 깔린 베이스: 한 번만 보여 주고 함정, 이어서 징검다리. 빨간 돌을 멈춰서 넘고 → 같은 자리가 파란 돌인데 위에 빨간 뚜껑(멈추면 걸린다) → 내려올 땅이 빨간 박스(멈춰서 건넌다)', [...quick('stop-last'), 'stIn', 'stMidR', 'stMidL', 'stOutG', 'gAfter', 'cp']],
+      ['첫 절정 — 피버 하나(얇은 굴): 위로 굽었다가, 한가운데의 얇은 굴을 지나, 아래로 굽는다. 되풀이 → 뚝, 되풀이 → 하나 더. 곡이 뚝 끊기는 마디가 체크포인트', [{ zm: 'F' }, { zr: 'F' }, { zt: 'F', kind: 'break' }, 'zThin', { zm: 'G', kind: 'add' }, { zr: 'G' }, { zt: 'G', kind: 'add' }, 'cp']],
       ['조용함: 떠 있는 박스에 올라타 떨어지며 멈추기 두 번 → 올라가면 안 되는 박스 → 다시 원래대로(함정 뒤에 또 함정일 줄 알았다면 걸린다). 뒤는 손 함정', ['fGlide', 'fGlide', 'fLow3', 'fGlide', ...phrase('stop-last'), 'cp']],
       ['꽉 찬 리듬: 손 함정, 이어서 앞에서 박스·뒤에서 멈춤을 두 번 → 앞뒤 뒤집기(앞에서 멈춤·뒤에서 박스)', [one(), ...phrase('hand-last'), 'fDropH', 'fDropH', 'fLateHx', 'cp']],      // (뒤집기 마디는 구간의 끝에: 박스에서 떨어진 공은 한 틱 늦게 땅에 닿아서 바로 뒤에 뽑은 마디를 붙일 수 없다)
       ['꽉 찬 리듬: 손 함정 둘을 촘촘하게', [...phrase('stop-last'), one(), ...phrase('hand-last'), 'cp']],
-      ['가라앉음: 징검다리 두 번. 처음엔 내려올 땅이 빨간 박스라 멈춰서 건넌다 → 두 번째엔 땅이 멀쩡하고, 멈추면 떠서 가는 길에 빨간 뚜껑이 있다(그냥 내려온다)', [one(), one(), 'stIn', 'stOutG', 'gAfter', 'stIn', 'stOutL', 'cp']],
-      ['마지막 절정 — 피버 둘(솟는 넓은 통로): 위로 굽고, 왼쪽 위로 넘어갔다가, 다시 가로로. 곡의 끝맺는 한 방에 결승선', ['wUp', { wm: 'H', calm: 2, run: 2 }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1, calm: 2, run: 2 }, 'wDn', { z: 1 }]],
+      ['가라앉음: 징검다리 두 번. 처음엔 내려올 땅이 빨간 박스라 멈춰서 건넌다 → 두 번째엔 땅이 멀쩡하고, 멈추면 떠서 가는 길에 빨간 뚜껑이 있다(그냥 내려온다)', [...quick('hand-last'), 'stIn', 'stOutG', 'gAfter', 'stIn', 'stOutL', 'cp']],
+      ['마지막 절정 — 피버 둘(비스듬한 넓은 통로): 계단을 오르며 비스듬히 위로, 함정 마디에서 크게 휘어 아래로, 계단을 내려오며 다시 가로로. 곡의 끝맺는 한 방에 결승선', ['wUp', { wm: 'H', calm: 1, run: 2, kind: 'add' }, { wr: 'H' }, { wt: 'H', kind: 'add' }, { w: 1 }, 'wDn', { z: 1 }]],
       ['', ['goal', 'flat', 'flat']],
     ];
   },
@@ -281,6 +285,26 @@ function generate(T, seed) {
   const count = (s, c) => s.split(c).length - 1;
   const zAll = allStr(2, 0).filter((s) => count(s, 'F') >= 2 && count(s, '.') <= 5), wAll = allStr(4, 4).filter((s) => count(s, 'F') >= 2 && count(s, 'F') + count(s, 'S') >= 4);
   const feverOk = {};
+  // 앞 라운드의 피버 문제를 다시 내지 않는다(T.fresh): 넓은 통로(가능한 줄 100가지)는 앞의 어느 라운드에서든 나온 줄을 쓰지 않는다.
+  // 좁은 통로는 가능한 줄이 19가지뿐이라(5라운드까지 18가지가 이미 나왔다) 줄 자체는 다시 나올 수밖에 없다. 대신 어느 라운드에서든 나온 "앞 마디 → 다음 마디" 짝(되풀이 → 함정)을 다시 쓰지 않고,
+  // 되풀이할 마디는 되도록 바로 앞 라운드에 안 나온 줄에서 고른다. 이 라운드 안에서도 같은 줄을 두 군데에 쓰지 않는다.
+  const myNo = +String(T.prefix).replace(/\D/g, ''), usedW = new Set(), usedZ = new Set(), usedPairs = new Set(), usedHere = new Set();
+  if (T.fresh) Lg.COURSES.forEach((C) => {
+    const no = +(/ROUND (\d+)/.exec(C.name) || [])[1];
+    if (!(no < myNo)) return;
+    let prev = null;
+    C.bars.forEach((n) => {
+      const p = Lg.PATTERNS[n];
+      if (!p || p.mode !== 'rush' || p.free || !p.nodes) { prev = null; return; }
+      if (p.wide) usedW.add(p.nodes); else if (no === myNo - 1) usedZ.add(p.nodes);
+      if (prev && !!prev.wide === !!p.wide && prev.nodes !== p.nodes) usedPairs.add((p.wide ? 'w' : 'z') + prev.nodes + '>' + p.nodes);
+      prev = p;
+    });
+  });
+  const stale = (s, wide) => !!T.fresh && ((wide && usedW.has(s)) || usedHere.has((wide ? 'w' : 'z') + s));
+  const worn = (s, wide) => !!T.fresh && !wide && usedZ.has(s);      // 바로 앞 라운드에 나온 좁은 통로의 줄(되도록 피한다)
+  const stalePair = (a, s, wide) => !!T.fresh && usedPairs.has((wide ? 'w' : 'z') + a + '>' + s);
+  const took = (s, wide) => usedHere.add((wide ? 'w' : 'z') + s);
   const feverDef = (nodes, wide) => { const d = { mode: 'rush', nodes }; if (wide) d.wide = true; if (/[FS][FS]/.test(nodes)) d.gap = 1.5; d.holds = []; d.presses = []; for (let k = 1; k <= 8; k++) if (nodes[k - 1] === 'F') d.presses.push(k * 0.5); return d; };
   const feverTry = (nodes, wide) => {                  // 입력 여유가 0.16박(약 62ms) 이상이고, 입력이 모두 꼭 필요한가
     const key = (wide ? 'w' : 'z') + nodes;
@@ -321,7 +345,8 @@ function generate(T, seed) {
         { const ins0 = inputsOf(def); if ((slot.last && ins0[ins0.length - 1].k !== slot.last) || (slot.first && ins0[0].k !== slot.first)) continue; }
         if (slot.need) {                               // 이 마디를 두 번 한 뒤에 놓을 함정이 성립하는 것만 받는다(안 그러면 함정 자리에서 통째로 실패한다)
           const tn = `${T.prefix}_${b + 2}`; bars.push(name, name);
-          const okT = slot.need.some((kind) => { const d = variant(def, kind); if (!d) return false; Lg.PATTERNS[tn] = d; const v2 = validate(tn, d.traps[0].full); delete Lg.PATTERNS[tn]; return !!(v2 && v2.clean); });
+          const groups = Array.isArray(slot.need[0]) ? slot.need : [slot.need];      // 함정을 둘 낼 마디는 묶음 둘: 묶음마다 하나씩은 성립해야 한다
+          const okT = groups.every((g) => g.some((kind) => { const d = variant(def, kind); if (!d) return false; Lg.PATTERNS[tn] = d; const v2 = validate(tn, d.traps[0].full); delete Lg.PATTERNS[tn]; return !!(v2 && v2.clean); }));
           bars.length -= 2;
           if (!okT) continue;
         }
@@ -364,10 +389,10 @@ function generate(T, seed) {
     const wide = !!(slot.wm || slot.wr || slot.wt), key = slot.zm || slot.wm || slot.zr || slot.wr || slot.zt || slot.wt, all = wide ? wAll : zAll, name = `${T.prefix}${wide ? 'w' : 'z'}${b}`;
     if (slot.zr || slot.wr) { bars.push(motifs[key].name); roles[b] = key; return; }
     if (slot.zt || slot.wt) {                            // 피버의 함정: break = 누르던 자리에서 뚝 / add = 안 누르던 자리에서 하나 더(둘 다 앞쪽은 되풀이한 마디와 같다)
-      const M = motifs[key].nodes, lim = motifs[key].lim, adds = addsOf(M, wide).filter((q) => fits(q, lim)), brk = breaksOf(M, wide).filter((q) => fits(q, lim));
+      const M = motifs[key].nodes, lim = motifs[key].lim, fresh = (q) => !stale(q, wide) && !stalePair(M, q, wide), adds = addsOf(M, wide).filter((q) => fits(q, lim) && fresh(q)), brk = breaksOf(M, wide).filter((q) => fits(q, lim) && fresh(q));
       const useAdd = slot.kind === 'add' && adds.length, pool = useAdd ? adds : brk;
       if (!pool.length) throw new Error('피버 함정으로 쓸 줄이 없다');
-      const nodes = pick(pool); made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
+      const nodes = pick(pool); took(nodes, wide); made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
       notes[b] = useAdd ? `하나 더: 앞 마디(${M})와 같이 가다가 한 번 더 누른다` : `뚝: 앞 마디(${M})와 같이 가다가 끊긴다`;
       bars.push(name); trapList.push({ bar: b, kind: useAdd ? 'fever-add' : 'break', of: key }); roles[b] = key + '!'; return;
     }
@@ -375,8 +400,9 @@ function generate(T, seed) {
     for (let tries = 0; tries < 300; tries++) {
       let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } }
       const lim = slot.calm || slot.run ? { calm: slot.calm, run: slot.run } : null;
-      if (!fits(s, lim) || !feverTry(s, wide) || Object.values(motifs).some((mm) => mm.nodes === s) || !breaksOf(s, wide).filter((q) => fits(q, lim)).length) continue;
-      made[name] = Lg.PATTERNS[name] = feverDef(s, wide); bars.push(name); motifs[key] = { name, nodes: s, wide, lim }; roles[b] = key; return;
+      if (!fits(s, lim) || stale(s, wide) || (tries < 200 && worn(s, wide)) || !feverTry(s, wide) || Object.values(motifs).some((mm) => mm.nodes === s) || (slot.kind !== 'add' && !breaksOf(s, wide).filter((q) => fits(q, lim) && !stale(q, wide) && !stalePair(s, q, wide)).length)) continue;
+      if (slot.kind === 'add' && !addsOf(s, wide).filter((q) => fits(q, lim) && !stale(q, wide) && !stalePair(s, q, wide)).length) continue;      // 이 마디의 함정을 "하나 더"로 낼 거면 그럴 줄이 있어야 한다
+      took(s, wide); made[name] = Lg.PATTERNS[name] = feverDef(s, wide); bars.push(name); motifs[key] = { name, nodes: s, wide, lim }; roles[b] = key; return;
     }
     throw new Error('피버 마디를 못 뽑았다');
   };
@@ -393,14 +419,15 @@ function generate(T, seed) {
       const lim = slot.calm || slot.run ? { calm: slot.calm, run: slot.run } : null;
       if (feverA && !fits(feverA.nodes, lim)) { feverA = null; feverReps = 0; }
       if (feverA && feverA.wide === wide && feverReps >= 1 && rng() < (feverReps === 2 ? 0.9 : 0.4)) {
-        const brk = all.filter((s) => { let k = 0; while (k < 8 && s[k] === feverA.nodes[k]) k++; return k >= 2 && k < 7 && feverA.nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => fits(s, lim) && feverTry(s, wide));
+        const brk = all.filter((s) => { let k = 0; while (k < 8 && s[k] === feverA.nodes[k]) k++; return k >= 2 && k < 7 && feverA.nodes[k] === 'F' && s[k] === 'S'; }).filter((s) => fits(s, lim) && !stale(s, wide) && !stalePair(feverA.nodes, s, wide) && feverTry(s, wide));
         if (brk.length) { nodes = pick(brk); how = 'break'; }
       }
       if (!nodes && feverA && feverA.wide === wide && feverReps === 1 && rng() < 0.6) { bars.push(feverA.name); feverReps = 2; notes[b] = '한 번 더'; return; }
       const weight = (s) => Math.pow(count(s, 'F'), 2) + 4 * (s.match(/FF/g) || []).length;       // 많이 누르는 것, 이어 누르는 것을 더 자주 뽑는다
       const total = all.reduce((u, s) => u + weight(s), 0);
-      for (let tries = 0; !nodes && tries < 200; tries++) { let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } } if (fits(s, lim) && feverTry(s, wide) && (!feverA || s !== feverA.nodes)) nodes = s; }
+      for (let tries = 0; !nodes && tries < 200; tries++) { let r = rng() * total, s = all[0]; for (const c of all) { r -= weight(c); if (r <= 0) { s = c; break; } } if (fits(s, lim) && !stale(s, wide) && !(tries < 120 && worn(s, wide)) && feverTry(s, wide) && (!feverA || s !== feverA.nodes)) nodes = s; }
       if (!nodes) throw new Error('피버 패턴을 못 뽑았다');
+      took(nodes, wide);
       made[name] = Lg.PATTERNS[name] = feverDef(nodes, wide);
       bars.push(name); notes[b] = how === 'break' ? `뚝: 앞 마디(${feverA.nodes})와 같이 가다가 끊긴다` : '';
       feverA = how === 'break' ? null : { name, nodes, wide }; feverReps = how === 'break' ? 0 : 1; A = null; reps = 0;

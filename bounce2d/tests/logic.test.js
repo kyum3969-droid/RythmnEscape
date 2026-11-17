@@ -231,6 +231,20 @@ for (const C of Lg.COURSES) {
   const lv = Lg.buildLevel(C), tag = C.name.split(' · ')[0];
   const full = run(lv, lv.ref);
   ok(full.s.won && lv.fixed.length === 0, `[${tag}] ${C.name}: ${lv.bars}마디, 체크포인트 ${lv.cps.length}개(마디 ${lv.cps.map(c => c.bar).join(', ')}), 피버 ${lv.rides.map(r => `${r[0] / 16}~${r[1] / 16 - 1}`).join(' / ')} — 패턴대로 완주`);
+  if (lv.rides.length) {
+    // 피버의 이빨은 통로 밖으로 튀어나오지 않는다(피버가 끝나는 선에 걸친 이빨은 그 선에서 잘린 반쪽이다)
+    const out = lv.reds.filter(q => { const r = lv.rides.find(r => q.xt >= r[0] && q.xt <= r[1]); return !r || q.x0 < r[0] - 1e-9 || q.x1 > r[1] + 1e-9; });
+    ok(out.length === 0 && lv.reds.some(q => q.cut), `[${tag}] 피버의 장애물은 통로 안에만 있다: 피버가 끝나는 선에 걸친 이빨 ${lv.reds.filter(q => q.cut).length}개는 그 선에서 잘랐다`);
+    // 앞 라운드의 피버 문제를 다시 내지 않는다(6라운드부터): 넓은 통로의 줄은 앞 라운드에 없던 것, 좁은 통로는 "앞 마디 → 다음 마디" 짝이 앞 라운드에 없던 것. 한 라운드 안에서도 같은 줄은 한 군데(되풀이는 빼고)
+    const no = Lg.COURSES.indexOf(C);
+    if (no >= 5) {
+      const seq = (c) => { const o = []; let prev = null; c.bars.forEach((n, b) => { const p = Lg.PATTERNS[n]; if (!p || p.mode !== 'rush' || p.free || !p.nodes) { prev = null; return; } const k = (p.wide ? 'w' : 'z') + p.nodes; o.push({ b, k, wide: !!p.wide, pair: prev && prev !== k ? prev + '>' + k : null, rep: prev === k }); prev = k; }); return o; };
+      const oldW = new Set(), oldPairs = new Set();
+      Lg.COURSES.slice(0, no).forEach(c => seq(c).forEach(q => { if (q.wide) oldW.add(q.k); if (q.pair) oldPairs.add(q.pair); }));
+      const mine = seq(C), dupW = mine.filter(q => q.wide && oldW.has(q.k)), dupP = mine.filter(q => q.pair && oldPairs.has(q.pair)), fresh = mine.filter(q => !q.rep), dupIn = fresh.filter((q, i) => fresh.findIndex(u => u.k === q.k) !== i);
+      ok(dupW.length === 0 && dupP.length === 0 && dupIn.length === 0, `[${tag}] 피버 문제가 앞 라운드와 겹치지 않는다: 넓은 통로의 줄 ${mine.filter(q => q.wide && !q.rep).length}가지 모두 처음 나오는 것, 좁은 통로의 "되풀이 → 함정" 짝도 처음 나오는 것${dupW.length + dupP.length + dupIn.length ? ' — 겹침: ' + [...dupW, ...dupP, ...dupIn].map(q => '마디 ' + q.b).join(', ') : ''}`);
+    }
+  }
   let solved = 0;
   for (let k = -1; k < lv.cps.length; k++) if (Lg.solve(lv, Lg.spawnState(lv, k), { grid: 12 }).plan) solved++;
   ok(solved === lv.cps.length + 1, `[${tag}] 처음과 모든 체크포인트에서 자동 풀이로 완주 (${solved}/${lv.cps.length + 1})`);
@@ -332,8 +346,8 @@ for (const C of Lg.COURSES) {
       ok(hang.length === stopBars.length && trapBars.every(b => !Lg.PATTERNS[C.bars[b]].sneaky), `[${tag}] "한 번 더 누르면 죽는" 함정 자리마다 바로 위에 빨간 덩어리가 매달려 있다 — ${hang.length}/${stopBars.length}`);
       // 도구가 뽑은 함정: 같은 마디를 두 번 한 바로 다음에 오고, 그 마디의 입력과 한 군데만 다르다
       const gen = trapBars.filter(b => Lg.PATTERNS[C.bars[b]].traps[0].full);
-      const same = (u, v) => JSON.stringify(u) === JSON.stringify(v);
-      ok(gen.every(b => { const f = Lg.PATTERNS[C.bars[b]].traps[0].full, pv = Lg.PATTERNS[C.bars[b - 1]]; return C.bars[b - 1] === C.bars[b - 2] && same(pv.presses, f.presses) && same(pv.holds, f.holds); }), `[${tag}] 뽑은 함정 ${gen.length}곳: 같은 마디를 두 번 한 바로 다음에 오고, 버릇(앞 마디의 입력 그대로)이 통하지 않는다`);
+      const same = (u, v) => JSON.stringify(u) === JSON.stringify(v), remix = Lg.COURSES.indexOf(C) >= 5;      // 리믹스 라운드(6라운드)에는 한 번만 보여 주고 내는 함정, 함정 뒤에 원래 마디를 한 번 하고 또 내는 함정도 있다
+      ok(gen.every(b => { const f = Lg.PATTERNS[C.bars[b]].traps[0].full, pv = Lg.PATTERNS[C.bars[b - 1]]; return (remix || C.bars[b - 1] === C.bars[b - 2]) && same(pv.presses, f.presses) && same(pv.holds, f.holds); }), `[${tag}] 뽑은 함정 ${gen.length}곳: ${remix ? '바로 앞 마디(한 번 또는 두 번 한 마디)' : '같은 마디를 두 번 한 바로 다음에 오고, 앞 마디'}의 입력 그대로는 통하지 않는다`);
       const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1], prev2 = C.bars[b - 2]; return n === 'goStop' ? prev === 'peak' && prev2 === 'peak' : n === 'ringStop' ? prev === 'ringRun' : n === 'holdStop' ? (prev === 'mix' && prev2 === 'mix') || (prev === 'glideHigh' && prev2 === 'glideHigh') : n === 'stopGo' ? prev === 'peak' : true; });
       if (!C.lab) ok(follows, `[${tag}] "뚝" 함정은 같은 손을 이어서 친 마디들 바로 다음에 온다(오른쪽 다섯 번 → 뚝, 왼·오 다섯 번 → 뚝, 고리 연타 → 뚝)`);
       // 손이 바뀌는 함정: 같은 손만 이어지다가 다른 손. 그 자리에서 버릇대로(같은 손으로) 누르면 죽는다
@@ -347,9 +361,9 @@ for (const C of Lg.COURSES) {
         if (s9.dead && s9.x >= b * 16 && s9.x < b * 16 + 16.5) swapDead++;
       }
       if (!C.lab) ok(swaps.length + gen.length >= 1 && swapDead === swaps.length, `[${tag}] 같은 손으로 이어 치다가 어긋나는 자리 ${swaps.length}곳(오른쪽만 치다가 왼쪽, 왼쪽만 치다가 뚝, 고리 연타 뒤 왼쪽): 버릇대로 같은 손으로 누르면 그 마디에서 죽는다 (${swapDead}/${swaps.length})`);
-      let streams = 0;                                 // 피버: 앞 마디와 같은 글자로 가다가, 누르던 자리(F)가 누르면 안 되는 자리(S)로 바뀌는 마디
-      C.bars.forEach((n, b) => { const u = Lg.PATTERNS[C.bars[b - 1]], v = Lg.PATTERNS[n]; if (!u || !v || u.mode !== 'rush' || v.mode !== 'rush' || !!u.wide !== !!v.wide || u.free || v.free) return; let k = 0; while (k < 8 && u.nodes[k] === v.nodes[k]) k++; if (k >= 2 && k < 7 && u.nodes[k] === 'F' && v.nodes[k] === 'S') streams++; });
-      if (!C.lab) ok(streams >= 2, `[${tag}] 피버의 "뚝": 앞 마디와 똑같이 가다가 누르던 자리에서 끊기는 마디 — ${streams}곳`);
+      let streams = 0, more = 0;                                 // 피버: 앞 마디와 같은 글자로 가다가, 누르던 자리(F)가 누르면 안 되는 자리(S)로 바뀌는 마디
+      C.bars.forEach((n, b) => { const u = Lg.PATTERNS[C.bars[b - 1]], v = Lg.PATTERNS[n]; if (!u || !v || u.mode !== 'rush' || v.mode !== 'rush' || !!u.wide !== !!v.wide || u.free || v.free) return; let k = 0; while (k < 8 && u.nodes[k] === v.nodes[k]) k++; if (k >= 2 && k < 7 && u.nodes[k] === 'F' && v.nodes[k] === 'S') streams++; else if (k >= 2 && k < 7 && u.nodes[k] !== 'F' && v.nodes[k] === 'F') more++; });
+      if (!C.lab) ok(streams >= 1 && streams + more >= 2, `[${tag}] 피버의 함정: 앞 마디와 똑같이 가다가 누르던 자리에서 끊기는 마디(뚝) ${streams}곳, 안 누르던 자리에서 한 번 더 누르는 마디(하나 더) ${more}곳`);
     }
   }
   if (lv.freeBars.size) {

@@ -1073,6 +1073,8 @@
       const path = () => {
         ctx.beginPath();
         if (q.kind === "float") { ctx.moveTo(xa, yMid); ctx.arcTo(xt, yTip, xb, yMid, rr); ctx.lineTo(xb, yMid); ctx.arcTo(xt, yFar, xa, yMid, rr); ctx.closePath(); }
+        else if (q.cut > 0) { ctx.moveTo(xa, yFar); ctx.lineTo(xt, yTip); ctx.lineTo(xt, yFar); }        // 피버가 끝나는 선에 걸친 이빨: 벽이 끝나는 선에서 잘린 반쪽
+        else if (q.cut < 0) { ctx.moveTo(xt, yFar); ctx.lineTo(xt, yTip); ctx.lineTo(xb, yFar); }
         else { ctx.moveTo(xa, yFar); ctx.arcTo(xt, yTip, xb, yFar, rr); ctx.lineTo(xb, yFar); }
       };
       path(); ctx.closePath();
