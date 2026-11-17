@@ -734,12 +734,8 @@
     const sx = (wx) => view.px + (sAt(wx) - camS) * T;
     const sy = (wy) => view.groundY + (wy - (ROWS - 1)) * T;
     // 오르내리는 카메라: 공이 딛는 높이(패턴대로 갈 때의 줄)를 서서히 따라간다. 내려가는 길은 한 박 남짓 미리 내려다본다(땅 밑으로는 화면이 한 칸 반밖에 안 보인다). 올라간 만큼 먼 풍경은 내려앉는다
-    let camY = 0;
-    if (CLIMB.length) {
-      const bx = camX + state.lead, tgt = Math.max(climbAt(bx) - 2, Math.min(climbAt(bx), climbAt(bx + 3), climbAt(bx + 6))), dtc = Math.min(0.1, Math.max(0, now - (view.climbAt ?? now))); view.climbAt = now;
-      view.camY = Math.abs(tgt - (view.camY ?? tgt)) > 4 ? tgt : (view.camY ?? tgt) + (tgt - (view.camY ?? tgt)) * (1 - Math.exp(-dtc * 9));      // (멀리 건너뛰었으면 — 체크포인트에서 다시 시작, 둘러보기 — 바로 맞춘다)
-      camY = view.camY;
-    }
+    const camY = CLIMB.length ? camLine(camX + state.lead) : 0;
+    view.camY = camY;
 
     ctx.save();
     if (fx.shake > 0) ctx.translate((Math.random() - 0.5) * fx.shake * 40, (Math.random() - 0.5) * fx.shake * 40);
@@ -926,12 +922,11 @@
       blockRuns(CEIL_FLOAT, (v) => v < 90, (a) => sy(ROWS - 1 - L.ceilTop[a]));
     }
     // 계단의 빨간 덩어리(bands): 빨간 단과 그 위의 뚜껑. 공중에 뜬 네모(네 변을 다 두른다)
-    if (L.bands && L.bands.size) {
-      const same = (c, lo, hi) => { const q = L.bands.get(c); return !!q && q.some((v) => v[0] === lo && v[1] === hi); };
-      for (let c = cA; c <= cB; c++) for (const [lo, hi] of L.bands.get(c) || []) {
-        if (c > cA && same(c - 1, lo, hi)) continue;
-        let a = c; while (same(a - 1, lo, hi)) a--;
-        let e = c; while (same(e + 1, lo, hi)) e++;
+    if (BAND_RUNS.length) {
+      // (덩어리 목록 BAND_RUNS는 처음에 한 번 만들어 둔다. 전에는 그릴 때 칸을 훑으며 덩어리를 찾았는데, 한 칸에 빨간 단과 그 위의 뚜껑이 같이 있으면
+      //  첫 덩어리를 그린 뒤 칸을 건너뛰어서 뚜껑이 안 그려졌다 — 판정은 있는데 보이지 않는 뚜껑에 걸려 죽었다)
+      for (const { a, e, lo, hi } of BAND_RUNS) {
+        if (e < cA || a > cB) continue;
         const xa = sx(a) + T * 0.06, xb = sx(e + 1) - T * 0.06, ya = sy(ROWS - 1 - hi), yb = sy(ROWS - 1 - lo);
         const bg = ctx.createLinearGradient(0, yb, 0, ya);
         bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#6d1236");
@@ -943,7 +938,6 @@
         ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya);
         ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(9 + 8 * pulse); gs();
         ctx.lineJoin = "round"; sb(0);
-        c = e;
       }
     }
     // 파란 박스(땅 위의 블록): 닿아도 죽지 않는다. 위에 내려앉아 다시 튀고, 옆에서 부딪히면 올라탄다.
@@ -1500,6 +1494,28 @@
     const a = CLIMB[lo], b = CLIMB[hi];
     return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
   };
+  // 카메라의 높이 줄(CAMT): 계단마다 오르내리는 디딤을 그대로 따라가면 한두 박마다 화면이 출렁인다(작은 계단 하나에도 올라갔다 내려왔다).
+  // 그래서 디딤의 높이를 앞뒤 두 마디 남짓(±10칸) 고르게 편 줄을 쓰고, 앞쪽에서 디딜 가장 낮은 단이 화면 아래로 빠지지 않게만 누른 뒤, 한 번 더 고르게 편다.
+  // 공의 자리(x)로만 정해서(시간으로 따라가지 않는다) 늘 같고 매끄럽다. 공이 화면 위로 나가는 것은 물러나기(HIGH_NEED)가 막는다.
+  const CAMT = new Float32Array(L.cols + 2);
+  if (CLIMB.length) {
+    const n = L.cols + 1, f = Array.from({ length: n }, (_, c) => climbAt(c + 0.5)), at = (arr, k) => arr[Math.max(0, Math.min(n - 1, k))];
+    const box = (arr, r) => arr.map((_, c) => { let u = 0; for (let k = c - r; k <= c + r; k++) u += at(arr, k); return u / (2 * r + 1); });
+    const avg = box(box(f, 8), 8);      // (상자 평균을 두 번: 삼각형 모양으로 고르게 펴진다)
+    const capped = avg.map((v, c) => { let m = 1e9; for (let k = c - 2; k <= c + 8; k++) m = Math.min(m, at(f, k)); return Math.max(0, Math.min(v, m + 0.8)); });
+    box(box(capped, 4), 4).forEach((v, c) => { CAMT[c] = v; });
+  }
+  const camLine = (x) => { const c = Math.max(0, Math.min(L.cols, Math.floor(x - 0.5))), u = Math.max(0, Math.min(1, x - 0.5 - c)); return CAMT[c] + (CAMT[c + 1] - CAMT[c]) * u; };
+  // 계단의 빨간 덩어리(L.bands: 칸 → [밑면, 윗면]들)를 이어진 덩어리 목록으로: [{ a 첫 칸, e 끝 칸, lo, hi }]
+  const BAND_RUNS = [];
+  if (L.bands) {
+    const same = (c, lo, hi) => (L.bands.get(c) || []).some((v) => v[0] === lo && v[1] === hi);
+    for (const c of [...L.bands.keys()].sort((u, v) => u - v)) for (const [lo, hi] of L.bands.get(c)) {
+      if (same(c - 1, lo, hi)) continue;
+      let e = c; while (same(e + 1, lo, hi)) e++;
+      BAND_RUNS.push({ a: c, e, lo, hi });
+    }
+  }
   const CAM_KEYS = (COURSE.cam || []).slice().sort((u, v) => u.bar - v.bar);
   const DIR = new Float32Array(L.cols + 1);          // 칸마다 길의 기울기(라디안)
   {
@@ -1601,7 +1617,7 @@
     return { x: b.ax + (px - b.ax) * b.k, y: b.ay + (py - b.ay) * b.k, k: b.k, th, ax: b.ax, ay: b.ay, passes: b.passes.length, shown: b.passes.filter((q) => !q.cull).length, lite: b.passes.filter((q) => !q.cull && q.lite).length };
   }
   const HIGH_NEED = new Float32Array(L.bars);       // 마디마다: 패턴대로 갈 때 공 윗면이 닿는 가장 높은 곳(칸). 피버와 계단 구간은 따로 물러나므로 뺀다
-  if (REF_PATH) for (const t of REF_PATH) { const b = Math.floor(t.x / 16); if (b < L.bars && !inRide(L, t.x) && !L.tallBars.has(b)) HIGH_NEED[b] = Math.max(HIGH_NEED[b], t.h - climbAt(t.x) + SIZE); }
+  if (REF_PATH) for (const t of REF_PATH) { const b = Math.floor(t.x / 16); if (b < L.bars && !inRide(L, t.x) && !L.tallBars.has(b)) HIGH_NEED[b] = Math.max(HIGH_NEED[b], t.h - camLine(t.x) + SIZE); }
   const GATES = new Map(L.switches.map((sw) => [sw.col, sw.mode]));
   // 지금 손을 떼고 아무것도 안 하면 공이 닿을 자리. 그 전에 죽는다면 없음.
   function predictLanding() {
@@ -1770,7 +1786,7 @@
   // 자동 테스트용 훅
   window.__game = {
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
-    press, startFresh, respawn, pause, view, devJump, cam: (x) => camAt(x), climb: (x) => ({ at: climbAt(x), cam: view.camY || 0, any: CLIMB.length > 0 }), ballAt: (x, hgt, now, smooth = true) => ballScreen(x, hgt, now, smooth), openInspect, closeInspect, inspectAt, get labels() { return LABELS; }, get inspectX() { return inspectX; }, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
+    press, startFresh, respawn, pause, view, devJump, cam: (x) => camAt(x), climb: (x) => ({ at: climbAt(x), cam: view.camY || 0, line: camLine(x), any: CLIMB.length > 0 }), bandRuns: BAND_RUNS, ballAt: (x, hgt, now, smooth = true) => ballScreen(x, hgt, now, smooth), openInspect, closeInspect, inspectAt, get labels() { return LABELS; }, get inspectX() { return inspectX; }, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
     get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; }, round,
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },

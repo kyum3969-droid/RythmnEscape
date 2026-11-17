@@ -378,7 +378,13 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1, `8라운드도 패턴대로 누르면 완주`);
-    ok(hi8 > 9 && cams8[103] && cams8[103].at >= 6 && cams8[30] && Math.abs(cams8[30].cam) < 0.5 && cams8[170] && cams8[170].mode === 'rush' && Math.abs(cams8[170].cam) < 0.2, `계단: 공이 ${hi8.toFixed(1)}칸 높이까지 올라가고(큰 산의 꼭대기에서 딛는 높이 ${cams8[103] && cams8[103].at.toFixed(1)}칸), 카메라가 따라 올라간다(${cams8[103] && cams8[103].cam.toFixed(1)}칸). 땅에서와 피버에서는 내려와 있다(${cams8[30] && cams8[30].cam.toFixed(2)}칸, ${cams8[170] && cams8[170].cam.toFixed(2)}칸 ${cams8[170] && cams8[170].mode})`);
+    ok(hi8 > 9 && cams8[103] && cams8[103].at >= 6 && cams8[103].cam >= 5 && cams8[170] && cams8[170].mode === 'rush' && Math.abs(cams8[170].cam) < 0.2, `계단: 공이 ${hi8.toFixed(1)}칸 높이까지 올라가고(큰 산의 꼭대기에서 딛는 높이 ${cams8[103] && cams8[103].at.toFixed(1)}칸), 카메라가 따라 올라간다(${cams8[103] && cams8[103].cam.toFixed(1)}칸). 피버에서는 내려와 있다(${cams8[170] && cams8[170].cam.toFixed(2)}칸)`);
+    // 카메라는 작은 계단마다 출렁이지 않는다: 한 마디짜리 계단(마디 3~6, 디딤이 0 ↔ 3칸을 오르내린다)을 지나는 동안 카메라가 움직이는 폭, 그리고 방향이 바뀌는 횟수
+    { const r = await G(() => { const g = window.__game; let lo = 1e9, hi = -1e9, turns = 0, ext = null, dir = 0; for (let x = 3 * 16; x <= 7 * 16; x += 0.25) { const v = g.climb(x).line; lo = Math.min(lo, v); hi = Math.max(hi, v); if (ext === null) ext = v; else if (dir >= 0 ? v > ext : v < ext) ext = v; else if (Math.abs(v - ext) > 0.15) { if (dir) turns++; dir = Math.sign(v - ext); ext = v; } } /* 0.15칸 넘게 되돌아갈 때만 방향이 바뀌었다고 센다 */ let foot = [1e9, -1e9]; for (let x = 3 * 16; x <= 7 * 16; x += 0.25) { const a = g.climb(x).at; foot = [Math.min(foot[0], a), Math.max(foot[1], a)]; } return { lo, hi, turns, foot }; });
+      ok(r.hi - r.lo < 0.6 && r.turns <= 2 && r.foot[1] - r.foot[0] >= 3, `카메라는 작은 계단마다 출렁이지 않는다: 디딤이 ${r.foot[0].toFixed(1)}~${r.foot[1].toFixed(1)}칸을 오르내리는 네 마디 동안 카메라는 ${(r.hi - r.lo).toFixed(2)}칸 안에서만 움직이고, 0.15칸 넘게 되돌아가는 것은 ${r.turns}번`); }
+    // 계단의 빨간 덩어리는 모두 그린다(한 칸에 빨간 단과 뚜껑이 같이 있어도): 그리는 목록의 덩어리 수 = 판정의 덩어리 수
+    { const r = await G(() => { const g = window.__game, L = g.L; let n = 0; for (const [c, q] of L.bands) for (const [lo, hi] of q) if (!(L.bands.get(c - 1) || []).some((v) => v[0] === lo && v[1] === hi)) n++; let two = 0; for (const q of L.bands.values()) if (q.length >= 2) two++; return { runs: g.bandRuns.length, n, two }; });
+      ok(r.runs === r.n && r.two > 0, `계단의 빨간 덩어리 ${r.n}개를 모두 그린다(빨간 단과 그 위의 뚜껑이 한 칸에 같이 있는 칸 ${r.two}개 포함)`); }
     ok(top8 > -40, `카메라가 따라가서, 가장 높이 뛰었을 때도 공이 화면 위로 멀리 나가지 않는다(공 윗면의 가장 높은 자리 y=${top8.toFixed(0)}px)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
