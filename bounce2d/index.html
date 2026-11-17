@@ -1096,9 +1096,6 @@
     // (여기서부터는 낱개로 놓인 것들: 굽은 길에서는 제 토막에서만, 테두리로 자르지 않고 통째로 그린다. 안 그러면 토막의 이음매에 걸친 것이 두 겹으로 보인다)
     for (const q of L.reds) {
       if (q.x1 < cA || q.x0 > cB || !inPass(q.xt)) continue;
-      // 움직이는 장애물: 지금 자리로 옮겨 그린다. 이빨은 벽 속으로 들어가므로, 통로(바닥 선과 천장 선 사이) 안쪽만 보이게 자른다
-      const o = q.mv ? hazardOff(q, beat) : 0;
-      if (q.mv) { ctx.save(); if (q.kind !== "float") { const yc = sy(ROWS - 1 - ceilAt(L, q.xt)); ctx.beginPath(); ctx.rect(sx(q.xt - q.w) - 4, yc, sx(q.xt + q.w) - sx(q.xt - q.w) + 8, view.groundY - yc); ctx.clip(); } ctx.translate(0, -o * T); }
       const xa = sx(q.xt - q.w), xt = sx(q.xt), xb = sx(q.xt + q.w), yTip = sy(ROWS - 1 - q.tip), yFar = sy(ROWS - 1 - q.far), rr = T * 0.16;
       const yMid = q.kind === "float" ? sy(ROWS - 1 - (q.far > q.tip ? hazardSpan(q, q.w)[0] : hazardSpan(q, q.w)[1])) : yFar;     // 마름모의 가장 넓은 곳
       const path = () => {
@@ -1117,10 +1114,97 @@
       for (let x = xa - span; x < xb; x += T * 0.36) { ctx.moveTo(x, top + span); ctx.lineTo(x + span, top); }
       ctx.stroke(); ctx.restore();
       path(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.shadowColor = DANGER; ctx.shadowBlur = 10 + 8 * pulse; ctx.stroke(); ctx.shadowBlur = 0;
-      if (q.mv) {
-        // 움직이는 장애물이 나오는 자리(벽의 구멍): 들어가 있을 때도 어디서 나올지 보이게 벽에 빨간 틈을 긋는다
-        ctx.restore();
-        if (q.kind !== "float") { const yw = q.kind === "floor" ? view.groundY : sy(ROWS - 1 - ceilAt(L, q.xt)); ctx.strokeStyle = css([255, 107, 144], 0.55 + 0.35 * Math.min(1, Math.abs(o) / q.mv.A)); ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(xa + T * 0.15, yw); ctx.lineTo(xb - T * 0.15, yw); ctx.stroke(); ctx.lineCap = "butt"; }
+    }
+    // ---- 움직이는 장애물(9라운드부터): 프레스, 톱날, 도는 막대, 움직이는 파란 발판. 모양은 판정과 같은 moverShape를 쓴다(그림 = 판정)
+    if (L.movers && L.movers.length) {
+      const Y = (hh) => sy(ROWS - 1 - hh);
+      for (const m of L.movers) {
+        const mid = m.bar * 16 + 8;
+        if (mid < cA - 12 || mid > cB + 12 || !inPass(mid)) continue;
+        if (m.kind === "press") {
+          const q = moverShape(m, beat), tr = m.track, ph = ((((beat - tr.at) % tr.P) + tr.P) % tr.P), n = Math.floor((beat - tr.at) / tr.P);
+          const warn = Math.max(0, Math.min(1, (ph - (tr.P - 0.42)) / 0.3)) * (ph < tr.P - 0.12 ? 1 : 0);      // 내려찍기 직전: 떨며 아랫면이 밝아진다
+          const fall = ph >= tr.P - 0.12, impact = ph < 0.25 ? 1 - ph / 0.25 : 0;
+          const jit = warn * Math.sin(now * 95) * T * 0.04;
+          const xa = sx(q.x0) + jit, xb = sx(q.x1) + jit, yb = Y(q.y0), yt = Y(q.y0 + 1.15), w = xb - xa;
+          // 바닥의 그림자: 프레스가 내려올수록 진하고 좁아진다(어디로 떨어질지 미리 보인다)
+          const k = 1 - Math.min(1, q.y0 / m.hover);
+          ctx.fillStyle = `rgba(0,0,0,${0.18 + 0.4 * k})`; ctx.beginPath(); ctx.ellipse((xa + xb) / 2, view.groundY + 2, w * (0.62 - 0.12 * k), T * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+          // 피스톤 막대: 화면 위에서 머리까지
+          const rodW = T * 0.34, rx = (xa + xb) / 2 - rodW / 2, rTop = -40 - 30 * T;
+          const rg = ctx.createLinearGradient(rx, 0, rx + rodW, 0); rg.addColorStop(0, "#23262e"); rg.addColorStop(0.45, "#8d95a6"); rg.addColorStop(1, "#23262e");
+          ctx.fillStyle = rg; ctx.fillRect(rx, rTop, rodW, yt - rTop);
+          ctx.fillStyle = "#14161c"; for (let yy = yt - T * 0.55; yy > yt - T * 4; yy -= T * 0.9) ctx.fillRect(rx - 2, yy, rodW + 4, 3);
+          // 떨어질 때의 속도선
+          if (fall) { ctx.strokeStyle = "rgba(255,180,200,0.55)"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < 4; i++) { const lx = xa + w * (0.15 + 0.23 * i); ctx.moveTo(lx, yt - T * 0.2); ctx.lineTo(lx, yt - T * 1.4); } ctx.stroke(); }
+          // 머리: 빗금 친 빨간 덩어리, 아랫면은 톱니
+          const hg = ctx.createLinearGradient(0, yt, 0, yb); hg.addColorStop(0, "#2a0816"); hg.addColorStop(1, "#86173f");
+          const head = () => { ctx.beginPath(); ctx.moveTo(xa, yt); ctx.lineTo(xb, yt); ctx.lineTo(xb, yb - T * 0.16);
+            const nT = 5; for (let i = nT; i >= 0; i--) { const tx = xa + (w * i) / nT; ctx.lineTo(tx, yb - T * 0.16); if (i > 0) ctx.lineTo(tx - w / nT / 2, yb); }
+            ctx.closePath(); };
+          head(); ctx.fillStyle = hg; sb(0); ctx.fill();
+          ctx.save(); ctx.clip(); ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 3; ctx.beginPath(); for (let x = xa - T * 1.2; x < xb; x += T * 0.42) { ctx.moveTo(x, yb); ctx.lineTo(x + T * 1.2, yt); } ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(xa, yt, w, T * 0.16); ctx.restore();      // 윗면의 반사광
+          head(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(10 + 8 * pulse + 18 * warn + 20 * impact); gs(); sb(0); ctx.lineJoin = "round";
+          ctx.fillStyle = "#14161c"; ctx.fillRect((xa + xb) / 2 - rodW * 0.8, yt - T * 0.12, rodW * 1.6, T * 0.12);      // 막대와 머리를 잇는 목
+          // 아랫면의 빛줄(곧 내려찍는다는 경고)
+          if (warn > 0 || impact > 0) { ctx.strokeStyle = `rgba(255,220,230,${0.4 + 0.6 * Math.max(warn, impact)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(xa + 2, yb - T * 0.08); ctx.lineTo(xb - 2, yb - T * 0.08); ctx.stroke(); }
+          // 땅에 닿는 순간: 먼지와 흔들림(한 번만)
+          if (ph < 0.06 && m._slam !== n) { m._slam = n; const cx = (q.x0 + q.x1) / 2; burst(cx, ROWS - 1, 10, "white", 6, false); puff(cx - 0.8, ROWS - 1, 5, 1.4); puff(cx + 0.8, ROWS - 1, 5, 1.4); if (Math.abs(cx - camX) < 14) fx.shake = Math.max(fx.shake, 0.1); }
+        } else if (m.kind === "saw") {
+          // 지나는 길: 레일(끊긴 선과 양 끝의 볼트) 또는 궤도(끊긴 원과 가운데 축, 축에서 톱날까지 사슬)
+          ctx.save(); ctx.setLineDash([T * 0.18, T * 0.14]); ctx.strokeStyle = "rgba(255,143,171,0.35)"; ctx.lineWidth = 2;
+          if (m.rail) { ctx.beginPath(); ctx.moveTo(sx(m.rail[0]), Y(m.rail[1])); ctx.lineTo(sx(m.rail[2]), Y(m.rail[3])); ctx.stroke(); }
+          else { ctx.beginPath(); ctx.arc(sx(m.orbit[0]), Y(m.orbit[1]), m.orbit[2] * T, 0, Math.PI * 2); ctx.stroke(); }
+          ctx.restore();
+          const bolt = (x, y, r) => { ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = 2; ctx.stroke(); };
+          if (m.rail) { bolt(sx(m.rail[0]), Y(m.rail[1]), T * 0.1); bolt(sx(m.rail[2]), Y(m.rail[3]), T * 0.1); }
+          const q = moverShape(m, beat);
+          if (m.orbit) { ctx.strokeStyle = "#5d6473"; ctx.lineWidth = T * 0.08; ctx.beginPath(); ctx.moveTo(sx(m.orbit[0]), Y(m.orbit[1])); ctx.lineTo(sx(q.x), Y(q.y)); ctx.stroke(); bolt(sx(m.orbit[0]), Y(m.orbit[1]), T * 0.16); }
+          const blade = (x, y, r, a, alpha) => {
+            ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.rotate(a);
+            const nT = 12; ctx.beginPath();
+            for (let i = 0; i < nT; i++) { const a0 = (i / nT) * Math.PI * 2, a1 = ((i + 0.55) / nT) * Math.PI * 2; ctx.lineTo(Math.cos(a0) * r * 0.8, Math.sin(a0) * r * 0.8); ctx.lineTo(Math.cos(a1) * r, Math.sin(a1) * r); }
+            ctx.closePath();
+            const g2 = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r); g2.addColorStop(0, "#ff9ab3"); g2.addColorStop(0.5, "#a3184c"); g2.addColorStop(1, "#4a0a26");
+            ctx.fillStyle = g2; ctx.fill();
+            if (alpha > 0.9) { ctx.strokeStyle = "#ffc2d1"; ctx.lineWidth = 2; ctx.shadowColor = DANGER; sb(12 + 8 * pulse); gs(); sb(0);
+              ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(0, 0, r * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ffd1dc"; ctx.lineWidth = 2; ctx.stroke();
+              ctx.fillStyle = "#2a0816"; for (let i = 0; i < 3; i++) { const a2 = (i / 3) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(a2) * r * 0.5, Math.sin(a2) * r * 0.5, r * 0.09, 0, Math.PI * 2); ctx.fill(); } }
+            ctx.restore();
+          };
+          for (let i = 4; i >= 1; i--) { const p2 = moverShape(m, beat - 0.035 * i); blade(sx(p2.x), Y(p2.y), q.r * T, -beat * Math.PI * 4, 0.16 * (1 - i / 5)); }      // 지나온 자리의 잔상
+          blade(sx(q.x), Y(q.y), q.r * T, -beat * Math.PI * 4, 1);
+        } else if (m.kind === "bar") {
+          const q = moverShape(m, beat), ax = sx(q.ax), ay = Y(q.ay), bx = sx(q.bx), by = Y(q.by), Lp = m.len * T;
+          // 돈 자리의 잔상(부채꼴)
+          ctx.save(); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.arc(ax, ay, Lp, -q.a, -q.a + m.dir * 0.7, m.dir < 0); ctx.closePath();
+          const sg = ctx.createRadialGradient(ax, ay, 0, ax, ay, Lp); sg.addColorStop(0, "rgba(255,107,144,0)"); sg.addColorStop(1, "rgba(255,107,144,0.22)"); ctx.fillStyle = sg; ctx.fill(); ctx.restore();
+          ctx.save(); ctx.setLineDash([T * 0.18, T * 0.14]); ctx.strokeStyle = "rgba(255,143,171,0.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ax, ay, Lp, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+          ctx.lineCap = "round";
+          ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = m.w * T + 4; ctx.shadowColor = DANGER; sb(12 + 8 * pulse); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); gs(); sb(0);
+          const bg2 = ctx.createLinearGradient(ax, ay, bx, by); bg2.addColorStop(0, "#4a0a26"); bg2.addColorStop(1, "#b01c55");
+          ctx.strokeStyle = bg2; ctx.lineWidth = m.w * T; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+          ctx.lineCap = "butt";
+          ctx.fillStyle = "#ffd1dc"; ctx.beginPath(); ctx.arc(bx, by, T * 0.1, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(ax, ay, T * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = 3; ctx.stroke();
+          ctx.fillStyle = "#8d95a6"; ctx.beginPath(); ctx.arc(ax, ay, T * 0.09, 0, Math.PI * 2); ctx.fill();
+        } else if (m.kind === "plat") {
+          // 오가는 길(레일): 발판이 지나는 범위 전체에 끊긴 선, 양 끝에 볼트
+          const xs = m.track.keys.map((kk) => kk[1]), lo = Math.min(...xs), hi = Math.max(...xs) + m.w, yr = Y(m.h - 0.5);
+          ctx.save(); ctx.setLineDash([T * 0.2, T * 0.15]); ctx.strokeStyle = "rgba(159,220,255,0.4)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx(lo), yr); ctx.lineTo(sx(hi), yr); ctx.stroke(); ctx.restore();
+          for (const ex of [lo, hi]) { ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(sx(ex), yr, T * 0.1, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 2; ctx.stroke(); }
+          const q = moverShape(m, beat), v = moverShape(m, beat + 0.03).x0 - q.x0;
+          const xa = sx(q.x0), xb = sx(q.x1), ya = Y(q.y), yb2 = Y(q.y - 1);
+          const on = Math.abs(state.x - (q.x0 + q.x1) / 2) < m.w / 2 + 0.5 ? Math.max(0, 1 - (now - fx.stepAt) / 0.25) : 0;
+          const g3 = ctx.createLinearGradient(0, ya, 0, yb2); g3.addColorStop(0, on > 0 ? `rgb(${40 + 60 * on},${110 + 80 * on},255)` : "#1f6ee0"); g3.addColorStop(1, "#0b2a5e");
+          ctx.fillStyle = g3; sb(0); ctx.fillRect(xa, ya, xb - xa, yb2 - ya);
+          ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.shadowColor = "#3aa0ff"; sb(10 + 8 * pulse + 16 * on); ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb2 - ya); gs(); sb(0);
+          if (Math.abs(v) > 0.01) {      // 움직이는 쪽을 가리키는 화살표
+            ctx.fillStyle = `rgba(220,245,255,${Math.min(0.9, Math.abs(v) * 6)})`; const d = Math.sign(v), cy2 = (ya + yb2) / 2;
+            for (let i = 0; i < 3; i++) { const cx2 = (xa + xb) / 2 + (i - 1) * T * 0.45; ctx.beginPath(); ctx.moveTo(cx2 + d * T * 0.14, cy2); ctx.lineTo(cx2 - d * T * 0.1, cy2 - T * 0.18); ctx.lineTo(cx2 - d * T * 0.1, cy2 + T * 0.18); ctx.closePath(); ctx.fill(); }
+          }
+        }
       }
     }
     // 튕김판(피버): 공중에 뜬 얇은 파란 판. 닿으면 누르지 않아도 튕겨서 되돌아간다(양쪽 면 다). 그림은 판정 그대로다(두께 PAD_TH, 반 너비 PAD_W)
@@ -1442,6 +1526,7 @@
     }
     for (const q of L.reds) out.push({ x0: q.x0, x1: q.x1, h: q.kind === "floor" ? q.tip / 2 : (q.tip + q.far) / 2, k: "R" });      // 피버의 이빨과 떠 있는 장애물
     for (const q of L.pads.values()) out.push({ x0: q.x - PAD_W, x1: q.x + PAD_W, h: padFace(q), k: "B" });
+    for (const m of L.movers || []) { const x = m.x0 ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" ? "B" : "R" }); }      // 움직이는 장애물
     if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) { const q0 = L.bands.get(c - 1); if (q0 && q0.some((v) => v[0] === lo && v[1] === hi)) continue; let e = c; while ((L.bands.get(e + 1) || []).some((v) => v[0] === lo && v[1] === hi)) e++; out.push({ x0: c, x1: e + 1, h: (lo + hi) / 2, k: "R" }); }      // 계단의 빨간 단과 뚜껑      // 피버의 튕김판
     const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
     const BH = Array.from({ length: L.cols }, (_, c) => boxH(c));
@@ -1800,7 +1885,7 @@
   // 자동 테스트용 훅
   window.__game = {
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
-    press, startFresh, respawn, pause, view, devJump, cam: (x) => camAt(x), climb: (x) => ({ at: climbAt(x), cam: view.camY || 0, line: camLine(x), any: CLIMB.length > 0 }), bandRuns: BAND_RUNS, ballAt: (x, hgt, now, smooth = true) => ballScreen(x, hgt, now, smooth), openInspect, closeInspect, inspectAt, get labels() { return LABELS; }, get inspectX() { return inspectX; }, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
+    press, startFresh, respawn, pause, view, fx, devJump, cam: (x) => camAt(x), climb: (x) => ({ at: climbAt(x), cam: view.camY || 0, line: camLine(x), any: CLIMB.length > 0 }), bandRuns: BAND_RUNS, ballAt: (x, hgt, now, smooth = true) => ballScreen(x, hgt, now, smooth), openInspect, closeInspect, inspectAt, get labels() { return LABELS; }, get inspectX() { return inspectX; }, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
     get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; }, round,
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },

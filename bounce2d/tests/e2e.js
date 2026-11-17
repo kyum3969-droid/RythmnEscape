@@ -398,20 +398,23 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     { const r = await G(() => { const g = window.__game, L = g.L; let n = 0; for (const [c, q] of L.bands) for (const [lo, hi] of q) if (!(L.bands.get(c - 1) || []).some((v) => v[0] === lo && v[1] === hi)) n++; let two = 0; for (const q of L.bands.values()) if (q.length >= 2) two++; return { runs: g.bandRuns.length, n, two }; });
       ok(r.runs === r.n && r.two > 0, `계단의 빨간 덩어리 ${r.n}개를 모두 그린다(빨간 단과 그 위의 뚜껑이 한 칸에 같이 있는 칸 ${r.two}개 포함)`); }
     ok(top8 > -40, `카메라가 따라가서, 가장 높이 뛰었을 때도 공이 화면 위로 멀리 나가지 않는다(공 윗면의 가장 높은 자리 y=${top8.toFixed(0)}px)`);
-    // 9라운드(피버 위주, 움직이는 장애물)
+    // 9라운드(피버 위주 + 바운스 구간에 움직이는 장애물: 프레스, 톱날, 풍차 막대, 파란 발판)
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(9)')]); await ready();
-    st = await G(() => { const g = window.__game, L = g.L, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, rush: L.rides.reduce((u, r) => u + (r[1] - r[0]) / 16, 0), mv: L.reds.filter((q) => q.mv).length }; });
-    ok(st.round === 8 && st.name.includes('Midnight Asphalt Rush') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.078 && st.cps === 9 && st.rush >= 40 && st.mv >= 60, `9라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 피버 ${st.rush}마디, 움직이는 장애물 ${st.mv}개)`);
+    st = await G(() => { const g = window.__game, L = g.L, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, rush: L.rides.reduce((u, r) => u + (r[1] - r[0]) / 16, 0), mv: L.movers.length, kinds: [...new Set(L.movers.map((m) => m.kind))].sort().join(','), climb: g.climb(0).any }; });
+    ok(st.round === 8 && st.name.includes('Midnight Asphalt Rush') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.078 && st.cps === 9 && st.rush >= 30 && st.mv >= 40 && st.kinds === 'bar,plat,press,saw' && st.climb, `9라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 피버 ${st.rush}마디, 움직이는 장애물 ${st.mv}개: ${st.kinds})`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots9 = { 33.0: 'r9_pump_far', 34.0: 'r9_pump_hit', 34.5: 'r9_pump_hide', 65.0: 'r9_decoy_out', 66.0: 'r9_decoy_in', 105.0: 'r9_wide_sway', 170.0: 'r9_peak', 175.0: 'r9_peak2', 235.0: 'r9_mix', 300.0: 'r9_final' };
+    const shots9 = { 10.75: 'r9_press_hop', 18.5: 'r9_press_row', 21.25: 'r9_float_press', 25.5: 'r9_ring_saw', 64.5: 'r9_saw_gate', 73.0: 'r9_saw_dive', 82.0: 'r9_saw_orbit', 105.0: 'r9_wide', 129.5: 'r9_plat', 136.5: 'r9_plat_high', 140.5: 'r9_bar', 199.0: 'r9_stone_press', 300.0: 'r9_final' };
+    let shakes = 0;
     for (let beat = 0; beat <= 330; beat += 0.25) {
       await tick(beat);
       if (shots9[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots9[beat] + '.png' }); }
+      if (beat >= 16 && beat < 20 && await G(() => window.__game.fx && window.__game.fx.shake > 0)) shakes++;
       if (await G(() => window.__game.phase) !== 'running') break;
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `9라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(shakes > 0, `프레스가 땅을 내려찍으면 화면이 살짝 흔들린다(프레스 줄을 지나는 동안 ${shakes}번 본 순간에 흔들림)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');
