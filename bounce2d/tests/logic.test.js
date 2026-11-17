@@ -505,6 +505,24 @@ console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 
     ok(stuck === 0, `[${tag}] 아무렇게나 400번 달려 봐도 공이 파란 박스 속에 끼이지 않는다`);
   }
 }
+console.log('== 피버: 벽을 친 직후에 누른 것도 먹힌다 ==');
+{
+  // z5 = "F.F.F.F.": 바닥을 치고 반 박 뒤(가운데 높이)에서 눌러 되돌아가기를 네 번. 벽을 친 순간부터 누르는 자리까지가 반 박(약 197ms)이다
+  const lvZ = Lg.buildLevel({ name: 'z', bpm: 152, bars: ['flat', 'zE', 'z5', 'zE', 'flat', 'goal'], sections: [{ bar: 0, id: 'a' }] });
+  const refZ = lvZ.ref.presses.slice();
+  const runZ = (pr) => { const sZ = Lg.spawnState(lvZ, -1), P = new Set(pr), evs = []; while (!sZ.dead && !sZ.won) { const ev = []; Lg.stepState(lvZ, sZ, P.has(sZ.step + 1), ev, false); for (const e of ev) evs.push(e); } return { won: sZ.won, evs }; };
+  const wall = refZ[0] - 48;                              // 첫 누름의 반 박 앞 = 바닥을 친 순간
+  const early = [2, 6, 12, 20, 23].map(d => [d, runZ(refZ.map((v, i) => (i === 0 ? wall + d : v)))]);
+  ok(early.every(([, r]) => r.won && r.evs.some(e => e.type === 'flip' && e.early)), `벽을 치고 ${early.map(([d]) => (d * 4.11).toFixed(0)).join(', ')}ms 뒤에 눌러도 다음 지점에서 꺾인다(전에는 벽에서 99ms 안에 누르면 버려졌다)`);
+  let lo = 0, hi = 0; while (lo > -60 && runZ(refZ.map((v, i) => (i === 0 ? v + lo - 1 : v))).won) lo--; while (hi < 60 && runZ(refZ.map((v, i) => (i === 0 ? v + hi + 1 : v))).won) hi++;
+  ok(-lo * 4.11 >= 180 && hi * 4.11 >= 90, `그 누름의 여유 ${(lo * 4.11).toFixed(0)}/+${(hi * 4.11).toFixed(0)}ms (벽을 친 순간부터 받는다)`);
+  // 벽으로 다가가는 중에 누른 것은 여전히 길을 바꾸지 않는다(불꽃만)
+  const toWall = runZ([...refZ, refZ[0] + 30]);
+  ok(toWall.won && toWall.evs.filter(e => e.type === 'spark').length === 1, '벽으로 다가가는 중에 누른 것은 길을 바꾸지 않는다');
+  // 두 번 누르면 원래대로
+  const twice = runZ([wall + 4, wall + 12, ...refZ.slice(1)]);
+  ok(!twice.won, '벽을 친 직후에 두 번 누르면 없던 일이 된다(그 지점에서 안 꺾여서 죽는다)');
+}
 console.log('== 징검다리: 두 칸짜리 파란 돌에서 돌로 저절로 튄다. 빨간 돌은 멈춰서 넘는다 ==');
 {
   const mk = (seq) => Lg.buildLevel({ name: 's', bpm: 152, bars: ['idle', 'idle', ...seq, 'idle', 'idle', 'goal', 'flat'], floatReds: true, sections: [{ bar: 0, id: 'a' }] });

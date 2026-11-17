@@ -1078,12 +1078,19 @@ function rushStep(L, s, press, ev, hold, r) {
     const dirAt = (lev, zin, tog, k) => (lev <= botAt(k) ? 1 : lev >= topAt(k) ? -1 : tog ? -zin : zin);
     while (local >= s.zk * SLOT + SLOT / 2) {              // 지난 지점의 선택을 굳히고, 다음 지점으로 넘어간다
       const d = dirAt(s.zlk, s.zin, s.ztog, s.zk);
-      s.zlk += d; s.zin = d; s.zk++; s.ztog = 0;
+      s.zlk += d; s.zin = d; s.zk++; s.ztog = s.zpend ? 1 : 0; s.zpend = 0;      // 벽을 친 직후에 눌러 둔 것은 이 지점의 누름이 된다
     }
     const tk = s.zk * SLOT, top = topAt(s.zk), bot = botAt(s.zk);
     if (press) {
-      if (!L.freeBars.has(Math.floor(s.x / 16)) && s.zlk > bot && s.zlk < top) { s.ztog ^= 1; if (ev) ev.push({ type: "flip" }); }
-      else if (ev) ev.push({ type: "spark" });               // 연출 마디, 또는 바닥·천장에 닿는 지점: 길은 그대로(불꽃만 튄다)
+      const free = L.freeBars.has(Math.floor(s.x / 16));
+      if (!free && s.zlk > bot && s.zlk < top) { s.ztog ^= 1; if (ev) ev.push({ type: "flip" }); }
+      else {
+        // 바닥·천장에 닿는 지점에서는 방향을 고를 수 없다. 그런데 벽을 치고 나서 바로 누른 것은 "다음 지점에서 꺾겠다"는 뜻이다(다음 지점이 가까워지기 전에 일찍 누른 것).
+        // 전에는 이런 누름이 그냥 버려졌다(벽에서 1/4박, 약 99ms 안에 누르면 안 먹혔다). 이제는 다음 지점의 누름으로 넘긴다. 반응은 다음 지점이 가까워질 때(1/4박 앞) 나타난다.
+        const nl = s.zlk + dirAt(s.zlk, s.zin, 0, s.zk);
+        if (!free && local > tk && nl > botAt(s.zk + 1) && nl < topAt(s.zk + 1) && !L.freeBars.has(Math.floor((r[0] + 2 * (s.zk + 1)) / 16))) { s.zpend ^= 1; if (ev) ev.push({ type: "flip", early: true }); }
+        else if (ev) ev.push({ type: "spark" });             // 연출 마디, 또는 벽으로 다가가는 중: 길은 그대로(불꽃만 튄다)
+      }
     }
     const toNode = local <= tk && !s.ztog;                   // 지점을 향해 가는 중인가, 지점 다음 높이를 향해 가는 중인가
     const wpStep = toNode ? tk : tk + SLOT, wpH = (toNode ? s.zlk : s.zlk + dirAt(s.zlk, s.zin, s.ztog, s.zk)) * ZIG_STEP;
@@ -1127,7 +1134,7 @@ function spawnState(L, cp = -1) {
   const x = TPB * step / SUB;
   return {
     mode: "bounce", step, x, lead: 0, dashing: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
-    zh: 0, zdir: 1, zv: 0, zk: 0, zlk: 0, zin: -1, ztog: 0,
+    zh: 0, zdir: 1, zv: 0, zk: 0, zlk: 0, zin: -1, ztog: 0, zpend: 0,
     djAvail: false, jbuf: 0, ring: -1, djq: 0, since: 0, ringed: 0,      // djq = 맡아 둔 이단 점프(2 = 다음에 튀면, 1 = 이번 꼭대기에서), since = 튄 뒤 지난 스텝
     freeze: 0, frozen: false,
     cp, dead: false, cause: "", won: false,
@@ -1168,7 +1175,7 @@ function stepState(L, s, press, ev, hold) {
     s.mode = ride ? "rush" : "bounce";
     if (s.frozen) { s.frozen = false; if (ev) ev.push({ type: "unfreeze" }); }
     s.jbuf = 0; s.freeze = 0;
-    if (ride) { s.zh = 0; s.zdir = 1; s.zv = 0; s.zk = 0; s.zlk = 0; s.zin = -1; s.ztog = 0; }
+    if (ride) { s.zh = 0; s.zdir = 1; s.zv = 0; s.zk = 0; s.zlk = 0; s.zin = -1; s.ztog = 0; s.zpend = 0; }
     else if (s.y > ROWS - 1 - 0.3) { s.y = ROWS - 1; s.vy = 0; s.onGround = true; s.djAvail = false; }   // 바닥에 닿은 채로 나오면 바로 이 박에 다시 튄다
     else { s.vy = 0; s.onGround = false; s.djAvail = false; }                                              // 공중에서 나오면 그대로 떨어진다
     if (ev) ev.push({ type: "mode", mode: s.mode });
@@ -1328,7 +1335,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < (opts.offset || 0); i++) stepState(L, s0, false, null, false);
   if (s0.dead) return { plan: null, best: s0.x };
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}${s.djq || 0}|${Math.ceil(s.freeze / 8)}|${s.zk}|${s.zlk}${s.zin}${s.ztog}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}${s.djq || 0}|${Math.ceil(s.freeze / 8)}|${s.zk}|${s.zlk}${s.zin}${s.ztog}${s.zpend || 0}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {
