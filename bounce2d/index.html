@@ -459,6 +459,9 @@
     if (songLoading && !fake.on) { ensureAudio(); pendingStart = cp; $("ovStat").textContent = "곡을 불러오는 중…"; return; }   // 누른 순간에 소리 권한은 받아 두고, 곡이 준비되면 시작
     applySpeed();
     state = spawnState(L, cp);
+    // 패턴이 있는 체크포인트(5~8라운드): 한 마디 앞에서 다시 시작해, 그 마디는 패턴대로 저절로 달린다(곡에 다시 올라탈 틈). 체크포인트에 닿는 순간 조작을 넘겨받는다
+    autoUntil = -1;
+    if (cp >= 0 && L.cps[cp].snap && L.cps[cp].lead) { state = { ...L.cps[cp].lead }; autoUntil = L.cps[cp].snap.step; }
     broken.clear(); usedRings.clear();
     fx.tail.length = 0; fx.particles.length = 0;
     gotGems.clear(); fx.chain = 0; fx.wideOn = wideZone(state.x); fx.punchAt = -9;
@@ -575,14 +578,16 @@
     add("처음 · 0%", -1);
     L.cps.forEach((cp, i) => add(`CP${i + 1} · ${Math.round((cp.col / L.goalX) * 100)}%`, i));
   }
+  let autoUntil = -1;      // 이 스텝까지는 패턴대로 저절로 달린다(체크포인트에서 다시 시작할 때)
   function respawn() { tries++; begin(state.cp); }
 
   function advanceTo(targetStep) {
     while (phase === "running" && state.step < targetStep) {
-      const press = pressQueued || (bot && bot.press.has(state.step + 1));
+      const auto = state.step < autoUntil && REF_INP;
+      const press = auto ? REF_INP.press.has(state.step + 1) : pressQueued || (bot && bot.press.has(state.step + 1));
       pressQueued = false;
       ev.length = 0;
-      stepState(L, state, press, ev, holding() || (bot && bot.hold.has(state.step + 1)));
+      stepState(L, state, press, ev, auto ? REF_INP.hold.has(state.step + 1) : holding() || (bot && bot.hold.has(state.step + 1)));
       if (ev.length) handleEvents();
       if (state.mode === "rush" && state.step % (4 * SUB) === 0 && phase === "running") {     // 마디가 바뀔 때: 연출 구간에 들어가고 나오는 것을 알린다
         const bar = Math.floor(state.x / 16), now2 = L.freeBars.has(bar), was = L.freeBars.has(bar - 1) && inRide(L, state.x - 1);
@@ -1293,6 +1298,7 @@
       // 굽은 길에서 공은 토막의 기울기(한 칸마다 조금씩 꺾인다)가 아니라, 칸 사이를 매끄럽게 이은 기울기로 그린다.
       // 토막의 기울기 그대로 그리면 공이 토막을 넘어갈 때마다 자리가 툭툭 튄다(통로 위쪽에 있을수록 크게: 한 칸에 20픽셀쯤).
       ctx.save();
+      if (state.step < autoUntil) ctx.globalAlpha = 0.5 + 0.25 * Math.sin(now * 12);      // 체크포인트 앞에서 저절로 달리는 동안: 공이 깜빡인다(아직 조작이 넘어오지 않았다)
       if (pass.bent) {
         ctx.translate(sx(pass.rx), view.groundY); ctx.rotate(pass.th); ctx.translate(-pass.qx, -pass.qy);      // 토막의 자리·기울기를 풀고
         ctx.translate(bend.ax, bend.ay); ctx.rotate(-bend.th); ctx.translate(-sx(camX), -view.groundY);        // 공이 있는 자리의 매끄러운 기울기로 놓는다
@@ -1499,11 +1505,11 @@
   // 공의 자리(x)로만 정해서(시간으로 따라가지 않는다) 늘 같고 매끄럽다. 공이 화면 위로 나가는 것은 물러나기(HIGH_NEED)가 막는다.
   const CAMT = new Float32Array(L.cols + 2);
   if (CLIMB.length) {
-    const n = L.cols + 1, f = Array.from({ length: n }, (_, c) => climbAt(c + 0.5)), at = (arr, k) => arr[Math.max(0, Math.min(n - 1, k))];
+    const n = L.cols + 1, f = Array.from({ length: n }, (_, c) => (inRide(L, c + 0.5) ? 0 : climbAt(c + 0.5))), at = (arr, k) => arr[Math.max(0, Math.min(n - 1, k))];      // (피버 구간은 늘 높이 0: 피버의 앞뒤 디딤 사이를 잇지 않는다)
     const box = (arr, r) => arr.map((_, c) => { let u = 0; for (let k = c - r; k <= c + r; k++) u += at(arr, k); return u / (2 * r + 1); });
     const avg = box(box(f, 8), 8);      // (상자 평균을 두 번: 삼각형 모양으로 고르게 펴진다)
     const capped = avg.map((v, c) => { let m = 1e9; for (let k = c - 2; k <= c + 8; k++) m = Math.min(m, at(f, k)); return Math.max(0, Math.min(v, m + 0.8)); });
-    box(box(capped, 4), 4).forEach((v, c) => { CAMT[c] = v; });
+    box(box(capped, 4), 4).forEach((v, c) => { CAMT[c] = inRide(L, c + 0.5) ? 0 : v; });
   }
   const camLine = (x) => { const c = Math.max(0, Math.min(L.cols, Math.floor(x - 0.5))), u = Math.max(0, Math.min(1, x - 0.5 - c)); return CAMT[c] + (CAMT[c + 1] - CAMT[c]) * u; };
   // 계단의 빨간 덩어리(L.bands: 칸 → [밑면, 윗면]들)를 이어진 덩어리 목록으로: [{ a 첫 칸, e 끝 칸, lo, hi }]

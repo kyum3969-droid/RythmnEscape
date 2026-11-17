@@ -119,7 +119,7 @@ TEMPLATES.R4 = {
 // 5라운드: 피버 위주. 피버의 짜임은 "새 마디 → 한 번 더 → 함정"이고, 함정은 뚝(누르던 자리에서 끊김)과 하나 더(안 누르던 자리에서 한 번 더) 두 가지다.
 // 통로의 굽이는 코스의 cam 표에 있다(logic.js의 ROUND5). 굽이가 걸리는 넓은 통로의 짜임(H와 그 뒤 마디)은 성기게 뽑는다(calm: 마디의 첫 박은 누르지 않는다, run: 반 박 간격으로 이어 누르기는 두 번까지) — 굽이를 볼 틈이 있어야 한다. 좁은 통로는 원래 한 박에 한 번까지라 그대로 둔다. 바운스 구간은 4라운드와 같은 조건(밀도 95%, 변주)에 새 함정 fJ3G를 넣는다.
 TEMPLATES.R5 = {
-  prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95,
+  prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95, cpFill: true, cpLevel: '4v',      // cpFill = 체크포인트 마디에도 패턴(개발하는 동안)
   recipe: { g: '4d', gf: '4v', traps: 3, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
   sections(seed) {
     const [s1, s3, s4] = fillStretches([5, 7, 2], this.recipe, seed);
@@ -146,7 +146,7 @@ TEMPLATES.R5 = {
 // 피버는 곡의 절정 두 곳에만 둔다(남발하지 않는다): 얇은 굴이 있는 굽은 통로 / 왼쪽 위로 넘어가는 넓은 통로. 굽이는 코스의 cam 표에 있다(logic.js의 ROUND6).
 // 조여드는 통로는 없다(곡에 점점 세지는 자리가 없다). 징검다리는 구간의 끝(체크포인트 앞)이나 gAfter 앞에 둔다.
 TEMPLATES.R6 = {
-  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true,      // fresh = 앞 라운드에 나온 피버 문제를 다시 내지 않는다
+  prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: '4v',      // fresh = 앞 라운드에 나온 피버 문제를 다시 내지 않는다
   recipe: { g: '4d', gf: '4v', traps: 9, from: 0, kinds: { 'stop-last': 3, 'hand-last': 4 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
   sections() {
     // 뽑을 마디의 자리를 손으로 정한다(무작위로 나누면 같은 함정이 연달아 나오거나, 한 마디만 세 번 되풀이하고 끝나는 구간이 생긴다).
@@ -182,7 +182,7 @@ TEMPLATES.R6 = {
 // 피버는 절정 두 곳에만. 새 장치 튕김판(B: 공중에 뜬 파란 판. 닿으면 누르지 않아도 꺾인다)이 나온다: 판이 있는 마디를 세 번 → 네 번째엔 판이 없다(눌러야 한다).
 // 좁은 통로의 줄(19가지)은 바닥났지만, 튕김판이 있는 줄은 새것이라 좁은 통로에도 쓴다. 바운스에는 삼단 점프(충전 고리)와 미끼 고리를 넣었다.
 TEMPLATES.R7 = {
-  prefix: 'g7', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true,
+  prefix: 'g7', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: '7v',
   recipe: { g: '7v', gf: '7v', traps: 13, from: 0, kinds: { 'stop-last': 3, 'hand-last': 3, 'stop-first': 3, 'hand-first': 3 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
   sections() {
     //   one() 새 마디 하나 / phrase(함정, 되풀이 횟수) 새 마디를 그만큼 되풀이한 뒤 함정 / feint(횟수) 헛다리: 그만큼 되풀이하고 함정 없이 넘어간다
@@ -215,7 +215,7 @@ TEMPLATES.R7 = {
 // 계단 하나는 땅에서 시작해 땅에서 끝나고, 길이는 한 마디·두 마디·네 마디(큰 산: 여덟 칸 높이까지). 짜임은 7라운드와 같다(되풀이 → 함정, 헛다리, 한 번 보여 주고 함정).
 // 피버는 곡의 가장 센 절정 한 곳(40~46)에만 둔다. 마지막 절정은 큰 산을 넘어 결승선으로 간다.
 TEMPLATES.R8 = {
-  prefix: 'g8', bpm: 150.0, floatReds: true, fresh: true, density: 0.9,
+  prefix: 'g8', bpm: 150.0, floatReds: true, fresh: true, density: 0.9, cpFill: true, cpStairs: true,
   recipe: { traps: 8, intro: [] },
   sections() {
     const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
@@ -551,9 +551,38 @@ function generate(T, seed) {
     throw new Error(`계단을 못 뽑았다(마디 ${b})`);
   };
 
+  // ---- 체크포인트 마디에도 패턴(5~8라운드, 개발하는 동안만. cp: true를 단 마디가 체크포인트가 된다 — 나중에 체크포인트를 다 빼면 그냥 마디다)
+  //   계단의 라운드(T.cpStairs)는 한 마디짜리 계단, 나머지는 높이 장치를 섞은 새 마디(T.cpLevel). 앞뒤 마디와 땅에서 박자에 맞춰 이어져야 한다
+  const cpSlot = (b) => {
+    const name = `${T.prefix}_${b}`;
+    for (let tries = 0; tries < 300; tries++) {
+      if (T.cpStairs) {
+        const hops = St.randomHill(4, rng, { inputs: 1 });
+        if (!hops) continue;
+        const put = putHill(hops, b);
+        if (!put) continue;
+        const def = put.pats[0]; def.cp = true;
+        made[name] = def; bars.push(name); notes[b] = '체크포인트 마디. 계단: ' + hops.map(hopName).join(' → ');
+        return;
+      }
+      const def = randomBar(name, T.cpLevel || '4v');
+      if (!def) continue;
+      const v = validate(name);
+      if (!v || !v.clean || (!v.startClean && tries < 150)) continue;      // (앞 마디가 박스에서 떨어지며 끝나면 한 틱 늦게 시작한다: 그때는 시작은 봐준다)
+      def.cp = true; made[name] = def; bars.push(name); notes[b] = '체크포인트 마디';
+      return;
+    }
+    throw new Error(`체크포인트 마디를 못 뽑았다(마디 ${b})`);
+  };
+  if (T.fill) {                                        // 있는 코스의 체크포인트 마디만 채운다(다른 마디는 그대로)
+    for (const n of T.fill) { const b = bars.length; if (n === 'cp') cpSlot(b); else bars.push(n); }
+    return { bars, made, notes, traps: trapList, roles };
+  }
+
   let A = null, reps = 0, feverA = null, feverReps = 0, lastHow = '';
   T.sections.forEach(([, slots]) => slots.forEach((slot) => {
     const b = bars.length;
+    if (slot === 'cp' && T.cpFill) { cpSlot(b); A = null; reps = 0; return; }
     if (typeof slot !== 'string' && (slot.hill || slot.hr || slot.ht || slot.cont)) { stairSlot(slot, b); return; }
     if (typeof slot !== 'string' && (slot.m || slot.r || slot.t)) { phraseSlot(slot, b); return; }
     if (typeof slot !== 'string' && (slot.zm || slot.wm || slot.zr || slot.wr || slot.zt || slot.wt)) { feverSlot(slot, b); return; }
@@ -609,6 +638,49 @@ function generate(T, seed) {
 }
 
 module.exports = { generate, G, LEVELS, mulberry };
+
+// 있는 코스의 체크포인트 마디("cp")만 패턴으로 채워서 logic.js에 적는다(다른 마디와 주석은 그대로). 사용: node tools_gen_course.js R5 fillcp [씨앗]
+function fillCp(T, course0) {
+  const seed1 = +(process.argv[4] || 1);
+  const fmt = (v) => JSON.stringify(v).replace(/"([a-zA-Z_]+)":/g, '$1: ').replace(/,/g, ', ').replace(/\[ /g, '[').replace(/: \[\[/g, ': [[');
+  for (let seed = seed1; seed < seed1 + 30; seed++) {
+    let g;
+    try { g = generate({ ...T, fill: course0.bars }, seed); } catch (e) { console.error(`씨앗 ${seed}: ${e.message}`); continue; }
+    const course = { ...course0, bars: g.bars };
+    let L; try { L = Lg.buildLevel(course); } catch (e) { console.error(`씨앗 ${seed}: ${e.message}`); continue; }
+    const inp = Lg.planInput(L.ref), s = Lg.spawnState(L, -1);
+    while (!s.dead && !s.won) Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1));
+    const solved = s.won && [-1, ...L.cps.keys()].every((k) => Lg.solve(L, Lg.spawnState(L, k), { grid: 12 }).plan);
+    const snaps = L.cps.every((c) => !c.snap || c.lead);
+    // 체크포인트 마디의 함정(높이 장치의 버릇: 떠 있는 박스에서 다시 뛰기, 천장 밑에서 뛰기)이 실제 코스에서도 그 마디에서 죽이는가
+    const trapOk = Object.keys(g.made).every((n) => {
+      const b = g.bars.indexOf(n), p = Lg.PATTERNS[n], lo = b * BAR, hi = lo + BAR;
+      return (p.traps || []).every((t) => {
+        const press = new Set((t.full ? t.full.presses : [...p.presses, ...(t.presses || [])]).map((v) => lo + Math.round(v * SUB))), holds = (t.full ? t.full.holds : t.holds || p.holds).map(([a, z]) => [lo + Math.round(a * SUB), lo + Math.round(z * SUB)]);
+        const s2 = Lg.spawnState(L, -1);
+        while (!s2.dead && !s2.won && s2.step < hi + SUB) { const st = s2.step + 1, inBar = st >= lo && st < hi; Lg.stepState(L, s2, inBar ? press.has(st) : inp.press.has(st), null, inBar ? holds.some((h) => st >= h[0] && st < h[1]) : inp.hold.has(st)); }
+        return s2.dead && s2.x >= b * 16 && s2.x < b * 16 + 16.5;
+      });
+    });
+    if (!trapOk) console.error(`  (체크포인트 마디의 함정이 실제 코스에서 통하지 않는다)`);
+    console.error(`씨앗 ${seed}: ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'}, 체크포인트 ${L.cps.length}개(패턴 있는 것 ${L.cps.filter((c) => c.snap).length})`);
+    if (!s.won || L.fixed.length || !solved || !snaps || !trapOk) { for (const n of Object.keys(g.made)) delete Lg.PATTERNS[n]; continue; }
+    let src = fs.readFileSync(FILE, 'utf8');
+    const lines = Object.entries(g.made).map(([name, d]) => `  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''}${d.stair ? ', stair: true' : ''}, cp: true },   // ${g.notes[+name.replace(/^\D+\d*\D/, '')] || '체크포인트 마디'}`);
+    const z = `  // </gen:patterns:${round}>`, zi = src.indexOf(z);
+    if (zi < 0) throw new Error('표시가 없다: ' + z);
+    src = src.slice(0, zi) + `  // 체크포인트 마디(tools_gen_course.js ${round} fillcp ${seed}): 개발하는 동안 체크포인트로 쓰는 마디에도 패턴을 넣었다. cp: true를 빼면 그냥 마디다\n` + lines.join('\n') + '\n' + src.slice(zi);
+    const a = `// <gen:bars:${round}>`, b2 = `// </gen:bars:${round}>`, i = src.indexOf(a), j = src.indexOf(b2);
+    let k = 0, block = src.slice(i, j);
+    block = block.replace(/"([A-Za-z0-9_]+)"/g, (m, n) => { const nn = g.bars[k++]; if (nn !== n && n !== 'cp') throw new Error(`마디 이름이 어긋났다: ${k - 1} ${n} ${nn}`); return JSON.stringify(nn); });
+    if (k !== g.bars.length) throw new Error('마디 수가 어긋났다: ' + k + ' / ' + g.bars.length);
+    src = src.slice(0, i) + block + src.slice(j);
+    fs.writeFileSync(FILE, src);
+    console.error(`logic.js에 적었다: 씨앗 ${seed}, 체크포인트 마디 ${Object.keys(g.made).length}개`);
+    return;
+  }
+  console.error('채우지 못했다'); process.exit(1);
+}
 if (require.main === module) main();
 
 function main() {
@@ -618,6 +690,7 @@ const T = TEMPLATES[round];
 if (!T) { console.error('모르는 라운드:', round); process.exit(1); }
 const course0 = Lg.COURSES.find((c) => c.name.startsWith('ROUND ' + round.slice(1)));
 const tries = +(process.argv[4] || 12);
+if (process.argv[3] === 'fillcp') return fillCp(T, course0);
 let result = null;
 for (let seed = seed0; seed < seed0 + tries; seed++) {
   for (const k of Object.keys(Lg.PATTERNS)) if (k.startsWith(T.prefix)) delete Lg.PATTERNS[k];
@@ -646,7 +719,7 @@ const lines = [`  // 도구(tools_gen_course.js ${round} ${result.seed})가 무�
 for (const [name, d] of Object.entries(result.made)) {
   const b = +name.replace(/^\D+\d*\D/, ''), note = result.notes[b];
   if (d.mode === 'rush') lines.push(`  ${name}: { mode: "rush"${d.wide ? ', wide: true' : ''}${d.gap ? ', gap: ' + d.gap : ''}, nodes: "${d.nodes}" },${note ? '   // ' + note : ''}`);
-  else lines.push(`  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.lead ? ', lead: ' + JSON.stringify(d.lead) : ''}${d.tail ? ', tail: ' + JSON.stringify(d.tail) : ''}${d.stair ? ', stair: true' : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''} },${note ? '   // ' + note : ''}`);
+  else lines.push(`  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.lead ? ', lead: ' + JSON.stringify(d.lead) : ''}${d.tail ? ', tail: ' + JSON.stringify(d.tail) : ''}${d.stair ? ', stair: true' : ''}${d.cp ? ', cp: true' : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''} },${note ? '   // ' + note : ''}`);
 }
 const barLines = [];
 let at = 0;

@@ -382,6 +382,18 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     // 카메라는 작은 계단마다 출렁이지 않는다: 한 마디짜리 계단(마디 3~6, 디딤이 0 ↔ 3칸을 오르내린다)을 지나는 동안 카메라가 움직이는 폭, 그리고 방향이 바뀌는 횟수
     { const r = await G(() => { const g = window.__game; let lo = 1e9, hi = -1e9, turns = 0, ext = null, dir = 0; for (let x = 3 * 16; x <= 7 * 16; x += 0.25) { const v = g.climb(x).line; lo = Math.min(lo, v); hi = Math.max(hi, v); if (ext === null) ext = v; else if (dir >= 0 ? v > ext : v < ext) ext = v; else if (Math.abs(v - ext) > 0.15) { if (dir) turns++; dir = Math.sign(v - ext); ext = v; } } /* 0.15칸 넘게 되돌아갈 때만 방향이 바뀌었다고 센다 */ let foot = [1e9, -1e9]; for (let x = 3 * 16; x <= 7 * 16; x += 0.25) { const a = g.climb(x).at; foot = [Math.min(foot[0], a), Math.max(foot[1], a)]; } return { lo, hi, turns, foot }; });
       ok(r.hi - r.lo < 0.6 && r.turns <= 2 && r.foot[1] - r.foot[0] >= 3, `카메라는 작은 계단마다 출렁이지 않는다: 디딤이 ${r.foot[0].toFixed(1)}~${r.foot[1].toFixed(1)}칸을 오르내리는 네 마디 동안 카메라는 ${(r.hi - r.lo).toFixed(2)}칸 안에서만 움직이고, 0.15칸 넘게 되돌아가는 것은 ${r.turns}번`); }
+    // 패턴이 있는 체크포인트(5~8라운드, 개발하는 동안): 체크포인트에서 다시 시작하면 한 마디 앞에서 저절로 달리다가(공이 깜빡인다) 체크포인트에서 조작을 넘겨받는다
+    { await G(() => { const g = window.__game; g.fake.on = true; g.setBot({ presses: [], holds: [] }); g.devJump(3); });
+      const c = await G(() => { const g = window.__game, cp = g.L.cps[3]; return { lead: cp.lead.step, snap: cp.snap.step, bar: cp.bar, step: g.state.step, cp: g.state.cp }; });
+      for (let beat = c.lead / 96; beat <= c.snap / 96 - 0.01; beat += 0.25) await tick(beat);
+      const mid = await G(() => ({ phase: window.__game.phase, step: window.__game.state.step }));
+      await tick(c.snap / 96 + 0.05);
+      const at = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp }));
+      for (let beat = c.snap / 96; beat <= c.snap / 96 + 8; beat += 0.25) { await tick(beat); if (await G(() => window.__game.phase) !== 'running') break; }
+      const after = await G(() => ({ phase: window.__game.phase, x: window.__game.state.x }));
+      await p.waitForTimeout(150); await p.screenshot({ path: out + 'r8_cp_restart.png' });
+      ok(c.step === c.lead && c.cp === 2 && mid.phase === 'running' && at.phase === 'running' && at.cp === 3 && after.phase === 'dead' && after.x >= c.bar * 16 && after.x < c.bar * 16 + 40,
+        `패턴이 있는 체크포인트: 4번째 체크포인트(마디 ${c.bar})에서 다시 시작하면 한 마디 앞에서 저절로 달리고(아무것도 안 눌러도 살아 있다), 체크포인트에서 조작을 넘겨받는다. 그 뒤 안 누르면 마디 ${(after.x / 16).toFixed(1)}에서 죽는다`); }
     // 계단의 빨간 덩어리는 모두 그린다(한 칸에 빨간 단과 뚜껑이 같이 있어도): 그리는 목록의 덩어리 수 = 판정의 덩어리 수
     { const r = await G(() => { const g = window.__game, L = g.L; let n = 0; for (const [c, q] of L.bands) for (const [lo, hi] of q) if (!(L.bands.get(c - 1) || []).some((v) => v[0] === lo && v[1] === hi)) n++; let two = 0; for (const q of L.bands.values()) if (q.length >= 2) two++; return { runs: g.bandRuns.length, n, two }; });
       ok(r.runs === r.n && r.two > 0, `계단의 빨간 덩어리 ${r.n}개를 모두 그린다(빨간 단과 그 위의 뚜껑이 한 칸에 같이 있는 칸 ${r.two}개 포함)`); }

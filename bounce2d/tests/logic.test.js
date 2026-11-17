@@ -231,6 +231,24 @@ for (const C of Lg.COURSES) {
   const lv = Lg.buildLevel(C), tag = C.name.split(' · ')[0];
   const full = run(lv, lv.ref);
   ok(full.s.won && lv.fixed.length === 0, `[${tag}] ${C.name}: ${lv.bars}마디, 체크포인트 ${lv.cps.length}개(마디 ${lv.cps.map(c => c.bar).join(', ')}), 피버 ${lv.rides.map(r => `${r[0] / 16}~${r[1] / 16 - 1}`).join(' / ')} — 패턴대로 완주`);
+  if (lv.cps.some(c => c.snap)) {
+    // 패턴이 있는 체크포인트(5~8라운드, 개발하는 동안): 체크포인트 마디에도 누를 것이 있다. 거기서 다시 시작하면 패턴대로 달렸을 때의 그 순간에서 시작하고(땅에 서 있거나 막 튀어 오른 순간, 멈춘 채가 아니다),
+    // 화면은 한 마디 앞에서 시작해 저절로 달린다. 체크포인트마다: 거기서 패턴대로 가면 완주하고, 아무것도 안 누르면 그 마디 언저리에서 죽는다
+    const inp = Lg.planInput(lv.ref);
+    let okAll = true, busy = 0, idleDead = 0;
+    lv.cps.forEach((c, k) => {
+      const p = Lg.PATTERNS[C.bars[c.bar]];
+      if (!c.snap || !c.lead || c.snap.frozen || c.lead.step !== c.snap.step - 384 && c.lead.step !== c.bar * 384 - 384) okAll = false;
+      if (p && (p.holds.length || p.presses.length)) busy++;
+      const s = Lg.spawnState(lv, k); while (!s.dead && !s.won) Lg.stepState(lv, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1));
+      if (!s.won) okAll = false;
+      const s2 = Lg.spawnState(lv, k); while (!s2.dead && !s2.won && s2.step < c.snap.step + 2 * 384) Lg.stepState(lv, s2, false, null, false);
+      if (s2.dead) idleDead++;
+      const s3 = { ...c.lead }; while (!s3.dead && !s3.won && s3.step < c.snap.step) Lg.stepState(lv, s3, inp.press.has(s3.step + 1), null, inp.hold.has(s3.step + 1));
+      if (s3.step !== c.snap.step || Math.abs(s3.x - c.snap.x) > 1e-9 || Math.abs(s3.y - c.snap.y) > 1e-9 || s3.cp !== k) okAll = false;      // 한 마디 앞에서 패턴대로 저절로 달리면 넘겨받는 순간에 그 상태가 된다(체크포인트도 그때 켜진다)
+    });
+    ok(okAll && busy === lv.cps.length && idleDead === lv.cps.length, `[${tag}] 체크포인트 ${lv.cps.length}곳 모두 마디에 패턴이 있다(누를 것이 있는 마디 ${busy}곳). 거기서 다시 시작해 패턴대로 가면 완주하고, 아무것도 안 누르면 죽는다(${idleDead}곳). 한 마디 앞에서 저절로 달려 넘겨받는 순간의 상태가 맞다`);
+  }
   if (C.climb) {
     // 계단의 라운드(8라운드부터): 공이 실제로 딛고 오르내린다. 딛는 높이가 튀는 박을 정한다(한 칸 높을 때마다 1/8박 일찍) — 오를 때는 0.875박, 내릴 때는 1.125박 만에 다음 단에 닿는다
     const s6 = Lg.spawnState(lv, -1), inp6 = Lg.planInput(lv.ref), bn = [];
@@ -455,7 +473,7 @@ for (const C of Lg.COURSES) {
       ok(uniq.join(',') === '1,0.5,0.25,0.125,0.0625,0.03125' && hits === sq.pts.length - 2, `[${tag}] 조여드는 통로(마디 ${sq.x0 / 16}~${sq.x1 / 16 - 1}): 닿는 간격 ${uniq.join(' → ')}박, 모두 ${hits}번 친다`);
       ok(Math.abs(Lg.squeezeGap(lv, sq.x0) - 2 * Lg.ZIG_STEP) < 1e-9 && Lg.squeezeGap(lv, sq.x1) < 0.13 && Lg.squeezeGap(lv, sq.x0 - 1) === null, `[${tag}] 통로 폭이 ${(2 * Lg.ZIG_STEP).toFixed(1)}칸에서 ${Lg.squeezeGap(lv, sq.x1).toFixed(2)}칸까지 좁아진다`);
       const goalBar = C.bars.indexOf('goal');
-      { const endBar = sq.x1 / 16, after = C.bars[endBar]; ok(sq.x1 === goalBar * 16 || after === 'cp', `[${tag}] 조여드는 통로는 피버의 맨 끝에 있다: 끝나는 순간이 ${sq.x1 === goalBar * 16 ? '곡의 끝맺는 한 방' : '체크포인트 마디의 첫 박'}(마디 ${endBar})`); }
+      { const endBar = sq.x1 / 16, after = C.bars[endBar]; ok(sq.x1 === goalBar * 16 || after === 'cp' || !!(Lg.PATTERNS[after] && Lg.PATTERNS[after].cp), `[${tag}] 조여드는 통로는 피버의 맨 끝에 있다: 끝나는 순간이 ${sq.x1 === goalBar * 16 ? '곡의 끝맺는 한 방' : '체크포인트 마디의 첫 박'}(마디 ${endBar})`); }
     }
   }
 }
