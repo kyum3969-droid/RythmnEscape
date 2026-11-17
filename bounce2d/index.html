@@ -887,7 +887,8 @@
       const floating = (c, r) => { if (r < 0 || r >= ROWS - 1 || !isSolid(L, c, r)) return false; for (let k = r + 1; k < ROWS; k++) if (!isSolid(L, c, k)) return true; return false; };
       const hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25), bonk = Math.max(0, 1 - (now - (fx.bonkAt || -9)) / 0.25);
       for (let r = 0; r < ROWS - 1; r++) for (let c = cA; c <= cB; c++) {
-        if (!floating(c, r) || floating(c - 1, r) || floating(c, r - 1)) continue;
+        if (!floating(c, r) || (c > cA && floating(c - 1, r)) || floating(c, r - 1)) continue;
+        while (floating(c - 1, r) && !floating(c - 1, r - 1)) c--;      // 왼쪽 끝이 화면 밖으로 나가도 박스는 끝까지 그린다(안 그러면 지나가는 도중에 사라진다)
         let e = c; while (floating(e + 1, r) && !floating(e + 1, r - 1)) e++;
         let rb = r; const rowAll = (k) => { for (let q = c; q <= e; q++) if (!floating(q, k)) return false; return true; };
         while (rowAll(rb + 1)) rb++;

@@ -362,7 +362,7 @@ for (const C of Lg.COURSES) {
       ok(uniq.join(',') === '1,0.5,0.25,0.125,0.0625,0.03125' && hits === sq.pts.length - 2, `[${tag}] 조여드는 통로(마디 ${sq.x0 / 16}~${sq.x1 / 16 - 1}): 닿는 간격 ${uniq.join(' → ')}박, 모두 ${hits}번 친다`);
       ok(Math.abs(Lg.squeezeGap(lv, sq.x0) - 2 * Lg.ZIG_STEP) < 1e-9 && Lg.squeezeGap(lv, sq.x1) < 0.13 && Lg.squeezeGap(lv, sq.x0 - 1) === null, `[${tag}] 통로 폭이 ${(2 * Lg.ZIG_STEP).toFixed(1)}칸에서 ${Lg.squeezeGap(lv, sq.x1).toFixed(2)}칸까지 좁아진다`);
       const goalBar = C.bars.indexOf('goal');
-      ok(sq.x1 === goalBar * 16, `[${tag}] 통로가 끝나는 순간이 곡의 끝맺는 한 방(마디 ${goalBar} 첫 박)`);
+      { const endBar = sq.x1 / 16, after = C.bars[endBar]; ok(sq.x1 === goalBar * 16 || after === 'cp', `[${tag}] 조여드는 통로는 피버의 맨 끝에 있다: 끝나는 순간이 ${sq.x1 === goalBar * 16 ? '곡의 끝맺는 한 방' : '체크포인트 마디의 첫 박'}(마디 ${endBar})`); }
     }
   }
 }
@@ -460,8 +460,8 @@ console.log('== 떠 있는 박스: 이단 점프로 올라타는 파란 박스, 
       p.presses.forEach((t, i) => { if (p.presses.some(u => Math.abs(u - (t - 0.625)) < 1e-9)) alts.push({ presses: p.presses.filter((_, j) => j !== i), holds: p.holds }); });   // 뛰어야 하는데 떨어진다
       for (const alt of alts) {
         n++;
-        const P = new Set(), H = [];
-        C.bars.forEach((nm, k) => { const q = Lg.PATTERNS[nm]; if (!q || q.mode === 'rush') return; const u = k === b ? alt : q; for (const t of u.presses) P.add(Math.round((4 * k + t) * 96)); for (const h of u.holds) H.push([Math.round((4 * k + h[0]) * 96), Math.round((4 * k + h[1]) * 96)]); });
+        const lo = b * 384, inBar = (st) => st >= lo && st < lo + 384;       // 이 마디의 입력만 바꾼다(다른 마디는 피버까지 패턴대로)
+        const P = new Set([...lvC.ref.presses.filter(v => !inBar(v)), ...alt.presses.map(t => lo + Math.round(t * 96))]), H = [...lvC.ref.holds.filter(h => !inBar(h[0])), ...alt.holds.map(h => [lo + Math.round(h[0] * 96), lo + Math.round(h[1] * 96)])];
         const sC = Lg.spawnState(lvC, -1); while (!sC.dead && !sC.won && sC.x < (b + 1) * 16 + 4) { const st = sC.step + 1; Lg.stepState(lvC, sC, P.has(st), null, H.some(h => st >= h[0] && st < h[1])); }
         if (sC.dead && sC.x >= b * 16 && sC.x < (b + 1) * 16 + 0.5) deadN++;
       }
