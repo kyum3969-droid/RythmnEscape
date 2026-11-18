@@ -546,6 +546,47 @@ const PATTERNS = {
   g10z78: { mode: "rush", nodes: "F.F.S.S." },
   g10_79: { holds: [[0.5, 1.375], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
   // </gen:patterns:R10>
+  // <gen:patterns:R11>
+  // 도구(tools_gen_course.js R11 4)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
+  g11_5: { holds: [[0.5, 1.375], [2.5, 3.25]], presses: [], tol: 0.18, caps: [[9, 15, 3]], traps: [{presses: [2.5], holds: [[0.5, 1.375]]}] },
+  g11_6: { holds: [[0.5, 1.375]], presses: [2.5], tol: 0.18 },
+  g11_7: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g11_11: { holds: [[0.5, 1], [2.25, 3.25]], presses: [], tol: 0.18, bands: [[9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g11_12"], stair: true, floats: [[3, 7, 2], [12, 14, 4]], lava: [[1, 15]] },   // 음이 올라가는 구간 — 오르는 계단: 계단: 빨간 단을 건너뛰어 2 → 빨간 단을 건너뛰어 4 → 빨간 단을 건너뛰어 6 → 3 → 0
+  g11_12: { holds: [[0, 1]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [0, 2, 7.6, 9.4]], lead: ["g11_11"], stair: true, floats: [[3, 5, 6], [9, 11, 3]], lava: [[0, 13]] },
+  g11_13: { holds: [[0.5, 1.125], [1.875, 2.875]], presses: [1.375], tol: 0.18, rings: [[5, 0], [5, 1], [5, 2]], chain: 1 },
+  g11_14: { holds: [[0.5, 1.375], [2.5, 3.375]], presses: [], tol: 0.18 },
+  g11_15: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g11_19: { holds: [[0.5, 1], [1.75, 2.5]], presses: [1.25], tol: 0.18, rings: [[4, 0], [4, 1], [4, 2]], chain: 1 },
+  g11_21: { holds: [[0.5, 0.75], [1.75, 2.5]], presses: [1.25], tol: 0.18, rings: [[4, 0], [4, 1], [4, 2]], chain: 1, traps: [{full: {presses: [1.25], holds: [[0.5, 1], [1.75, 2.5]]}}] },   // 함정(끝의 멈춤이 짧다 0.25박): 앞 마디와 같이 가다가 한 군데가 다르다
+  g11_22: { holds: [[2.5, 3.375]], presses: [0.5], tol: 0.18 },
+  g11_23: { holds: [[0.5, 1.125], [1.75, 2.5]], presses: [1.25], tol: 0.18, cp: true, rings: [[4, 0], [4, 1], [4, 2]], chain: 1 },   // 체크포인트 마디
+  g11_29: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18 },
+  g11_30: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18 },
+  g11_31: { holds: [[0.5, 1.25], [2, 3]], presses: [1.5], tol: 0.18, cp: true, rings: [[5, 0], [5, 1], [5, 2]], chain: 1 },   // 체크포인트 마디
+  g11_35: { holds: [[0.5, 1.25], [2.5, 3.375]], presses: [], tol: 0.18, caps: [[1, 7, 3]], traps: [{presses: [0.5], holds: [[2.5, 3.375]]}] },
+  g11_37: { holds: [[0.5, 1.25], [2.5, 3]], presses: [], tol: 0.18, caps: [[1, 7, 3]], traps: [{full: {presses: [], holds: [[0.5, 1.25], [2.5, 3.375]]}}, {presses: [0.5], holds: [[2.5, 3]]}] },   // 함정(끝의 멈춤이 짧다 0.375박): 앞 마디와 같이 가다가 한 군데가 다르다
+  g11_38: { holds: [[0.5, 1.25], [2, 3]], presses: [1.5], tol: 0.18, rings: [[5, 0], [5, 1], [5, 2]], chain: 1 },
+  g11_39: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g11w41: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFSF.S." },
+  g11w43: { mode: "rush", wide: true, gap: 1.5, nodes: ".FS.SFS." },   // 뚝: 앞 마디(.FFSF.S.)와 같이 가다가 끊긴다
+  g11w44: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBBF.." },
+  g11w45: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBFF.." },   // 함정(판이 없다): 앞 마디(.FFBBF..)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g11_47: { holds: [[2.5, 3.25]], presses: [0.5], tol: 0.18, tall: [0.5], cp: true },   // 체크포인트 마디
+  g11_52: { holds: [[2.5, 3.25]], presses: [0.625], tol: 0.18 },
+  g11_54: { holds: [[2.5, 2.875]], presses: [0.625], tol: 0.18, traps: [{full: {presses: [0.625], holds: [[2.5, 3.25]]}}] },   // 함정(끝의 멈춤이 짧다 0.375박): 앞 마디와 같이 가다가 한 군데가 다르다
+  g11_55: { holds: [[0.5, 1.375], [2.5, 3.25]], presses: [], tol: 0.18, cp: true, caps: [[9, 15, 3]], traps: [{presses: [2.5], holds: [[0.5, 1.375]]}] },   // 체크포인트 마디
+  g11_59: { holds: [[0.5, 1.5], [3.875, 4.875]], presses: [2.25], tol: 0.18, bands: [[3, 5, 1, 2], [2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], loose: [3.875], tail: ["g11_60"], stair: true, floats: [[5, 7, 2], [12, 14, 5]], lava: [[1, 15]], traps: [{holds: [[0.5, 1], [3.875, 4.875]]}] },   // 같은 오르막이 다시(멈춤 길이가 다르다): 함정(멈춤이 길다: 멈춰서 건너뛰던 단에서 이번엔 더 오래 멈춘다. 버릇대로 일찍 놓으면 내려설 단 앞의 빨간 단에 내려앉는다)
+  g11_60: { holds: [], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [0, 2, 8.6, 10.4]], lead: ["g11_59"], stair: true, floats: [[3, 6, 5], [9, 11, 3]], lava: [[0, 13]] },
+  g11_63: { holds: [[0.5, 1.25], [2.5, 3.5]], presses: [], tol: 0.18, cp: true, caps: [[1, 7, 3]], traps: [{presses: [0.5], holds: [[2.5, 3.5]]}] },   // 체크포인트 마디
+  g11_66: { holds: [[2.5, 3.25]], presses: [0.5], tol: 0.18 },
+  g11_68: { holds: [[2.5, 2.875]], presses: [0.5], tol: 0.18, traps: [{full: {presses: [0.5], holds: [[2.5, 3.25]]}}] },   // 함정(끝의 멈춤이 짧다 0.375박): 앞 마디와 같이 가다가 한 군데가 다르다
+  g11_71: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g11z72: { mode: "rush", nodes: "F.F...S." },
+  g11z74: { mode: "rush", nodes: "F.S.F.S." },   // 뚝: 앞 마디(F.F...S.)와 같이 가다가 끊긴다
+  g11z75: { mode: "rush", nodes: "F.F.F.B." },
+  g11z76: { mode: "rush", nodes: "F.F.F.F." },   // 함정(판이 없다): 앞 마디(F.F.F.B.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g11z77: { mode: "rush", nodes: "F...S.F." },
+  // </gen:patterns:R11>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
   // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 바로 위의 빨간 덩어리에 부딪힌다
@@ -682,6 +723,14 @@ const PATTERNS = {
   grindPit: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18, set: true, movers: [...PIT(4), ...PIT(12), LIFT(4, 1), LIFT(12, 3, true)], traps: [{ full: { presses: [0.5, 2.5], holds: [] } }, { full: { presses: [], holds: [[0.5, 1.5], [2.5, 3.5]] } }] },
   hamPit: { holds: [[1.5, 2.5]], presses: [], tol: 0.18, set: true, movers: [HAM(0), HAM(1), ...PIT(8), HAM(3)], traps: [{ presses: [0.5] }, { presses: [3.5] }] },
   hamDrop: { holds: [], presses: [2.5], tol: 0.18, set: true, movers: [HAM(0), HAM(1), LOWR(10.6, 3)], traps: [{ presses: [0.5] }, { presses: [1.5] }] },
+  // ---- 속임수의 세트 마디(11라운드): "보이는 것과 정답이 다르다"(DESIGN.md의 좋은 함정의 모양)
+  //   djHold    높은 기둥을 이단 점프로 넘고, 이어지는 땅의 빨간 덩어리 위를 멈춰서 건넌다(이단 점프 → 멈춤)
+  //   duckDrop  (djHold의 뒤집기) 같은 기둥을 넘었는데 앞에 빨간 계단(두 단)이 떠 있다 — 넘어야 할 것 같지만, 아무것도 누르지 않고 떨어져 그 밑으로 지나간다.
+  //             버릇대로 멈추면 매달린 덩어리에 부딪히고, 한 번 더 뛰면 위의 층에 걸린다
+  //   liftSwap  (grindPit의 뒤집기) 같은 두 구덩이와 엇갈려 오르내리는 롤러인데 박이 반대다: 첫째 구덩이는 롤러가 위에 있어 멈춰서 밑으로, 둘째는 롤러가 내려와 있어 이단 점프로
+  djHold: { holds: [[1.0, 1.75]], presses: [0.5], tol: 0.18, set: true, redBox: [[4, 4, 2.3], [5, 7, 2.0]] },
+  duckDrop: { holds: [], presses: [0.5], tol: 0.18, set: true, redBox: [[4, 4, 2.3]], redFloat: [[7, 8, 3.3, 4.8], [9, 10, 4.3, 5.8]], traps: [{ presses: [0.5], holds: [[1.0, 1.75]] }, { presses: [2.5] }] },
+  liftSwap: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18, set: true, movers: [...PIT(4), ...PIT(12), LIFT(4, 1, true), LIFT(12, 3)], traps: [{ full: { presses: [0.5, 2.5], holds: [] } }, { full: { presses: [], holds: [[0.5, 1.5], [2.5, 3.5]] } }, { full: { presses: [0.5], holds: [[2.5, 3.5]] } }] },
   // ---- 울타리(9라운드부터): 땅에서 튀는 길의 한가운데 밑에 빨간 기둥이 줄지어 서 있다. 공은 그냥 튀어서 넘어간다(누를 것이 없다 — "아무것도 안 하는" 버릇이 생긴다).
   //   그러다 기둥 하나가 내려설 자리에 서 있다: 꼭대기에서 뛰어(이단 점프) 넘는다(멈춤으로 떠서 넘어도 된다). 길잡이는 이단 점프를 보여 준다.
   //   기둥은 높이 1.25칸, 두 칸 너비. 튀는 길의 한가운데(꼭대기 밑)에서는 공과 0.15칸 넘게 떨어져 지나간다.
@@ -1260,7 +1309,57 @@ const ROUND10 = {
     { bar: 56, id: "a" }, { bar: 64, id: "b" }, { bar: 72, id: "rush" }, { bar: 79, id: "c" }, { bar: 80, id: "a" }, { bar: 88, id: "outro" },
   ],
 };
-const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8, ROUND9, ROUND10];
+// 11라운드: Velocity of Silk. 150.00 BPM, 첫 박 0.078초, 129.0초. 마디 78의 첫 박에 곡이 끝나고 사그라든다.
+// 곡의 짜임(마디): 0~7 조용한 도입 / 8~15 차오름 A / 16~22 더 꽉 참 B, 23 넘어감 / 24~30 고음만 남는 브레이크, 31 끊김 / 32~38 저음 그루브, 39 넘어감
+//                / 40~45 가장 센 드롭, 46~47 끊김 / 48~55 조용함 / 56~63 A 다시 / 64~71 조용한 빌드업 / 72~77 마지막 드롭 / 78 끝
+// 속임수의 라운드: "보이는 것과 정답이 다르다"(DESIGN.md). 짜임은 tools_gen_course.js의 TEMPLATES.R11
+const ROUND11 = {
+  name: "ROUND 11 · Velocity of Silk",
+  bpm: 150.0,
+  track: { file: "music/velocity_of_silk.mp3", offset: 0.078, measured: true },
+  floatReds: true, vary: true, density: 0.95, climb: "stairs",
+  goalAt: 0,                                       // 곡이 끝나는 박(마디 78의 첫 박)에 결승선을 지난다
+  cam: [{ bar: 42, rot: 45 }, { bar: 44, rot: 0 }, { bar: 74, rot: -45 }, { bar: 76, rot: 0 }],
+  pal: {                                         // 이 라운드의 색: 비단 — 짙은 자주와 은빛, 연한 보라 빛. 주황·분홍은 쓰지 않는다(빨간 장애물과 헷갈린다)
+    intro: { top: "#0a0710", bottom: "#2a2238", accent: "#d9c8ff", sun: "#f4ecff" },
+    a:     { top: "#08060f", bottom: "#2b2450", accent: "#b9a4ff", sun: "#efe8ff" },
+    b:     { top: "#0a0a12", bottom: "#33304a", accent: "#e6ddff", sun: "#ffffff" },
+    c:     { top: "#060810", bottom: "#1f2c48", accent: "#9fd4ff", sun: "#e6f4ff" },
+    d:     { top: "#0b0710", bottom: "#3a2846", accent: "#e0b8ff", sun: "#f7ecff" },
+    rush:  { top: "#040308", bottom: "#28243a", accent: "#ffffff", sun: "#d9c8ff" },
+  },
+  // 11라운드의 마디도 도구(tools_gen_course.js R11)가 뽑는다. 짜임은 틀(TEMPLATES.R11)에 정해 두었다.
+  bars: [
+    // <gen:bars:R11>
+    // 조용한 도입 — 속임수를 소개한다: 내려설 자리의 기둥을 뛰어 넘기 ×2 → 기둥은 그대로 서 있는데 이번엔 모두 튀는 길 밑이다(아무것도 안 누른다. 뛰면 다음 기둥에 떨어진다)
+    "flat", "flat", "fenceJ", "fenceJ",   "fence", "g11_5", "g11_6", "g11_7",
+    // 차오름 A: 높은 기둥을 이단 점프 → 땅의 덩어리 위를 멈춰서 ×2 → 같은 기둥 뒤에 덩어리가 매달려 있다(손을 떼고 떨어져 그 밑으로). 음이 올라가는 두 마디는 오르는 계단
+    "djHold", "djHold", "duckDrop", "g11_11",   "g11_12", "g11_13", "g11_14", "g11_15",
+    // 더 꽉 찬 B: 엇갈려 오르내리는 롤러의 두 구덩이(이단 점프 → 멈춤) ×2 → 박이 반대(멈춤 → 이단 점프). 이어서 멈춤 길이 함정
+    "grindPit", "grindPit", "liftSwap", "g11_19",   "g11_19", "g11_21", "g11_22", "g11_23",
+    // 고음만 남는 브레이크 — 고리: 삼단 점프 ×2 → 미끼 고리(고리가 있는데 뛰면 안 된다). 그림의 공중 사슬
+    "ring3", "ring3", "ring3Bait", "airStep",   "airRing", "g11_29", "g11_30", "g11_31",
+    // 저음 그루브 — 울타리: 내려설 자리의 기둥 뛰어 넘기 → 한 박 일찍 → 위에 빨간 막대(멈춰서). 멈춤 길이 함정
+    "fenceJ", "fenceJ1", "fenceH", "g11_35",   "g11_35", "g11_37", "g11_38", "g11_39",
+    // 가장 센 드롭 — 피버 하나(넓은 통로): 되풀이 → 뚝, 튕김판 → 판이 없다
+    "wUp", "g11w41", "g11w41", "g11w43",   "g11w44", "g11w45", "wDn", "g11_47",
+    // 조용함: 한 번 보여 주고 바로 뒤집기(멈춤 → 떨어지기), 망치 사이로 멈춰서 → 뒤집기, 멈춤 길이 함정
+    "djHold", "duckDrop", "hamGlide", "hamMix",   "g11_52", "g11_52", "g11_54", "g11_55",
+    // A 다시: 기둥 뒤 덩어리 ×2 → 떨어지기, 같은 멜로디의 오르막은 이번엔 멈춤 길이가 다르다. 롤러 구덩이 → 박이 반대
+    "djHold", "djHold", "duckDrop", "g11_59",   "g11_60", "grindPit", "liftSwap", "g11_63",
+    // 조용한 빌드업: 그림의 공중 사슬, 멈춤 길이 함정, 삼단 점프 → 미끼 고리
+    "airStep", "airRing", "g11_66", "g11_66",   "g11_68", "ring3", "ring3Bait", "g11_71",
+    // 마지막 드롭 — 피버 둘(좁은 통로): 되풀이 → 뚝, 튕김판 → 판이 없다. 곡이 끝나는 박에 결승선
+    "g11z72", "g11z72", "g11z74", "g11z75",   "g11z76", "g11z77",
+    "goal", "flat", "flat",
+    // </gen:bars:R11>
+  ],
+  sections: [
+    { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 16, id: "b" }, { bar: 24, id: "c" }, { bar: 32, id: "d" }, { bar: 40, id: "rush" }, { bar: 47, id: "c" },
+    { bar: 56, id: "a" }, { bar: 64, id: "d" }, { bar: 72, id: "rush" }, { bar: 78, id: "outro" },
+  ],
+};
+const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8, ROUND9, ROUND10, ROUND11];
 const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.

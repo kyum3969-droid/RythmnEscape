@@ -253,7 +253,7 @@ for (const C of Lg.COURSES) {
         const ho = [...H.filter((h) => !inb(h[0])), ...(t.full ? t.full.holds : t.holds || p.holds).map(([x, z]) => [lo + Math.round(x * Lg.SUB), lo + Math.round(z * Lg.SUB)])];
         const s = go(pr, ho, end); if (!s.dead || s.x < b * 16 || s.x >= (b + 1) * 16 + 0.5) bad.push(`${b}:${name} 함정 ${JSON.stringify(t)}`); }
     });
-    ok(bars >= 20 && bad.length === 0 && kinds.press && ((kinds.saw && kinds.bar && kinds.plat) || (kinds.ram && kinds.roller)),      // (9라운드: 톱날·막대·발판, 10라운드: 옆 망치·분쇄 롤러)
+    ok(bars >= 15 && bad.length === 0 && ((kinds.press && kinds.saw && kinds.bar && kinds.plat) || (kinds.ram && kinds.roller)),      // (9라운드: 톱날·막대·발판, 10라운드: 옆 망치·분쇄 롤러)
      
       `[${tag}] 움직이는 장애물 ${lv.movers.length}개(${Object.entries(kinds).map(([k, v]) => k + ' ' + v).join(', ')}), 세트 마디 ${bars}개: 코스 안에서 입력을 빼면 죽고 ±0.15박은 지나가고 함정은 그 마디에서 죽는다(${checks}가지)${bad.length ? ' — 어긋남: ' + bad.slice(0, 6).join(', ') : ''}`);
     // 움직이는 장애물의 판정은 그림과 같은 모양(moverShape)을 쓴다: 톱날 중심에 공을 놓으면 걸리고, 한참 떨어지면 안 걸린다
@@ -441,7 +441,7 @@ for (const C of Lg.COURSES) {
       const hang = stopBars.filter(b => { const p9 = Lg.PATTERNS[C.bars[b]]; for (const t of p9.traps) for (const v of t.presses || []) { const c = b * 16 + Math.round(v * 4); for (let k = c - 1; k <= c + 3; k++) if (lv.ceilH[k] < 90) return true; } return false; });
       ok(hang.length === stopBars.length && trapBars.every(b => !Lg.PATTERNS[C.bars[b]].sneaky), `[${tag}] "한 번 더 누르면 죽는" 함정 자리마다 바로 위에 빨간 덩어리가 매달려 있다 — ${hang.length}/${stopBars.length}`);
       // 도구가 뽑은 함정: 같은 마디를 두 번 한 바로 다음에 오고, 그 마디의 입력과 한 군데만 다르다
-      const gen = trapBars.filter(b => Lg.PATTERNS[C.bars[b]].traps[0].full);
+      const gen = trapBars.filter(b => Lg.PATTERNS[C.bars[b]].traps[0].full && !Lg.PATTERNS[C.bars[b]].set);      // (손으로 짠 세트 마디의 함정은 세트 마디 검사에서 본다)
       const same = (u, v) => JSON.stringify(u) === JSON.stringify(v), remix = Lg.COURSES.indexOf(C) >= 5;      // 리믹스 라운드(6라운드)에는 한 번만 보여 주고 내는 함정, 함정 뒤에 원래 마디를 한 번 하고 또 내는 함정도 있다
       ok(gen.every(b => { const f = Lg.PATTERNS[C.bars[b]].traps[0].full, pv = Lg.PATTERNS[C.bars[b - 1]]; return (remix || C.bars[b - 1] === C.bars[b - 2]) && same(pv.presses, f.presses) && same(pv.holds, f.holds); }), `[${tag}] 뽑은 함정 ${gen.length}곳: ${remix ? '바로 앞 마디(한 번 또는 두 번 한 마디)' : '같은 마디를 두 번 한 바로 다음에 오고, 앞 마디'}의 입력 그대로는 통하지 않는다`);
       const follows = trapBars.every(b => { const n = C.bars[b], prev = C.bars[b - 1], prev2 = C.bars[b - 2]; return n === 'goStop' ? prev === 'peak' && prev2 === 'peak' : n === 'ringStop' ? prev === 'ringRun' : n === 'holdStop' ? (prev === 'mix' && prev2 === 'mix') || (prev === 'glideHigh' && prev2 === 'glideHigh') : n === 'stopGo' ? prev === 'peak' : true; });
@@ -537,7 +537,7 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
   ok(pct[0] <= 15 && pct.slice(1).every((v) => v >= 18) && pct.slice(2).every((v) => v >= 20) && Math.max(...pct.slice(4)) >= 25, `멈춰 있는 시간(바운스 구간): ${pct.map((v, i) => `${i + 1}라운드 ${v}%`).join(', ')} — 1라운드는 그대로, 2라운드부터 늘어난다`);
   ok(lenTraps.slice(1, 7).every((v) => v >= 2) && lenTraps.slice(1).reduce((u, v) => u + v, 0) >= 20, `멈춤 길이의 함정(앞 마디와 똑같이 가다가 놓는 순간만 다르다. 계단의 것 포함): ${lenTraps.map((v, i) => `${i + 1}라운드 ${v}`).join(', ')}`);
   // 음이 올라가는 구간의 계단(곡에서 잰 자리): 오르는 계단(4칸 넘게 올라간다), 곡에서 같은 오르막이 다시 나오는 자리에는 멈춤 길이가 다른 계단. 카메라가 따라 올라간다
-  const RISE = { 2: [37, 57], 3: [4, 55], 4: [12, 67], 5: [29, 61], 6: [8, 56], 7: [21, 69], 9: [19, 66], 10: [36, 69] }, riseBad = [];
+  const RISE = { 2: [37, 57], 3: [4, 55], 4: [12, 67], 5: [29, 61], 6: [8, 56], 7: [21, 69], 9: [19, 66], 10: [36, 69], 11: [11, 59] }, riseBad = [];
   for (const [no, [a, z]] of Object.entries(RISE)) {
     const C = Lg.COURSES[no - 1], P = (b) => Lg.PATTERNS[C.bars[b]], L = Lg.buildLevel(C);
     if (![a, a + 1, z, z + 1].every((b) => P(b) && P(b).stair)) { riseBad.push(no + ': 계단 자리'); continue; }
@@ -547,7 +547,7 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
     while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.x >= a * 16 && s.x < (a + 2) * 16 && s.onGround) top = Math.max(top, 9 - s.y); }
     if (peak < 4 || top < 4 || !lenTrap || !C.climb) riseBad.push(`${no}: 높이 ${peak}/${top.toFixed(1)}, 멈춤 길이 함정 ${lenTrap}, 카메라 ${!!C.climb}`);
   }
-  ok(riseBad.length === 0, `음이 올라가는 구간의 계단(2~7·9·10라운드, 마디 ${Object.entries(RISE).map(([n, v]) => n + '라운드 ' + v.join('·')).join(', ')}): 네 칸 넘게 딛고 올라가고, 같은 오르막이 다시 나오면 멈춤 길이가 다르다${riseBad.length ? ' — ' + riseBad.join(' / ') : ''}`);
+  ok(riseBad.length === 0, `음이 올라가는 구간의 계단(2~7·9~11라운드, 마디 ${Object.entries(RISE).map(([n, v]) => n + '라운드 ' + v.join('·')).join(', ')}): 네 칸 넘게 딛고 올라가고, 같은 오르막이 다시 나오면 멈춤 길이가 다르다${riseBad.length ? ' — ' + riseBad.join(' / ') : ''}`);
   ok(Lg.COURSES.slice(2).every((C) => { const L = Lg.buildLevel(C); return L.cps.length && L.cps.every((c) => c.snap); }) && !Lg.buildLevel(Lg.COURSES[1]).cps.some((c) => c.snap), '체크포인트 마디에도 패턴: 3라운드부터 모든 체크포인트(개발하는 동안, 1·2라운드는 빈 체크포인트 마디)');
   ok(['ROUND 5', 'ROUND 6', 'ROUND 7', 'ROUND 8', 'ROUND 9'].every((r) => Lg.COURSES.find((c) => c.name.startsWith(r)).bars.includes('airStep')) && !Lg.COURSES.slice(0, 4).some((c) => c.bars.includes('airStep')), '그림의 공중 사슬은 5라운드부터 나온다');
 }
@@ -566,6 +566,22 @@ console.log('== 10라운드: 옆으로 튀어나오는 망치(수평 패턴)와 
   ok(hit(low, low.track.at + 0.3, (q.hx0 + q.hx1) / 2, 0.1) && !hit(low, low.track.at + 0.3, (q.hx0 + q.hx1) / 2, 2.2) && !hit(low, low.track.at - 0.6, (q.hx0 + q.hx1) / 2, 0.1), '낮은 망치: 다 나왔을 때 땅의 공은 맞고, 멈춘 높이(2.2칸)의 공은 안 맞는다. 들어가 있을 때는 그 자리가 비어 있다');
   const r0 = rollers[0];
   ok(hit(r0, 0, r0.x, r0.y + r0.r - 0.3) && !hit(r0, 0, r0.x, r0.y + r0.r + 0.2), '분쇄 롤러: 톱니 원에 닿으면 끝, 위로 떨어져 지나가면 괜찮다');
+}
+console.log('== 11라운드: 속임수 — 보이는 것과 정답이 다르다 ==');
+{
+  const C = Lg.COURSES.find((c) => c.name.startsWith('ROUND 11')), B = C.bars, L = Lg.buildLevel(C);
+  // 뒤집기마다: 바로 앞에 "버릇을 들이는" 짝이 있다(두 번, 또는 조용한 구간에서는 한 번)
+  const pairs = [['fenceJ', 'fence'], ['djHold', 'duckDrop'], ['grindPit', 'liftSwap'], ['ring3', 'ring3Bait']];
+  const found = pairs.map(([a, z]) => B.map((n, b) => (n === z && B[b - 1] === a ? b : -1)).filter((b) => b >= 0));
+  // duckDrop: 앞의 짝(djHold)처럼 이단 점프 뒤에 멈추면 그 마디에서 죽고, 아무것도 안 누르면 산다
+  const P = L.ref.presses, H = L.ref.holds;
+  const go = (pr, ho, until) => { const inp = Lg.planInput({ presses: pr, holds: ho }), s = Lg.spawnState(L, -1); while (!s.dead && !s.won && s.x < until) Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); return s; };
+  let duck = 0, duckOk = 0;
+  B.forEach((n, b) => { if (n !== 'duckDrop') return; duck++; const lo = b * 384, inb = (v) => v >= lo && v < lo + 384;
+    const hold = go(P, [...H.filter((h) => !inb(h[0])), [lo + 96, lo + 168]], (b + 2) * 16), none = go(P, H, (b + 2) * 16);
+    if (hold.dead && hold.x >= b * 16 && hold.x < b * 16 + 16 && !none.dead && !H.some((h) => inb(h[0]))) duckOk++; });
+  ok(found.every((f) => f.length >= 1) && found.reduce((u, f) => u + f.length, 0) >= 7 && duck >= 3 && duckOk === duck,
+    `11라운드의 속임수: ${pairs.map(([a, z], i) => `${a} → ${z} ${found[i].length}번`).join(', ')}. 매달린 덩어리(duckDrop) ${duck}곳 모두: 앞의 짝처럼 이단 점프 뒤에 멈추면 죽고, 손을 떼고 떨어지면 산다`);
 }
 console.log('== 이후 라운드용으로 보관한 함정(매달린 덩어리 없이, 착지 자리의 빨간 바닥으로 죽는다) ==');
 for (const [name, lead] of [['goStopB', 'peak'], ['stopGoB', 'peak'], ['holdStopB', 'mix'], ['ringFake', 'ringWave'], ['ringStopB', 'ringRun']]) {

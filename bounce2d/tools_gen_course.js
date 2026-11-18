@@ -305,6 +305,36 @@ TEMPLATES.R10 = {
   },
 };
 
+// 11라운드(Velocity of Silk): 속임수의 라운드 — "보이는 것과 정답이 다르다". 두 번 보여 주고 뒤집되, 뒤집은 장면은 앞의 것과 거의 같아 보인다.
+//   fenceJ×2 → fence(기둥이 그대로인데 이번엔 아무것도 안 누른다), djHold×2 → duckDrop(이단 점프 뒤 멈추던 자리에 매달린 덩어리: 손을 떼고 떨어진다),
+//   grindPit×2 → liftSwap(같은 구덩이와 롤러인데 박이 반대: 멈춤과 이단 점프가 바뀐다), ring3×2 → ring3Bait(고리가 있는데 뛰면 안 된다),
+//   음이 올라가는 11~12마디의 오르는 계단 → 같은 멜로디의 59~60마디에서 멈춤 길이가 다른 계단. 멈춤 길이 함정도 섞는다.
+// 피버는 가장 센 드롭(40~46)과 마지막 드롭(72~77) 두 곳.
+TEMPLATES.R11 = {
+  prefix: 'g11', bpm: 150.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
+  rise: [{ at: 11, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 59, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리. 같은 멜로디가 두 번)
+  recipe: { g: 'a7', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a7' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a7', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const RISE = 'flat';      // (음이 올라가는 구간의 계단이 이 자리를 대신한다: 틀의 rise)
+    return [
+      ['조용한 도입 — 속임수를 소개한다: 내려설 자리의 기둥을 뛰어 넘기 ×2 → 기둥은 그대로 서 있는데 이번엔 모두 튀는 길 밑이다(아무것도 안 누른다. 뛰면 다음 기둥에 떨어진다)', ['flat', 'flat', 'fenceJ', 'fenceJ', 'fence', one(), one(), 'cp']],
+      ['차오름 A: 높은 기둥을 이단 점프 → 땅의 덩어리 위를 멈춰서 ×2 → 같은 기둥 뒤에 덩어리가 매달려 있다(손을 떼고 떨어져 그 밑으로). 음이 올라가는 두 마디는 오르는 계단', ['djHold', 'djHold', 'duckDrop', RISE, RISE, one(), one(), 'cp']],
+      ['더 꽉 찬 B: 엇갈려 오르내리는 롤러의 두 구덩이(이단 점프 → 멈춤) ×2 → 박이 반대(멈춤 → 이단 점프). 이어서 멈춤 길이 함정', ['grindPit', 'grindPit', 'liftSwap', ...phrase('short-last'), one(), 'cp']],
+      ['고음만 남는 브레이크 — 고리: 삼단 점프 ×2 → 미끼 고리(고리가 있는데 뛰면 안 된다). 그림의 공중 사슬', ['ring3', 'ring3', 'ring3Bait', 'airStep', 'airRing', one(), one(), 'cp']],
+      ['저음 그루브 — 울타리: 내려설 자리의 기둥 뛰어 넘기 → 한 박 일찍 → 위에 빨간 막대(멈춰서). 멈춤 길이 함정', ['fenceJ', 'fenceJ1', 'fenceH', ...phrase('long-last'), one(), 'cp']],
+      ['가장 센 드롭 — 피버 하나(넓은 통로): 되풀이 → 뚝, 튕김판 → 판이 없다', ['wUp', { wm: 'A', calm: 1, run: 2 }, { wr: 'A' }, { wt: 'A', kind: 'break' }, { wm: 'B', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'B', kind: 'pad' }, 'wDn', 'cp']],
+      ['조용함: 한 번 보여 주고 바로 뒤집기(멈춤 → 떨어지기), 망치 사이로 멈춰서 → 뒤집기, 멈춤 길이 함정', ['djHold', 'duckDrop', 'hamGlide', 'hamMix', ...phrase('short-last'), 'cp']],
+      ['A 다시: 기둥 뒤 덩어리 ×2 → 떨어지기, 같은 멜로디의 오르막은 이번엔 멈춤 길이가 다르다. 롤러 구덩이 → 박이 반대', ['djHold', 'djHold', 'duckDrop', RISE, RISE, 'grindPit', 'liftSwap', 'cp']],
+      ['조용한 빌드업: 그림의 공중 사슬, 멈춤 길이 함정, 삼단 점프 → 미끼 고리', ['airStep', 'airRing', ...phrase('long-last'), 'ring3', 'ring3Bait', 'cp']],
+      ['마지막 드롭 — 피버 둘(좁은 통로): 되풀이 → 뚝, 튕김판 → 판이 없다. 곡이 끝나는 박에 결승선', [{ zm: 'C' }, { zr: 'C' }, { zt: 'C', kind: 'break' }, { zm: 'D', pads: 1, kind: 'pad' }, { zt: 'D', kind: 'pad' }, { zm: 'E', kind: 'none' }]],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
