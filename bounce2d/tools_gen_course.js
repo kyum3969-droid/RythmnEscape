@@ -72,7 +72,7 @@ function fillStretches(lens, R, seed) {
 }
 // 3라운드: 버릇 묶음(2~6라운드)의 둘째. 앞 라운드의 "끝에서 뚝"에 더해 "끝에서 손 바꿈"과 "하나 더"를 소개한다
 TEMPLATES.R3 = {
-  prefix: 'g3', bpm: 152.0183,
+  prefix: 'g3', bpm: 152.0183, cpFill: true, cpLevel: 'a3',      // cpFill = 체크포인트 마디에도 패턴(개발하는 동안)
   rise: [{ at: 4, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 55, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 4~5, 55~56)
   recipe: { g: 'a3', traps: 8, from: 1, kinds: { 'stop-last': 1, 'hand-last': 2, add: 2, 'short-last': 4, 'long-last': 3 }, reps: { 2: 7, 3: 3 }, intro: [{ stretch: 1, kind: 'hand-last' }, { stretch: 2, kind: 'add' }, { stretch: 3, kind: 'short-last' }], fill: { one: 6, pair: 2, set: 1.2, rest: 0.6 } },
   sections(seed) {
@@ -97,7 +97,7 @@ TEMPLATES.R3 = {
 // 4라운드: 높이로 속이는 함정을 소개한다(떠 있는 파란 박스, 파란 천장, 떠 있는 빨간 박스). 이 마디들은 손으로 만든 것이라 자리를 정해 두고,
 // 그 사이를 조건대로 뽑은 마디가 채운다(손 함정은 앞 라운드의 것을 복습: 끝에서 뚝, 끝에서 손 바꿈, 하나 더).
 TEMPLATES.R4 = {
-  prefix: 'g4', bpm: 152.005, floatReds: true, vary: true, density: 0.95,
+  prefix: 'g4', bpm: 152.005, floatReds: true, vary: true, density: 0.95, cpFill: true, cpLevel: 'a4',
   rise: [{ at: 12, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 67, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 12~13, 67~68)
   // g = 되풀이 → 함정 짜임에 쓰는 단계(높이 장치 없음), gf = 그 사이를 채우는 마디의 단계(높이 장치를 섞는다)
   recipe: { g: 'a4', gf: 'a4', traps: 7, from: 0, kinds: { 'stop-last': 1, 'hand-last': 1, 'short-last': 5, 'long-last': 4 },      // ("하나 더"는 되풀이하는 마디의 절반이 비게 돼서 뺐다)
