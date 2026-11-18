@@ -1176,9 +1176,8 @@
           // 떨어질 때의 속도선
           if (fall) { ctx.strokeStyle = "rgba(255,180,200,0.55)"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < 4; i++) { const lx = xa + w * (0.15 + 0.23 * i); ctx.moveTo(lx, yt - T * 0.2); ctx.lineTo(lx, yt - T * 1.4); } ctx.stroke(); }
           // 머리: 빗금 친 빨간 덩어리, 아랫면은 톱니
-          const ham = m.skin === "hammer";      // 망치(10라운드): 톱니 대신 평평한 때리는 면, 무쇠 색, 면이 달아오른다
-          const hg = ctx.createLinearGradient(0, yt, 0, yb);
-          if (ham) { hg.addColorStop(0, "#1c1f26"); hg.addColorStop(0.55, "#4a505e"); hg.addColorStop(0.8, "#2a2e37"); hg.addColorStop(1, "#7a1430"); } else { hg.addColorStop(0, "#2a0816"); hg.addColorStop(1, "#86173f"); }
+          const ham = m.skin === "hammer";      // 망치(10라운드): 톱니 대신 평평한 때리는 면. 색과 빗금은 9라운드의 프레스와 같다
+          const hg = ctx.createLinearGradient(0, yt, 0, yb); hg.addColorStop(0, "#2a0816"); hg.addColorStop(1, "#86173f");
           const head = () => { ctx.beginPath();
             if (ham) { const c = T * 0.22; ctx.moveTo(xa + c, yt); ctx.lineTo(xb - c, yt); ctx.lineTo(xb, yt + c); ctx.lineTo(xb, yb - c * 0.6); ctx.lineTo(xb - c * 0.6, yb); ctx.lineTo(xa + c * 0.6, yb); ctx.lineTo(xa, yb - c * 0.6); ctx.lineTo(xa, yt + c); }
             else { ctx.moveTo(xa, yt); ctx.lineTo(xb, yt); ctx.lineTo(xb, yb - T * 0.16);
@@ -1232,43 +1231,47 @@
           ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(ax, ay, T * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = 3; ctx.stroke();
           ctx.fillStyle = "#8d95a6"; ctx.beginPath(); ctx.arc(ax, ay, T * 0.09, 0, Math.PI * 2); ctx.fill();
         } else if (m.kind === "ram") {
-          // 옆 망치(10라운드): 쇳덩이 집 → 피스톤 막대 → 망치 머리. 튀어나오기 직전에 집의 경고등이 켜지고, 다 나온 순간 불꽃이 튄다
+          // 옆 망치(10라운드): 9라운드의 프레스를 옆으로 눕힌 것 — 회색 금속 집(벽에 박힌 피스톤 통)과 막대, 끝에 빨간 빗금 머리(때리는 면은 톱니).
+          // 튀어나오기 직전에 떨며 때리는 면이 밝아지고, 다 나온 순간 불꽃
           const q = moverShape(m, beat), tr = m.track, ph = ((((beat - tr.at) % tr.P) + tr.P) % tr.P), n = Math.floor((beat - tr.at) / tr.P), d = m.dir;
-          const warn = ph > tr.P - 0.45 ? (ph - (tr.P - 0.45)) / 0.45 : 0, hit = q.u > 0.95 ? 1 : 0;
+          const warn = ph > tr.P - 0.45 ? (ph - (tr.P - 0.45)) / 0.45 : 0, hit = q.u > 0.95 ? 1 : 0, jit = warn * Math.sin(now * 95) * T * 0.04;
           const X = sx, bx0 = X(q.bx0), bx1 = X(q.bx1), by0 = Y(q.by1), by1 = Y(q.by0);
-          // 막대(집에서 머리까지)
+          // 막대: 9라운드 프레스의 피스톤 막대와 같은 금속(가로로 눕힌 것)
           const ry0 = Y(q.ry1), ry1 = Y(q.ry0);
-          if (q.e > 0.02) { const rg = ctx.createLinearGradient(0, ry0, 0, ry1); rg.addColorStop(0, "#2a2e37"); rg.addColorStop(0.45, "#a3abbb"); rg.addColorStop(1, "#23262e"); ctx.fillStyle = rg; ctx.fillRect(X(q.rx0), ry0, X(q.rx1) - X(q.rx0), ry1 - ry0); }
-          // 집: 무쇠 덩어리와 노랑·검정 경고 줄무늬, 리벳
-          const hgx = ctx.createLinearGradient(0, by0, 0, by1); hgx.addColorStop(0, "#3b404c"); hgx.addColorStop(1, "#15171d");
-          ctx.fillStyle = hgx; ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
-          ctx.save(); ctx.beginPath(); const fx0 = d < 0 ? bx0 : bx1 - T * 0.22; ctx.rect(fx0, by0, T * 0.22, by1 - by0); ctx.clip();
-          for (let yy = by0 - T; yy < by1 + T; yy += T * 0.3) { ctx.fillStyle = Math.round((yy - by0) / (T * 0.3)) % 2 ? "#f2c230" : "#111"; ctx.beginPath(); ctx.moveTo(fx0, yy); ctx.lineTo(fx0 + T * 0.22, yy - T * 0.15); ctx.lineTo(fx0 + T * 0.22, yy + T * 0.15); ctx.lineTo(fx0, yy + T * 0.3); ctx.fill(); }
-          ctx.restore();
-          ctx.fillStyle = "#8d95a6"; for (const [ux, uy] of [[0.25, 0.2], [0.75, 0.2], [0.25, 0.8], [0.75, 0.8]]) { ctx.beginPath(); ctx.arc(bx0 + (bx1 - bx0) * ux, by0 + (by1 - by0) * uy, T * 0.05, 0, Math.PI * 2); ctx.fill(); }
-          ctx.strokeStyle = warn > 0 ? `rgba(255,${120 - 80 * warn},${150 - 100 * warn},${0.5 + 0.5 * warn})` : "#555c6b"; ctx.lineWidth = 2; ctx.shadowColor = DANGER; sb(warn * 16); ctx.strokeRect(bx0 + 1, by0 + 1, bx1 - bx0 - 2, by1 - by0 - 2); sb(0);
-          // 머리: 망치(무쇠, 때리는 면은 빨갛게 달아올랐다)
-          const hx0 = X(q.hx0), hx1 = X(q.hx1), hy0 = Y(q.y1), hy1 = Y(q.y0), jit = warn * Math.sin(now * 90) * T * 0.03;
-          const g4 = ctx.createLinearGradient(0, hy0, 0, hy1); g4.addColorStop(0, "#4a505e"); g4.addColorStop(0.5, "#2a2e37"); g4.addColorStop(1, "#1b1e25");
-          ctx.fillStyle = g4; ctx.fillRect(hx0 + jit, hy0, hx1 - hx0, hy1 - hy0);
-          const fxs = d < 0 ? hx0 : hx1 - T * 0.16;      // 때리는 면
-          ctx.fillStyle = `rgba(255,${80 + 60 * hit},${110 + 40 * hit},0.95)`; ctx.fillRect(fxs + jit, hy0, T * 0.16, hy1 - hy0);
-          ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; sb(10 + 8 * pulse + 20 * hit + 10 * warn); ctx.beginPath(); ctx.rect(hx0 + jit, hy0, hx1 - hx0, hy1 - hy0); gs(); sb(0);
-          if (q.u > 0.05 && q.u < 0.95 && ph < 0.2) { ctx.strokeStyle = "rgba(255,200,215,0.5)"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < 3; i++) { const ly = hy0 + (hy1 - hy0) * (0.25 + 0.25 * i); ctx.moveTo(d < 0 ? hx1 : hx0, ly); ctx.lineTo((d < 0 ? hx1 : hx0) - d * T * 1.2, ly); } ctx.stroke(); }      // 튀어나갈 때의 속도선
+          if (q.e > 0.02) { const rg = ctx.createLinearGradient(0, ry0, 0, ry1); rg.addColorStop(0, "#23262e"); rg.addColorStop(0.45, "#8d95a6"); rg.addColorStop(1, "#23262e"); ctx.fillStyle = rg; ctx.fillRect(X(q.rx0), ry0, X(q.rx1) - X(q.rx0), ry1 - ry0);
+            ctx.fillStyle = "#14161c"; for (let xx = X(q.rx0) + T * 0.5; xx < X(q.rx1) - T * 0.2; xx += T * 0.9) ctx.fillRect(xx, ry0 - 2, 3, ry1 - ry0 + 4); }
+          // 집: 9라운드의 볼트·축과 같은 짙은 금속(#1a1d24, 테두리 #8d95a6)
+          ctx.fillStyle = "#1a1d24"; ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+          ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = 2; ctx.strokeRect(bx0 + 1, by0 + 1, bx1 - bx0 - 2, by1 - by0 - 2);
+          ctx.fillStyle = "#8d95a6"; for (const uy of [0.25, 0.75]) { ctx.beginPath(); ctx.arc((bx0 + bx1) / 2, by0 + (by1 - by0) * uy, T * 0.06, 0, Math.PI * 2); ctx.fill(); }
+          ctx.fillStyle = "#14161c"; ctx.fillRect(d < 0 ? bx0 - 3 : bx1, ry0 - 3, 3, ry1 - ry0 + 6);      // 막대가 나오는 구멍
+          // 머리: 9라운드 프레스 머리와 같은 빨간 빗금, 때리는 면(가는 쪽)은 톱니
+          const hx0 = X(q.hx0) + jit, hx1 = X(q.hx1) + jit, hy0 = Y(q.y1), hy1 = Y(q.y0), hw = hx1 - hx0, hh = hy1 - hy0, tz = T * 0.16;
+          const head = () => { ctx.beginPath(); const back = d < 0 ? hx1 : hx0, face = d < 0 ? hx0 : hx1, inner = face - d * tz;
+            ctx.moveTo(back, hy0); ctx.lineTo(inner, hy0);
+            const nT = Math.max(2, Math.round(hh / (T * 0.36))); for (let i = 0; i < nT; i++) { const ya = hy0 + (hh * i) / nT; ctx.lineTo(face, ya + hh / nT / 2); ctx.lineTo(inner, ya + hh / nT); }
+            ctx.lineTo(back, hy1); ctx.closePath(); };
+          const hg2 = ctx.createLinearGradient(d < 0 ? hx1 : hx0, 0, d < 0 ? hx0 : hx1, 0); hg2.addColorStop(0, "#2a0816"); hg2.addColorStop(1, "#86173f");
+          head(); ctx.fillStyle = hg2; sb(0); ctx.fill();
+          ctx.save(); ctx.clip(); ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 3; ctx.beginPath(); for (let x = hx0 - hh; x < hx1; x += T * 0.42) { ctx.moveTo(x, hy1); ctx.lineTo(x + hh, hy0); } ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(hx0, hy0, hw, T * 0.12); ctx.restore();      // 윗면의 반사광
+          head(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(10 + 8 * pulse + 18 * warn + 20 * hit); gs(); sb(0); ctx.lineJoin = "round";
+          if (warn > 0 || hit) { const fxl = (d < 0 ? hx0 : hx1) - d * tz * 0.5; ctx.strokeStyle = `rgba(255,220,230,${0.4 + 0.6 * Math.max(warn, hit)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(fxl, hy0 + 2); ctx.lineTo(fxl, hy1 - 2); ctx.stroke(); }      // 때리는 면의 빛줄(곧 친다)
+          if (q.u > 0.05 && q.u < 0.95 && ph < 0.2) { ctx.strokeStyle = "rgba(255,180,200,0.55)"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < 3; i++) { const ly = hy0 + hh * (0.25 + 0.25 * i), bk = d < 0 ? hx1 : hx0; ctx.moveTo(bk, ly); ctx.lineTo(bk - d * T * 1.2, ly); } ctx.stroke(); }      // 튀어나갈 때의 속도선
           if (hit && m._slam !== n) { m._slam = n; fx.ramHits = (fx.ramHits || 0) + 1; const tx = d < 0 ? q.hx0 : q.hx1, ty = (m.y0 + m.y1) / 2; burst(tx, ROWS - 1 - ty, 8, "white", 7, true); if (Math.abs(tx - camX) < 14) fx.shake = Math.max(fx.shake, 0.06); }
         } else if (m.kind === "roller") {
-          // 분쇄 롤러(10라운드): 톱니 달린 무쇠 원통이 돈다. 바닥에 박힌 것은 둘이 맞물려 안쪽으로 돈다
+          // 분쇄 롤러(10라운드): 9라운드의 톱날과 같은 빨간 그라디언트·분홍 테두리·가운데 축. 이는 굵은 톱니바퀴(바닥에 박힌 것은 둘이 맞물려 안쪽으로 돈다)
           const q = moverShape(m, beat), cx = sx(q.x), cy = Y(q.y), R = q.r * T;
           ctx.save(); ctx.translate(cx, cy); ctx.rotate(q.a);
           const nT = 10; ctx.beginPath();
           for (let i = 0; i < nT; i++) { const a0 = (i / nT) * Math.PI * 2, a1 = a0 + Math.PI / nT * 0.55, a2 = a0 + Math.PI / nT * 1.45, a3 = a0 + (Math.PI * 2) / nT;
             ctx.lineTo(Math.cos(a0) * R * 0.8, Math.sin(a0) * R * 0.8); ctx.lineTo(Math.cos(a1) * R, Math.sin(a1) * R); ctx.lineTo(Math.cos(a2) * R, Math.sin(a2) * R); ctx.lineTo(Math.cos(a3) * R * 0.8, Math.sin(a3) * R * 0.8); }
           ctx.closePath();
-          const g5 = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R); g5.addColorStop(0, "#6b7282"); g5.addColorStop(0.7, "#2a2e37"); g5.addColorStop(1, "#14161c");
+          const g5 = ctx.createRadialGradient(0, 0, R * 0.15, 0, 0, R); g5.addColorStop(0, "#ff9ab3"); g5.addColorStop(0.5, "#a3184c"); g5.addColorStop(1, "#4a0a26");
           ctx.fillStyle = g5; ctx.fill();
-          ctx.strokeStyle = "#ff6b8f"; ctx.lineWidth = 2; ctx.shadowColor = DANGER; sb(10 + 8 * pulse); gs(); sb(0);
-          ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * R * 0.7, Math.sin(a) * R * 0.7); } ctx.stroke();
-          ctx.fillStyle = "#14161c"; ctx.beginPath(); ctx.arc(0, 0, R * 0.22, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = 2; ctx.stroke();
+          ctx.strokeStyle = "#ffc2d1"; ctx.lineWidth = 2; ctx.shadowColor = DANGER; sb(12 + 8 * pulse); gs(); sb(0);
+          ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(0, 0, R * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ffd1dc"; ctx.lineWidth = 2; ctx.stroke();
+          ctx.fillStyle = "#2a0816"; for (let i = 0; i < 3; i++) { const a2 = (i / 3) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(a2) * R * 0.52, Math.sin(a2) * R * 0.52, R * 0.09, 0, Math.PI * 2); ctx.fill(); }
           ctx.restore();
         } else if (m.kind === "plat") {
           // 오가는 길(레일): 발판이 지나는 범위 전체에 끊긴 선, 양 끝에 볼트
