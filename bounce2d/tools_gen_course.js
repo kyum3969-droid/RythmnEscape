@@ -252,7 +252,7 @@ TEMPLATES.R8 = {
 //   충전 고리(삼단 점프)와 높이 장치(떠 있는 박스, 징검다리)도 움직이는 장애물과 섞는다: fJumpP, stPress, ring3Saw, ring3, ring3Far, ring3Bait.
 //   피버는 다섯 곳(질주 구간). 지난 시안의 "움직이는 이빨"은 뺐다(벽 속의 이빨이 튀어나오는 것은 읽기 어렵고 세련돼 보이지 않았다).
 TEMPLATES.R9 = {
-  prefix: 'g9', bpm: 150.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
+  prefix: 'g9', bpm: 150.0, freshWideAll: true, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
   rise: [{ at: 19, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 66, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 19~20, 66~67)
   recipe: { g: '7v', gf: '7v', traps: 4, from: 0, kinds: { 'stop-last': 3, 'hand-last': 3, 'stop-first': 3, 'hand-first': 3 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
   sections() {
@@ -269,7 +269,7 @@ TEMPLATES.R9 = {
       ['거의 무음 — 높은 곳: 징검다리에 올라 프레스 밑을 지난다(공이 떠나자마자 돌을 내리찍는다) ×2, 내려올 땅이 빨간 박스(멈춰서 건넌다). 이어서 그림의 공중 사슬(멈춤 셋)', ['stIn', 'stPress', 'stPress', 'stOutG', 'gAfter', 'airStep', 'airRing', 'cp']],
       ['다시 질주 — 좁은 통로(하나 더 → 튕김판 → 판이 없다)', [{ zm: 'I', kind: 'add' }, { zr: 'I' }, { zt: 'I', kind: 'add' }, { zm: 'J', pads: 1, kind: 'pad' }, { zr: 'J' }, { zt: 'J', kind: 'pad' }, { zm: 'K', kind: 'none' }, 'cp']],
       ['그루브와 쌓아 올림 — 장애물을 한 번씩(프레스 밑 미끄러지기, 오가는 톱날, 풍차), 이어서 멈춤 길이의 함정(두 번 되풀이 → 끝의 멈춤이 짧다)', ['pressGlide', 'sawDive', 'barSpin', ...phrase('short-last'), one(), 'cp']],
-      ['마지막 절정 — 넓은 통로가 굽이치고, 좁은 통로로 내려와 결승선', ['wUp', { wm: 'L', calm: 1, run: 2 }, { wr: 'L' }, { wt: 'L', kind: 'break' }, 'wDn', { zm: 'M', kind: 'none' }]],
+      ['마지막 절정 — 넓은 통로가 굽이친 채로 곡의 끝까지 가고(마지막에 한 마디 더), 마지막 마디에 계단으로 내려와 곡이 사그라드는 첫 박(마디 78)에 결승선. (전에는 끝 두 마디에 피버 → 계단 → 좁은 피버 한 마디 → 결승선으로 모드가 세 번 바뀌어 어색했다)', ['wUp', { wm: 'L', calm: 1, run: 2 }, { wr: 'L' }, { wt: 'L', kind: 'break' }, { w: 1, calm: 1, run: 2 }, 'wDn']],
       ['', ['goal', 'flat', 'flat']],
     ];
   },
@@ -467,12 +467,13 @@ function generate(T, seed) {
   const myNo = +String(T.prefix).replace(/\D/g, ''), usedW = new Set(), usedZ = new Set(), usedPairs = new Set(), usedHere = new Set();
   if (T.fresh) Lg.COURSES.forEach((C) => {
     const no = +(/ROUND (\d+)/.exec(C.name) || [])[1];
-    if (!(no < myNo)) return;
+    if (!(no < myNo) && !(T.freshWideAll && no > myNo)) return;      // (freshWideAll: 뒤 라운드의 넓은 통로 줄도 피한다 — 앞 라운드를 나중에 고칠 때 뒤 라운드와 겹치지 않게)
     let prev = null;
     C.bars.forEach((n) => {
       const p = Lg.PATTERNS[n];
       if (!p || p.mode !== 'rush' || p.free || !p.nodes) { prev = null; return; }
       if (p.wide) usedW.add(p.nodes); else if (no === myNo - 1) usedZ.add(p.nodes);
+      if (no > myNo) { prev = null; return; }      // (뒤 라운드는 넓은 통로 줄만 본다)
       if (prev && !!prev.wide === !!p.wide && prev.nodes !== p.nodes) usedPairs.add((p.wide ? 'w' : 'z') + prev.nodes + '>' + p.nodes);
       prev = p;
     });

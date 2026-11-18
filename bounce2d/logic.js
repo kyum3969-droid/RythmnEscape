@@ -496,7 +496,7 @@ const PATTERNS = {
   g9_71: { holds: [[0.5, 1], [1.75, 2.5]], presses: [1.25], tol: 0.18, cp: true, rings: [[4, 0], [4, 1], [4, 2]], chain: 1 },   // 체크포인트 마디
   g9w73: { mode: "rush", wide: true, gap: 1.5, nodes: ".SF.FF.." },
   g9w75: { mode: "rush", wide: true, gap: 1.5, nodes: ".SF.S.F." },   // 뚝: 앞 마디(.SF.FF..)와 같이 가다가 끊긴다
-  g9z77: { mode: "rush", nodes: "S.F...F." },
+  g9w76: { mode: "rush", wide: true, gap: 1.5, nodes: ".SFSFFS." },
   // </gen:patterns:R9>
   // <gen:patterns:R10>
   // 도구(tools_gen_course.js R10 4)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
@@ -1195,8 +1195,8 @@ const ROUND9 = {
     "g9z56", "g9z56", "g9z58", "g9z59",   "g9z59", "g9z61", "g9z62", "g9_63",
     // 그루브와 쌓아 올림 — 장애물을 한 번씩(프레스 밑 미끄러지기, 오가는 톱날, 풍차), 이어서 멈춤 길이의 함정(두 번 되풀이 → 끝의 멈춤이 짧다)
     "pressGlide", "sawDive", "g9_66", "g9_67",   "g9_68", "g9_69", "g9_70", "g9_71",
-    // 마지막 절정 — 넓은 통로가 굽이치고, 좁은 통로로 내려와 결승선
-    "wUp", "g9w73", "g9w73", "g9w75",   "wDn", "g9z77",
+    // 마지막 절정 — 넓은 통로가 굽이친 채로 곡의 끝까지 가고(마지막에 한 마디 더), 마지막 마디에 계단으로 내려와 곡이 사그라드는 첫 박(마디 78)에 결승선. (전에는 끝 두 마디에 피버 → 계단 → 좁은 피버 한 마디 → 결승선으로 모드가 세 번 바뀌어 어색했다)
+    "wUp", "g9w73", "g9w73", "g9w75",   "g9w76", "wDn",
     "goal", "flat", "flat",
     // </gen:bars:R9>
   ],
@@ -1380,6 +1380,9 @@ function hazardSpan(q, dx) {
   return q.far > q.tip ? [q.tip + slope * a, q.far - (q.far - q.tip - slope) * a] : [q.far + (q.tip - slope - q.far) * a, q.tip - slope * a];
 }
 
+// 공중 사슬 마디(고리로 이어 뛰는 마디)에서, 공이 땅에서 굴러가는 자리 위에는 밑면이 이보다 낮은 덩어리를 두지 않는다. 1칸까지 내려오면 굴러가는 공 위로 0.2칸 틈뿐이라,
+// 공중 사슬 뒤에 조금이라도 늦게 내려오면 걸렸다(6라운드 2-R4: "바닥으로 잘 들어가게끔")
+const CEIL_MIN_H = 3;
 function emptyLevel(course) {
   const cols = course.bars.length * 16;
   const grid = [];
@@ -1572,6 +1575,7 @@ function buildLevel(course) {
       const fh2 = Math.min(HAZ_MAX_H + bh, Math.floor((k.lo - mF) * 4) / 4, fb > 90 || k.hi < fb ? 99 : fb - 0.5);
       if (!k.ground && fh2 >= bh + 0.5) L.floorH[c] = fh2;
       const ch = Math.max(Math.ceil((k.hi + SIZE + mC) * 4) / 4, ft + 0.5);
+      if (p.chain && k.ground && ch < CEIL_MIN_H) continue;      // (공중 사슬 마디: 땅에 내려서 굴러가는 자리 바로 위의 낮은 덩어리는 두지 않는다 — 사슬 끝에 조금 늦게 내려와도 그 자리로 들어가게)
       if (ch <= CEIL_MAX_H + (fb < 90 ? 2 : 0) && !(fb < 90 && k.hi < fb)) L.ceilH[c] = ch;
     }
   }
