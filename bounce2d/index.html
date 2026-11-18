@@ -212,6 +212,8 @@
   const round = Math.max(0, Math.min(COURSES.length - 1, store.get("round", 0) | 0));
   const COURSE = COURSES[round];
   const L = buildLevel(COURSE);
+  const finale = COURSE.finale;
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   // 그릴 때 쓰는 바닥 높이(반 칸 단위): 빨간 덩어리에 높은 박스를 합친 것. 붙어 있으면 한 덩어리로 그려진다(높은 박스를 따로 표시하지 않는다).
   const FLOOR2 = L.floorH ? (() => {
     const a = Array.from({ length: L.floorH.length * 2 }, (_, k) => (L.floorLo[k >> 1] > 0 ? 0 : L.floorH[k >> 1]));
@@ -246,6 +248,7 @@
   };
   if (COURSE.pal) Object.assign(PAL, COURSE.pal);    // 라운드마다 다른 색을 쓸 수 있다
   const SIL = "#07070f", DANGER = "#ff3b6b";
+  const FINISH_GOLD = [255, 196, 96];
   const BENT_WALL = 3;      // 굽은 통로의 벽 두께(칸): 땅 밑과 천장 위를 이만큼만 칠한다
   const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
@@ -455,7 +458,7 @@
   const WIDE_RUNS = [], WIDE_IN = 5;
   for (const b of [...L.wideBars, ...L.tallBars].sort((u, v) => u - v)) { const last = WIDE_RUNS[WIDE_RUNS.length - 1]; if (last && last[1] === b * 16) last[1] += 16; else WIDE_RUNS.push([b * 16, b * 16 + 16]); }   // 높은 계단 구간(바운스)도 같은 식으로 물러난다
   const wideZone = (x) => WIDE_RUNS.some(([xs, xe]) => x >= xs && x < xe - WIDE_IN);
-  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, punchAt: -9, punchDir: 1, stepAt: -9, wideOn: false, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9 };
+  const fx = { particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, punchAt: -9, punchDir: 1, stepAt: -9, wideOn: false, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9, finishAt: -9 };
 
   function begin(cp) {
     if (songLoading && !fake.on) { ensureAudio(); pendingStart = cp; $("ovStat").textContent = "곡을 불러오는 중…"; return; }   // 누른 순간에 소리 권한은 받아 두고, 곡이 준비되면 시작
@@ -661,6 +664,7 @@
         refreshHud();
       } else if (e.type === "win") {
         phase = "won"; if (!devRun) { best = 100; store.set("best" + round, 100); }
+        fx.finishAt = now;
         sfx("win"); refreshHud();
         setTimeout(showWin, fake.on ? 0 : 900);
       }
@@ -713,10 +717,34 @@
   })();
   const sAt = (x) => { if (x <= 0) return x; const f = x * 8, i = Math.min(STRETCH.length - 2, Math.floor(f)); return STRETCH[i] + (STRETCH[i + 1] - STRETCH[i]) * (f - i); };
 
+  function drawFinishGlow(x, y, w, elapsed) {
+    const t = Math.max(0, elapsed) / 0.82;  // 결과 창이 뜨기 전에 빛이 가라앉는다
+    if (t >= 1) return;
+    const spread = reducedMotion.matches ? 1 : 1 - Math.pow(1 - t, 4);
+    const radius = Math.max(x, w - x) * (0.24 + 1.3 * spread);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, 0.48);
+    ctx.globalAlpha = Math.pow(1 - t, 1.5);
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+    glow.addColorStop(0, "#fff0c4");
+    glow.addColorStop(0.28, css(FINISH_GOLD, 0.92));
+    glow.addColorStop(0.62, "rgba(232,162,72,0.55)");
+    glow.addColorStop(1, "rgba(232,162,72,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+    ctx.restore();
+  }
+
   function draw(beat, now) {
     const { w, h } = view, BT = view.T;
     const pal = paletteAt(beat);
     const pulse = phase === "running" || phase === "won" ? Math.pow(1 - (beat - Math.floor(beat)), 3) : 0;
+    const bar = beat / 4;
+    const quiet = finale ? Math.max(0, Math.min(1, (beat - finale.quiet[0] * 4) / 1.5, (finale.quiet[1] * 4 + 2 - beat) / 2)) : 0;
+    const blackout = finale && bar >= finale.sprint[1];
+    const sprint = finale && bar >= finale.sprint[0] && !blackout;
+    const dim = blackout ? 1 : quiet;
     const camX = TPB * beat;                                   // 음악과 함께 흐르는 카메라
     let round = 0;                                             // 0 = 기본 구간, 1 = 돌파 구간
     for (const r of L.rides) round = Math.max(round, Math.min(1, (camX - r[0] + 3) / 3, (r[1] + 1 - camX) / 3));
@@ -748,34 +776,41 @@
     if (fx.shake > 0) ctx.translate((Math.random() - 0.5) * fx.shake * 40, (Math.random() - 0.5) * fx.shake * 40);
 
     // 하늘
+    const skyTop = dim ? mix(pal.top, [3, 6, 14], dim) : pal.top;
+    const skyBottom = dim ? mix(pal.bottom, [10, 16, 28], dim) : pal.bottom;
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, css(pal.top)); g.addColorStop(0.75, css(pal.bottom)); g.addColorStop(1, css(mix(pal.bottom, [0, 0, 0], 0.35)));
+    g.addColorStop(0, css(skyTop)); g.addColorStop(0.75, css(skyBottom)); g.addColorStop(1, css(mix(skyBottom, [0, 0, 0], 0.35)));
     ctx.fillStyle = g; ctx.fillRect(-30, -30, w + 60, h + 60);
 
     // 박자마다 퍼지는 고리
-    const cxs = w * 0.68, cys = view.groundY - T * 3.4 + camY * T * 0.06, r0 = T * 1.5;
-    ctx.fillStyle = css(pal.sun, 0.9);
-    ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1 + 0.07 * pulse), 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 3; i++) {
-      const p = ((beat + i * 0.5) % 1.5) / 1.5;
-      ctx.strokeStyle = css(pal.sun, (1 - p) * 0.5);
-      ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1.1 + p * 2.6), 0, Math.PI * 2); ctx.stroke();
+    if (dim < 0.5) {
+      ctx.globalAlpha = 1 - dim * 2;
+      const cxs = w * 0.68, cys = view.groundY - T * 3.4 + camY * T * 0.06, r0 = T * 1.5;
+      ctx.fillStyle = css(pal.sun, 0.9);
+      ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1 + 0.07 * pulse), 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const p = ((beat + i * 0.5) % 1.5) / 1.5;
+        ctx.strokeStyle = css(pal.sun, (1 - p) * 0.5);
+        ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1.1 + p * 2.6), 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
     }
 
     // 먼 풍경 (2겹, 박자에 맞춰 들썩임): 평소엔 이퀄라이저 막대, 언덕 구간에서는 둥근 능선으로 바뀐다
     for (const [layer, bw, par, dark, amp] of [[1, BT * 1.7, 0.18, 0.45, 3.6], [2, BT * 1.0, 0.42, 0.68, 2.4]]) {
-      ctx.fillStyle = css(mix(pal.bottom, [0, 0, 0], dark));
+      const light = 1 - dim * (layer === 1 ? 0.98 : 0.84);
+      ctx.fillStyle = css(mix(skyBottom, [0, 0, 0], dark));
       const off = camS * BT * par, i0 = Math.floor(off / bw), drop = camY * BT * par * 0.8;      // drop = 카메라가 올라간 만큼 내려앉는 양(가까운 겹일수록 많이)
       if (round < 1) {
-        ctx.globalAlpha = 1 - round;
+        ctx.globalAlpha = (1 - round) * light;
         for (let i = i0; i * bw - off < w + bw; i++) {
           const hh = (0.6 + amp * hash(i, layer)) * BT * (1 + 0.22 * pulse * hash(i, layer + 9));
           ctx.fillRect(i * bw - off, view.groundY - hh + drop, bw - 3, hh + h);
         }
       }
       if (round > 0) {
-        ctx.globalAlpha = round;
+        ctx.globalAlpha = round * light;
         ctx.beginPath(); ctx.moveTo(-20, h + 20);
         for (let x = -20; x <= w + 20; x += 10) {
           const u = (x + off) / BT;
@@ -786,6 +821,7 @@
       }
       ctx.globalAlpha = 1;
     }
+    if (finale && phase === "won") drawFinishGlow(sx(L.goalX + 0.5), view.groundY - T * 2.5, w, now - fx.finishAt);
 
     // 굽은 통로(코스의 cam 표): 통로 자체가 굽어 있고 공이 그 굽이로 들어간다. 화면은 돌지 않는다 — 길을 "곧은 토막"들의 줄로 보고, 토막마다 제 자리·제 기울기로 그린다.
     // 판정은 그대로다(곧은 통로를 굽혀 놓았을 뿐). 공이 가는 쪽 앞이 넉넉히 보이도록 공의 자리를 화면 안에서 옮기고(위로 갈 때는 아래쪽에 선다), 모자라면 물러난다.
@@ -822,7 +858,7 @@
     ctx.save();
     if (bend.th) { ctx.translate(bend.ax, bend.ay); ctx.rotate(-bend.th); ctx.translate(-bend.ax, -bend.ay); }      // 스쳐 가는 빛줄은 가는 쪽으로 눕힌다
     // 질주 구간: 스쳐 지나가는 빛줄
-    if (round > 0) {
+    if (round > 0 && !blackout) {
       ctx.lineCap = "round"; ctx.lineWidth = 2;
       for (let i = 0; i < 16; i++) {
         const len = BT * (1.5 + 3 * hash(i, 3)), u = (beat * (0.9 + 1.3 * hash(i, 4)) + hash(i, 5)) % 1;
@@ -1092,9 +1128,22 @@
       }
       // 가까이서 스쳐 가는 것들(닿지 않는다. 속도감을 위한 것): 바닥과 천장의 점선
       for (let c = Math.max(r[0] + 1, cA); c < Math.min(r[1] - 1, cB + 1); c++) {
+        const topY = sy(ROWS - 1 - ceilAt(L, c + 0.5));
+        if (sprint && c >= finale.sprint[0] * 4 * TPB) {
+          // 세계 좌표에서 카메라보다 빠르게 앞으로 흐르는 조명이다. 판정 영역 바깥에만 그린다.
+          const wave = ((c / TPB - 2 * beat) % 2 + 2) % 2;
+          const light = reducedMotion.matches ? 0.52 : 0.24 + 0.76 * Math.max(0, 1 - wave / 0.84);
+          const x = sx(c + 0.1), width = sx(c + 0.83) - x, height = Math.max(2, T * 0.11);
+          ctx.fillStyle = css([83, 233, 255], light);
+          ctx.fillRect(x, view.groundY + T * 0.42, width, height);
+          ctx.fillStyle = css([240, 119, 235], light);
+          ctx.fillRect(x, topY - T * 0.42 - height, width, height);
+          continue;
+        }
+        if (blackout) continue;
         ctx.fillStyle = css(pal.accent, 0.5);
         for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), view.groundY + T * 0.16, sx(c + o + 0.22) - sx(c + o), 3);
-        for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), sy(ROWS - 1 - ceilAt(L, c + 0.5)) - T * 0.16 - 3, sx(c + o + 0.22) - sx(c + o), 3);
+        for (const o of [0.1, 0.6]) ctx.fillRect(sx(c + o), topY - T * 0.16 - 3, sx(c + o + 0.22) - sx(c + o), 3);
       }
       // 조여드는 통로: 바닥과 천장이 가운데로 모여든다(닿아도 죽지 않는다. 공이 그 사이를 점점 빠르게 친다)
       for (const q of L.squeezes) {
@@ -1114,7 +1163,7 @@
       }
       // 관문: 구간이 바뀌는 자리의 빛 커튼
       for (const [gx, label] of [[r[0], "FEVER"], [r[1], "BOUNCE"]]) {
-        if (gx < cA || gx > cB) continue;
+        if (blackout || gx < cA || gx > cB) continue;
         const x = sx(gx), gw = T * 0.9;
         const gg = ctx.createLinearGradient(x - gw, 0, x + gw, 0);
         gg.addColorStop(0, css(pal.accent, 0)); gg.addColorStop(0.5, css(pal.accent, 0.28 + 0.12 * pulse)); gg.addColorStop(1, css(pal.accent, 0));
@@ -1470,7 +1519,7 @@
     // 체크포인트와 결승선: 빛기둥
     const beam = (col, on, label) => {
       const x = sx(col + 0.5), y1 = sy(groundY(L, col)), y0 = y1 - T * 5;
-      const col2 = on ? pal.accent : [255, 255, 255];
+      const col2 = label && finale ? FINISH_GOLD : on ? pal.accent : [255, 255, 255];
       const gg = ctx.createLinearGradient(0, y0, 0, y1);
       gg.addColorStop(0, css(col2, 0)); gg.addColorStop(1, css(col2, on ? 0.9 : 0.35));
       ctx.shadowColor = css(col2); ctx.shadowBlur = on ? 18 : 0;
@@ -1511,7 +1560,8 @@
       const dashing = state.dashing > 0 || zig;
       if (fx.tail.length > 1) {
         ctx.lineCap = "round";
-        for (let i = 1; i < fx.tail.length; i++) {
+        const first = quiet && state.frozen ? Math.max(1, fx.tail.length - Math.round(16 - 11 * quiet)) : 1;
+        for (let i = first; i < fx.tail.length; i++) {
           const a = i / fx.tail.length, p0 = fx.tail[i - 1], p1 = fx.tail[i];
           if (bend.bent && Math.abs(p1.x - p0.x) > 2) continue;
           ctx.strokeStyle = css(pal.accent, a * (p1.d ? 0.9 : 0.45));
@@ -1603,7 +1653,7 @@
 
     {                                                  // 화면이 "확" 바뀌는 순간: 공에서 퍼지는 충격 고리와 바깥으로 뻗는 빛줄기
       const sp = (now - fx.punchAt) / 0.45;
-      if (sp >= 0 && sp < 1) {
+      if (!blackout && sp >= 0 && sp < 1) {
         const cx = sx(camX + state.lead), cy = sy(state.y) - HALF * T, R = Math.hypot(w, h), e = 1 - Math.pow(1 - sp, 3);
         const k = fx.punchDir > 0 ? e : 1 - e;           // 넓어질 때는 밖으로 퍼지고, 좁아질 때는 안으로 모인다
         ctx.save(); ctx.globalCompositeOperation = "lighter";
@@ -1619,9 +1669,9 @@
         ctx.stroke(); ctx.restore();
       }
     }
-    if (fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${fx.flash * 0.5})`; ctx.fillRect(0, 0, w, h); }
+    if (fx.flash > 0 && (!blackout || phase === "dead")) { ctx.fillStyle = `rgba(255,255,255,${fx.flash * 0.5})`; ctx.fillRect(0, 0, w, h); }
     const since = now - fx.cpFlash;
-    if (since < 0.4) { ctx.fillStyle = css(pal.accent, (1 - since / 0.4) * 0.22); ctx.fillRect(0, 0, w, h); }
+    if (!blackout && since < 0.4) { ctx.fillStyle = css(pal.accent, (1 - since / 0.4) * 0.22); ctx.fillRect(0, 0, w, h); }
   }
   const REF_PATH = L.ref ? traceRun(L, L.ref).trace : null;
   // ---- 개발자 기능: 번호표. 상자마다 "마디-종류번호"(빨간 것은 R, 파란 것은 B. 그 마디에서 왼쪽부터 센다)를 붙여, 고칠 곳을 말로 짚을 수 있게 한다.
