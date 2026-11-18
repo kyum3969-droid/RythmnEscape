@@ -2452,6 +2452,71 @@ function hazardAt(L, s) {
 //  1) 패턴대로 달린 길 + 입력을 하나씩 tol만큼 일찍/늦게 누른 길 = 공이 지나가도 되는 통로
 //  2) 통로 바깥을 전부 장애물로 채운 "가장 빡빡한 코스"를 만든 뒤
 //  3) 패턴을 틀리게 누른 달리기(안 누름, 하나 빼먹음, 멈춤↔점프를 바꿈, 크게 어긋남)를 실제로 막아 주는 덩어리만 남긴다
+// ---- 빨간 덩어리의 그림 모양: 바닥 덩어리·매달린 덩어리·떠 있는 덩어리·계단 덩어리를 따로 그리면, 맞닿은 둘 사이에 테두리가 그어져 두 개로 보였다.
+//   맞닿거나 겹치는 것은 한 덩어리로 합쳐, 바깥 둘레만 테두리로 두른다. 결과는 칸 단위의 둘레(고리) 목록: 꼭짓점마다 { x, y, s, open }
+//   s = 세로 변을 안쪽으로 조금 들이는 방향(-1 오른쪽 변, +1 왼쪽 변), open = 그 꼭짓점에서 다음 꼭짓점까지의 변을 긋지 않는다(땅에 붙은 밑변, 하늘 끝).
+//   떠 있는 덩어리는 칸마다 밑이 다를 수 있다(11라운드) — 전에는 첫 칸의 밑으로 그려서 빈 곳까지 칠했다. 이제 칸마다 제 밑으로.
+const RED_SKY = 40;
+function redOutlines(L) {
+  if (!L.floorH) return [];
+  const n = L.floorH.length, R = [], eps = 1e-6;
+  const F2 = Array.from({ length: n * 2 }, (_, k) => (L.floorLo[k >> 1] > 0 ? 0 : L.floorH[k >> 1]));
+  for (const q of L.talls || []) for (let k = Math.round((q.x - q.w / 2) * 2); k < Math.round((q.x + q.w / 2) * 2); k++) if (k >= 0 && k < F2.length) F2[k] = Math.max(F2[k], q.h);
+  for (let k = 0; k < F2.length; k++) if (F2[k] > 0) R.push({ x0: k / 2, x1: k / 2 + 0.5, y0: 0, y1: F2[k], k: "g" });
+  for (let c = 0; c < n; c++) {
+    if (L.ceilH[c] < 90 && L.ceilTop[c] >= 90) R.push({ x0: c, x1: c + 1, y0: L.ceilH[c], y1: RED_SKY, k: "s" });
+    if (L.floorLo[c] > 0 && L.floorH[c] > L.floorLo[c]) R.push({ x0: c, x1: c + 1, y0: L.floorLo[c], y1: L.floorH[c], k: "f" });
+    if (L.ceilTop[c] < 90 && L.ceilTop[c] > L.ceilH[c]) R.push({ x0: c, x1: c + 1, y0: L.ceilH[c], y1: L.ceilTop[c], k: "c" });
+  }
+  if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) if (hi > lo) R.push({ x0: c, x1: c + 1, y0: lo, y1: hi, k: "b" });
+  R.sort((a, b) => a.x0 - b.x0);
+  const par = R.map((_, i) => i), find = (i) => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; };
+  for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length && R[j].x0 <= R[i].x1 + eps; j++) {
+    const p = R[i], q = R[j], xo = Math.min(p.x1, q.x1) - Math.max(p.x0, q.x0), yo = Math.min(p.y1, q.y1) - Math.max(p.y0, q.y0);
+    if ((xo > eps && yo > -eps) || (yo > eps && xo > -eps)) par[find(i)] = find(j);
+  }
+  const groups = new Map();
+  R.forEach((r, i) => { const g = find(i); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(r); });
+  const out = [];
+  for (const rs of groups.values()) {
+    const xs = [...new Set(rs.flatMap((r) => [r.x0, r.x1]))].sort((a, b) => a - b), ys = [...new Set(rs.flatMap((r) => [r.y0, r.y1]))].sort((a, b) => a - b);
+    const xi = new Map(xs.map((v, i) => [v, i])), yi = new Map(ys.map((v, i) => [v, i])), W = xs.length - 1, H = ys.length - 1;
+    const fill = new Uint8Array(W * H), F = (i, j) => i >= 0 && j >= 0 && i < W && j < H && fill[i * H + j] === 1;
+    for (const r of rs) for (let i = xi.get(r.x0); i < xi.get(r.x1); i++) for (let j = yi.get(r.y0); j < yi.get(r.y1); j++) fill[i * H + j] = 1;
+    // 둘레의 변: 칠한 칸이 왼쪽에 오도록(반시계) 방향을 준다
+    const edges = [];
+    for (let i = 0; i < W; i++) for (let j = 0; j < H; j++) {
+      if (!F(i, j)) continue;
+      if (!F(i, j - 1)) edges.push([i, j, i + 1, j]);
+      if (!F(i + 1, j)) edges.push([i + 1, j, i + 1, j + 1]);
+      if (!F(i, j + 1)) edges.push([i + 1, j + 1, i, j + 1]);
+      if (!F(i - 1, j)) edges.push([i, j + 1, i, j]);
+    }
+    const from = new Map(); edges.forEach((e, k) => { const key = e[0] + "," + e[1]; if (!from.has(key)) from.set(key, []); from.get(key).push(k); });
+    const used = new Uint8Array(edges.length), loops = [];
+    for (let k0 = 0; k0 < edges.length; k0++) {
+      if (used[k0]) continue;
+      const seq = []; let k = k0;
+      while (k !== undefined && !used[k]) { used[k] = 1; seq.push(edges[k]); const e = edges[k]; k = (from.get(e[2] + "," + e[3]) || []).find((q) => !used[q]); }
+      // 같은 방향으로 이어지는 변을 하나로
+      const pts = [];
+      for (let t = 0; t < seq.length; t++) {
+        const e = seq[t], pv = seq[(t - 1 + seq.length) % seq.length];
+        const d = [Math.sign(e[2] - e[0]), Math.sign(e[3] - e[1])], dp = [Math.sign(pv[2] - pv[0]), Math.sign(pv[3] - pv[1])];
+        if (d[0] !== dp[0] || d[1] !== dp[1]) pts.push({ i: e[0], j: e[1], d });
+      }
+      const m = pts.length;
+      loops.push(pts.map((v, t) => {
+        const nx = pts[(t + 1) % m], pv = pts[(t - 1 + m) % m];
+        const vert = v.d[0] === 0 ? v.d : pv.d;                 // 이 꼭짓점에 닿은 세로 변의 방향
+        const y = ys[v.j], horiz = v.d[1] === 0;
+        return { x: xs[v.i], y, s: vert[1] > 0 ? -1 : 1, open: horiz && (y <= eps || y >= RED_SKY - eps) && ys[nx.j] === y };
+      }));
+    }
+    out.push({ x0: xs[0], x1: xs[W], sky: rs.some((r) => r.k === "s"), ground: rs.some((r) => r.k === "g"), allC: rs.every((r) => r.k === "c"), loops, n: rs.length });
+  }
+  return out.sort((a, b) => a.x0 - b.x0);
+}
 function buildLevel(course) {
   const L = emptyLevel(course);
   const plan = coursePlan(course);
@@ -3131,4 +3196,4 @@ function planInput(plan) {
   return { press, hold };
 }
 
-if (typeof module !== "undefined") module.exports = { TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, moverShape, moverKills, trackAt, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };
+if (typeof module !== "undefined") module.exports = { redOutlines, RED_SKY, TPB, SUB, ROWS, SIZE, HALF, FREEZE_STEPS, SAW_TRAVEL, JUMP_H, PATTERNS, COURSE, COURSES, coursePlan, hazardAt, inRide, rideAt, RUSH_STRETCH, SLOT, squeezeGap, ceilAt, stairFloor, stairCeil, TALL_H, TALL_W, hazardSpan, WIDE_TOP, KITE_W, TOOTH_H, ZIG_TOP, ZIG_STEP, ZIG_GAP, TOOTH_W, padFace, PAD_TH, PAD_W, moverShape, moverKills, trackAt, traceRun, drawBar, buildLevel, touchDensity, spawnState, stepState, solve, planInput, groundY, tile, sawY };

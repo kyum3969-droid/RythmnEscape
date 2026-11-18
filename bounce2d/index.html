@@ -1075,72 +1075,50 @@
     for (const [x, base, dir] of spikes) { ctx.beginPath(); ctx.arc(x + 0.5 * T, base + dir * 0.86 * T, 1.6, 0, Math.PI * 2); ctx.fill(); }
     ctx.lineJoin = "round";
 
-    // 패턴 장애물: 바닥에서 솟은 덩어리와 위에 매달린 덩어리. 이웃한 칸은 한 덩어리로 이어 그린다. (판정은 그림보다 조금 작다)
-    // 언덕 구간에서는 모서리를 둥글린다.
-    const blockRuns = (arr, has, base, step = 1) => {              // step = 배열 한 칸의 너비(칸). 높은 박스를 합친 바닥은 반 칸 단위다
-      const n = arr.length;
-      for (let c = Math.max(0, Math.floor(cA / step)); c <= cB / step && c < n; c++) {
-        if (!has(arr[c])) continue;
-        let a = c, e = c;
-        while (a > 0 && has(arr[a - 1])) a--;
-        while (e + 1 < n && has(arr[e + 1])) e++;
-        const x0 = sx(a * step) + T * 0.06, x1 = sx((e + 1) * step) - T * 0.06, soft = inRide(L, (a + 0.5) * step) ? T * 0.34 : 0;
-        const yBase = typeof base === "function" ? base(a) : base;      // 떠 있는 박스는 덩어리마다 밑(또는 위)이 다르다
-        const pts = [[x0, yBase]];
-        let yMin = yBase, yMax = yBase;
-        for (let k = a; k <= e; k++) {
-          const y = sy(ROWS - 1 - arr[k]), xl = k === a ? x0 : sx(k * step), xr = k === e ? x1 : sx((k + 1) * step);
-          yMin = Math.min(yMin, y); yMax = Math.max(yMax, y);
-          if (pts[pts.length - 1][1] !== y) pts.push([xl, y]);
-          if (k === e || arr[k + 1] !== arr[k]) pts.push([xr, y]);
-        }
-        pts.push([x1, yBase]);
-        const trace = () => {
-          ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-          for (let i = 1; i < pts.length - 1; i++) {
-            const p = pts[i], q = pts[i - 1], n = pts[i + 1];
-            const rr = Math.min(soft, Math.hypot(p[0] - q[0], p[1] - q[1]) / 2, Math.hypot(n[0] - p[0], n[1] - p[1]) / 2);
-            if (rr > 1) ctx.arcTo(p[0], p[1], n[0], n[1], rr); else ctx.lineTo(p[0], p[1]);
+    // 빨간 덩어리(바닥에서 솟은 것, 위에 매달린 것, 떠 있는 것, 계단의 단과 뚜껑): 맞닿거나 겹치는 것은 한 덩어리로 합쳐 그린다(RED_COMPS, logic.js redOutlines).
+    // 전에는 종류마다 따로 그려서, 붙어 있는 덩어리 사이에 테두리가 그어져 두 개로 보였다. 세로 변은 칸보다 조금 안쪽(0.06칸)에 긋는다. 언덕(피버) 구간에서는 모서리를 둥글린다.
+    // (판정은 그림보다 조금 작다)
+    {
+      const PY = (y) => (y <= 0 ? view.groundY : y >= RED_SKY ? -40 : sy(ROWS - 1 - y)), ins = T * 0.06;
+      for (const K of RED_COMPS) {
+        if (K.x1 < cA - 1 || K.x0 > cB + 2) continue;
+        const soft = inRide(L, K.x0 + 0.25) ? T * 0.34 : 0;
+        const P = K.loops.map((lp) => lp.map((v) => [sx(v.x) + v.s * ins, PY(v.y), v.open]));
+        // 고리 하나를 따라 긋는다. stroke면 open인 변은 건너뛴다. 둥근 모서리는 양쪽 변이 다 그어지는 꼭짓점에만
+        const trace = (lp, stroke) => {
+          const m = lp.length, rr = (k) => {
+            const p = lp[k], q = lp[(k - 1 + m) % m], nx = lp[(k + 1) % m];
+            return soft && !q[2] && !p[2] ? Math.min(soft, Math.hypot(p[0] - q[0], p[1] - q[1]) / 2, Math.hypot(nx[0] - p[0], nx[1] - p[1]) / 2) : 0;
+          };
+          let st = stroke ? lp.findIndex((v) => v[2]) : -1;
+          if (st < 0) {                                                     // 닫힌 고리: 첫 변의 가운데서 시작
+            const p0 = lp[0], p1 = lp[1 % m];
+            ctx.moveTo((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2);
+            for (let t = 1; t <= m; t++) { const k = t % m, p = lp[k], nx = lp[(k + 1) % m], r = rr(k); if (r > 1) ctx.arcTo(p[0], p[1], nx[0], nx[1], r); else ctx.lineTo(p[0], p[1]); }
+            ctx.closePath(); return;
           }
-          ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+          let pen = false;                                                   // 긋지 않는 변 다음 꼭짓점부터
+          for (let t = 1; t <= m; t++) {
+            const k = (st + t) % m, p = lp[k], nx = lp[(k + 1) % m];
+            if (p[2]) { if (pen) ctx.lineTo(p[0], p[1]); pen = false; continue; }
+            if (!pen) { ctx.moveTo(p[0], p[1]); pen = true; continue; }
+            const r = rr(k); if (r > 1) ctx.arcTo(p[0], p[1], nx[0], nx[1], r); else ctx.lineTo(p[0], p[1]);
+          }
+          if (pen) { const p = lp[st]; ctx.lineTo(p[0], p[1]); }
         };
-        trace(); ctx.closePath();
-        const bg = ctx.createLinearGradient(0, yBase, 0, yBase < yMax ? yMax : yMin);
+        let xMin = 1e9, xMax = -1e9, yTop = 1e9, yBot = -1e9;
+        for (const lp of P) for (const [x, y] of lp) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yTop = Math.min(yTop, y); yBot = Math.max(yBot, y); }
+        ctx.beginPath(); for (const lp of P) trace(lp, false);
+        const darkTop = K.sky || K.allC, bg = ctx.createLinearGradient(0, darkTop ? yTop : yBot, 0, darkTop ? yBot : yTop);
         bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#6d1236");
-        sb(0); ctx.fillStyle = bg; ctx.fill();
-        ctx.save(); ctx.clip();                                    // 빗금
+        sb(0); ctx.fillStyle = bg; ctx.fill("evenodd");
+        ctx.save(); ctx.clip("evenodd");                                    // 빗금
         ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2;
         ctx.beginPath();
-        const span = yMax - yMin, gap = T * 0.36;
-        for (let x = Math.floor((x0 - span) / gap) * gap - ((camX * T) % gap); x < x1; x += gap) { ctx.moveTo(x, yMax); ctx.lineTo(x + span, yMin); }
+        const span = yBot - yTop, gap = T * 0.36;
+        for (let x = Math.floor((xMin - span) / gap) * gap - ((camX * T) % gap); x < xMax; x += gap) { ctx.moveTo(x, yBot); ctx.lineTo(x + span, yTop); }
         gs(); ctx.restore();
-        trace(); if (typeof base === "function") ctx.closePath();       // 떠 있는 박스는 네 변을 다 두른다(땅·하늘에 붙은 덩어리는 붙은 쪽을 비운다)
-        ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(9 + 8 * pulse); gs();
-        ctx.lineJoin = "round"; sb(0);
-        c = e;
-      }
-    };
-    if (L.floorH) {
-      blockRuns(FLOOR2, (v) => v > 0, view.groundY, 0.5);
-      blockRuns(CEIL_HANG, (v) => v < 90, -40);
-      blockRuns(FLOOR_FLOAT, (v) => v > 0, (a) => sy(ROWS - 1 - L.floorLo[a]));
-      blockRuns(CEIL_FLOAT, (v) => v < 90, (a) => sy(ROWS - 1 - L.ceilTop[a]));
-    }
-    // 계단의 빨간 덩어리(bands): 빨간 단과 그 위의 뚜껑. 공중에 뜬 네모(네 변을 다 두른다)
-    if (BAND_RUNS.length) {
-      // (덩어리 목록 BAND_RUNS는 처음에 한 번 만들어 둔다. 전에는 그릴 때 칸을 훑으며 덩어리를 찾았는데, 한 칸에 빨간 단과 그 위의 뚜껑이 같이 있으면
-      //  첫 덩어리를 그린 뒤 칸을 건너뛰어서 뚜껑이 안 그려졌다 — 판정은 있는데 보이지 않는 뚜껑에 걸려 죽었다)
-      for (const { a, e, lo, hi } of BAND_RUNS) {
-        if (e < cA || a > cB) continue;
-        const xa = sx(a) + T * 0.06, xb = sx(e + 1) - T * 0.06, ya = sy(ROWS - 1 - hi), yb = sy(ROWS - 1 - lo);
-        const bg = ctx.createLinearGradient(0, yb, 0, ya);
-        bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#6d1236");
-        sb(0); ctx.fillStyle = bg; ctx.fillRect(xa, ya, xb - xa, yb - ya);
-        ctx.save(); ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya); ctx.clip();
-        ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2; ctx.beginPath();
-        { const span = yb - ya, gap = T * 0.36; for (let x = Math.floor((xa - span) / gap) * gap; x < xb; x += gap) { ctx.moveTo(x, yb); ctx.lineTo(x + span, ya); } }
-        ctx.stroke(); ctx.restore();
-        ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya);
+        ctx.beginPath(); for (const lp of P) trace(lp, true);
         ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(9 + 8 * pulse); gs();
         ctx.lineJoin = "round"; sb(0);
       }
@@ -1272,9 +1250,9 @@
           const bg = ctx.createLinearGradient(0, near, 0, far);
           bg.addColorStop(0, "#081a3d"); bg.addColorStop(1, hit > 0 ? `rgb(${40 + 60 * hit},${110 + 80 * hit},255)` : "#1f6ee0");
           sb(0); ctx.fillStyle = bg; ctx.fill();
-          ctx.save(); ctx.clip();                                               // 가로 줄무늬(빨간 장애물의 빗금과 다르게)
+          ctx.save(); ctx.clip();                                               // 가로 줄무늬(빨간 장애물의 빗금과 다르게). 천장에 매달린 발판도 끝까지(전에는 바닥 쪽 끝에서 한 칸 위까지만 그어서 위쪽이 비어 있었다)
           ctx.strokeStyle = "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath();
-          for (let y = view.groundY - T * 0.48; y > far - T; y -= T * 0.48) { ctx.moveTo(edge[0][0], y); ctx.lineTo(edge[edge.length - 1][0], y); }
+          for (let y = view.groundY - T * 0.48, yEnd = Math.min(...ys) - T; y > yEnd; y -= T * 0.48) { ctx.moveTo(edge[0][0], y); ctx.lineTo(edge[edge.length - 1][0], y); }
           gs(); ctx.restore();
           ctx.beginPath(); ctx.moveTo(edge[0][0], edge[0][1]);
           for (const q of edge) ctx.lineTo(q[0], q[1]);
@@ -2007,6 +1985,7 @@
       BAND_RUNS.push({ a: c, e, lo, hi });
     }
   }
+  const RED_COMPS = redOutlines(L);                  // 빨간 덩어리의 그림 모양(맞닿은 것은 한 덩어리로). 그릴 때 이것만 쓴다
   const CAM_KEYS = (COURSE.cam || []).slice().sort((u, v) => u.bar - v.bar);
   const DIR = new Float32Array(L.cols + 1);          // 칸마다 길의 기울기(라디안)
   {

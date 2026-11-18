@@ -657,6 +657,18 @@ console.log('== 17라운드: 해파리 — 언제 부푸는지 읽고 그냥 지
   ok(flips >= 4 && ok2 === flips && jel >= 16 && L.cps.length === 9 && B.indexOf('goal') === 79,
     `17라운드: 해파리 ${jel}마리. 뒤집기 ${flips}곳(${where.join(', ')}) 모두, 앞 마디처럼 멈추면(또는 안 멈추면) 그 마디에서 죽는다(${ok2}곳). 체크포인트 ${L.cps.length}개, 결승선은 마디 79`);
 }
+console.log('== 빨간 덩어리의 그림: 맞닿은 덩어리는 하나로, 떠 있는 덩어리는 칸마다 제 밑으로 ==');
+{
+  const mk = (n) => ({ floorH: new Array(n).fill(0), floorLo: new Array(n).fill(0), ceilH: new Array(n).fill(99), ceilTop: new Array(n).fill(99), talls: [], bands: new Map() });
+  const A = mk(10); A.floorH[2] = 1; A.floorH[3] = 1; A.bands.set(3, [[1, 2], [2, 3]]); A.bands.set(4, [[2, 3]]);   // 바닥 위에 계단 단, 그 위에 또 단(옆으로 한 칸 더)
+  const ka = Lg.redOutlines(A);
+  const B = mk(10); B.floorLo[2] = 3.3; B.floorH[2] = 5; B.floorLo[3] = 4.3; B.floorH[3] = 5.5;               // 밑이 다른 떠 있는 덩어리
+  const kb = Lg.redOutlines(B), bot = kb[0] ? Math.min(...kb[0].loops[0].filter((v) => v.x > 3).map((v) => v.y)) : -1;
+  const C = mk(10); C.ceilH[1] = 4; C.ceilH[2] = 4; C.ceilH[3] = 3.25; C.ceilTop[3] = 4.25;                    // 매달린 덩어리 옆에 떠 있는 천장 덩어리
+  const kc = Lg.redOutlines(C);
+  ok(ka.length === 1 && ka[0].loops.length === 1 && ka[0].loops[0].filter((v) => v.open).length === 1 && kb.length === 1 && Math.abs(bot - 4.3) < 1e-6 && kc.length === 1 && kc[0].sky,
+    `맞닿은 바닥·계단 단은 한 덩어리(둘레 하나, 땅에 붙은 밑변만 안 긋는다), 밑이 다른 떠 있는 덩어리는 칸마다 제 밑(${bot}), 매달린 덩어리와 옆의 천장 덩어리도 한 덩어리`);
+}
 console.log('== 18라운드: 깜빡이는 등롱 — 언제 켜지는지 읽고 멈춤 길이와 높이를 바꾸기 ==');
 {
   const C = Lg.COURSES.find((c) => c.name.startsWith('ROUND 18')), B = C.bars, L = Lg.buildLevel(C);
