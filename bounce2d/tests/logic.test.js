@@ -593,7 +593,7 @@ console.log('== 13라운드: 마지막 판 — 앞 라운드의 대표 장치가
   const got = {
     '멈춤 함정(2~4: 같은 공중 사슬 두 번 → 버릇이 된 멈춤 하나가 함정)': B[2] === B[3] && B[4] !== B[2] && (P(B[4]).traps || []).some((t) => t.full && JSON.stringify(t.full.holds) === JSON.stringify(P(B[2]).holds) && JSON.stringify(t.full.holds) !== JSON.stringify(P(B[4]).holds)),
     '쇠 봉우리(8~11, 56~59)': movers(8, 12, 'press') >= 2 && movers(56, 60, 'press') >= 4 && sec(8, 12).every((n) => P(n).stair) && sec(56, 60).every((n) => P(n).stair),
-    '이단 점프 → 멈춤의 변주(12~16: 덩어리가 길면 오래, 짧으면 짧게)': ['djHold', 'djHold', 'djHoldL', 'djHoldCp', 'djHoldS'].every((n, i) => B[12 + i] === n) && P('djHoldL').holds[0][1] - P('djHoldL').holds[0][0] > P('djHold').holds[0][1] - P('djHold').holds[0][0] && P('djHoldS').holds[0][1] - P('djHoldS').holds[0][0] < P('djHold').holds[0][1] - P('djHold').holds[0][0] && P('djHoldCp').cp,
+    '쇠 봉우리(8~16: 봉우리 → 함정, 더 높은 봉우리 → 함정(15마디가 체크포인트), 한 마디짜리)': B.slice(8, 17).every((n) => P(n).stair) && movers(12, 17, 'press') >= 4 && P(B[15]).cp && B.slice(12, 16).some((n) => P(n).traps),
     '속임수 djHold → duckDrop': B.some((n, b) => n === 'duckDrop' && B[b - 1] === 'djHold'),
     '울타리 fenceJ → fence': B.some((n, b) => n === 'fence' && B[b - 1] === 'fenceJ'),
     '좁은 피버(24~30)': rush(24, 31),

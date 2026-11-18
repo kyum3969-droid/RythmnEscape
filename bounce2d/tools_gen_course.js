@@ -383,8 +383,8 @@ TEMPLATES.R13 = {
     const RISE = 'flat';      // (음이 올라가는 구간의 계단이 이 자리를 대신한다: 틀의 rise)
     return [
       ['도입 — 처음처럼: 멈춤 함정(같은 공중 사슬 두 번 → 마지막 멈춤이 짧거나 없다), 새 마디 둘', ['flat', 'flat', ...phrase('short-last'), one(), one(), 'cp']],
-      ['벌스 — 쇠 봉우리(12라운드)와 이단 점프 → 멈춤: 봉우리 → 같은 봉우리의 함정, 이단 점프 → 멈춤 ×2 → 덩어리가 길다(오래 멈춘다) → 다시 그대로(체크포인트)', [...hill('B', 2, { peak: 5, iron: true, need: { kind: K } }), ...trap('B', 2), 'djHold', 'djHold', 'djHoldL', 'djHoldCp']],
-      ['브레이크: 이단 점프 → 멈춤의 마지막 변주(덩어리가 짧고 앞에 가지: 짧게 멈춘다), 음이 올라가는 두 마디는 오르는 계단, 울타리(11라운드) 한 번 → 기둥은 그대로인데 이번엔 아무것도 안 누른다', ['djHoldS', RISE, RISE, 'fenceJ', 'fence', one(), one(), 'cp']],
+      ['벌스 — 쇠 봉우리(12라운드): 봉우리 → 같은 봉우리의 함정, 더 높은 봉우리(여섯 칸) → 그 봉우리의 함정(둘째 마디가 체크포인트)', [...hill('B', 2, { peak: 5, iron: true, need: { kind: K } }), ...trap('B', 2), ...hill('C', 2, { peak: 6, iron: true, need: { kind: K } }), { ht: 'C', kind: K, cpAt: 1 }, { cont: 1 }]],
+      ['브레이크: 한 마디짜리 쇠 봉우리, 음이 올라가는 두 마디는 오르는 계단, 울타리(11라운드) 한 번 → 기둥은 그대로인데 이번엔 아무것도 안 누른다', [...hill('E', 1, { peak: 3, iron: true }), RISE, RISE, 'fenceJ', 'fence', one(), one(), 'cp']],
       ['후렴 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
       ['벌스 둘 — 공장(10라운드): 망치 사이로 멈추기 ×2 → 뒤집기, 엇갈림 롤러 ×2 → 박이 반대, 옆 망치', ['hamGlide', 'hamGlide', 'hamMix', 'grindPit', 'grindPit', 'liftSwap', 'ramHop', 'cp']],
       ['거의 소리가 없는 여덟 마디 — 공중(5~7라운드): 그림의 공중 사슬, 삼단 점프 ×2 → 미끼 고리, 새 마디 둘', ['airStep', 'airRing', 'ring3', 'ring3', 'ring3Bait', one(), one(), 'cp']],
@@ -746,7 +746,7 @@ function generate(T, seed) {
   };
 
   // ---- 계단(8라운드부터): { hill: 'A', bars: n } 새 계단(n마디. 뒤에 { cont: 1 }을 n-1개 붙인다) / { hr: 'A' } 한 번 더 / { ht: 'A', kind: [...], where: 'up' | 'down' } 그 계단의 함정
-  //   hops를 직접 주면 그대로 쓴다(처음 보여 주는 계단). peak = 꼭대기 높이의 하한, need = 나중에 낼 함정({ kind, where })이 성립하는 계단만 받는다
+  //   cpAt: i = 그 계단의 i번째 마디를 체크포인트 마디로(cp: true). hops를 직접 주면 그대로 쓴다(처음 보여 주는 계단). peak = 꼭대기 높이의 하한, need = 나중에 낼 함정({ kind, where })이 성립하는 계단만 받는다
   const stairs = {};
   const hopName = (h) => (h.how === 'j' ? '이단 점프로 ' : h.how === 'h' ? '빨간 단을 건너뛰어 ' : '') + h.to;
   // 쇠 봉우리(12라운드): 공이 딛고 튀는 단마다(2칸 넘는 단) 튀고 0.45박 뒤에 프레스가 그 단을 내리찍는다(두 박마다). 단 위 3.7칸에 떠 있다가
@@ -787,6 +787,7 @@ function generate(T, seed) {
     if (slot.ht) {
       const M = stairs[slot.ht], tv = trapOfHill(M.hops, slot.kind, slot.where, b, M.iron);
       if (!tv) throw new Error(`계단 함정을 못 만들었다(마디 ${b})`);
+      if (slot.cpAt !== undefined) tv.pats[slot.cpAt].cp = true;      // 계단 안의 마디를 체크포인트로(13라운드 15마디)
       tv.names.forEach((n, i) => { made[n] = tv.pats[i]; });
       bars.push(...tv.names); trapList.push({ bar: b, kind: tv.kind, of: slot.ht }); roles[b] = slot.ht + '!';
       const tb = tv.pats.findIndex((q) => q.traps);
@@ -805,6 +806,7 @@ function generate(T, seed) {
         if (!tv) { put.names.forEach((nm) => delete Lg.PATTERNS[nm]); continue; }
         tv.names.forEach((nm) => delete Lg.PATTERNS[nm]);
       }
+      if (slot.cpAt !== undefined) put.pats[slot.cpAt].cp = true;
       put.names.forEach((nm, i) => { made[nm] = put.pats[i]; });
       stairs[slot.hill] = { hops, names: put.names, iron: !!slot.iron };
       bars.push(...put.names); roles[b] = slot.hill;
