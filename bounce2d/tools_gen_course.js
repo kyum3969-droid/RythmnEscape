@@ -335,6 +335,36 @@ TEMPLATES.R11 = {
   },
 };
 
+// 12라운드(Across the Iron Peak): 봉우리의 라운드. 새것은 쇠 봉우리(iron) — 계단을 딛고 오르면 방금 떠난 단을 프레스가 박에 맞춰 내리찍는다(뒤에서 쾅, 쾅).
+//   짜임은 8라운드의 계단과 같다(같은 계단 두 번 → 함정). 계단의 함정은 멈춤 길이(길게·짧게)를 먼저 쓰고, 안 되면 낮아진 단·손 바꿈·밀린 빨간 단.
+//   가장 밝은 후렴(56~)과 마지막 후렴(72~)은 네 마디짜리 큰 봉우리(여덟 칸)를 넘는다. 피버는 후렴 둘(16~22, 48~54)에만.
+//   앞 라운드의 것도 섞는다: 속임수(djHold→duckDrop, grindPit→liftSwap, ring3→ring3Bait), 망치, 징검다리 위 프레스, 그림의 공중 사슬, 멈춤 길이 함정.
+TEMPLATES.R12 = {
+  prefix: 'g12', bpm: 150.0, floatReds: true, vary: true, density: 0.9, fresh: true, cpFill: true, cpLevel: 'a7', holdW: 3, hds: [0.5, 1],
+  recipe: { g: 'a7', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a7' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a7', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
+    const K = ['hlong', 'hshort', 'lidJ', 'swap', 'shift'];      // 계단의 함정: 멈춤 길이를 먼저
+    const hill = (k, n, o = {}) => [{ hill: k, bars: n, ...o }, ...cont(n)], rep = (k, n) => [{ hr: k }, ...cont(n)], trap = (k, n) => [{ ht: k, kind: K }, ...cont(n)];
+    return [
+      ['조용한 도입: 한 마디짜리 계단을 두 번 → 같은 계단인데 멈춤 길이가 다르다(또는 다른 함정). 새 마디 둘', ['flat', 'flat', ...hill('A', 1, { need: { kind: K } }), ...rep('A', 1), ...trap('A', 1), one(), one(), 'cp']],
+      ['벌스 — 쇠 봉우리를 소개한다: 두 마디짜리 계단을 오르면 방금 떠난 단을 프레스가 내리찍는다 ×2 → 같은 봉우리의 함정. 이어서 이단 점프 → 멈춤', [...hill('B', 2, { peak: 5, iron: true, need: { kind: K } }), ...rep('B', 2), ...trap('B', 2), 'djHold', 'cp']],
+      ['후렴 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝. (판이 없는 좁은 통로의 줄은 앞 라운드들에서 거의 다 나왔다)', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
+      ['저음만 남는 브레이크 — 속임수: 엇갈림 롤러 ×2 → 박이 반대, 이단 점프 → 멈춤 ×2 → 떠 있는 빨간 계단 밑으로 떨어지기', ['grindPit', 'grindPit', 'liftSwap', 'djHold', 'djHold', 'duckDrop', one(), 'cp']],
+      ['벌스 둘: 더 높은 쇠 봉우리(여섯 칸) → 같은 봉우리의 함정, 이어서 멈춤 길이 함정', [...hill('D', 2, { peak: 6, iron: true, need: { kind: K } }), ...trap('D', 2), ...phrase('short-last'), 'cp']],
+      ['빌드업: 그림의 공중 사슬, 삼단 점프 → 미끼 고리, 멈춤 길이 함정', ['airStep', 'airRing', 'ring3', 'ring3Bait', ...phrase('long-last'), 'cp']],
+      ['후렴 둘 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더', ['wUp', { wm: 'E', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'pad' }, { wm: 'F', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'F', kind: 'pad' }, 'wDn', 'cp']],
+      ['후렴 셋(가장 밝다) — 큰 쇠 봉우리: 네 마디에 걸쳐 여덟 칸까지 오르고 내려온다(프레스가 뒤에서 쫓아온다). 이어서 망치 사이로 멈추기 → 뒤집기, 옆 망치', [...hill('P', 4, { peak: 8, iron: true }), 'hamGlide', 'hamMix', 'ramHop', 'cp']],
+      ['조용함 — 높은 곳: 징검다리 위의 프레스, 내려올 땅이 빨간 박스, 새 마디 셋', ['stIn', 'stPress', 'stOutG', 'gAfter', one(), one(), one(), 'cp']],
+      ['마지막 후렴 — 봉우리를 넘어: 큰 쇠 봉우리, 이어서 두 마디짜리 봉우리, 곡의 한 방에 결승선', [...hill('Q', 4, { peak: 8, iron: true }), ...hill('R', 2, { peak: 5, iron: true }), one()]],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
@@ -656,21 +686,32 @@ function generate(T, seed) {
   //   hops를 직접 주면 그대로 쓴다(처음 보여 주는 계단). peak = 꼭대기 높이의 하한, need = 나중에 낼 함정({ kind, where })이 성립하는 계단만 받는다
   const stairs = {};
   const hopName = (h) => (h.how === 'j' ? '이단 점프로 ' : h.how === 'h' ? '빨간 단을 건너뛰어 ' : '') + h.to;
-  const putHill = (hops, b) => {
+  // 쇠 봉우리(12라운드): 공이 딛고 튀는 단마다(2칸 넘는 단) 튀고 0.45박 뒤에 프레스가 그 단을 내리찍는다(두 박마다). 단 위 3.7칸에 떠 있다가
+  const ironPresses = (C, pats) => {
+    for (const st of C.steps) {
+      if (st.lv < 2) continue;
+      const xb = 4 * st.t, bi = Math.floor(xb / 16); if (bi >= pats.length) continue;
+      const X = xb - 16 * bi, at = st.t + 0.45 - 4 * bi, low = st.lv, hov = st.lv + 3.7;
+      if (X - 0.9 < 0.2 || X + 0.9 > 15.8) continue;
+      (pats[bi].movers = pats[bi].movers || []).push({ kind: 'press', x0: +(X - 0.9).toFixed(3), x1: +(X + 0.9).toFixed(3), hover: hov, low, track: { P: 2, at: +at.toFixed(4), keys: [[0, low, 'in'], [0.08, low, 'lin'], [0.5, hov, 'out'], [1.88, hov, 'lin']] } });
+    }
+  };
+  const putHill = (hops, b, iron) => {
     const C = St.compile(hops), nm = (i) => `${T.prefix}_${b + i}`, pats = St.slice(C, nm), names = pats.map((_, i) => nm(i));
+    if (iron) { ironPresses(C, pats); if (!pats.some((q) => q.movers)) return null; }
     pats.forEach((q, i) => { Lg.PATTERNS[names[i]] = q; });
     const r = St.check(names, T.bpm);
     if (!r.ok) { names.forEach((n) => delete Lg.PATTERNS[n]); return null; }
     return { names, pats, top: r.top };
   };
-  const trapOfHill = (hops, kinds, where, b) => {       // 함정으로 바꾼 계단: 종류와 자리(오르는 뜀 / 내려오는 뜀)를 섞어 해 보고, 통과하는 첫 번째
+  const trapOfHill = (hops, kinds, where, b, iron) => {       // 함정으로 바꾼 계단: 종류와 자리(오르는 뜀 / 내려오는 뜀)를 섞어 해 보고, 통과하는 첫 번째
     const cand = [];
     hops.forEach((h, i) => { const from = i ? hops[i - 1].to : 0, up = h.to > from; if (where && (where === 'up') !== up) return; for (const kind of kinds) cand.push([i, kind]); });
     cand.sort((u, v) => kinds.indexOf(u[1]) - kinds.indexOf(v[1]) || rng() - 0.5);      // (앞에 적은 종류부터)
     for (const [i, kind] of cand) {
       const v = St.variant(hops, i, kind, rng);
       if (!v) continue;
-      const put = putHill(v, b);
+      const put = putHill(v, b, iron);
       if (put && put.pats.some((q) => q.traps)) return { ...put, hops: v, kind, at: i };
       if (put) put.names.forEach((n) => delete Lg.PATTERNS[n]);
     }
@@ -681,7 +722,7 @@ function generate(T, seed) {
     if (slot.cont) return;
     if (slot.hr) { bars.push(...stairs[slot.hr].names); roles[b] = slot.hr; return; }
     if (slot.ht) {
-      const M = stairs[slot.ht], tv = trapOfHill(M.hops, slot.kind, slot.where, b);
+      const M = stairs[slot.ht], tv = trapOfHill(M.hops, slot.kind, slot.where, b, M.iron);
       if (!tv) throw new Error(`계단 함정을 못 만들었다(마디 ${b})`);
       tv.names.forEach((n, i) => { made[n] = tv.pats[i]; });
       bars.push(...tv.names); trapList.push({ bar: b, kind: tv.kind, of: slot.ht }); roles[b] = slot.ht + '!';
@@ -694,15 +735,15 @@ function generate(T, seed) {
       const hops = slot.hops || St.randomHill(4 * n, rng, { peak: slot.peak, max: slot.max, inputs: slot.inputs, holdW: slot.holdW || T.holdW, hds: slot.hds || T.hds });
       if (!hops) continue;
       if (!slot.hops && Object.values(stairs).some((q) => JSON.stringify(q.hops) === JSON.stringify(hops))) continue;      // 같은 계단을 두 번 뽑지 않는다
-      const put = putHill(hops, b);
+      const put = putHill(hops, b, slot.iron);
       if (!put) { if (slot.hops) throw new Error(`정해 준 계단이 통과하지 못했다(마디 ${b})`); continue; }
       if (slot.need) {                                   // 나중에 낼 함정이 성립하는가(이름이 겹치지 않게 멀리 떨어진 번호로 시험한다)
-        const tv = trapOfHill(hops, slot.need.kind, slot.need.where, 900);
+        const tv = trapOfHill(hops, slot.need.kind, slot.need.where, 900, slot.iron);
         if (!tv) { put.names.forEach((nm) => delete Lg.PATTERNS[nm]); continue; }
         tv.names.forEach((nm) => delete Lg.PATTERNS[nm]);
       }
       put.names.forEach((nm, i) => { made[nm] = put.pats[i]; });
-      stairs[slot.hill] = { hops, names: put.names };
+      stairs[slot.hill] = { hops, names: put.names, iron: !!slot.iron };
       bars.push(...put.names); roles[b] = slot.hill;
       notes[b] = '계단: ' + hops.map(hopName).join(' → ');
       return;
@@ -840,7 +881,7 @@ function fillCp(T, course0) {
     console.error(`씨앗 ${seed}: ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'}, 체크포인트 ${L.cps.length}개(패턴 있는 것 ${L.cps.filter((c) => c.snap).length})`);
     if (!s.won || L.fixed.length || !solved || !snaps || !trapOk) { for (const n of Object.keys(g.made)) delete Lg.PATTERNS[n]; continue; }
     let src = fs.readFileSync(FILE, 'utf8');
-    const lines = Object.entries(g.made).map(([name, d]) => `  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.rings ? ', rings: ' + fmt(d.rings) : ''}${d.chain ? ', chain: ' + d.chain : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''}${d.stair ? ', stair: true' : ''}, cp: true },   // ${g.notes[+name.replace(/^\D+\d*\D/, '')] || '체크포인트 마디'}`);
+    const lines = Object.entries(g.made).map(([name, d]) => `  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.rings ? ', rings: ' + fmt(d.rings) : ''}${d.chain ? ', chain: ' + d.chain : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''}${d.movers ? ', movers: ' + JSON.stringify(d.movers) : ''}${d.stair ? ', stair: true' : ''}, cp: true },   // ${g.notes[+name.replace(/^\D+\d*\D/, '')] || '체크포인트 마디'}`);
     const z = `  // </gen:patterns:${round}>`, zi = src.indexOf(z);
     if (zi < 0) throw new Error('표시가 없다: ' + z);
     src = src.slice(0, zi) + `  // 체크포인트 마디(tools_gen_course.js ${round} fillcp ${seed}): 개발하는 동안 체크포인트로 쓰는 마디에도 패턴을 넣었다. cp: true를 빼면 그냥 마디다\n` + lines.join('\n') + '\n' + src.slice(zi);
@@ -893,7 +934,7 @@ const lines = [`  // 도구(tools_gen_course.js ${round} ${result.seed})가 무�
 for (const [name, d] of Object.entries(result.made)) {
   const b = +name.replace(/^\D+\d*\D/, ''), note = result.notes[b];
   if (d.mode === 'rush') lines.push(`  ${name}: { mode: "rush"${d.wide ? ', wide: true' : ''}${d.gap ? ', gap: ' + d.gap : ''}, nodes: "${d.nodes}" },${note ? '   // ' + note : ''}`);
-  else lines.push(`  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.lead ? ', lead: ' + JSON.stringify(d.lead) : ''}${d.tail ? ', tail: ' + JSON.stringify(d.tail) : ''}${d.stair ? ', stair: true' : ''}${d.cp ? ', cp: true' : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.rings ? ', rings: ' + fmt(d.rings) : ''}${d.chain ? ', chain: ' + d.chain : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''} },${note ? '   // ' + note : ''}`);
+  else lines.push(`  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.lead ? ', lead: ' + JSON.stringify(d.lead) : ''}${d.tail ? ', tail: ' + JSON.stringify(d.tail) : ''}${d.stair ? ', stair: true' : ''}${d.cp ? ', cp: true' : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.rings ? ', rings: ' + fmt(d.rings) : ''}${d.chain ? ', chain: ' + d.chain : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''}${d.movers ? ', movers: ' + JSON.stringify(d.movers) : ''} },${note ? '   // ' + note : ''}`);
 }
 const barLines = [];
 let at = 0;

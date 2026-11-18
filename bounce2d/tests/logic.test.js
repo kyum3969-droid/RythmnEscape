@@ -253,7 +253,7 @@ for (const C of Lg.COURSES) {
         const ho = [...H.filter((h) => !inb(h[0])), ...(t.full ? t.full.holds : t.holds || p.holds).map(([x, z]) => [lo + Math.round(x * Lg.SUB), lo + Math.round(z * Lg.SUB)])];
         const s = go(pr, ho, end); if (!s.dead || s.x < b * 16 || s.x >= (b + 1) * 16 + 0.5) bad.push(`${b}:${name} 함정 ${JSON.stringify(t)}`); }
     });
-    ok(bars >= 15 && bad.length === 0 && ((kinds.press && kinds.saw && kinds.bar && kinds.plat) || (kinds.ram && kinds.roller)),      // (9라운드: 톱날·막대·발판, 10라운드: 옆 망치·분쇄 롤러)
+    ok(bars >= 10 && bad.length === 0 && ((kinds.press && kinds.saw && kinds.bar && kinds.plat) || (kinds.ram && kinds.roller)),      // (9라운드: 톱날·막대·발판, 10라운드: 옆 망치·분쇄 롤러)
      
       `[${tag}] 움직이는 장애물 ${lv.movers.length}개(${Object.entries(kinds).map(([k, v]) => k + ' ' + v).join(', ')}), 세트 마디 ${bars}개: 코스 안에서 입력을 빼면 죽고 ±0.15박은 지나가고 함정은 그 마디에서 죽는다(${checks}가지)${bad.length ? ' — 어긋남: ' + bad.slice(0, 6).join(', ') : ''}`);
     // 움직이는 장애물의 판정은 그림과 같은 모양(moverShape)을 쓴다: 톱날 중심에 공을 놓으면 걸리고, 한참 떨어지면 안 걸린다

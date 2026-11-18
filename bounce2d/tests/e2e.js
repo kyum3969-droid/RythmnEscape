@@ -446,6 +446,22 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `11라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    // 12라운드(쇠 봉우리): 계단 위로 피스톤이 내려찍는다
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(12)')]); await ready();
+    st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length }; });
+    ok(st.round === 11 && st.name.includes('Across the Iron Peak') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.078 && st.cps === 9, `12라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM)`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots12 = { 34.5: 'r12_iron_hill', 97.0: 'r12_grind', 133.0: 'r12_iron_d', 226.5: 'r12_iron_peak', 290.5: 'r12_final_peak' };
+    for (let beat = 0; beat <= 340; beat += 0.25) {
+      await tick(beat);
+      if (shots12[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots12[beat] + '.png' }); }
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `12라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    const menuFit = await G(() => { const r = document.getElementById('rounds'); return r ? r.scrollHeight <= r.clientHeight + 2 && r.querySelectorAll('button').length : 0; });
+    ok(menuFit === 12, `라운드 고르기 메뉴에 12개 버튼이 모두 들어간다 (${menuFit})`);
     // 굽은 통로가 크게 돌아 나가는 곳(5라운드 48~53: 90° → 135° → 90° → 0°)에서 뒤쪽 토막의 바깥 칠이 앞쪽 통로를 덮어 화면이 새까맣던 것: 이제 벽 두께만큼만 칠한다
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(5)')]); await ready();
