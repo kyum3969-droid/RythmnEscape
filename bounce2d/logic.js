@@ -639,6 +639,49 @@ const PATTERNS = {
   g12_77: { holds: [], presses: [0], tol: 0.18, lead: ["g12_76"], stair: true, floats: [[3, 5, 6], [9, 11, 3]], lava: [[0, 13]], movers: [{"kind":"press","x0":4.1,"x1":5.9,"hover":9.7,"low":6,"track":{"P":2,"at":1.7,"keys":[[0,6,"in"],[0.08,6,"lin"],[0.5,9.7,"out"],[1.88,9.7,"lin"]]}},{"kind":"press","x0":9.6,"x1":11.4,"hover":6.7,"low":3,"track":{"P":2,"at":3.075,"keys":[[0,3,"in"],[0.08,3,"lin"],[0.5,6.7,"out"],[1.88,6.7,"lin"]]}}] },
   g12_78: { holds: [[0.5, 1.125], [1.875, 2.625]], presses: [1.375], tol: 0.18, rings: [[5, 0], [5, 1], [5, 2]], chain: 1 },
   // </gen:patterns:R12>
+  // <gen:patterns:R13>
+  // 도구(tools_gen_course.js R13 2)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
+  g13_2: { holds: [[0.5, 1], [1.625, 2.375]], presses: [1.125], tol: 0.18, rings: [[4, 0], [4, 1], [4, 2]], chain: 1 },
+  g13_4: { holds: [[0.5, 1]], presses: [1.125], tol: 0.18, rings: [[4, 0], [4, 1], [4, 2]], chain: 1, traps: [{full: {presses: [1.125], holds: [[0.5, 1], [1.625, 2.375]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g13_5: { holds: [[0.5, 1.25]], presses: [2.5], tol: 0.18, tall: [2.5] },
+  g13_6: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18 },
+  g13_7: { holds: [[0.5, 1.375], [2.5, 3.375]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g13_8: { holds: [[0.5, 1.5], [3.875, 4.875]], presses: [2.25], tol: 0.18, bands: [[2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], loose: [3.875], tail: ["g13_9"], stair: true, floats: [[5, 7, 2], [12, 14, 5]], lava: [[1, 15]], movers: [{"kind":"press","x0":6.1,"x1":7.9,"hover":5.7,"low":2,"track":{"P":2,"at":2.2,"keys":[[0,2,"in"],[0.08,2,"lin"],[0.5,5.7,"out"],[1.88,5.7,"lin"]]}},{"kind":"press","x0":12.6,"x1":14.4,"hover":8.7,"low":5,"track":{"P":2,"at":3.825,"keys":[[0,5,"in"],[0.08,5,"lin"],[0.5,8.7,"out"],[1.88,8.7,"lin"]]}}] },   // 계단: 빨간 단을 건너뛰어 2 → 이단 점프로 5 → 빨간 단을 건너뛰어 3 → 2 → 0
+  g13_9: { holds: [], presses: [], tol: 0.18, bands: [[1, 2, 3, 4], [1, 2, 8.6, 10.4]], lead: ["g13_8"], stair: true, floats: [[4, 7, 3], [10, 11, 2]], lava: [[0, 13]], movers: [{"kind":"press","x0":5.6,"x1":7.4,"hover":6.7,"low":3,"track":{"P":2,"at":2.075,"keys":[[0,3,"in"],[0.08,3,"lin"],[0.5,6.7,"out"],[1.88,6.7,"lin"]]}},{"kind":"press","x0":10.1,"x1":11.9,"hover":5.7,"low":2,"track":{"P":2,"at":3.2,"keys":[[0,2,"in"],[0.08,2,"lin"],[0.5,5.7,"out"],[1.88,5.7,"lin"]]}}] },
+  g13_10: { holds: [[0.5, 1.5], [3.125, 4.125]], presses: [], tol: 0.18, bands: [[14, 15, 1, 2], [2, 4, 3.6, 5.4], [9, 9, 5.6, 7.4], [14, 15, 6.6, 8.4]], redBox: [[2, 4, 1]], loose: [3.125], tail: ["g13_11"], stair: true, floats: [[5, 7, 2], [9, 11, 3]], lava: [[1, 15]], traps: [{presses: [2.25]}], movers: [{"kind":"press","x0":6.1,"x1":7.9,"hover":5.7,"low":2,"track":{"P":2,"at":2.2,"keys":[[0,2,"in"],[0.08,2,"lin"],[0.5,5.7,"out"],[1.88,5.7,"lin"]]}},{"kind":"press","x0":9.6,"x1":11.4,"hover":6.7,"low":3,"track":{"P":2,"at":3.075,"keys":[[0,3,"in"],[0.08,3,"lin"],[0.5,6.7,"out"],[1.88,6.7,"lin"]]}}] },   // 함정(낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다)
+  g13_11: { holds: [[1.375, 2.375]], presses: [], tol: 0.18, boxes: [[1, 4, 1]], bands: [[6, 7, 1, 2], [6, 7, 4.6, 6.4]], lead: ["g13_10"], stair: true, floats: [[8, 11, 3]], lava: [[0, 13]], movers: [{"kind":"press","x0":9.6,"x1":11.4,"hover":6.7,"low":3,"track":{"P":2,"at":3.075,"keys":[[0,3,"in"],[0.08,3,"lin"],[0.5,6.7,"out"],[1.88,6.7,"lin"]]}}] },
+  g13_15: { holds: [[0.5, 1.25], [2, 2.5]], presses: [1.5], tol: 0.18, cp: true, rings: [[5, 0], [5, 1], [5, 2]], chain: 1 },   // 체크포인트 마디
+  g13_17: { holds: [[0.5, 1], [2.25, 2.75]], presses: [], tol: 0.18, bands: [[9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g13_18"], stair: true, floats: [[3, 7, 2], [10, 14, 4]], lava: [[1, 15]] },   // 음이 올라가는 구간 — 오르는 계단: 계단: 빨간 단을 건너뛰어 2 → 빨간 단을 건너뛰어 4 → 빨간 단을 건너뛰어 6 → 3 → 0
+  g13_18: { holds: [[0, 1]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [0, 2, 7.6, 9.4]], lead: ["g13_17"], stair: true, floats: [[3, 5, 6], [9, 11, 3]], lava: [[0, 13]] },
+  g13_21: { holds: [[0.5, 1.375], [2.5, 3.375]], presses: [], tol: 0.18 },
+  g13_22: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18 },
+  g13_23: { holds: [[0.5, 1], [1.75, 2.5]], presses: [1.25], tol: 0.18, cp: true, rings: [[4, 0], [4, 1], [4, 2]], chain: 1 },   // 체크포인트 마디
+  g13z24: { mode: "rush", nodes: "F.B.B.F." },
+  g13z26: { mode: "rush", nodes: "F.F.B.F." },   // 함정(판이 없다): 앞 마디(F.B.B.F.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g13z27: { mode: "rush", nodes: "F.F.B.B." },
+  g13z29: { mode: "rush", nodes: "F.S...F." },   // 뚝: 앞 마디(F.F.B.B.)와 같이 가다가 끊긴다
+  g13z30: { mode: "rush", nodes: "B.B.F.F." },
+  g13_31: { holds: [[0.5, 1], [1.625, 2.375]], presses: [1.125], tol: 0.18, cp: true, rings: [[4, 0], [4, 1], [4, 2]], chain: 1 },   // 체크포인트 마디
+  g13_39: { holds: [[0.5, 1.5], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g13_45: { holds: [[0.5, 1.5], [2.5, 3.375]], presses: [], tol: 0.18 },
+  g13_46: { holds: [[0.5, 1.25], [1.875, 2.875]], presses: [1.375], tol: 0.18, rings: [[5, 0], [5, 1], [5, 2]], chain: 1 },
+  g13_47: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g13_55: { holds: [[0.5, 1.5], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g13_56: { holds: [[0.5, 1], [2.25, 2.75]], presses: [], tol: 0.18, bands: [[9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g13_57","g13_58","g13_59"], stair: true, floats: [[3, 7, 2], [10, 14, 4]], lava: [[1, 15]], movers: [{"kind":"press","x0":6.1,"x1":7.9,"hover":5.7,"low":2,"track":{"P":2,"at":2.2,"keys":[[0,2,"in"],[0.08,2,"lin"],[0.5,5.7,"out"],[1.88,5.7,"lin"]]}},{"kind":"press","x0":13.1,"x1":14.9,"hover":7.7,"low":4,"track":{"P":2,"at":3.95,"keys":[[0,4,"in"],[0.08,4,"lin"],[0.5,7.7,"out"],[1.88,7.7,"lin"]]}}] },   // 계단: 빨간 단을 건너뛰어 2 → 빨간 단을 건너뛰어 4 → 빨간 단을 건너뛰어 6 → 빨간 단을 건너뛰어 8 → 빨간 단을 건너뛰어 8 → 7 → 6 → 빨간 단을 건너뛰어 4 → 1 → 0
+  g13_57: { holds: [[0, 1], [1.75, 2.75], [3.5, 4.5]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [7, 9, 6, 7], [15, 15, 7, 8], [0, 2, 7.6, 9.4], [7, 9, 9.6, 11.4], [15, 15, 11.6, 13.4]], loose: [3.5], lead: ["g13_56"], tail: ["g13_58","g13_59"], stair: true, floats: [[3, 5, 6], [10, 12, 8]], lava: [[0, 15]], movers: [{"kind":"press","x0":4.1,"x1":5.9,"hover":9.7,"low":6,"track":{"P":2,"at":1.7,"keys":[[0,6,"in"],[0.08,6,"lin"],[0.5,9.7,"out"],[1.88,9.7,"lin"]]}},{"kind":"press","x0":11.1,"x1":12.9,"hover":11.7,"low":8,"track":{"P":2,"at":3.45,"keys":[[0,8,"in"],[0.08,8,"lin"],[0.5,11.7,"out"],[1.88,11.7,"lin"]]}}] },
+  g13_58: { holds: [[3.75, 4.75]], presses: [], tol: 0.18, bands: [[0, 0, 7, 8], [0, 0, 11.6, 13.4]], loose: [3.75], lead: ["g13_56","g13_57"], tail: ["g13_59"], stair: true, floats: [[2, 4, 8], [7, 9, 7], [12, 13, 6]], lava: [[0, 15]], movers: [{"kind":"press","x0":3.1,"x1":4.9,"hover":11.7,"low":8,"track":{"P":2,"at":1.45,"keys":[[0,8,"in"],[0.08,8,"lin"],[0.5,11.7,"out"],[1.88,11.7,"lin"]]}},{"kind":"press","x0":7.6,"x1":9.4,"hover":10.7,"low":7,"track":{"P":2,"at":2.575,"keys":[[0,7,"in"],[0.08,7,"lin"],[0.5,10.7,"out"],[1.88,10.7,"lin"]]}},{"kind":"press","x0":12.1,"x1":13.9,"hover":9.7,"low":6,"track":{"P":2,"at":3.7,"keys":[[0,6,"in"],[0.08,6,"lin"],[0.5,9.7,"out"],[1.88,9.7,"lin"]]}}] },
+  g13_59: { holds: [], presses: [], tol: 0.18, boxes: [[10, 12, 1]], bands: [[0, 2, 4, 5], [0, 2, 9.6, 11.4]], lead: ["g13_56","g13_57","g13_58"], stair: true, floats: [[4, 6, 4]], lava: [[0, 13]], movers: [{"kind":"press","x0":5.1,"x1":6.9,"hover":7.7,"low":4,"track":{"P":2,"at":1.95,"keys":[[0,4,"in"],[0.08,4,"lin"],[0.5,7.7,"out"],[1.88,7.7,"lin"]]}}] },
+  g13_63: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g13_68: { holds: [[0.5, 1.5], [3.875, 4.875]], presses: [2.25], tol: 0.18, bands: [[3, 5, 1, 2], [2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], loose: [3.875], tail: ["g13_69"], stair: true, floats: [[5, 7, 2], [12, 14, 5]], lava: [[1, 15]], traps: [{holds: [[0.5, 1], [3.875, 4.875]]}] },   // 같은 오르막이 다시(멈춤 길이가 다르다): 함정(멈춤이 길다: 멈춰서 건너뛰던 단에서 이번엔 더 오래 멈춘다. 버릇대로 일찍 놓으면 내려설 단 앞의 빨간 단에 내려앉는다)
+  g13_69: { holds: [], presses: [], tol: 0.18, bands: [[1, 2, 3, 4], [1, 2, 8.6, 10.4]], lead: ["g13_68"], stair: true, floats: [[4, 7, 3], [10, 11, 2]], lava: [[0, 13]] },
+  g13_70: { holds: [[0.5, 1.5], [2.5, 3.25]], presses: [], tol: 0.18 },
+  g13_71: { holds: [[0.5, 1.5], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g13w73: { mode: "rush", wide: true, gap: 1.5, nodes: ".BFBS.F." },
+  g13w75: { mode: "rush", wide: true, gap: 1.5, nodes: ".BFFS.F." },   // 함정(판이 없다): 앞 마디(.BFBS.F.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g13w76: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBBFS." },
+  g13w77: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBFFS." },   // 함정(판이 없다): 앞 마디(.FFBBFS.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g13_79: { holds: [[0.5, 1.375], [2.5, 3.25]], presses: [], tol: 0.18 },
+  // </gen:patterns:R13>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
   // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 바로 위의 빨간 덩어리에 부딪힌다
@@ -1460,7 +1503,52 @@ const ROUND12 = {
     { bar: 56, id: "b" }, { bar: 64, id: "c" }, { bar: 72, id: "b" }, { bar: 79, id: "outro" },
   ],
 };
-const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8, ROUND9, ROUND10, ROUND11, ROUND12];
+const ROUND13 = {
+  name: "ROUND 13 · Final Level Sprint",
+  bpm: 150.0,
+  track: { file: "music/final_level_sprint.mp3", offset: 0.178, measured: true },
+  floatReds: true, vary: true, density: 0.9, climb: "stairs",
+  goalAt: 0,                                       // 곡이 멈췄다가 마지막으로 한 번 치는 박(마디 80의 첫 박)에 결승선을 지난다
+  pal: {                                         // 이 라운드의 색: 마지막 판 — 검정에 가까운 남색, 결승선의 금빛, 전광판의 시안과 자홍
+    intro: { top: "#04040a", bottom: "#1a1830", accent: "#7df9ff", sun: "#fff3c4" },
+    a:     { top: "#05040c", bottom: "#24183a", accent: "#ff5cd6", sun: "#ffe08a" },
+    b:     { top: "#030608", bottom: "#102a33", accent: "#5cf2ff", sun: "#e8fbff" },
+    c:     { top: "#06040a", bottom: "#2a1424", accent: "#ffb35c", sun: "#fff0d6" },
+    d:     { top: "#04050a", bottom: "#1c2440", accent: "#ffd84a", sun: "#fff8dc" },
+    rush:  { top: "#020205", bottom: "#221a33", accent: "#ffffff", sun: "#ffe08a" },
+  },
+  // 13라운드의 마디도 도구(tools_gen_course.js R13)가 뽑는다. 짜임은 틀(TEMPLATES.R13)에 정해 두었다.
+  bars: [
+    // <gen:bars:R13>
+    // 도입 — 처음처럼: 멈춤 함정(같은 공중 사슬 두 번 → 마지막 멈춤이 짧거나 없다), 새 마디 둘
+    "flat", "flat", "g13_2", "g13_2",   "g13_4", "g13_5", "g13_6", "g13_7",
+    // 벌스 — 쇠 봉우리(12라운드)와 속임수(11라운드): 봉우리 → 같은 봉우리의 함정, 이단 점프 → 멈춤 ×2 → 떠 있는 빨간 계단 밑으로 떨어지기
+    "g13_8", "g13_9", "g13_10", "g13_11",   "djHold", "djHold", "duckDrop", "g13_15",
+    // 브레이크 — 울타리(11라운드): 기둥 뛰어 넘기 ×2 → 기둥은 그대로인데 이번엔 아무것도 안 누른다. 음이 올라가는 두 마디는 오르는 계단
+    "fenceJ", "g13_17", "g13_18", "fenceJ",   "fence", "g13_21", "g13_22", "g13_23",
+    // 후렴 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝
+    "g13z24", "g13z24", "g13z26", "g13z27",   "g13z27", "g13z29", "g13z30", "g13_31",
+    // 벌스 둘 — 공장(10라운드): 망치 사이로 멈추기 ×2 → 뒤집기, 엇갈림 롤러 ×2 → 박이 반대, 옆 망치
+    "hamGlide", "hamGlide", "hamMix", "grindPit",   "grindPit", "liftSwap", "ramHop", "g13_39",
+    // 거의 소리가 없는 여덟 마디 — 공중(5~7라운드): 그림의 공중 사슬, 삼단 점프 ×2 → 미끼 고리, 새 마디 둘
+    "airStep", "airRing", "ring3", "ring3",   "ring3Bait", "g13_45", "g13_46", "g13_47",
+    // 빌드업 — 움직이는 장애물(9라운드): 톱날 문 ×2 → 뒤집기, 움직이는 판 ×2 → 뒤집기, 프레스 밑 미끄러지기
+    "sawGate", "sawGate", "sawGateT", "platRide",   "platRide", "platRideT", "pressGlide", "g13_55",
+    // 후렴 둘 — 큰 쇠 봉우리: 네 마디에 걸쳐 여덟 칸까지(프레스가 뒤에서 쫓아온다). 이어서 이단 점프 → 떨어지기, 고리 셋과 톱날
+    "g13_56", "g13_57", "g13_58", "g13_59",   "djHold", "duckDrop", "ring3Saw", "g13_63",
+    // 조용함과 빌드업: 징검다리 위 프레스, 같은 멜로디의 오르막은 이번엔 멈춤 길이가 다르다
+    "stIn", "stPress", "stOutG", "gAfter",   "g13_68", "g13_69", "g13_70", "g13_71",
+    // 마지막 질주 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더. 곡이 한 마디 멈추는 동안 한 마디 더
+    "wUp", "g13w73", "g13w73", "g13w75",   "g13w76", "g13w77", "wDn", "g13_79",
+    "goal", "flat", "flat",
+    // </gen:bars:R13>
+  ],
+  sections: [
+    { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 16, id: "c" }, { bar: 24, id: "rush" }, { bar: 32, id: "b" }, { bar: 40, id: "c" }, { bar: 48, id: "d" },
+    { bar: 56, id: "a" }, { bar: 64, id: "c" }, { bar: 72, id: "rush" }, { bar: 79, id: "d" }, { bar: 80, id: "outro" },
+  ],
+};
+const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8, ROUND9, ROUND10, ROUND11, ROUND12, ROUND13];
 const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.

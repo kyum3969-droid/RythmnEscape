@@ -365,6 +365,38 @@ TEMPLATES.R12 = {
   },
 };
 
+// 13라운드(Final Level Sprint): 마지막 판 — 총정리. 구간마다 앞 라운드 하나의 대표 장치가 돌아오고, 늘 "두 번 보여 주고 뒤집기"로 끝난다.
+//   도입은 멈춤 길이 함정(2라운드~), 벌스는 쇠 봉우리(12)와 속임수(11), 브레이크는 울타리(11)와 음이 오르는 계단, 벌스 둘은 망치와 롤러(10),
+//   거의 소리가 없는 여덟 마디는 공중(멈춤과 고리, 5~7), 빌드업은 움직이는 장애물(9), 후렴 둘은 큰 쇠 봉우리, 조용함은 징검다리 위 프레스와 같은 오르막의 함정.
+//   피버는 후렴 하나(24~30, 좁은 통로)와 마지막 질주(72~78, 넓은 통로) 두 곳. 곡이 한 마디 멈췄다가 다시 치는 박(마디 80)에 결승선.
+TEMPLATES.R13 = {
+  prefix: 'g13', bpm: 150.0, floatReds: true, vary: true, density: 0.9, fresh: true, cpFill: true, cpLevel: 'a7', holdW: 3, hds: [0.5, 1],
+  rise: [{ at: 17, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 68, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 브레이크의 17~18, 조용한 빌드업의 68~69)
+  recipe: { g: 'a7', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a7' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a7', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
+    const K = ['hlong', 'hshort', 'lidJ', 'swap', 'shift'];
+    const hill = (k, n, o = {}) => [{ hill: k, bars: n, ...o }, ...cont(n)], rep = (k, n) => [{ hr: k }, ...cont(n)], trap = (k, n) => [{ ht: k, kind: K }, ...cont(n)];
+    const RISE = 'flat';      // (음이 올라가는 구간의 계단이 이 자리를 대신한다: 틀의 rise)
+    return [
+      ['도입 — 처음처럼: 멈춤 함정(같은 공중 사슬 두 번 → 마지막 멈춤이 짧거나 없다), 새 마디 둘', ['flat', 'flat', ...phrase('short-last'), one(), one(), 'cp']],
+      ['벌스 — 쇠 봉우리(12라운드)와 속임수(11라운드): 봉우리 → 같은 봉우리의 함정, 이단 점프 → 멈춤 ×2 → 떠 있는 빨간 계단 밑으로 떨어지기', [...hill('B', 2, { peak: 5, iron: true, need: { kind: K } }), ...trap('B', 2), 'djHold', 'djHold', 'duckDrop', 'cp']],
+      ['브레이크 — 울타리(11라운드): 기둥 뛰어 넘기 ×2 → 기둥은 그대로인데 이번엔 아무것도 안 누른다. 음이 올라가는 두 마디는 오르는 계단', ['fenceJ', RISE, RISE, 'fenceJ', 'fence', one(), one(), 'cp']],
+      ['후렴 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
+      ['벌스 둘 — 공장(10라운드): 망치 사이로 멈추기 ×2 → 뒤집기, 엇갈림 롤러 ×2 → 박이 반대, 옆 망치', ['hamGlide', 'hamGlide', 'hamMix', 'grindPit', 'grindPit', 'liftSwap', 'ramHop', 'cp']],
+      ['거의 소리가 없는 여덟 마디 — 공중(5~7라운드): 그림의 공중 사슬, 삼단 점프 ×2 → 미끼 고리, 새 마디 둘', ['airStep', 'airRing', 'ring3', 'ring3', 'ring3Bait', one(), one(), 'cp']],
+      ['빌드업 — 움직이는 장애물(9라운드): 톱날 문 ×2 → 뒤집기, 움직이는 판 ×2 → 뒤집기, 프레스 밑 미끄러지기', ['sawGate', 'sawGate', 'sawGateT', 'platRide', 'platRide', 'platRideT', 'pressGlide', 'cp']],
+      ['후렴 둘 — 큰 쇠 봉우리: 네 마디에 걸쳐 여덟 칸까지(프레스가 뒤에서 쫓아온다). 이어서 이단 점프 → 떨어지기, 고리 셋과 톱날', [...hill('P', 4, { peak: 8, iron: true }), 'djHold', 'duckDrop', 'ring3Saw', 'cp']],
+      ['조용함과 빌드업: 징검다리 위 프레스, 같은 멜로디의 오르막은 이번엔 멈춤 길이가 다르다', ['stIn', 'stPress', 'stOutG', 'gAfter', RISE, RISE, one(), 'cp']],
+      ['마지막 질주 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더. 곡이 한 마디 멈추는 동안 한 마디 더', ['wUp', { wm: 'E', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'pad' }, { wm: 'F', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'F', kind: 'pad' }, 'wDn', one()]],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
