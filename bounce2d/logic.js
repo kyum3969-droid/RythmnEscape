@@ -650,7 +650,6 @@ const PATTERNS = {
   g13_9: { holds: [], presses: [], tol: 0.18, bands: [[1, 2, 3, 4], [1, 2, 8.6, 10.4]], lead: ["g13_8"], stair: true, floats: [[4, 7, 3], [10, 11, 2]], lava: [[0, 13]], movers: [{"kind":"press","x0":5.6,"x1":7.4,"hover":6.7,"low":3,"track":{"P":2,"at":2.075,"keys":[[0,3,"in"],[0.08,3,"lin"],[0.5,6.7,"out"],[1.88,6.7,"lin"]]}},{"kind":"press","x0":10.1,"x1":11.9,"hover":5.7,"low":2,"track":{"P":2,"at":3.2,"keys":[[0,2,"in"],[0.08,2,"lin"],[0.5,5.7,"out"],[1.88,5.7,"lin"]]}}] },
   g13_10: { holds: [[0.5, 1.5], [3.125, 4.125]], presses: [], tol: 0.18, bands: [[14, 15, 1, 2], [2, 4, 3.6, 5.4], [9, 9, 5.6, 7.4], [14, 15, 6.6, 8.4]], redBox: [[2, 4, 1]], loose: [3.125], tail: ["g13_11"], stair: true, floats: [[5, 7, 2], [9, 11, 3]], lava: [[1, 15]], traps: [{presses: [2.25]}], movers: [{"kind":"press","x0":6.1,"x1":7.9,"hover":5.7,"low":2,"track":{"P":2,"at":2.2,"keys":[[0,2,"in"],[0.08,2,"lin"],[0.5,5.7,"out"],[1.88,5.7,"lin"]]}},{"kind":"press","x0":9.6,"x1":11.4,"hover":6.7,"low":3,"track":{"P":2,"at":3.075,"keys":[[0,3,"in"],[0.08,3,"lin"],[0.5,6.7,"out"],[1.88,6.7,"lin"]]}}] },   // 함정(낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다)
   g13_11: { holds: [[1.375, 2.375]], presses: [], tol: 0.18, boxes: [[1, 4, 1]], bands: [[6, 7, 1, 2], [6, 7, 4.6, 6.4]], lead: ["g13_10"], stair: true, floats: [[8, 11, 3]], lava: [[0, 13]], movers: [{"kind":"press","x0":9.6,"x1":11.4,"hover":6.7,"low":3,"track":{"P":2,"at":3.075,"keys":[[0,3,"in"],[0.08,3,"lin"],[0.5,6.7,"out"],[1.88,6.7,"lin"]]}}] },
-  g13_15: { holds: [[0.5, 1.25], [2, 2.5]], presses: [1.5], tol: 0.18, cp: true, rings: [[5, 0], [5, 1], [5, 2]], chain: 1 },   // 체크포인트 마디
   g13_17: { holds: [[0.5, 1], [2.25, 2.75]], presses: [], tol: 0.18, bands: [[9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g13_18"], stair: true, floats: [[3, 7, 2], [10, 14, 4]], lava: [[1, 15]] },   // 음이 올라가는 구간 — 오르는 계단: 계단: 빨간 단을 건너뛰어 2 → 빨간 단을 건너뛰어 4 → 빨간 단을 건너뛰어 6 → 3 → 0
   g13_18: { holds: [[0, 1]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [0, 2, 7.6, 9.4]], lead: ["g13_17"], stair: true, floats: [[3, 5, 6], [9, 11, 3]], lava: [[0, 13]] },
   g13_21: { holds: [[0.5, 1.375], [2.5, 3.375]], presses: [], tol: 0.18 },
@@ -824,6 +823,13 @@ const PATTERNS = {
   //             버릇대로 멈추면 매달린 덩어리에 부딪히고, 한 번 더 뛰면 위의 층에 걸린다
   //   liftSwap  (grindPit의 뒤집기) 같은 두 구덩이와 엇갈려 오르내리는 롤러인데 박이 반대다: 첫째 구덩이는 롤러가 위에 있어 멈춰서 밑으로, 둘째는 롤러가 내려와 있어 이단 점프로
   djHold: { holds: [[1.0, 1.75]], presses: [0.5], tol: 0.18, set: true, redBox: [[4, 4, 2.3], [5, 7, 2.0]] },
+  // 13라운드 13~16마디(의견: "13~16마디도 12마디처럼"): djHold의 변주. 기둥은 그대로, 땅의 빨간 덩어리 길이가 멈춤 길이를 알려 준다(덩어리가 길면 오래, 짧으면 짧게)
+  //   djHoldL   덩어리가 다섯 칸 → 한 박 멈춘다. 버릇대로(3/4박) 놓으면 덩어리 위에 떨어진다
+  //   djHoldCp  djHold와 같다(체크포인트 마디)
+  //   djHoldS   덩어리가 한 칸, 그 앞 하늘에 빨간 가지 → 3/8박만 멈추고 놓는다. 버릇대로 오래 멈추면 가지에 부딪힌다
+  djHoldL: { holds: [[1.0, 2.0]], presses: [0.5], tol: 0.18, set: true, redBox: [[4, 4, 2.3], [5, 8, 2.0]], traps: [{ holds: [[1.0, 1.75]] }] },
+  djHoldCp: { holds: [[1.0, 1.75]], presses: [0.5], tol: 0.18, set: true, cp: true, redBox: [[4, 4, 2.3], [5, 7, 2.0]] },
+  djHoldS: { holds: [[1.0, 1.375]], presses: [0.5], tol: 0.18, set: true, redBox: [[4, 4, 2.3], [5, 5, 2.0]], redFloat: [[8, 9, 3.6, 5.0]], traps: [{ holds: [[1.0, 1.75]] }] },
   duckDrop: { holds: [], presses: [0.5], tol: 0.18, set: true, redBox: [[4, 4, 2.3]], redFloat: [[7, 8, 3.3, 4.8], [9, 10, 4.3, 5.8]], traps: [{ presses: [0.5], holds: [[1.0, 1.75]] }, { presses: [2.5] }] },
   liftSwap: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18, set: true, movers: [...PIT(4), ...PIT(12), LIFT(4, 1, true), LIFT(12, 3)], traps: [{ full: { presses: [0.5, 2.5], holds: [] } }, { full: { presses: [], holds: [[0.5, 1.5], [2.5, 3.5]] } }, { full: { presses: [0.5], holds: [[2.5, 3.5]] } }] },
   // ---- 울타리(9라운드부터): 땅에서 튀는 길의 한가운데 밑에 빨간 기둥이 줄지어 서 있다. 공은 그냥 튀어서 넘어간다(누를 것이 없다 — "아무것도 안 하는" 버릇이 생긴다).
@@ -1522,10 +1528,10 @@ const ROUND13 = {
     // <gen:bars:R13>
     // 도입 — 처음처럼: 멈춤 함정(같은 공중 사슬 두 번 → 마지막 멈춤이 짧거나 없다), 새 마디 둘
     "flat", "flat", "g13_2", "g13_2",   "g13_4", "g13_5", "g13_6", "g13_7",
-    // 벌스 — 쇠 봉우리(12라운드)와 속임수(11라운드): 봉우리 → 같은 봉우리의 함정, 이단 점프 → 멈춤 ×2 → 떠 있는 빨간 계단 밑으로 떨어지기
-    "g13_8", "g13_9", "g13_10", "g13_11",   "djHold", "djHold", "duckDrop", "g13_15",
-    // 브레이크 — 울타리(11라운드): 기둥 뛰어 넘기 ×2 → 기둥은 그대로인데 이번엔 아무것도 안 누른다. 음이 올라가는 두 마디는 오르는 계단
-    "fenceJ", "g13_17", "g13_18", "fenceJ",   "fence", "g13_21", "g13_22", "g13_23",
+    // 벌스 — 쇠 봉우리(12라운드)와 이단 점프 → 멈춤: 봉우리 → 같은 봉우리의 함정, 이단 점프 → 멈춤 ×2 → 덩어리가 길다(오래 멈춘다) → 다시 그대로(체크포인트)
+    "g13_8", "g13_9", "g13_10", "g13_11",   "djHold", "djHold", "djHoldL", "djHoldCp",
+    // 브레이크: 이단 점프 → 멈춤의 마지막 변주(덩어리가 짧고 앞에 가지: 짧게 멈춘다), 음이 올라가는 두 마디는 오르는 계단, 울타리(11라운드) 한 번 → 기둥은 그대로인데 이번엔 아무것도 안 누른다
+    "djHoldS", "g13_17", "g13_18", "fenceJ",   "fence", "g13_21", "g13_22", "g13_23",
     // 후렴 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝
     "g13z24", "g13z24", "g13z26", "g13z27",   "g13z27", "g13z29", "g13z30", "g13_31",
     // 벌스 둘 — 공장(10라운드): 망치 사이로 멈추기 ×2 → 뒤집기, 엇갈림 롤러 ×2 → 박이 반대, 옆 망치
@@ -1616,6 +1622,8 @@ const padFace = (q) => (q.from > 0 ? q.lv * ZIG_STEP + SIZE : q.lv * ZIG_STEP);
 //   saw    { r, rail: [x0, h0, x1, h1], track(0~1) } 또는 { r, orbit: [x, h, R], P, at, a0, dir }   빨간 톱날(원). 레일을 오가거나 한 점을 돈다
 //   bar    { pivot: [x, h], len, w, P, at, a0, dir }   한쪽 팔만 있는 빨간 막대가 축을 돈다(풍차)
 //   plat   { w, h, track(왼쪽 끝 x) }   파란 발판(두께 한 칸, 윗면 높이 h칸). 오가며 공을 받는다
+//   swing  { pivot: [x, h], len, r, amp, P, at }   흔들리는 돌추(14라운드부터): 나무 위(축)에 매달린 덩굴 끝의 빨간 돌덩이가 좌우로 흔들린다.
+//          기울기 = amp·cos(2π(박 − at)/P)(라디안, +는 오른쪽): at에 오른쪽 끝, at + P/2에 왼쪽 끝, 그 사이 P/4마다 가장 낮은 곳(축 바로 밑)을 지난다. 닿으면 죽는 것은 돌덩이(반지름 r)뿐, 덩굴은 닿아도 된다
 const EASE = { lin: (u) => u, io: (u) => u * u * (3 - 2 * u), in: (u) => u * u * u, out: (u) => 1 - (1 - u) * (1 - u) * (1 - u) };
 function trackAt(tr, beat) {
   const P = tr.P, k = tr.keys, ph = ((((beat - tr.at) % P) + P) % P);
@@ -1635,6 +1643,7 @@ function moverShape(m, beat) {
   }
   if (m.kind === "bar") { const a = m.a0 + m.dir * 2 * Math.PI * (beat - m.at) / m.P; return { ax: m.pivot[0], ay: m.pivot[1], bx: m.pivot[0] + m.len * Math.cos(a), by: m.pivot[1] + m.len * Math.sin(a), w: m.w, a }; }
   if (m.kind === "plat") { const x0 = trackAt(m.track, beat); return { x0, x1: x0 + m.w, y: m.h }; }
+  if (m.kind === "swing") { const a = m.amp * Math.cos(2 * Math.PI * (beat - m.at) / m.P); return { ax: m.pivot[0], ay: m.pivot[1], x: m.pivot[0] + m.len * Math.sin(a), y: m.pivot[1] - m.len * Math.cos(a), r: m.r, a }; }
   if (m.kind === "ram") {      // 옆으로 튀어나오는 망치: 집(xw에 붙은 쇳덩이)에서 머리가 dir 쪽으로 reach칸까지 나온다
     const e = m.reach * trackAt(m.track, beat), d = m.dir, hd = m.head ?? 0.7, hw = m.house ?? 1.0, yc = (m.y0 + m.y1) / 2;
     const tip = m.xw + d * e, hx0 = d < 0 ? tip - hd : tip, hx1 = d < 0 ? tip : tip + hd;
@@ -1653,7 +1662,7 @@ function moverKills(m, beat, x, h) {
   const g = 0.06, bx0 = x - HALF + g, bx1 = x + HALF - g, by0 = h + g, by1 = h + SIZE - g;
   const q = moverShape(m, beat);
   if (m.kind === "press") return bx1 > q.x0 && bx0 < q.x1 && by1 > q.y0;
-  if (m.kind === "saw" || m.kind === "roller") { const cx = Math.max(bx0, Math.min(q.x, bx1)), cy = Math.max(by0, Math.min(q.y, by1)); return (cx - q.x) ** 2 + (cy - q.y) ** 2 < q.r * q.r; }
+  if (m.kind === "saw" || m.kind === "roller" || m.kind === "swing") { const cx = Math.max(bx0, Math.min(q.x, bx1)), cy = Math.max(by0, Math.min(q.y, by1)); return (cx - q.x) ** 2 + (cy - q.y) ** 2 < q.r * q.r; }
   if (m.kind === "ram") { const hit = (x0, x1, y0, y1) => bx1 > x0 && bx0 < x1 && by1 > y0 && by0 < y1; return hit(q.hx0, q.hx1, q.y0, q.y1) || hit(q.rx0, q.rx1, q.ry0, q.ry1) || hit(q.bx0, q.bx1, q.by0, q.by1); }
   if (m.kind === "bar") {      // 공(원)과 막대(두께 있는 선분)
     const px = x, py = h + HALF, vx = q.bx - q.ax, vy = q.by - q.ay, u = Math.max(0, Math.min(1, ((px - q.ax) * vx + (py - q.ay) * vy) / (vx * vx + vy * vy)));

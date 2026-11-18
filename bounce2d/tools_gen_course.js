@@ -383,8 +383,8 @@ TEMPLATES.R13 = {
     const RISE = 'flat';      // (음이 올라가는 구간의 계단이 이 자리를 대신한다: 틀의 rise)
     return [
       ['도입 — 처음처럼: 멈춤 함정(같은 공중 사슬 두 번 → 마지막 멈춤이 짧거나 없다), 새 마디 둘', ['flat', 'flat', ...phrase('short-last'), one(), one(), 'cp']],
-      ['벌스 — 쇠 봉우리(12라운드)와 속임수(11라운드): 봉우리 → 같은 봉우리의 함정, 이단 점프 → 멈춤 ×2 → 떠 있는 빨간 계단 밑으로 떨어지기', [...hill('B', 2, { peak: 5, iron: true, need: { kind: K } }), ...trap('B', 2), 'djHold', 'djHold', 'duckDrop', 'cp']],
-      ['브레이크 — 울타리(11라운드): 기둥 뛰어 넘기 ×2 → 기둥은 그대로인데 이번엔 아무것도 안 누른다. 음이 올라가는 두 마디는 오르는 계단', ['fenceJ', RISE, RISE, 'fenceJ', 'fence', one(), one(), 'cp']],
+      ['벌스 — 쇠 봉우리(12라운드)와 이단 점프 → 멈춤: 봉우리 → 같은 봉우리의 함정, 이단 점프 → 멈춤 ×2 → 덩어리가 길다(오래 멈춘다) → 다시 그대로(체크포인트)', [...hill('B', 2, { peak: 5, iron: true, need: { kind: K } }), ...trap('B', 2), 'djHold', 'djHold', 'djHoldL', 'djHoldCp']],
+      ['브레이크: 이단 점프 → 멈춤의 마지막 변주(덩어리가 짧고 앞에 가지: 짧게 멈춘다), 음이 올라가는 두 마디는 오르는 계단, 울타리(11라운드) 한 번 → 기둥은 그대로인데 이번엔 아무것도 안 누른다', ['djHoldS', RISE, RISE, 'fenceJ', 'fence', one(), one(), 'cp']],
       ['후렴 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
       ['벌스 둘 — 공장(10라운드): 망치 사이로 멈추기 ×2 → 뒤집기, 엇갈림 롤러 ×2 → 박이 반대, 옆 망치', ['hamGlide', 'hamGlide', 'hamMix', 'grindPit', 'grindPit', 'liftSwap', 'ramHop', 'cp']],
       ['거의 소리가 없는 여덟 마디 — 공중(5~7라운드): 그림의 공중 사슬, 삼단 점프 ×2 → 미끼 고리, 새 마디 둘', ['airStep', 'airRing', 'ring3', 'ring3', 'ring3Bait', one(), one(), 'cp']],
