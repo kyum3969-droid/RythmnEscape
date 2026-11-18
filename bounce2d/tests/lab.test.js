@@ -88,5 +88,21 @@ console.log('== 5라운드 · 반 박 튀기(시범) ==');
   for (let b = 2; b < H.bars.length; b++) { if (!PH(b) || !PH(b - 1) || !PH(b - 2) || !PH(b).notes || !PH(b - 1).notes || PH(b - 1).notes !== PH(b - 2).notes || PH(b).notes === PH(b - 1).notes) continue; traps++; if (dies(b, { presses: PH(b - 1).presses, holds: PH(b - 1).holds })) caught++; }
   ok(traps >= 20 && caught === traps, `버릇 함정 ${traps}곳 모두, 앞 마디 버릇대로 치면 죽는다`);
 }
+console.log('== 시안 · 보이는 것 ≠ 정답 ==');
+{
+  const T = Lg.LABS[2], LT = Lg.buildLevel(T), { end } = Lg.traceRun(LT, LT.ref), ref = Lg.planInput(LT.ref);
+  ok(end.won && LT.fixed.length === 0, `패턴대로 가면 완주한다 (${T.bars.length}마디, 장면 ${Lg.TRICKS.length}개, 걷어 낸 장애물 없음)`);
+  const runT = (b, a) => { const lo = b * BAR, hi = lo + BAR, pr = new Set(a.presses.map((t) => lo + Math.round(t * SUB))), hl = a.holds.map(([x, z]) => [lo + Math.round(x * SUB), lo + Math.round(z * SUB)]), st = Lg.spawnState(LT, -1); while (!st.dead && !st.won) { const k = st.step + 1, i = k >= lo && k < hi; Lg.stepState(LT, st, i ? pr.has(k) : ref.press.has(k), null, i ? hl.some((h) => k >= h[0] && k < h[1]) : ref.hold.has(k)); } return st; };
+  const diesT = (b, a) => { const st = runT(b, a); return st.dead && st.step >= b * BAR && st.step < (b + 1) * BAR + SUB / 2; };
+  const inp = (n) => ({ presses: Lg.PATTERNS[n].presses, holds: Lg.PATTERNS[n].holds });
+  for (const [scene, pair, what] of Lg.TRICKS) {
+    const b = T.bars.indexOf(scene), pb = T.bars.indexOf(pair), a = inp(scene);
+    const wob = [-0.15, 0.15].every((d) => !runT(b, { presses: a.presses.map((t) => t + d), holds: a.holds.map((h) => [h[0] + d, h[1]]) }).dead);
+    ok(wob, `${scene}(${what}): 정답대로 ±0.15박 흔들어도 지나간다`);
+    ok(diesT(b, inp(pair)), `  보이는 손(앞의 ${pair}대로)으로 하면 그 마디에서 죽는다`);
+    ok(diesT(pb, a), `  짝 장면 ${pair}에서는 반대로 이 장면의 정답대로 하면 죽는다(버릇이 강요된다)`);
+    ok(Lg.PATTERNS[scene].blind && LT.gems.every((g) => g.x < b * 16 || g.x >= b * 16 + 16), '  장면에는 길잡이가 없다');
+  }
+}
 console.log('실패 ' + fails + '건');
 process.exit(fails ? 1 : 0);

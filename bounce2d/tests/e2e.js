@@ -357,7 +357,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `7라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     { const g7 = await G(() => { const L = window.__game.L; let rings = 0; for (let c = 0; c < L.cols; c++) if (L.grid.some((row, r) => row[c] === 'O' && (r === 0 || L.grid[r - 1][c] !== 'O'))) rings++; return { pads: L.pads.size, rings }; });
-      ok(g7.pads >= 8 && g7.rings === 6, `7라운드의 새 장치: 피버의 튕김판 ${g7.pads}개(공중에 뜬 파란 판), 바운스의 충전 고리 ${g7.rings}개(삼단 점프와 미끼 고리)`); }
+      ok(g7.pads >= 8 && g7.rings >= 6, `7라운드의 새 장치: 피버의 튕김판 ${g7.pads}개(공중에 뜬 파란 판), 바운스의 충전 고리 ${g7.rings}개(삼단 점프·미끼 고리, 그리고 멈춤의 공중 사슬)`); }
     { const c = cams7, near = (b, v) => c[b] && Math.abs(c[b].rot - v) < 1;
       ok(c[132] && c[132].mode === 'rush' && near(132, 0) && near(142, -45) && near(150, 0) && near(296, 90) && near(306, 45), `7라운드의 피버 둘: 첫 번째는 곧게 가다가 비스듬히 아래로(${c[142] && c[142].rot.toFixed(0)}도) 내려가서 펴지고, 두 번째는 곧장 위로(${c[296] && c[296].rot.toFixed(0)}도) 섰다가 비스듬히(${c[306] && c[306].rot.toFixed(0)}도) 눕는다`); }
     // 8라운드(계단의 라운드): 공이 공중에 뜬 파란 박스를 실제로 딛고 오르내리고, 카메라가 따라 오르내린다
@@ -382,10 +382,68 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     // 카메라는 작은 계단마다 출렁이지 않는다: 한 마디짜리 계단(마디 3~6, 디딤이 0 ↔ 3칸을 오르내린다)을 지나는 동안 카메라가 움직이는 폭, 그리고 방향이 바뀌는 횟수
     { const r = await G(() => { const g = window.__game; let lo = 1e9, hi = -1e9, turns = 0, ext = null, dir = 0; for (let x = 3 * 16; x <= 7 * 16; x += 0.25) { const v = g.climb(x).line; lo = Math.min(lo, v); hi = Math.max(hi, v); if (ext === null) ext = v; else if (dir >= 0 ? v > ext : v < ext) ext = v; else if (Math.abs(v - ext) > 0.15) { if (dir) turns++; dir = Math.sign(v - ext); ext = v; } } /* 0.15칸 넘게 되돌아갈 때만 방향이 바뀌었다고 센다 */ let foot = [1e9, -1e9]; for (let x = 3 * 16; x <= 7 * 16; x += 0.25) { const a = g.climb(x).at; foot = [Math.min(foot[0], a), Math.max(foot[1], a)]; } return { lo, hi, turns, foot }; });
       ok(r.hi - r.lo < 0.6 && r.turns <= 2 && r.foot[1] - r.foot[0] >= 3, `카메라는 작은 계단마다 출렁이지 않는다: 디딤이 ${r.foot[0].toFixed(1)}~${r.foot[1].toFixed(1)}칸을 오르내리는 네 마디 동안 카메라는 ${(r.hi - r.lo).toFixed(2)}칸 안에서만 움직이고, 0.15칸 넘게 되돌아가는 것은 ${r.turns}번`); }
+    // 패턴이 있는 체크포인트(5~8라운드, 개발하는 동안): 체크포인트에서 다시 시작하면 한 마디 앞에서 저절로 달리다가(공이 깜빡인다) 체크포인트에서 조작을 넘겨받는다
+    { await G(() => { const g = window.__game; g.fake.on = true; g.setBot({ presses: [], holds: [] }); g.devJump(3); });
+      const c = await G(() => { const g = window.__game, cp = g.L.cps[3]; return { lead: cp.lead.step, snap: cp.snap.step, bar: cp.bar, step: g.state.step, cp: g.state.cp }; });
+      for (let beat = c.lead / 96; beat <= c.snap / 96 - 0.01; beat += 0.25) await tick(beat);
+      const mid = await G(() => ({ phase: window.__game.phase, step: window.__game.state.step }));
+      await tick(c.snap / 96 + 0.05);
+      const at = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp }));
+      for (let beat = c.snap / 96; beat <= c.snap / 96 + 8; beat += 0.25) { await tick(beat); if (await G(() => window.__game.phase) !== 'running') break; }
+      const after = await G(() => ({ phase: window.__game.phase, x: window.__game.state.x }));
+      await p.waitForTimeout(150); await p.screenshot({ path: out + 'r8_cp_restart.png' });
+      ok(c.step === c.lead && c.cp === 2 && mid.phase === 'running' && at.phase === 'running' && at.cp === 3 && after.phase === 'dead' && after.x >= c.bar * 16 && after.x < c.bar * 16 + 40,
+        `패턴이 있는 체크포인트: 4번째 체크포인트(마디 ${c.bar})에서 다시 시작하면 한 마디 앞에서 저절로 달리고(아무것도 안 눌러도 살아 있다), 체크포인트에서 조작을 넘겨받는다. 그 뒤 안 누르면 마디 ${(after.x / 16).toFixed(1)}에서 죽는다`); }
     // 계단의 빨간 덩어리는 모두 그린다(한 칸에 빨간 단과 뚜껑이 같이 있어도): 그리는 목록의 덩어리 수 = 판정의 덩어리 수
     { const r = await G(() => { const g = window.__game, L = g.L; let n = 0; for (const [c, q] of L.bands) for (const [lo, hi] of q) if (!(L.bands.get(c - 1) || []).some((v) => v[0] === lo && v[1] === hi)) n++; let two = 0; for (const q of L.bands.values()) if (q.length >= 2) two++; return { runs: g.bandRuns.length, n, two }; });
       ok(r.runs === r.n && r.two > 0, `계단의 빨간 덩어리 ${r.n}개를 모두 그린다(빨간 단과 그 위의 뚜껑이 한 칸에 같이 있는 칸 ${r.two}개 포함)`); }
     ok(top8 > -40, `카메라가 따라가서, 가장 높이 뛰었을 때도 공이 화면 위로 멀리 나가지 않는다(공 윗면의 가장 높은 자리 y=${top8.toFixed(0)}px)`);
+    // 9라운드(피버 위주 + 바운스 구간에 움직이는 장애물: 프레스, 톱날, 풍차 막대, 파란 발판)
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(9)')]); await ready();
+    st = await G(() => { const g = window.__game, L = g.L, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, rush: L.rides.reduce((u, r) => u + (r[1] - r[0]) / 16, 0), mv: L.movers.length, kinds: [...new Set(L.movers.map((m) => m.kind))].sort().join(','), climb: g.climb(0).any }; });
+    ok(st.round === 8 && st.name.includes('Midnight Asphalt Rush') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.078 && st.cps === 9 && st.rush >= 30 && st.mv >= 40 && st.kinds === 'bar,plat,press,saw' && st.climb, `9라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 피버 ${st.rush}마디, 움직이는 장애물 ${st.mv}개: ${st.kinds})`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots9 = { 10.75: 'r9_press_hop', 18.5: 'r9_press_row', 21.25: 'r9_float_press', 25.5: 'r9_ring_saw', 64.5: 'r9_saw_gate', 73.0: 'r9_saw_dive', 82.0: 'r9_saw_orbit', 105.0: 'r9_wide', 129.5: 'r9_plat', 136.5: 'r9_plat_high', 140.5: 'r9_bar', 199.0: 'r9_stone_press', 300.0: 'r9_final' };
+    let shakes = 0;
+    for (let beat = 0; beat <= 330; beat += 0.25) {
+      await tick(beat);
+      if (shots9[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots9[beat] + '.png' }); }
+      if (beat >= 16 && beat < 20 && await G(() => window.__game.fx && window.__game.fx.shake > 0)) shakes++;
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `9라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(shakes > 0, `프레스가 땅을 내려찍으면 화면이 살짝 흔들린다(프레스 줄을 지나는 동안 ${shakes}번 본 순간에 흔들림)`);
+    // 10라운드(공장: 내려찍는 망치, 옆으로 튀어나오는 망치 = 수평 패턴, 분쇄 롤러)
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(10)')]); await ready();
+    st = await G(() => { const g = window.__game, L = g.L, t = g.track; const k = {}; for (const m of L.movers) k[m.kind] = (k[m.kind] || 0) + 1; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, k }; });
+    ok(st.round === 9 && st.name.includes('Anvil and Piston') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.078 && st.cps === 10 && st.k.ram >= 30 && st.k.roller >= 20 && st.k.press >= 12, `10라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 옆 망치 ${st.k.ram}개, 분쇄 롤러 ${st.k.roller}개, 내려찍는 망치 ${st.k.press}개)`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots10 = { 10.75: 'r10_hammer_drop', 32.75: 'r10_ram_glide', 33.0: 'r10_ram_glide_hit', 42.75: 'r10_ram_mix', 48.75: 'r10_grind_pit', 72.0: 'r10_rise_stairs', 150.0: 'r10_rise_stairs2', 220.0: 'r10_stone_press', 278.0: 'r10_rise_trap', 330.0: 'r10_final' };
+    let sparks = 0;
+    for (let beat = 0; beat <= 360; beat += 0.25) {
+      await tick(beat);
+      if (shots10[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots10[beat] + '.png' }); }
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    sparks = await G(() => window.__game.fx.ramHits || 0);
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `10라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(sparks > 0, `옆 망치가 다 튀어나오는 순간 불꽃이 튄다(완주하는 동안 ${sparks}번)`);
+    // 굽은 통로가 크게 돌아 나가는 곳(5라운드 48~53: 90° → 135° → 90° → 0°)에서 뒤쪽 토막의 바깥 칠이 앞쪽 통로를 덮어 화면이 새까맣던 것: 이제 벽 두께만큼만 칠한다
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(5)')]); await ready();
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const blackAt = {};
+    for (let beat = 0; beat <= 210; beat += 0.25) {
+      await tick(beat);
+      if (beat === 197 || beat === 202.25 || beat === 207.5) { await p.waitForTimeout(80); await p.screenshot({ path: out + 'r5_bend_' + beat + '.png' });
+        blackAt[beat] = await p.$eval('#view', (cv) => { const c = cv.getContext('2d'), d = c.getImageData(0, 0, cv.width, cv.height).data, cnt = new Map(); let k = 0; for (let i = 0; i < d.length; i += 4 * 37) { k++; const key = (d[i] >> 2) * 4096 + (d[i + 1] >> 2) * 64 + (d[i + 2] >> 2); cnt.set(key, (cnt.get(key) || 0) + 1); } return Math.max(...cnt.values()) / k; }); }      // (한 가지 색으로 칠해진 넓이: 예전에는 화면의 55~68%가 같은 어두운 색이었다)
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    ok(Object.keys(blackAt).length === 3 && Object.values(blackAt).every((v) => v < 0.45), `5라운드의 크게 돌아 나가는 피버(마디 48~53)에서 화면이 새까맣지 않다(뒤의 하늘과 풍경이 보인다): 한 가지 색으로 칠해진 넓이 ${Object.entries(blackAt).map(([b, v]) => b + '박 ' + Math.round(v * 100) + '%').join(', ')}`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');
