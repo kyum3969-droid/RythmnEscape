@@ -669,6 +669,24 @@ console.log('== 빨간 덩어리의 그림: 맞닿은 덩어리는 하나로, �
   ok(ka.length === 1 && ka[0].loops.length === 1 && ka[0].loops[0].filter((v) => v.open).length === 1 && kb.length === 1 && Math.abs(bot - 4.3) < 1e-6 && kc.length === 1 && kc[0].sky,
     `맞닿은 바닥·계단 단은 한 덩어리(둘레 하나, 땅에 붙은 밑변만 안 긋는다), 밑이 다른 떠 있는 덩어리는 칸마다 제 밑(${bot}), 매달린 덩어리와 옆의 천장 덩어리도 한 덩어리`);
 }
+console.log('== 꾸밈 박스: 공중에 떠 있는 작은 빨간 박스(쓰임새 없이 빽빽해 보이게). 패턴대로 치면 닿지 않는다 ==');
+{
+  const bad = [], per = [];
+  Lg.COURSES.forEach((C, ri) => {
+    const L = Lg.buildLevel(C); let n = 0;
+    for (const [c, q] of L.decor) for (const [lo, hi] of q) if (!(L.decor.get(c - 1) || []).some((v) => v[0] === lo && v[1] === hi)) n++;
+    per.push(`${ri + 1}:${n}`);
+    // 모든 입력을 한꺼번에 0.1박 일찍 / 늦게 눌러도 꾸밈 박스에 닿아 죽지 않는다(다른 장애물에 걸리는 것은 상관없다)
+    for (const d of [-0.1, 0.1]) {
+      const sh = Math.round(d * 96), inp = Lg.planInput({ presses: L.ref.presses.map((v) => v + sh), holds: L.ref.holds.map(([a, z]) => [a + sh, z + sh]) }), s = Lg.spawnState(L, -1);
+      while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (!s.dead) continue;
+        const hz = Lg.hazardAt(L, s); if (hz && hz.kind === 'decor') bad.push(`${ri + 1}라운드 ${d > 0 ? '늦게' : '일찍'} 마디 ${Math.floor(s.x / 16)}`); }
+    }
+    for (const [c, q] of L.decor) for (const [lo, hi] of q) if (hi > 6 + 1e-9 || lo < 0.75 - 1e-9 || Lg.inRide(L, c + 0.5)) bad.push(`${ri + 1}라운드 칸 ${c}: 높이 ${lo}~${hi}`);
+  });
+  ok(bad.length === 0 && per.filter((v) => +v.split(':')[1] > 20).length >= 15,
+    `꾸밈 박스(라운드:개수 ${per.join(' ')}): 모든 입력을 0.1박 일찍·늦게 눌러도 꾸밈 박스에 닿지 않는다. 높이 0.75~6칸, 피버 밖에만${bad.length ? ' — ' + bad.slice(0, 6).join(' / ') : ''}`);
+}
 console.log('== 18라운드: 깜빡이는 등롱 — 언제 켜지는지 읽고 멈춤 길이와 높이를 바꾸기 ==');
 {
   const C = Lg.COURSES.find((c) => c.name.startsWith('ROUND 18')), B = C.bars, L = Lg.buildLevel(C);
