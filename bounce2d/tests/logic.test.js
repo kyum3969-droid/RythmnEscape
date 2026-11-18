@@ -253,7 +253,7 @@ for (const C of Lg.COURSES) {
         const ho = [...H.filter((h) => !inb(h[0])), ...(t.full ? t.full.holds : t.holds || p.holds).map(([x, z]) => [lo + Math.round(x * Lg.SUB), lo + Math.round(z * Lg.SUB)])];
         const s = go(pr, ho, end); if (!s.dead || s.x < b * 16 || s.x >= (b + 1) * 16 + 0.5) bad.push(`${b}:${name} 함정 ${JSON.stringify(t)}`); }
     });
-    ok(bars >= 10 && bad.length === 0 && ((kinds.press && kinds.saw && kinds.bar && kinds.plat) || (kinds.ram && kinds.roller) || kinds.swing >= 10 || kinds.oring >= 5 || kinds.flame >= 6),      // (9라운드: 톱날·막대·발판, 10라운드: 옆 망치·분쇄 롤러, 14라운드: 흔들리는 돌추)
+    ok(bad.length === 0 && (bars === 0 ? Object.keys(kinds).every((k) => k === 'press') : bars >= 6),      // (세트 마디가 없는 라운드: 움직이는 것은 쇠 봉우리의 프레스뿐이다 — 12·13라운드)      // (9라운드: 톱날·막대·발판, 10라운드: 옆 망치·분쇄 롤러, 14라운드: 흔들리는 돌추)
      
       `[${tag}] 움직이는 장애물 ${lv.movers.length}개(${Object.entries(kinds).map(([k, v]) => k + ' ' + v).join(', ')}), 세트 마디 ${bars}개: 코스 안에서 입력을 빼면 죽고 ±0.15박은 지나가고 함정은 그 마디에서 죽는다(${checks}가지)${bad.length ? ' — 어긋남: ' + bad.slice(0, 6).join(', ') : ''}`);
     // 움직이는 장애물의 판정은 그림과 같은 모양(moverShape)을 쓴다: 톱날 중심에 공을 놓으면 걸리고, 한참 떨어지면 안 걸린다
@@ -305,7 +305,8 @@ for (const C of Lg.COURSES) {
       // 판의 뒷면도 튕긴다: 빨간 장애물을 걷어 내고 아무렇게나 눌러 보면, 반대쪽에서 판으로 오는 공이 지점과 지점의 한가운데에서 반 단계만 갔다가 되돌아, 다음 지점에는 떠난 높이로 와 있다
       { const bare = { ...lv, reds: [] }, half = Lg.ZIG_STEP / 2, seen = { up: 0, down: 0, bad: 0 };
         let seed = 7; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-        for (let trial = 0; trial < 60; trial++) {
+        const kinds0 = new Set([...lv.pads.values()].map(q => q.from));
+        for (let trial = 0; trial < 200 && (trial < 60 || (kinds0.has(1) && !seen.down) || (kinds0.has(-1) && !seen.up)); trial++) {
           const s3 = Lg.spawnState(bare, -1), inp3 = Lg.planInput(lv.ref), hs = [], backs = [], pr = new Set();
           while (!s3.dead && !s3.won) {
             const st = s3.step + 1, ev = [], rush = s3.mode === 'rush';
@@ -572,7 +573,7 @@ console.log('== 11라운드: 속임수 — 보이는 것과 정답이 다르다 
 {
   const C = Lg.COURSES.find((c) => c.name.startsWith('ROUND 11')), B = C.bars, L = Lg.buildLevel(C);
   // 뒤집기마다: 바로 앞에 "버릇을 들이는" 짝이 있다(두 번, 또는 조용한 구간에서는 한 번)
-  const pairs = [['fenceJ', 'fence'], ['djHold', 'duckDrop'], ['grindPit', 'liftSwap'], ['ring3', 'ring3Bait']];
+  const pairs = [['fenceJ', 'fence'], ['djHold', 'duckDrop'], ['grindPit', 'liftSwap']];      // (ring3 → ring3Bait는 7라운드의 것이라 다시 뽑으며 뺐다: "라운드끼리 비슷한 패턴은 바꿔 달라")
   const found = pairs.map(([a, z]) => B.map((n, b) => (n === z && B[b - 1] === a ? b : -1)).filter((b) => b >= 0));
   // duckDrop: 앞의 짝(djHold)처럼 이단 점프 뒤에 멈추면 그 마디에서 죽고, 아무것도 안 누르면 산다
   const P = L.ref.presses, H = L.ref.holds;
@@ -581,30 +582,18 @@ console.log('== 11라운드: 속임수 — 보이는 것과 정답이 다르다 
   B.forEach((n, b) => { if (n !== 'duckDrop') return; duck++; const lo = b * 384, inb = (v) => v >= lo && v < lo + 384;
     const hold = go(P, [...H.filter((h) => !inb(h[0])), [lo + 96, lo + 168]], (b + 2) * 16), none = go(P, H, (b + 2) * 16);
     if (hold.dead && hold.x >= b * 16 && hold.x < b * 16 + 16 && !none.dead && !H.some((h) => inb(h[0]))) duckOk++; });
-  ok(found.every((f) => f.length >= 1) && found.reduce((u, f) => u + f.length, 0) >= 7 && duck >= 3 && duckOk === duck,
+  ok(found.every((f) => f.length >= 1) && found.reduce((u, f) => u + f.length, 0) >= 5 && duck >= 3 && duckOk === duck,
     `11라운드의 속임수: ${pairs.map(([a, z], i) => `${a} → ${z} ${found[i].length}번`).join(', ')}. 매달린 덩어리(duckDrop) ${duck}곳 모두: 앞의 짝처럼 이단 점프 뒤에 멈추면 죽고, 손을 떼고 떨어지면 산다`);
 }
-console.log('== 13라운드: 마지막 판 — 앞 라운드의 대표 장치가 구간마다 돌아온다 ==');
+console.log('== 13라운드: 마지막 판 — 쇠 봉우리와 새 리듬(앞 라운드의 장치를 다시 쓰던 것을 새 리듬으로 바꿨다) ==');
 {
   const C = Lg.COURSES.find((c) => c.name.startsWith('ROUND 13')), B = C.bars, L = Lg.buildLevel(C), P = (n) => Lg.PATTERNS[n] || {};
-  const sec = (b0, b1) => B.slice(b0, b1);
-  const movers = (b0, b1, kind) => sec(b0, b1).reduce((u, n) => u + (P(n).movers || []).filter((m) => m.kind === kind).length, 0);
-  const rush = (b0, b1) => sec(b0, b1).every((n) => n === 'wUp' || n === 'wDn' || P(n).mode === 'rush');
-  const got = {
-    '멈춤 함정(2~4: 같은 공중 사슬 두 번 → 버릇이 된 멈춤 하나가 함정)': B[2] === B[3] && B[4] !== B[2] && (P(B[4]).traps || []).some((t) => t.full && JSON.stringify(t.full.holds) === JSON.stringify(P(B[2]).holds) && JSON.stringify(t.full.holds) !== JSON.stringify(P(B[4]).holds)),
-    '쇠 봉우리(8~11, 56~59)': movers(8, 12, 'press') >= 2 && movers(56, 60, 'press') >= 4 && sec(8, 12).every((n) => P(n).stair) && sec(56, 60).every((n) => P(n).stair),
-    '쇠 봉우리(8~16: 봉우리 → 함정, 더 높은 봉우리 → 함정(15마디가 체크포인트), 한 마디짜리)': B.slice(8, 17).every((n) => P(n).stair) && movers(12, 17, 'press') >= 4 && P(B[15]).cp && B.slice(12, 16).some((n) => P(n).traps),
-    '속임수 djHold → duckDrop': B.some((n, b) => n === 'duckDrop' && B[b - 1] === 'djHold'),
-    '울타리 fenceJ → fence': B.some((n, b) => n === 'fence' && B[b - 1] === 'fenceJ'),
-    '좁은 피버(24~30)': rush(24, 31),
-    '망치와 롤러(32~38)': movers(32, 39, 'ram') >= 4 && movers(32, 39, 'roller') >= 4,
-    '공중(40~46)': sec(40, 47).includes('airStep') && sec(40, 47).includes('ring3Bait'),
-    '움직이는 장애물(48~54)': movers(48, 55, 'saw') >= 2 && movers(48, 55, 'plat') >= 3,
-    '넓은 피버 질주(72~78)': rush(72, 79) && sec(72, 79).some((n) => P(n).wide),
-  };
-  const bad = Object.entries(got).filter(([, v]) => !v).map(([k]) => k);
+  const owner = {}; Lg.COURSES.forEach((c, i) => c.bars.forEach((n) => { if (!/^g\d+_/.test(n) && !(n in owner)) owner[n] = i + 1; }));
+  const borrowed = B.filter((n) => Lg.PATTERNS[n] && Lg.PATTERNS[n].mode !== 'rush' && !/^g\d+_/.test(n) && !['flat', 'goal', 'cp', 'wUp', 'wDn'].includes(n) && owner[n] < 13);
   let rides = 0; for (const r of L.rides) rides += (r[1] - r[0]) / 16;
-  ok(bad.length === 0 && B.indexOf('goal') === 80 && L.cps.length === 9 && rides <= 16, `13라운드: 구간마다 앞 라운드의 장치(${Object.keys(got).join(', ')})${bad.length ? ' — 빠진 것: ' + bad.join(', ') : ''}. 피버는 ${rides.toFixed(0)}마디뿐, 결승선은 곡이 다시 치는 마디 80, 체크포인트 ${L.cps.length}개`);
+  const iron = B.slice(8, 17).every((n) => P(n).stair) && B.slice(8, 17).some((n) => (P(n).movers || []).some((m) => m.kind === 'press')) && P(B[15]).cp;
+  ok(borrowed.length === 0 && iron && B.indexOf('goal') === 80 && L.cps.length === 9 && rides <= 16,
+    `13라운드: 앞 라운드의 세트 마디를 다시 쓰지 않는다(${borrowed.length}마디), 8~16마디는 쇠 봉우리(15마디가 체크포인트), 피버 ${rides.toFixed(0)}마디, 결승선은 마디 80, 체크포인트 ${L.cps.length}개`);
 }
 console.log('== 14라운드: 흔들리는 돌추 — 낮은 돌은 멈춰서 넘고, 덩굴이 짧은 높은 돌은 그냥 튀어 밑으로 ==');
 {
