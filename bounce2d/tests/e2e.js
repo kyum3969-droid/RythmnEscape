@@ -432,6 +432,18 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `10라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     ok(sparks > 0, `옆 망치가 다 튀어나오는 순간 불꽃이 튄다(완주하는 동안 ${sparks}번)`);
+    // 굽은 통로가 크게 돌아 나가는 곳(5라운드 48~53: 90° → 135° → 90° → 0°)에서 뒤쪽 토막의 바깥 칠이 앞쪽 통로를 덮어 화면이 새까맣던 것: 이제 벽 두께만큼만 칠한다
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(5)')]); await ready();
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const blackAt = {};
+    for (let beat = 0; beat <= 210; beat += 0.25) {
+      await tick(beat);
+      if (beat === 197 || beat === 202.25 || beat === 207.5) { await p.waitForTimeout(80); await p.screenshot({ path: out + 'r5_bend_' + beat + '.png' });
+        blackAt[beat] = await p.$eval('#view', (cv) => { const c = cv.getContext('2d'), d = c.getImageData(0, 0, cv.width, cv.height).data, cnt = new Map(); let k = 0; for (let i = 0; i < d.length; i += 4 * 37) { k++; const key = (d[i] >> 2) * 4096 + (d[i + 1] >> 2) * 64 + (d[i + 2] >> 2); cnt.set(key, (cnt.get(key) || 0) + 1); } return Math.max(...cnt.values()) / k; }); }      // (한 가지 색으로 칠해진 넓이: 예전에는 화면의 55~68%가 같은 어두운 색이었다)
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    ok(Object.keys(blackAt).length === 3 && Object.values(blackAt).every((v) => v < 0.45), `5라운드의 크게 돌아 나가는 피버(마디 48~53)에서 화면이 새까맣지 않다(뒤의 하늘과 풍경이 보인다): 한 가지 색으로 칠해진 넓이 ${Object.entries(blackAt).map(([b, v]) => b + '박 ' + Math.round(v * 100) + '%').join(', ')}`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');
