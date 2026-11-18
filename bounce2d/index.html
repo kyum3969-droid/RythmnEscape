@@ -622,7 +622,7 @@
     for (const e of ev) {
       if (e.type === "jump") { fx.jumpAt = now; puff(state.x, state.y, 5, 0.6); }
       else if (e.type === "pad") { fx.jumpAt = now; fx.shake = 0.1; sfx("pad"); puff(state.x, state.y, 10, 1.1); }
-      else if (e.type === "ring") { usedRings.add(e.c); fx.ringChain++; burst(e.c + 0.5, e.r + 0.5, 10, "white", 8); }     // 소리는 내지 않는다(동작 소리는 곡과 안 어울려서 전부 뺐다)
+      else if (e.type === "ring") { usedRings.add(e.c); fx.ringChain++; burst(e.x ?? e.c + 0.5, e.y ?? e.r + 0.5, 10, "white", 8); }     // 소리는 내지 않는다(동작 소리는 곡과 안 어울려서 전부 뺐다)
       else if (e.type === "bounce") {
         fx.jumpAt = now; puff(state.x, state.y, 6, 0.7);
       }
@@ -1299,8 +1299,18 @@
               ctx.fillStyle = "#2a0816"; for (let i = 0; i < 3; i++) { const a2 = (i / 3) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(a2) * r * 0.5, Math.sin(a2) * r * 0.5, r * 0.09, 0, Math.PI * 2); ctx.fill(); } }
             ctx.restore();
           };
+          if (m.skin === "moon") {      // 붉은 달(15라운드): 톱날과 같은 판정(원). 빨간 그라디언트와 분홍 테두리, 크레이터
+            const moon = (x, y, r, alpha) => { ctx.save(); ctx.globalAlpha *= alpha; const g7 = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r); g7.addColorStop(0, "#ff9ab3"); g7.addColorStop(0.55, "#a3184c"); g7.addColorStop(1, "#4a0a26");
+              ctx.fillStyle = g7; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+              if (alpha > 0.9) { ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; sb(12 + 8 * pulse); ctx.stroke(); sb(0);
+                ctx.fillStyle = "rgba(42,8,22,0.55)"; for (const [u, v, k] of [[0.3, -0.2, 0.22], [-0.35, 0.25, 0.16], [0.1, 0.45, 0.12]]) { ctx.beginPath(); ctx.arc(x + u * r, y + v * r, k * r, 0, Math.PI * 2); ctx.fill(); } }
+              ctx.restore(); };
+            for (let i = 4; i >= 1; i--) { const p2 = moverShape(m, beat - 0.035 * i); moon(sx(p2.x), Y(p2.y), q.r * T, 0.16 * (1 - i / 5)); }
+            moon(sx(q.x), Y(q.y), q.r * T, 1);
+          } else {
           for (let i = 4; i >= 1; i--) { const p2 = moverShape(m, beat - 0.035 * i); blade(sx(p2.x), Y(p2.y), q.r * T, -beat * Math.PI * 4, 0.16 * (1 - i / 5)); }      // 지나온 자리의 잔상
           blade(sx(q.x), Y(q.y), q.r * T, -beat * Math.PI * 4, 1);
+          }
         } else if (m.kind === "bar") {
           const q = moverShape(m, beat), ax = sx(q.ax), ay = Y(q.ay), bx = sx(q.bx), by = Y(q.by), Lp = m.len * T;
           // 돈 자리의 잔상(부채꼴)
@@ -1361,6 +1371,21 @@
           ctx.strokeStyle = "#ffc2d1"; ctx.lineWidth = 2; ctx.shadowColor = DANGER; sb(12 + 8 * pulse); gs(); sb(0);
           ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(0, 0, R * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ffd1dc"; ctx.lineWidth = 2; ctx.stroke();
           ctx.fillStyle = "#2a0816"; for (let i = 0; i < 3; i++) { const a2 = (i / 3) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(a2) * R * 0.52, Math.sin(a2) * R * 0.52, R * 0.09, 0, Math.PI * 2); ctx.fill(); }
+          ctx.restore();
+        } else if (m.kind === "oring") {
+          // 궤도 고리(15라운드): 행성(가운데의 작은 빛 — 닿아도 아무 일 없다)을 도는 충전 고리. 도는 길은 끊긴 원, 고리는 정지한 충전 고리와 같은 흰 고리.
+          // 지나가는 쪽으로 꼬리가 남고, 쓰고 나면 흐려진다
+          const q = moverShape(m, beat), ox = sx(m.orbit[0]), oy = Y(m.orbit[1]), Rp = m.orbit[2] * T, used = usedRings.has("o" + m.id);
+          ctx.save(); ctx.setLineDash([T * 0.12, T * 0.16]); ctx.strokeStyle = css(pal.accent, 0.35); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox, oy, Rp, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+          const pg = ctx.createRadialGradient(ox, oy, 0, ox, oy, T * 0.42); pg.addColorStop(0, css([255, 255, 255], 0.9)); pg.addColorStop(0.35, css(pal.accent, 0.55)); pg.addColorStop(1, css(pal.accent, 0));
+          ctx.fillStyle = pg; ctx.beginPath(); ctx.arc(ox, oy, T * 0.42, 0, Math.PI * 2); ctx.fill();
+          for (let i = 1; i <= 6; i++) { const p2 = moverShape(m, beat - 0.035 * i); ctx.fillStyle = css(pal.accent, (used ? 0.05 : 0.22) * (1 - i / 7)); ctx.beginPath(); ctx.arc(sx(p2.x), Y(p2.y), T * 0.16, 0, Math.PI * 2); ctx.fill(); }
+          const cx = sx(q.x), cy = Y(q.y), rx = T * 0.3, ry = T * 0.46;
+          ctx.save(); ctx.globalAlpha = used ? 0.25 : 1;
+          ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.shadowColor = css(pal.accent); sb(used ? 0 : 14 + 12 * pulse);
+          ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); gs();
+          ctx.strokeStyle = css(pal.accent, 0.9); ctx.lineWidth = 2; sb(0);
+          ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.55, ry * 0.8, 0, 0, Math.PI * 2); gs();
           ctx.restore();
         } else if (m.kind === "swing") {
           // 흔들리는 돌추(14라운드): 나무 위의 축(9라운드의 볼트와 같은 짙은 금속)에 매달린 덩굴, 끝에 빨간 빗금 돌덩이(분홍 테두리, 둘레에 가시).
@@ -1722,7 +1747,7 @@
     }
     for (const q of L.reds) out.push({ x0: q.x0, x1: q.x1, h: q.kind === "floor" ? q.tip / 2 : (q.tip + q.far) / 2, k: "R" });      // 피버의 이빨과 떠 있는 장애물
     for (const q of L.pads.values()) out.push({ x0: q.x - PAD_W, x1: q.x + PAD_W, h: padFace(q), k: "B" });
-    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" ? "B" : "R" }); }      // 움직이는 장애물
+    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
     if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) { const q0 = L.bands.get(c - 1); if (q0 && q0.some((v) => v[0] === lo && v[1] === hi)) continue; let e = c; while ((L.bands.get(e + 1) || []).some((v) => v[0] === lo && v[1] === hi)) e++; out.push({ x0: c, x1: e + 1, h: (lo + hi) / 2, k: "R" }); }      // 계단의 빨간 단과 뚜껑      // 피버의 튕김판
     const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
     const BH = Array.from({ length: L.cols }, (_, c) => boxH(c));

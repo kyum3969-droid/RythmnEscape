@@ -428,6 +428,35 @@ TEMPLATES.R14 = {
   },
 };
 
+// 15라운드(Orbital Momentum): 우주. 새것은 궤도 고리(oring) — 행성 둘레를 도는 충전 고리를 지나가는 순간에 맞춰 잡는다(orbRing ×2 → 1/4박 늦은 orbLate).
+//   붉은 달(궤도를 도는 톱날의 다른 그림), 음이 오르는 29~30 → 69~70(멈춤 길이가 다르다), 별까지 오르는 네 마디 계단. 피버는 셋(16~22, 40~46, 72~78), 마지막은 조여드는 통로.
+TEMPLATES.R15 = {
+  prefix: 'g15', bpm: 150.0, floatReds: true, vary: true, density: 0.9, fresh: true, freshWindow: 6, cpFill: true, cpLevel: 'a8', holdW: 3, hds: [0.5, 1],
+  rise: [{ at: 29, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 69, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 빌드업 29~30, 같은 빌드업 69~70)
+  recipe: { g: 'a8', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a8' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a8', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
+    const hill = (k, n, o = {}) => [{ hill: k, bars: n, ...o }, ...cont(n)];
+    const RISE = 'flat';
+    return [
+      ['도입(첫 박의 한 방 뒤 거의 소리가 없다): 멈춤 함정(같은 마디 두 번 → 마지막 멈춤이 짧다), 새 마디 둘', ['flat', 'flat', ...phrase('short-last'), one(), one(), 'cp']],
+      ['조용한 도입 — 궤도 고리를 소개한다: 멈춰서 기다렸다 고리를 잡고 이단 점프 → 높이 멈춤 ×2 → 고리가 1/4박 늦다(더 오래 멈췄다 잡는다). 붉은 달 ×2', ['orbRing', 'orbRing', 'orbLate', 'moonOrbit', 'moonOrbit', one(), one(), 'cp']],
+      ['첫 드롭 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
+      ['가라앉음과 빌드업: 이단 점프 → 멈춤 ×2 → 덩어리가 길다(오래 멈춘다), 새 마디 둘, 음이 올라가는 두 마디는 오르는 계단', ['djHold', 'djHold', 'djHoldL', one(), one(), RISE, RISE, 'cp']],
+      ['후렴 하나 — 별까지: 네 마디에 걸쳐 여덟 칸까지 오르고 내려온다. 이어서 궤도 고리 → 늦은 고리', [...hill('P', 4, { peak: 8 }), 'orbRing', 'orbLate', one(), 'cp']],
+      ['저음 그루브 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더', ['wUp', { wm: 'E', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'pad' }, { wm: 'F', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'F', kind: 'pad' }, 'wDn', 'cp']],
+      ['무음과 조용함: 울타리 ×2 → 기둥은 그대로인데 아무것도 안 누른다. 삼단 점프 → 미끼 고리', ['fenceJ', 'fenceJ', 'fence', 'ring3', 'ring3Bait', one(), one(), 'cp']],
+      ['다시 드롭 — 한 번만 보여 주고 뒤집기: 궤도 고리 → 늦은 고리, 붉은 달, 그림의 공중 사슬', ['orbRing', 'orbLate', 'moonOrbit', 'airStep', 'airRing', one(), one(), 'cp']],
+      ['빌드업: 멈춤 길이 함정(길다), 새 마디 둘, 같은 멜로디의 오르막은 이번엔 멈춤 길이가 다르다', [...phrase('long-last'), one(), one(), RISE, RISE, 'cp']],
+      ['마지막 후렴 — 피버 셋: 좁은 통로(튕김판) → 판이 없다, 되풀이 → 뚝. 끝의 두 마디는 장애물 없이 조여드는 통로, 곡의 한 방(마디 79)에 터져 나와 결승선', [{ zm: 'G', pads: 1, kind: 'pad' }, { zr: 'G' }, { zt: 'G', kind: 'pad' }, { zm: 'H', pads: 1 }, { zt: 'H', kind: 'break' }, 'zS1', 'zS2']],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
@@ -593,6 +622,7 @@ function generate(T, seed) {
   if (T.fresh) Lg.COURSES.forEach((C) => {
     const no = +(/ROUND (\d+)/.exec(C.name) || [])[1];
     if (!(no < myNo) && !(T.freshWideAll && no > myNo)) return;      // (freshWideAll: 뒤 라운드의 넓은 통로 줄도 피한다 — 앞 라운드를 나중에 고칠 때 뒤 라운드와 겹치지 않게)
+    if (T.freshWindow && no < myNo - T.freshWindow) return;      // (freshWindow: 바로 앞 몇 라운드와만 겹치지 않게. 15라운드부터 — 14라운드를 지나며 처음 나오는 줄이 바닥났다. 피버는 연출이 바뀌어 같은 줄이 오래 뒤에 다시 나와도 같아 보이지 않는다)
     let prev = null;
     C.bars.forEach((n) => {
       const p = Lg.PATTERNS[n];
@@ -610,7 +640,7 @@ function generate(T, seed) {
   // 튕김판(B)이 있는 줄: 필요할 때만 구한다. 판은 한 마디에 한두 개, 누르는 자리는 둘 이상
   let zPad = null, wPad = null;
   const padPool = (wide) => (wide ? (wPad = wPad || allStr(4, 4, 'FSB.').filter((s) => count(s, 'B') >= 1 && count(s, 'B') <= 2 && count(s, 'F') >= 2 && count(s, 'F') + count(s, 'S') + count(s, 'B') >= 4)) : (zPad = zPad || allStr(2, 0, 'FSB.').filter((s) => count(s, 'B') >= 1 && count(s, 'F') >= 2)));
-  const padTraps = (M, wide, lim) => { const out = []; for (let i = 2; i < 7; i++) if (M[i] === 'B') { const q = M.slice(0, i) + 'F' + M.slice(i + 1); if (fits(q, lim) && !stale(q, wide) && feverTry(q, wide)) out.push(q); } return out; };      // 판 하나를 없애고 그 자리를 "눌러야 하는 자리"로
+  const padTraps = (M, wide, lim) => { const out = []; for (let i = 2; i < 7; i++) if (M[i] === 'B') { const q = M.slice(0, i) + 'F' + M.slice(i + 1); if (fits(q, lim) && !stale(q, wide) && !stalePair(M, q, wide) && feverTry(q, wide)) out.push(q); } return out; };      // 판 하나를 없애고 그 자리를 "눌러야 하는 자리"로
   const feverDef = (nodes, wide) => { const d = { mode: 'rush', nodes }; if (wide) d.wide = true; if (/[FSB][FSB]/.test(nodes)) d.gap = 1.5; d.holds = []; d.presses = []; for (let k = 1; k <= 8; k++) if (nodes[k - 1] === 'F') d.presses.push(k * 0.5); return d; };
   const feverTry = (nodes, wide) => {            // 입력 여유가 0.16박(약 62ms) 이상이고, 입력이 모두 꼭 필요한가
     const key = (wide ? 'w' : 'z') + nodes;

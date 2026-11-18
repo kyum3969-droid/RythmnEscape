@@ -488,8 +488,23 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `14라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    // 15라운드(우주): 궤도 고리
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(15)')]); await ready();
+    st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length, orb: g.L.movers.filter((m) => m.kind === 'oring').length }; });
+    ok(st.round === 14 && st.name.includes('Orbital Momentum') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.09 && st.cps === 9 && st.orb >= 6, `15라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 첫 박 ${st.off}초, 궤도 고리 ${st.orb}개)`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots15 = { 33.75: 'r15_orb_ring', 41.25: 'r15_orb_late', 46.5: 'r15_moon', 70.0: 'r15_fever', 140.0: 'r15_stars', 305.0: 'r15_squeeze' };
+    let orbHits = 0;
+    for (let beat = 0; beat <= 330; beat += 0.25) {
+      await tick(beat);
+      if (shots15[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots15[beat] + '.png' }); }
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `15라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     const menuFit = await G(() => { const r = document.getElementById('rounds'); return r ? r.scrollHeight <= r.clientHeight + 2 && r.querySelectorAll('button').length : 0; });
-    ok(menuFit === 14, `라운드 고르기 메뉴에 14개 버튼이 모두 들어간다 (${menuFit})`);
+    ok(menuFit === 15, `라운드 고르기 메뉴에 15개 버튼이 모두 들어간다 (${menuFit})`);
     // 굽은 통로가 크게 돌아 나가는 곳(5라운드 48~53: 90° → 135° → 90° → 0°)에서 뒤쪽 토막의 바깥 칠이 앞쪽 통로를 덮어 화면이 새까맣던 것: 이제 벽 두께만큼만 칠한다
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(5)')]); await ready();
