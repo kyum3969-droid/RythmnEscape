@@ -487,6 +487,36 @@ TEMPLATES.R16 = {
   },
 };
 
+// 17라운드(Coral Cathedral): 바다 밑 산호 성당. 새것은 해파리(jelly) — 박마다 부풀었다 줄어든다. 위상(언제 부푸는가)을 읽고 그냥 지나가기·짧게 멈추기·한 박 멈추기를 고른다.
+//   jelLow ×2 → jelLowT, jelShort ×2 → jelShortT. 산호 계단, 음이 오르는 12~13 → 52~53, 성당 첨탑처럼 높은 네 마디 계단(56~59, 음이 크게 오르는 자리). 피버 셋.
+TEMPLATES.R17 = {
+  prefix: 'g17', bpm: 152.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, freshWindow: 3, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
+  rise: [{ at: 12, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 52, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 벌스 12~13, 조용한 빌드업 52~53)
+  recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a9' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a9', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
+    const K = ['hlong', 'hshort', 'lidJ', 'swap', 'shift'];
+    const hill = (k, n, o = {}) => [{ hill: k, bars: n, ...o }, ...cont(n)], rep = (k, n) => [{ hr: k }, ...cont(n)], trap = (k, n) => [{ ht: k, kind: K }, ...cont(n)];
+    const RISE = 'flat';
+    return [
+      ['도입: 산호 계단 한 마디 ×2 → 같은 계단의 함정, 새 마디 둘', ['flat', 'flat', ...hill('A', 1, { need: { kind: K } }), ...rep('A', 1), ...trap('A', 1), one(), one(), 'cp']],
+      ['벌스 — 해파리를 소개한다: 내려설 자리의 해파리가 부풀 때 한 박 멈춰서 넘기(뒤의 해파리는 그냥) ×2 → 뒤의 해파리도 내려설 때 부푼다(이번엔 멈춘다). 음이 올라가는 12~13마디는 오르는 계단', ['jelLow', 'jelLow', 'jelLowT', one(), RISE, RISE, one(), 'cp']],
+      ['첫 드롭 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
+      ['가라앉음과 빌드업 — 위쪽 해파리: 부푸는 해파리 밑을 짧게 멈춰 지나기 ×2 → 뒤의 해파리가 1/4박 일찍 부푼다(이번엔 그냥 지나간다). 멈춤 길이 함정(길다)', ['jelShort', 'jelShort', 'jelShortT', ...phrase('long-last'), one(), 'cp']],
+      ['후렴 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더', ['wUp', { wm: 'E', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'pad' }, { wm: 'F', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'F', kind: 'pad' }, 'wDn', 'cp']],
+      ['저음 그루브: 두 마디짜리 산호 계단 → 그 함정, 내려설 자리의 해파리 → 둘 다 부푼다, 새 마디', [...hill('B', 2, { peak: 5, need: { kind: K } }), ...trap('B', 2), 'jelLow', 'jelLowT', one(), 'cp']],
+      ['조용함과 빌드업: 같은 마디 두 번 → 끝에서 뚝, 새 마디, 같은 멜로디의 오르막(52~53)은 이번엔 멈춤 길이가 다르다, 새 마디', [...phrase('stop-last'), one(), RISE, RISE, one(), 'cp']],
+      ['두 번째 드롭 — 성당의 첨탑: 네 마디에 걸쳐 여덟 칸까지 오르고 내려온다(음이 크게 오르는 자리). 위쪽 해파리 → 일찍 부푼다', [...hill('P', 4, { peak: 8 }), 'jelShort', 'jelShortT', one(), 'cp']],
+      ['마지막 드롭 — 피버 셋(좁은 통로): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'G', pads: 1, kind: 'pad' }, { zr: 'G' }, { zt: 'G', kind: 'pad' }, { zm: 'H', pads: 1 }, { zr: 'H' }, { zt: 'H', kind: 'break' }, { zm: 'I', pads: 1, kind: 'none' }, 'cp']],
+      ['아웃트로와 마지막 빌드업: 위쪽 해파리 ×2 → 일찍 부푼다, 새 마디 넷. 빌드업이 닿는 마디 79에 결승선', ['jelShort', 'jelShort', 'jelShortT', one(), one(), one(), one()]],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {

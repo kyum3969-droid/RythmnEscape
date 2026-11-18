@@ -731,13 +731,106 @@
     }
     return out;
   }
+  // ---- 피버 연출: 라운드마다 다르다(의견: "피버 연출 디자인은 라운드마다 차별화 좀 줘"). 라운드의 곡과 주제에 맞춘 바탕 둘을 피버마다 번갈아 쓰고, 벽 속 장식도 라운드마다 다르다.
+  //   바탕: tunnel 빛의 굴 / ring 소리 고리 / stars 빛줄기 / road 달리는 길 / code 디지털 비 / confetti 꽃종이 / rays 햇살 / grid 지평선 격자 / lamps 가로등 / bubbles 방울 / embers 불티
+  //         rain 빗줄기 / gears 톱니바퀴 / ribbons 비단 띠 / snow 눈 / leaves 나뭇잎 / planets 행성 / haze 아지랑이 / lanterns 등불
+  //   벽: eq 막대 / wave 물결 / dots 점 격자
+  const FEVER_FX = [
+    { back: ['road', 'stars'], wall: 'eq' },        // 1 Octane Horizon: 달리는 길
+    { back: ['code', 'grid'], wall: 'dots' },       // 2 Terminal Pursuit: 화면 속 추격
+    { back: ['confetti', 'ring'], wall: 'eq' },     // 3 Final Quarter Credit
+    { back: ['rays', 'haze'], wall: 'wave' },       // 4 Miles Before Sunrise: 해 뜨기 전
+    { back: ['grid', 'ring'], wall: 'dots' },       // 5 Concrete Pulse: 도시의 맥박
+    { back: ['lamps', 'road'], wall: 'eq' },        // 6 Streetlight Velocity: 가로등
+    { back: ['confetti', 'bubbles'], wall: 'dots' },// 7 Sunday in the Playroom: 놀이방
+    { back: ['rays', 'embers'], wall: 'wave' },     // 8 Velocity of a Thousand Suns: 천 개의 해
+    { back: ['rain', 'road'], wall: 'eq' },         // 9 Midnight Asphalt Rush: 한밤의 젖은 도로
+    { back: ['gears', 'embers'], wall: 'dots' },    // 10 Anvil and Piston: 공장의 불꽃
+    { back: ['ribbons', 'tunnel'], wall: 'wave' },  // 11 Velocity of Silk: 비단
+    { back: ['snow', 'rays'], wall: 'wave' },       // 12 Across the Iron Peak: 눈 덮인 봉우리
+    { back: ['stars', 'tunnel'], wall: 'eq' },      // 13 Final Level Sprint: 결승선을 향해
+    { back: ['leaves', 'rays'], wall: 'wave' },     // 14 Temple Canopy Pursuit: 정글
+    { back: ['planets', 'stars'], wall: 'dots' },   // 15 Orbital Momentum: 우주
+    { back: ['haze', 'embers'], wall: 'eq' },       // 16 Searing Horizon: 사막의 열기
+    { back: ['bubbles', 'rays'], wall: 'wave' },    // 17 Coral Cathedral: 바다 밑
+    { back: ['lanterns', 'embers'], wall: 'dots' }, // 18 The Midnight Procession: 한밤의 행렬
+  ];
+  // 새 연출들. a = 세기(0~1), acc·sun = 색(빨강·분홍은 쓰지 않는다), 소실점(cx, cy)
+  function feverPrim(prim, beat, now, pulse, a, acc, sun, cx, cy, r0, w, h, R) {
+    const H = (i, k) => hash(i, k), W = [255, 255, 255], gy = view.groundY;
+    ctx.lineCap = "round";
+    if (prim === 'road' || prim === 'grid') {      // 지평선으로 모이는 길(가운데 점선과 길가 선) / 격자(가로줄이 다가오고 세로줄이 소실점으로)
+      const hz = cy + r0 * 0.6;
+      ctx.strokeStyle = css(acc, a * 0.35); ctx.lineWidth = 1.5; ctx.beginPath();
+      const nV = prim === 'road' ? 4 : 14;
+      for (let i = 0; i <= nV; i++) { const u = i / nV - 0.5; ctx.moveTo(cx + u * r0 * 0.6, hz); ctx.lineTo(cx + u * w * 3, h + 40); }
+      ctx.stroke();
+      for (let i = 0; i < 10; i++) { const p = (beat * (prim === 'road' ? 1 : 0.5) + i / 10) % 1, y = hz + Math.pow(p, 2.2) * (h - hz + 40);
+        if (prim === 'grid') { ctx.strokeStyle = css(acc, a * (0.1 + 0.4 * p)); ctx.lineWidth = 1 + 2 * p; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+        else { ctx.strokeStyle = css(sun, a * (0.2 + 0.6 * p)); ctx.lineWidth = 2 + 8 * p; ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + 18 * p * p + 2); ctx.stroke(); } }
+    } else if (prim === 'code') {      // 디지털 비: 세로줄의 글자 조각이 떨어진다(박마다 밝아진다)
+      const cols = 28, cw = w / cols; ctx.font = `${Math.round(cw * 0.7)}px monospace`;
+      for (let c = 0; c < cols; c++) { const sp = 0.5 + H(c, 1), y0 = ((now * sp * 0.6 + H(c, 2)) % 1.3) * h;
+        for (let j = 0; j < 8; j++) { const y = y0 - j * cw * 0.9; if (y < 0 || y > h) continue; ctx.fillStyle = css(j === 0 ? W : acc, a * (j === 0 ? 0.7 : 0.35 * (1 - j / 8)) * (0.7 + 0.5 * pulse)); ctx.fillText(String.fromCharCode(0x30 + ((c * 7 + j * 3 + Math.floor(now * 8)) % 42)), c * cw, y); } }
+    } else if (prim === 'confetti' || prim === 'snow' || prim === 'leaves' || prim === 'bubbles') {      // 떨어지거나(꽃종이·눈·잎) 떠오르는(방울) 것들
+      const n = prim === 'snow' ? 90 : 55, up = prim === 'bubbles', cols = [acc, sun, [120, 230, 255], [255, 230, 120], [190, 255, 140], [200, 180, 255]];
+      for (let i = 0; i < n; i++) {
+        const sp = (prim === 'snow' ? 0.18 : 0.3) * (0.6 + H(i, 3)), p = (H(i, 4) + now * sp) % 1, y = up ? h + 20 - p * (h + 40) : -20 + p * (h + 40);
+        const x = (H(i, 5) * w + Math.sin(now * (1 + H(i, 6)) + i) * 30 - (up ? 0 : now * 40 * H(i, 7))) % (w + 40) + (H(i, 5) * w + Math.sin(now + i) * 30 - (up ? 0 : now * 40 * H(i, 7)) < 0 ? w + 40 : 0) - 20;
+        const s2 = (prim === 'snow' ? 1.5 + 2.5 * H(i, 8) : 3 + 5 * H(i, 8)) * (1 + 0.25 * pulse), rot = now * (1 + 2 * H(i, 9)) + i;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = a * (prim === 'snow' ? 0.8 : 0.65);
+        if (prim === 'snow') { ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(0, 0, s2, 0, Math.PI * 2); ctx.fill(); }
+        else if (prim === 'bubbles') { ctx.strokeStyle = css([200, 245, 255], 0.8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, s2 * 1.4, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.arc(-s2 * 0.5, -s2 * 0.5, s2 * 0.35, 0, Math.PI * 2); ctx.fill(); }
+        else if (prim === 'leaves') { ctx.fillStyle = css(i % 3 ? [110, 200, 90] : [230, 210, 90]); ctx.beginPath(); ctx.ellipse(0, 0, s2 * 1.6, s2 * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "rgba(20,60,20,0.6)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-s2 * 1.5, 0); ctx.lineTo(s2 * 1.5, 0); ctx.stroke(); }
+        else { ctx.fillStyle = css(cols[i % cols.length]); ctx.fillRect(-s2, -s2 * 0.45, s2 * 2, s2 * 0.9); }
+        ctx.restore();
+      }
+    } else if (prim === 'rays') {      // 햇살: 위(해)에서 부채꼴로 내리는 빛줄기, 천천히 흔들리며 박마다 밝아진다
+      for (let i = 0; i < 9; i++) { const th = Math.PI / 2 + (i - 4) * 0.16 + Math.sin(now * 0.4 + i) * 0.04, len = R * 1.1, wd = 0.05 + 0.04 * H(i, 1);
+        const g = ctx.createLinearGradient(cx, cy, cx + Math.cos(th) * len, cy + Math.sin(th) * len); g.addColorStop(0, css(sun, a * (0.25 + 0.25 * pulse))); g.addColorStop(1, css(sun, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(th - wd) * len, cy + Math.sin(th - wd) * len); ctx.lineTo(cx + Math.cos(th + wd) * len, cy + Math.sin(th + wd) * len); ctx.closePath(); ctx.fill(); }
+    } else if (prim === 'haze') {      // 아지랑이: 지평선 위로 일렁이는 가로 물결 여러 줄
+      for (let j = 0; j < 7; j++) { const y = gy - (j + 1) * h * 0.07; ctx.strokeStyle = css(j % 2 ? sun : acc, a * (0.12 + 0.22 * pulse)); ctx.lineWidth = 2; ctx.beginPath();
+        for (let x = 0; x <= w; x += 12) ctx.lineTo(x, y + Math.sin(x * 0.03 + now * 3 + j) * (4 + j)); ctx.stroke(); }
+    } else if (prim === 'lamps') {      // 가로등: 빛기둥이 오른쪽에서 왼쪽으로 박마다 하나씩 지나간다
+      for (let i = 0; i < 6; i++) { const p = (beat * 0.5 + i / 6) % 1, x = w * (1.1 - p * 1.3), top = h * 0.12;
+        ctx.strokeStyle = css(W, a * 0.25); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, top); ctx.lineTo(x - 20, top); ctx.stroke();
+        const g = ctx.createRadialGradient(x - 20, top, 0, x - 20, top, h * 0.35); g.addColorStop(0, css(sun, a * (0.4 + 0.3 * pulse))); g.addColorStop(1, css(sun, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x - 20, top, h * 0.35, 0, Math.PI * 2); ctx.fill(); }
+    } else if (prim === 'embers' || prim === 'lanterns') {      // 불티(작게 빠르게 오른다) / 등불(크게 천천히 떠오르며 흔들린다)
+      const lan = prim === 'lanterns', n = lan ? 16 : 70;
+      for (let i = 0; i < n; i++) { const sp = (lan ? 0.05 : 0.25) * (0.6 + H(i, 1)), p = (H(i, 2) + now * sp) % 1, y = h + 20 - p * (h + 60), x = H(i, 3) * w + Math.sin(now * (lan ? 0.8 : 3) + i) * (lan ? 18 : 8);
+        if (lan) { const s2 = 7 + 6 * H(i, 4), g = ctx.createRadialGradient(x, y, 0, x, y, s2 * 3); g.addColorStop(0, css([255, 214, 140], a * (0.5 + 0.3 * pulse))); g.addColorStop(1, css([255, 190, 90], 0));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, s2 * 3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = css([255, 226, 160], a * 0.85); ctx.fillRect(x - s2 * 0.6, y - s2, s2 * 1.2, s2 * 1.6); }
+        else { ctx.fillStyle = css(i % 2 ? [255, 210, 110] : sun, a * (1 - p) * 0.8); ctx.beginPath(); ctx.arc(x, y, 1.5 + 2 * H(i, 4), 0, Math.PI * 2); ctx.fill(); } }
+    } else if (prim === 'rain') {      // 빗줄기: 비스듬히 빠르게 떨어진다
+      ctx.strokeStyle = css([190, 225, 255], a * 0.35); ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i < 120; i++) { const p = (H(i, 1) + now * (1.6 + H(i, 2))) % 1, x = H(i, 3) * (w + 200) - p * 120, y = p * (h + 60) - 30; ctx.moveTo(x, y); ctx.lineTo(x - 10, y + 26); }
+      ctx.stroke();
+    } else if (prim === 'gears') {      // 톱니바퀴: 뒤에서 맞물려 박에 맞춰 딸깍 돈다
+      for (const [gx, gy2, rr, dir] of [[cx - r0 * 2.6, cy + r0 * 0.4, r0 * 1.6, 1], [cx + r0 * 0.2, cy - r0 * 1.2, r0 * 1.1, -1], [cx + r0 * 2.4, cy + r0 * 0.9, r0 * 1.3, 1]]) {
+        const rot = dir * (Math.floor(beat) + Math.min(1, (beat % 1) * 5)) * (Math.PI / 8);
+        ctx.save(); ctx.translate(gx, gy2); ctx.rotate(rot); ctx.strokeStyle = css(acc, a * 0.35); ctx.lineWidth = 3; ctx.beginPath();
+        for (let i = 0; i < 24; i++) { const t0 = (i / 24) * Math.PI * 2, rad = i % 2 ? rr : rr * 0.84; ctx.lineTo(Math.cos(t0) * rad, Math.sin(t0) * rad); ctx.lineTo(Math.cos(t0 + Math.PI / 24) * rad, Math.sin(t0 + Math.PI / 24) * rad); }
+        ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, rr * 0.3, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    } else if (prim === 'ribbons') {      // 비단 띠: 화면을 가로지르며 물결치는 넓은 띠 셋
+      for (let j = 0; j < 3; j++) { const yb = h * (0.25 + 0.2 * j), amp = h * 0.06; ctx.fillStyle = css(j === 1 ? sun : acc, a * 0.16 * (1 + pulse));
+        ctx.beginPath(); for (let x = 0; x <= w; x += 10) ctx.lineTo(x, yb + Math.sin(x * 0.012 + now * 1.5 + j * 2) * amp); for (let x = w; x >= 0; x -= 10) ctx.lineTo(x, yb + 18 + Math.sin(x * 0.012 + now * 1.5 + j * 2 + 0.6) * amp); ctx.closePath(); ctx.fill(); }
+    } else if (prim === 'planets') {      // 행성: 소실점(해)을 큰 고리 행성으로, 둘레를 작은 위성들이 박에 맞춰 돈다
+      ctx.strokeStyle = css(acc, a * 0.45); ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx, cy, r0 * 2.2, r0 * 0.55, -0.25, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 4; i++) { const th = beat * Math.PI / (2 + i) + i * 1.7, rr = r0 * (2.8 + i * 0.9), px = cx + Math.cos(th) * rr, py = cy + Math.sin(th) * rr * 0.45;
+        ctx.strokeStyle = css(W, a * 0.12); ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy, rr, rr * 0.45, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = css(i % 2 ? sun : acc, a * 0.7); ctx.beginPath(); ctx.arc(px, py, r0 * (0.12 + 0.05 * i) * (1 + 0.2 * pulse), 0, Math.PI * 2); ctx.fill(); }
+    }
+    ctx.lineCap = "butt";
+  }
   // 피버 연출의 색: 마디가 바뀔 때마다 색상환을 돈다(라운드마다 시작 색이 다르다. 빨강·분홍은 건너뛴다 — 닿으면 죽는 것의 색). 그 구간의 강조색과 섞는다
   function feverHue(beat, pal, mixK = 0.65) {
     const hue = (45 + (Math.floor(beat / 4) * 57 + ROUND_NO * 41) % 270) / 360,      /* 45°~315°: 빨강·분홍(위험한 것의 색)은 쓰지 않는다 */ f = (n) => { const k = (n + hue * 12) % 12; return 0.62 - 0.38 * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
     return mix(pal.accent, [f(0) * 255, f(8) * 255, f(4) * 255], mixK);
   }
   function feverBack(beat, now, pulse, k, pal, cx, cy, r0, w, h, camX) {
-    const ri = Math.max(0, L.rides.findIndex((r) => camX >= r[0] - 4 && camX <= r[1] + 2)), style = (ri + ROUND_NO) % 3;
+    const ri = Math.max(0, L.rides.findIndex((r) => camX >= r[0] - 4 && camX <= r[1] + 2)), fxr = FEVER_FX[ROUND_NO] || FEVER_FX[0], prim = fxr.back[ri % fxr.back.length];
+    const style = prim === 'tunnel' ? 0 : prim === 'ring' ? 1 : prim === 'stars' ? 2 : -1;
     const a = k * 0.95, R = Math.hypot(w, h), acc = feverHue(beat, pal), sun = mix(pal.sun, acc, 0.35);
     ctx.save();
     if (style === 0) {          // 빛의 굴: 소실점에서 둥근 네모가 반 박마다 하나씩 다가온다. 박마다 밝아진다
@@ -765,7 +858,7 @@
       const bw = w / 32;
       for (let i = 0; i < 32; i++) { const v = sp[Math.min(sp.length - 1, Math.abs(16 - i) % sp.length)], hh = h * 0.28 * v;
         ctx.fillStyle = css(acc, a * 0.16); ctx.fillRect(i * bw + 1, view.groundY - hh, bw - 2, hh); }
-    } else {                    // 빛줄기: 소실점에서 별빛이 쏟아져 나온다. 소리가 클수록 빠르고 길다
+    } else if (style === 2) {   // 빛줄기: 소실점에서 별빛이 쏟아져 나온다. 소리가 클수록 빠르고 길다
       const sp = spectrum(8, beat, pulse), lo = (sp[0] + sp[1] + sp[2]) / 3, speed = 0.35 + 0.9 * lo;
       ctx.lineCap = "round";
       for (let i = 0; i < 90; i++) {
@@ -775,7 +868,7 @@
         ctx.lineWidth = 0.8 + 2.4 * z;
         ctx.beginPath(); ctx.moveTo(cx + Math.cos(th) * r2, cy + Math.sin(th) * r2); ctx.lineTo(cx + Math.cos(th) * r1, cy + Math.sin(th) * r1); ctx.stroke();
       }
-    }
+    } else feverPrim(prim, beat, now, pulse, Math.min(1, a * 1.6), acc, sun, cx, cy, r0, w, h, R);
     // 모든 피버: 박마다 화면 가장자리가 강조색으로 숨 쉰다, 들어서는 순간 소실점에서 충격파
     const vg = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, R * 0.62);
     vg.addColorStop(0, css(acc, 0)); vg.addColorStop(1, css(acc, a * (0.06 + 0.2 * pulse)));
@@ -849,7 +942,7 @@
         }
       }
       if (round > 0) {
-        ctx.globalAlpha = round;
+        ctx.globalAlpha = round * (1 - 0.55 * round);      // 피버: 능선을 반쯤 비쳐 보이게(피버 연출이 그 뒤에 있다)
         ctx.beginPath(); ctx.moveTo(-20, h + 20);
         for (let x = -20; x <= w + 20; x += 10) {
           const u = (x + off) / BT;
@@ -1139,6 +1232,17 @@
           const n = 40, sp = spectrum(n, beat, pulse), col = feverHue(beat, pal), bw = w / n;
           for (let c = Math.floor(ca / 16) * 16; c < cb; c += 16) {
             const xs = sx(Math.max(c, ca)), xe = sx(Math.min(c + 16, cb)), yc = sy(ROWS - 1 - ceilAt(L, c + 1));
+            const wallFx = (FEVER_FX[ROUND_NO] || FEVER_FX[0]).wall;
+            if (wallFx === 'wave' || wallFx === 'dots') {      // 물결(곡의 소리만큼 출렁이는 선 셋) / 점 격자(소리만큼 켜지는 점)
+              ctx.save(); ctx.beginPath(); ctx.rect(xs, 0, xe - xs, h); ctx.clip();
+              for (const [y0, dirY] of [[yc - 6, -1], [view.groundY + 6, 1]]) {
+                if (wallFx === 'wave') for (let j = 0; j < 3; j++) { ctx.strokeStyle = css(col, 0.25 + 0.15 * j); ctx.lineWidth = 2; ctx.beginPath();
+                  for (let x = xs; x <= xe; x += 8) { const v = sp[Math.floor(((x / w) * n)) % n] || 0; ctx.lineTo(x, y0 + dirY * (T * (0.3 + 0.5 * j) + Math.sin(x * 0.04 + beat * Math.PI + j) * T * 0.35 * (0.3 + v))); } ctx.stroke(); }
+                else for (let x = xs + 6; x <= xe; x += 14) { const v = sp[Math.floor(((x / w) * n)) % n] || 0, lit = Math.round(v * 5);
+                  for (let j = 0; j < 5; j++) { ctx.fillStyle = css(col, j < lit ? 0.6 : 0.12); ctx.beginPath(); ctx.arc(x, y0 + dirY * (j * 11 + 4), 3, 0, Math.PI * 2); ctx.fill(); } }
+              }
+              ctx.restore(); continue;
+            }
             for (let i = Math.max(0, Math.floor(xs / bw)); i < n && i * bw < xe; i++) {
               const xa = Math.max(xs, i * bw + 2), xb = Math.min(xe, (i + 1) * bw - 2); if (xb <= xa) continue;
               const v = sp[Math.abs(i - n / 2) * 2 % n], hh = T * (0.25 + 2.4 * v * v);
@@ -1374,6 +1478,22 @@
           ctx.strokeStyle = "#ffc2d1"; ctx.lineWidth = 2; ctx.shadowColor = DANGER; sb(12 + 8 * pulse); gs(); sb(0);
           ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(0, 0, R * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ffd1dc"; ctx.lineWidth = 2; ctx.stroke();
           ctx.fillStyle = "#2a0816"; for (let i = 0; i < 3; i++) { const a2 = (i / 3) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(a2) * R * 0.52, Math.sin(a2) * R * 0.52, R * 0.09, 0, Math.PI * 2); ctx.fill(); }
+          ctx.restore();
+        } else if (m.kind === "jelly") {
+          // 해파리(17라운드): 반투명한 빨강·분홍 갓(위가 둥글고 아래 가장자리가 물결), 그 밑에 흔들리는 촉수. 테두리 원이 판정(moverShape의 반지름)이다.
+          // 부풀 때 밝아지고 테두리가 두꺼워진다(박마다)
+          const q = moverShape(m, beat), cx = sx(q.x), cy = Y(q.y), R = q.r * T, glow = q.k;
+          ctx.save();
+          ctx.strokeStyle = `rgba(255,143,171,${0.25 + 0.45 * glow})`; ctx.lineWidth = 1.5 + 2.5 * glow; ctx.setLineDash([T * 0.1, T * 0.08]);
+          ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);      // 판정의 테두리
+          for (let i = 0; i < 5; i++) {      // 촉수
+            const tx = cx + (i - 2) * R * 0.32; ctx.strokeStyle = `rgba(255,120,160,${0.35 + 0.3 * glow})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(tx, cy + R * 0.25);
+            for (let k = 1; k <= 6; k++) ctx.lineTo(tx + Math.sin(now * 5 + i * 1.3 + k * 0.9) * T * 0.08, cy + R * 0.25 + k * R * 0.16); ctx.stroke(); }
+          const bell = () => { ctx.beginPath(); ctx.arc(cx, cy, R * 0.92, Math.PI, 0); const n = 6; for (let i = 0; i <= n; i++) { const x = cx + R * 0.92 - (i / n) * R * 1.84; ctx.lineTo(x, cy + R * (i % 2 ? 0.32 : 0.18)); } ctx.closePath(); };
+          const bg = ctx.createRadialGradient(cx, cy - R * 0.3, R * 0.1, cx, cy, R); bg.addColorStop(0, `rgba(255,214,228,${0.75 + 0.2 * glow})`); bg.addColorStop(0.5, `rgba(214,40,96,${0.6 + 0.25 * glow})`); bg.addColorStop(1, "rgba(74,10,38,0.7)");
+          bell(); ctx.fillStyle = bg; sb(0); ctx.fill();
+          bell(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; sb(10 + 10 * pulse + 16 * glow); gs(); sb(0);
+          ctx.fillStyle = `rgba(255,240,245,${0.5 + 0.4 * glow})`; ctx.beginPath(); ctx.ellipse(cx - R * 0.25, cy - R * 0.45, R * 0.18, R * 0.1, -0.5, 0, Math.PI * 2); ctx.fill();      // 반사광
           ctx.restore();
         } else if (m.kind === "flame") {
           // 불기둥(16라운드): 바닥의 쇠 환풍구(9라운드의 볼트와 같은 금속)에서 솟는 불길. 아래는 희고 위로 갈수록 주황 → 빨강, 윗면이 일렁인다.
@@ -1784,7 +1904,7 @@
     }
     for (const q of L.reds) out.push({ x0: q.x0, x1: q.x1, h: q.kind === "floor" ? q.tip / 2 : (q.tip + q.far) / 2, k: "R" });      // 피버의 이빨과 떠 있는 장애물
     for (const q of L.pads.values()) out.push({ x0: q.x - PAD_W, x1: q.x + PAD_W, h: padFace(q), k: "B" });
-    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.kind === "flame" ? 1 : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
+    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.kind === "flame" ? 1 : m.kind === "jelly" ? m.y : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
     if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) { const q0 = L.bands.get(c - 1); if (q0 && q0.some((v) => v[0] === lo && v[1] === hi)) continue; let e = c; while ((L.bands.get(e + 1) || []).some((v) => v[0] === lo && v[1] === hi)) e++; out.push({ x0: c, x1: e + 1, h: (lo + hi) / 2, k: "R" }); }      // 계단의 빨간 단과 뚜껑      // 피버의 튕김판
     const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
     const BH = Array.from({ length: L.cols }, (_, c) => boxH(c));
