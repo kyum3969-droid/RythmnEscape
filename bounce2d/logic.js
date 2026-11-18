@@ -1577,6 +1577,7 @@ const ROUND13 = {
   name: "ROUND 13 · Final Level Sprint",
   bpm: 150.0,
   track: { file: "music/final_level_sprint.mp3", offset: 0.178, measured: true },
+  finale: { quiet: [40, 48], sprint: [72, 79] },   // 화면 연출의 시작·끝 마디
   floatReds: true, vary: true, density: 0.9, climb: "stairs",
   goalAt: 0,                                       // 곡이 멈췄다가 마지막으로 한 번 치는 박(마디 80의 첫 박)에 결승선을 지난다
   pal: {                                         // 이 라운드의 색: 마지막 판 — 검정에 가까운 남색, 결승선의 금빛, 전광판의 시안과 자홍

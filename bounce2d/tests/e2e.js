@@ -466,14 +466,65 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length }; });
     ok(st.round === 12 && st.name.includes('Final Level Sprint') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.178 && st.cps === 9, `13라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 첫 박 ${st.off}초)`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const finaleFrames = {};
+    const readFinaleFrame = async (finish = false) => G(async finish => {
+      const { view } = window.__game;
+      const canvas = document.getElementById('view'), ctx = canvas.getContext('2d'), scale = canvas.width / view.w;
+      const read = () => {
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const sample = (x0, y0, x1, y1, value) => {
+          let total = 0, count = 0;
+          for (let y = Math.round(y0 * scale); y < Math.min(canvas.height, y1 * scale); y += 4) {
+            for (let x = Math.round(x0 * scale); x < x1 * scale; x += 4) {
+              const i = (y * canvas.width + x) * 4;
+              total += value(data[i], data[i + 1], data[i + 2]);
+              count++;
+            }
+          }
+          return total / count;
+        };
+        const brightness = (r, g, b) => (r + g + b) / 3;
+        const { w, h, groundY, zT } = view;
+        return {
+          sky: sample(w * .53, h * .22, w * .83, h * .57, brightness),
+          corner: sample(w * .6, h * .12, w * .85, h * .22, brightness),
+          rails: sample(w * .35, groundY + zT * .33, w * .85, groundY + zT * .65, (r, g, b) => b > 105 && b > r * 1.12),
+          gold: sample(w * .42, h * .25, w * .81, h * .8, (r, g, b) => r > 80 && g > r * .62 && g < r * .95 && b < r * .65),
+        };
+      };
+      const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+      if (finish) window.__game.tickTo(320);
+      await frame();
+      if (!finish) return read();
+      // 결승 효과가 퍼졌다 사라지는 동안의 프레임을 함께 본다.
+      const until = performance.now() + 260;
+      let gold = 0;
+      do {
+        gold = Math.max(gold, read().gold);
+        await frame();
+      } while (performance.now() < until);
+      return { gold };
+    }, finish);
     const shots13 = { 33.5: 'r13_iron', 70.5: 'r13_rise', 129.0: 'r13_machines', 161.0: 'r13_air', 193.0: 'r13_saws', 233.0: 'r13_peak', 297.0: 'r13_sprint' };
-    for (let beat = 0; beat <= 345; beat += 0.25) {
+    for (let beat = 0; beat < 320; beat += 0.25) {
       await tick(beat);
       if (shots13[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots13[beat] + '.png' }); }
+      if ([173.25, 198, 297, 316, 317.5].includes(beat)) finaleFrames[beat] = await readFinaleFrame();
       if (await G(() => window.__game.phase) !== 'running') break;
     }
-    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
-    ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `13라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    const finishFrame = await readFinaleFrame(true);
+    const quietFrame = finaleFrames[173.25], buildUpFrame = finaleFrames[198], sprintFrame = finaleFrames[297], blackoutFrame = finaleFrames[317.5];
+    ok(quietFrame?.sky < 30 && buildUpFrame?.sky > quietFrame.sky + 20,
+      `13라운드의 조용한 구간에서 배경이 어두워지고 빌드업에서 되살아난다 (${quietFrame?.sky.toFixed(1)} → ${buildUpFrame?.sky.toFixed(1)})`);
+    ok(sprintFrame?.rails > .025 && blackoutFrame?.rails < .01,
+      `13라운드의 마지막 피버에서 통로 바깥 조명이 빛나고, 79마디에 꺼진다 (${sprintFrame?.rails.toFixed(3)} → ${blackoutFrame?.rails.toFixed(3)})`);
+    ok(finaleFrames[316]?.corner < 24,
+      `13라운드의 79마디 첫 박부터 배경이 어둡다 (${finaleFrames[316]?.corner.toFixed(1)})`);
+    ok(blackoutFrame && finishFrame.gold > blackoutFrame.gold + .08,
+      `13라운드의 결승선에서 금빛이 화면 옆까지 퍼진다 (${blackoutFrame?.gold.toFixed(3)} → ${finishFrame.gold.toFixed(3)})`);
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, step: window.__game.state.step, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.step === 320 * 96 && st.cp === st.cps - 1 && st.gems.got === st.gems.total,
+      `13라운드도 패턴대로 누르면 80마디 첫 박에 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     // 14라운드(정글 신전): 흔들리는 돌추
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(14)')]); await ready();
