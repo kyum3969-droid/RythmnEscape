@@ -397,6 +397,37 @@ TEMPLATES.R13 = {
   },
 };
 
+// 14라운드(Temple Canopy Pursuit): 정글 신전. 새것은 흔들리는 돌추(swing) — 나무 위에 덩굴로 매달린 빨간 돌이 박에 맞춰 오간다.
+//   낮은 돌(땅을 쓴다) → 멈춰서 넘기 ×2 → 덩굴이 짧은 높은 돌(멈춘 높이를 지난다) → 아무것도 안 누르고 밑으로. 한 마디에 둘(낮고 높게) ×2 → 순서가 바뀐다.
+//   나무 위로 오르는 계단(쇠 봉우리 없이), 음이 오르는 50~51 → 61~62(멈춤 길이가 다르다). 피버는 후렴 둘(16~22, 40~46)에만, 세 번째 후렴(64~)은 큰 계단.
+TEMPLATES.R14 = {
+  prefix: 'g14', bpm: 150.0, floatReds: true, vary: true, density: 0.9, fresh: true, cpFill: true, cpLevel: 'a7', holdW: 3, hds: [0.5, 1],
+  rise: [{ at: 50, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 61, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 브레이크다운의 50~51, 벌스의 61~62)
+  recipe: { g: 'a7', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a7' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a7', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
+    const K = ['hlong', 'hshort', 'lidJ', 'swap', 'shift'];
+    const hill = (k, n, o = {}) => [{ hill: k, bars: n, ...o }, ...cont(n)], rep = (k, n) => [{ hr: k }, ...cont(n)], trap = (k, n) => [{ ht: k, kind: K }, ...cont(n)];
+    const RISE = 'flat';      // (음이 올라가는 구간의 계단이 이 자리를 대신한다: 틀의 rise)
+    return [
+      ['조용한 도입(첫 박의 한 방 뒤 거의 소리가 없다): 나무 위로 오르는 한 마디짜리 계단 ×2 → 같은 계단의 함정, 새 마디 둘', ['flat', 'flat', ...hill('A', 1, { need: { kind: K } }), ...rep('A', 1), ...trap('A', 1), one(), one(), 'cp']],
+      ['벌스 — 돌추를 소개한다: 땅을 쓰는 돌을 멈춰서 넘기 ×2 → 덩굴이 짧은 돌(멈춘 높이를 지난다: 아무것도 안 누르고 밑으로). 멈춤 길이 함정', ['vineDuck', 'vineDuck', 'vineHigh', ...phrase('short-last'), one(), 'cp']],
+      ['후렴 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
+      ['벌스 둘 — 돌추 둘: 낮은 돌 → 높은 돌 ×2 → 순서가 바뀐다. 이단 점프 → 멈춤 ×2 → 덩어리가 길다(오래 멈춘다)', ['vineTwin', 'vineTwin', 'vineSwap', 'djHold', 'djHold', 'djHoldL', one(), 'cp']],
+      ['벌스 셋 — 나무 위로: 두 마디짜리 계단(다섯 칸) → 같은 계단의 함정, 그림의 공중 사슬', [...hill('B', 2, { peak: 5, need: { kind: K } }), ...trap('B', 2), 'airStep', 'airRing', one(), 'cp']],
+      ['후렴 둘 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더', ['wUp', { wm: 'E', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'pad' }, { wm: 'F', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'F', kind: 'pad' }, 'wDn', 'cp']],
+      ['브레이크다운(저음만): 울타리 ×2, 음이 올라가는 두 마디는 오르는 계단 → 기둥은 그대로인데 아무것도 안 누른다. 삼단 점프 → 미끼 고리', ['fenceJ', 'fenceJ', RISE, RISE, 'fence', 'ring3', 'ring3Bait', 'cp']],
+      ['벌스 넷 — 돌추를 한꺼번에: 낮은 돌 → 높은 돌, 둘 → 바뀐 둘. 같은 멜로디의 오르막은 이번엔 멈춤 길이가 다르다', ['vineDuck', 'vineHigh', 'vineTwin', 'vineSwap', one(), RISE, RISE, 'cp']],
+      ['후렴 셋 — 가장 높은 나무: 네 마디에 걸쳐 여덟 칸까지 오르고 내려온다. 이어서 이단 점프 → 떨어지기 속임수', [...hill('P', 4, { peak: 8 }), 'djHold', 'duckDrop', one(), 'cp']],
+      ['마지막 — 사그라드는 후렴: 낮은 돌 ×2 → 높은 돌, 새 마디 셋. 심벌이 크게 치는 박(마디 78)에 결승선', ['vineDuck', 'vineDuck', 'vineHigh', one(), one(), one()]],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
