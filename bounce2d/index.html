@@ -1479,6 +1479,19 @@
           ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(0, 0, R * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ffd1dc"; ctx.lineWidth = 2; ctx.stroke();
           ctx.fillStyle = "#2a0816"; for (let i = 0; i < 3; i++) { const a2 = (i / 3) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(a2) * R * 0.52, Math.sin(a2) * R * 0.52, R * 0.09, 0, Math.PI * 2); ctx.fill(); }
           ctx.restore();
+        } else if (m.kind === "blink") {
+          // 깜빡이는 등롱(18라운드): 줄에 매달린 종이 등롱(위아래 쇠뚜껑은 9라운드의 금속색). 켜지면 빨갛게 빛나고 분홍 테두리(닿으면 죽는다),
+          // 꺼지면 어두운 몸에 옅은 테두리(지나가도 된다). 켜지기 0.3박 전부터 깜빡이며 밝아진다(예고). 그림 = 판정(moverShape)
+          const q = moverShape(m, beat), xa = sx(q.x0), xb = sx(q.x1), ya = Y(q.y1), yb = Y(q.y0), wv = xb - xa, hv = yb - ya;
+          const toOn = m.P - q.ph, warn = !q.on && toOn < 0.3 ? 1 - toOn / 0.3 : 0, lit = q.on ? 1 : warn * (0.5 + 0.5 * Math.sin(now * 40));
+          ctx.strokeStyle = "rgba(141,149,166,0.6)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo((xa + xb) / 2, ya - T * 0.15); ctx.lineTo((xa + xb) / 2, -40); ctx.stroke();      // 매단 줄
+          const body = () => { ctx.beginPath(); ctx.ellipse((xa + xb) / 2, (ya + yb) / 2, wv / 2, hv / 2, 0, 0, Math.PI * 2); };
+          if (q.on) { const g = ctx.createRadialGradient((xa + xb) / 2, (ya + yb) / 2, 0, (xa + xb) / 2, (ya + yb) / 2, Math.max(wv, hv) * 1.3); g.addColorStop(0, "rgba(255,120,90,0.45)"); g.addColorStop(1, "rgba(255,80,80,0)"); ctx.fillStyle = g; ctx.fillRect(xa - wv, ya - hv, wv * 3, hv * 3); }
+          const bg = ctx.createLinearGradient(xa, 0, xb, 0); bg.addColorStop(0, `rgba(${60 + 150 * lit | 0},${14 + 30 * lit | 0},${30 + 20 * lit | 0},0.95)`); bg.addColorStop(0.5, `rgba(${90 + 165 * lit | 0},${30 + 110 * lit | 0},${40 + 60 * lit | 0},0.95)`); bg.addColorStop(1, `rgba(${60 + 150 * lit | 0},${14 + 30 * lit | 0},${30 + 20 * lit | 0},0.95)`);
+          body(); ctx.fillStyle = bg; sb(0); ctx.fill();
+          ctx.strokeStyle = `rgba(42,8,22,${0.35 + 0.3 * lit})`; ctx.lineWidth = 1.5; for (let k = 1; k < 4; k++) { const yy = ya + (hv * k) / 4; ctx.beginPath(); ctx.moveTo(xa + wv * 0.08, yy); ctx.lineTo(xb - wv * 0.08, yy); ctx.stroke(); }      // 대살
+          body(); ctx.strokeStyle = q.on ? "#ff8fab" : `rgba(255,143,171,${0.25 + 0.5 * warn})`; ctx.lineWidth = q.on ? 2.5 : 1.5; ctx.shadowColor = DANGER; sb(q.on ? 14 + 8 * pulse : 0); gs(); sb(0);
+          ctx.fillStyle = "#1a1d24"; ctx.fillRect(xa + wv * 0.25, ya - T * 0.12, wv * 0.5, T * 0.14); ctx.fillRect(xa + wv * 0.25, yb - T * 0.02, wv * 0.5, T * 0.14);      // 쇠뚜껑
         } else if (m.kind === "jelly") {
           // 해파리(17라운드): 반투명한 빨강·분홍 갓(위가 둥글고 아래 가장자리가 물결), 그 밑에 흔들리는 촉수. 테두리 원이 판정(moverShape의 반지름)이다.
           // 부풀 때 밝아지고 테두리가 두꺼워진다(박마다)
@@ -1904,7 +1917,7 @@
     }
     for (const q of L.reds) out.push({ x0: q.x0, x1: q.x1, h: q.kind === "floor" ? q.tip / 2 : (q.tip + q.far) / 2, k: "R" });      // 피버의 이빨과 떠 있는 장애물
     for (const q of L.pads.values()) out.push({ x0: q.x - PAD_W, x1: q.x + PAD_W, h: padFace(q), k: "B" });
-    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.kind === "flame" ? 1 : m.kind === "jelly" ? m.y : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
+    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.kind === "flame" ? 1 : m.kind === "jelly" ? m.y : m.kind === "blink" ? (m.y0 + m.y1) / 2 : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
     if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) { const q0 = L.bands.get(c - 1); if (q0 && q0.some((v) => v[0] === lo && v[1] === hi)) continue; let e = c; while ((L.bands.get(e + 1) || []).some((v) => v[0] === lo && v[1] === hi)) e++; out.push({ x0: c, x1: e + 1, h: (lo + hi) / 2, k: "R" }); }      // 계단의 빨간 단과 뚜껑      // 피버의 튕김판
     const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
     const BH = Array.from({ length: L.cols }, (_, c) => boxH(c));

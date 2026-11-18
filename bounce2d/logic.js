@@ -47,6 +47,8 @@ const LOW = (xw, at, reach = 1.6) => RAM(xw, 0, 0.9, reach, at), LOWR = (xw, at,
 const PIT = (c) => [{ kind: "roller", x: c - 0.62, y: 0, r: 0.62, dir: 1 }, { kind: "roller", x: c + 0.62, y: 0, r: 0.62, dir: -1 }];
 const HAM = (k, o = {}) => PRESS(k, { ...o, skin: "hammer" });
 // LIFT(x, at, up) 구덩이 위에서 위아래로 오르내리는 롤러(두 박에 한 번). at박에 아래(멈춘 높이, 2.6칸)에 있고, up이면 반대로 at박에 위(4.5칸)에 있다
+// 깜빡이는 등롱(18라운드): half = 마디의 앞(0)·뒤(1) 절반, at = 그 절반 안에서 켜지는 박, high = 높은 등롱(2~3.2칸)이면 1, 낮은 등롱(0.6~1.8칸)이면 0
+const LAMP = (half, at, high) => ({ kind: "blink", x0: 5 + 8 * half, x1: 6.2 + 8 * half, y0: high ? 2.0 : 0.6, y1: high ? 3.2 : 1.8, P: 2, at: at + 2 * half, len: 0.5 });
 // 해파리(17라운드): 박마다(P 1) at에 가장 크게 부푼다
 const JELLY = (x, y, at) => ({ kind: "jelly", x, y, r0: 0.35, r1: 0.8, P: 1, at });
 // 불기둥(16라운드): 환풍구 11.4~12.6칸, 두 박마다 2.8박(0.8)에 솟아 3.5박(1.5)까지 서 있다가 꺼진다. h = 불길 윗면의 높이
@@ -975,6 +977,56 @@ const PATTERNS = {
   g17_77: { holds: [], presses: [0.375, 2.375], tol: 0.18 },
   g17_78: { holds: [[0.25, 1.25], [2.375, 3.125]], presses: [], tol: 0.15, caps: [[1, 6, 2]], lava: [[2, 4]] },
   // </gen:patterns:R17>
+  // <gen:patterns:R18>
+  // 도구(tools_gen_course.js R18 1)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
+  g18_5: { holds: [[0.375, 1], [2.5, 3.25]], presses: [], tol: 0.18 },
+  g18_6: { holds: [[0.5, 1.5], [2.375, 3.125]], presses: [], tol: 0.18 },
+  g18_7: { holds: [[0.5, 0.875]], presses: [1], tol: 0.18, cp: true },   // 체크포인트 마디
+  g18_8: { holds: [[0.625, 1.375], [2.5, 3]], presses: [], tol: 0.18 },
+  g18_10: { holds: [[0.625, 1], [2.5, 3]], presses: [], tol: 0.18, traps: [{full: {presses: [], holds: [[0.625, 1.375], [2.5, 3]]}}] },   // 함정(끝의 멈춤이 짧다 0.375박): 앞 마디와 같이 가다가 한 군데가 다르다
+  g18_11: { holds: [[1, 1.875]], presses: [0.5], tol: 0.18 },
+  g18_12: { holds: [[0.625, 1.375], [2.25, 3.25]], presses: [], tol: 0.15, caps: [[9, 14, 2]], lava: [[10, 12]] },
+  g18_13: { holds: [[0.375, 1.25], [2.625, 3.25]], presses: [], tol: 0.18 },
+  g18_14: { holds: [[0.375, 1], [2.625, 3.25]], presses: [], tol: 0.18 },
+  g18_15: { holds: [[0.5, 1.25], [2.625, 3.25]], presses: [], tol: 0.18, cp: true, caps: [[1, 7, 3]], traps: [{presses: [0.5], holds: [[2.625, 3.25]]}] },   // 체크포인트 마디
+  g18z16: { mode: "rush", nodes: "F.B.B.F." },
+  g18z18: { mode: "rush", nodes: "F.F.B.F." },   // 함정(판이 없다): 앞 마디(F.B.B.F.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g18z19: { mode: "rush", nodes: "F.F.F.B." },
+  g18z21: { mode: "rush", nodes: "F.F.S.S." },   // 뚝: 앞 마디(F.F.F.B.)와 같이 가다가 끊긴다
+  g18z22: { mode: "rush", nodes: "B.B.F.F." },
+  g18_23: { holds: [[0.375, 1], [2.375, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g18_27: { holds: [[0.625, 1.125]], presses: [2.5], tol: 0.18, tall: [2.5] },
+  g18_29: { holds: [[0.625, 1.125], [2.5, 3.25]], presses: [], tol: 0.18, traps: [{full: {presses: [2.5], holds: [[0.625, 1.125]]}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
+  g18_30: { holds: [[0.375, 1.125], [2.375, 3.25]], presses: [], tol: 0.18 },
+  g18_31: { holds: [[0.375, 1.125]], presses: [2.5], tol: 0.18, tall: [2.5], cp: true },   // 체크포인트 마디
+  g18_36: { holds: [], presses: [0.5], tol: 0.18, boxes: [[10, 12, 1]], stair: true, floats: [[5, 7, 3]], lava: [[1, 13]] },   // 계단: 이단 점프로 3 → 1 → 0
+  g18_37: { holds: [[1.375, 2.375]], presses: [], tol: 0.18, boxes: [[2, 4, 1]], bands: [[6, 7, 1, 2], [2, 2, 3.6, 5.4], [6, 7, 4.6, 6.4]], stair: true, floats: [[8, 11, 3]], lava: [[1, 13]], traps: [{presses: [0.5]}] },   // 함정(낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다)
+  g18_38: { holds: [[0.625, 1.625], [2.375, 3.125]], presses: [], tol: 0.18 },
+  g18_39: { holds: [[0.625, 1.25], [2.375, 3.125]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g18_40: { holds: [[2, 3], [3.75, 4.75]], presses: [0.5], tol: 0.18, bands: [[8, 10, 4, 5], [15, 15, 6, 7], [8, 10, 7.6, 9.4], [15, 15, 9.6, 11.4]], loose: [3.75], tail: ["g18_41","g18_42","g18_43"], stair: true, floats: [[4, 6, 4], [11, 13, 6]], lava: [[1, 15]] },   // 계단: 이단 점프로 4 → 빨간 단을 건너뛰어 6 → 빨간 단을 건너뛰어 8 → 빨간 단을 건너뛰어 8 → 7 → 빨간 단을 건너뛰어 5 → 빨간 단을 건너뛰어 3 → 빨간 단을 건너뛰어 1 → 0
+  g18_41: { holds: [[1.5, 2.5]], presses: [], tol: 0.18, bands: [[0, 1, 6, 7], [7, 8, 7, 8], [0, 1, 9.6, 11.4], [7, 8, 11.6, 13.4]], lead: ["g18_40"], tail: ["g18_42","g18_43"], stair: true, floats: [[2, 4, 8], [10, 12, 8], [15, 15, 7]], lava: [[0, 15]] },
+  g18_42: { holds: [[0.625, 1.125], [2.875, 3.375]], presses: [], tol: 0.18, bands: [[4, 5, 5, 6], [13, 14, 3, 4], [4, 5, 10.6, 12.4], [13, 14, 8.6, 10.4]], lead: ["g18_40","g18_41"], tail: ["g18_43"], stair: true, floats: [[0, 1, 7], [5, 10, 5], [14, 15, 3]], lava: [[0, 15]] },
+  g18_43: { holds: [[1.125, 2.125]], presses: [], tol: 0.18, boxes: [[9, 12, 1]], bands: [[6, 7, 1, 2], [6, 7, 6.6, 8.4]], lead: ["g18_40","g18_41","g18_42"], stair: true, floats: [[0, 3, 3]], lava: [[0, 13]] },
+  g18_44: { holds: [[0.5, 1], [2.25, 2.75]], presses: [], tol: 0.18, bands: [[9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g18_45"], stair: true, floats: [[3, 7, 2], [10, 14, 4]], lava: [[1, 15]] },   // 음이 올라가는 구간 — 오르는 계단: 계단: 빨간 단을 건너뛰어 2 → 빨간 단을 건너뛰어 4 → 빨간 단을 건너뛰어 6 → 3 → 0
+  g18_45: { holds: [[0, 1]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [0, 2, 7.6, 9.4]], lead: ["g18_44"], stair: true, floats: [[3, 5, 6], [9, 11, 3]], lava: [[0, 13]] },
+  g18_46: { holds: [[0.625, 1.125], [2.375, 3.375]], presses: [], tol: 0.18 },
+  g18_47: { holds: [[0.625, 1.5], [2.625, 3.125]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g18_50: { holds: [[0.625, 1.625], [2.625, 3.125]], presses: [], tol: 0.18 },
+  g18_51: { holds: [[0.5, 1.125], [2.5, 3]], presses: [], tol: 0.18 },
+  g18_52: { holds: [[2.375, 3]], presses: [0.5], tol: 0.18, floats: [[4, 4, 4]], traps: [{presses: [1.125]}] },
+  g18_53: { holds: [[0.5, 1], [2.25, 3.25]], presses: [], tol: 0.18, bands: [[10, 12, 3, 4], [9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g18_54"], stair: true, floats: [[3, 7, 2], [12, 14, 4]], lava: [[1, 15]], traps: [{holds: [[0.5, 1], [2.25, 2.75]]}] },   // 같은 오르막이 다시(멈춤 길이가 다르다): 함정(멈춤이 길다: 멈춰서 건너뛰던 단에서 이번엔 더 오래 멈춘다. 버릇대로 일찍 놓으면 내려설 단 앞의 빨간 단에 내려앉는다)
+  g18_54: { holds: [[0, 1]], presses: [], tol: 0.18, boxes: [[10, 12, 1]], bands: [[1, 3, 2, 3], [1, 3, 7.6, 9.4]], lead: ["g18_53"], stair: true, floats: [[5, 7, 2]], lava: [[0, 13]] },
+  g18_55: { holds: [[0.625, 1.125], [2.625, 3.375]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g18w57: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBS.B." },
+  g18w59: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBS.F." },   // 함정(판이 없다): 앞 마디(.FFBS.B.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g18w60: { mode: "rush", wide: true, gap: 1.5, nodes: ".FF.BSS." },
+  g18w61: { mode: "rush", wide: true, gap: 1.5, nodes: ".FF.FSS." },   // 함정(판이 없다): 앞 마디(.FF.BSS.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g18_63: { holds: [[0.625, 1.625], [2.625, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g18_69: { holds: [[0.5, 1.125], [2.625, 3.25]], presses: [], tol: 0.18 },
+  g18_70: { holds: [[2.5, 3]], presses: [0.625], tol: 0.18 },
+  g18_71: { holds: [[0.625, 1.375], [2.625, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g18_72: { holds: [[1, 1.75]], presses: [0.5], tol: 0.18 },
+  // </gen:patterns:R18>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
   // 연타 끝의 함정 ①(뚝): 고리가 하나 더 있지만 미끼다. 누르지 않고 내려앉아야 한다. 누르면 바로 위의 빨간 덩어리에 부딪힌다
@@ -1117,6 +1169,14 @@ const PATTERNS = {
   //             버릇대로 멈추면 매달린 덩어리에 부딪히고, 한 번 더 뛰면 위의 층에 걸린다
   //   liftSwap  (grindPit의 뒤집기) 같은 두 구덩이와 엇갈려 오르내리는 롤러인데 박이 반대다: 첫째 구덩이는 롤러가 위에 있어 멈춰서 밑으로, 둘째는 롤러가 내려와 있어 이단 점프로
   djHold: { holds: [[1.0, 1.75]], presses: [0.5], tol: 0.18, set: true, redBox: [[4, 4, 2.3], [5, 7, 2.0]] },
+  // ---- 18라운드(The Midnight Procession): 깜빡이는 등롱. 두 박마다 at에 켜져 반 박 동안 빛난다(켜졌을 때만 닿으면 죽는다). 반 마디마다 등롱 하나 — 언제 켜지는가가 손을 정한다.
+  //   낮은 등롱(높이 0.6~1.8): 1박에 켜짐 → 내려설 자리에서 빛난다: 한 박 멈춰서 넘는다 / 1.5박에 켜짐 → 그냥 지나간다(그 사이에 꺼져 있다)
+  //   높은 등롱(높이 2~3.2): 1.5박에 켜짐 → 반 박만 멈추고 내려간다
+  //   lampWalk ×2 → lampWalkT(뒤의 등롱도 내려설 때 켜진다: 이번엔 뒤에서도 멈춘다), lampHigh ×2 → lampHighT. (찾는 도구로 골랐다)
+  lampWalk: { holds: [[0.5, 1.5]], presses: [], tol: 0.18, set: true, movers: [LAMP(0, 1, 0), LAMP(1, 1.5, 0)], traps: [{ presses: [2.5] }] },
+  lampWalkT: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, set: true, movers: [LAMP(0, 1, 0), LAMP(1, 1, 0)], traps: [{ holds: [[0.5, 1.5]] }] },
+  lampHigh: { holds: [[0.5, 1.0]], presses: [], tol: 0.18, set: true, movers: [LAMP(0, 1.5, 1), LAMP(1, 1.5, 0)], traps: [{ presses: [2.5] }] },
+  lampHighT: { holds: [[0.5, 1.0], [2.5, 3.5]], presses: [], tol: 0.18, set: true, movers: [LAMP(0, 1.5, 1), LAMP(1, 1, 0)], traps: [{ holds: [[0.5, 1.0]] }] },
   // ---- 17라운드(Coral Cathedral): 해파리. 박마다 부풀었다(0.1박에 확, 0.8칸) 줄어든다(0.35칸). 반 마디마다 해파리 하나 — 위상(언제 부푸는가)이 손을 정한다.
   //   위쪽 해파리(5칸·13칸, 높이 3.5): 위상 0.375 → 짧게(반 박) 멈춰야 산다 / 위상 0.125 → 아무것도 안 누르고 밑으로(짧게 멈추면 부푼 몸에 닿는다)
   //   아래쪽 해파리(5.5칸·13.5칸, 높이 1.25, 내려설 자리): 위상 0 → 한 박 멈춰서 넘는다 / 위상 0.375 → 그냥 지나간다
@@ -2073,7 +2133,53 @@ const ROUND17 = {
     { bar: 56, id: "b" }, { bar: 64, id: "rush" }, { bar: 72, id: "d" }, { bar: 79, id: "outro" },
   ],
 };
-const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8, ROUND9, ROUND10, ROUND11, ROUND12, ROUND13, ROUND14, ROUND15, ROUND16, ROUND17];
+const ROUND18 = {
+  name: "ROUND 18 · The Midnight Procession",
+  bpm: 152.0,
+  track: { file: "music/the_midnight_procession.mp3", offset: 0.052, measured: true },
+  feverWindow: 3,
+  floatReds: true, vary: true, density: 0.9, climb: "stairs",
+  goalAt: 2.5,                                     // 마지막 몰아치기가 멈추는 순간(마디 75의 2.5박, 119.46초)에 결승선. 곡은 거기서 멈추고 잔향만 남는다
+  pal: {                                         // 이 라운드의 색: 한밤의 행렬 — 먹빛 남색, 보라 그늘, 등불의 금빛과 호박색
+    intro: { top: "#020208", bottom: "#141030", accent: "#ffd27a", sun: "#fff0c8" },
+    a:     { top: "#03020a", bottom: "#1e1440", accent: "#ffc56b", sun: "#ffe8b8" },
+    b:     { top: "#04030c", bottom: "#2a1a44", accent: "#b9a2ff", sun: "#f0e8ff" },
+    c:     { top: "#020308", bottom: "#101a34", accent: "#8fd8ff", sun: "#e8f4ff" },
+    d:     { top: "#060308", bottom: "#301a2a", accent: "#ffe08a", sun: "#fff6dc" },
+    rush:  { top: "#020106", bottom: "#1a1030", accent: "#ffffff", sun: "#ffe0a8" },
+  },
+  // 18라운드의 마디도 도구(tools_gen_course.js R18)가 뽑는다. 짜임은 틀(TEMPLATES.R18)에 정해 두었다.
+  bars: [
+    // <gen:bars:R18>
+    // 고요한 도입(거의 소리가 없다) — 등롱을 소개한다: 내려설 자리의 등롱이 켜질 때 한 박 멈춰서 넘기(뒤의 등롱은 그 사이에 꺼져 있다) ×2 → 뒤의 등롱도 내려설 때 켜진다
+    "flat", "flat", "lampWalk", "lampWalk",   "lampWalkT", "g18_5", "g18_6", "g18_7",
+    // 조용한 고음, 킥이 들어온다: 멈춤 길이 함정(짧다), 새 마디 넷
+    "g18_8", "g18_8", "g18_10", "g18_11",   "g18_12", "g18_13", "g18_14", "g18_15",
+    // 첫 드롭 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝
+    "g18z16", "g18z16", "g18z18", "g18z19",   "g18z19", "g18z21", "g18z22", "g18_23",
+    // 가라앉음과 빌드업 — 높은 등롱: 반 박만 멈추고 내려가기 ×2 → 뒤의 낮은 등롱이 내려설 때 켜진다. 멈춤 길이 함정(길다)
+    "lampHigh", "lampHigh", "lampHighT", "g18_27",   "g18_27", "g18_29", "g18_30", "g18_31",
+    // 행렬(쳤다가 멈추기) — 등롱을 한 번씩 보여 주고 뒤집기, 한 마디짜리 계단 → 그 함정, 새 마디
+    "lampWalk", "lampWalkT", "lampHigh", "lampHighT",   "g18_36", "g18_37", "g18_38", "g18_39",
+    // 그루브 — 가장 높은 탑: 네 마디에 걸쳐 여덟 칸까지, 음이 올라가는 44~45마디는 오르는 계단, 새 마디
+    "g18_40", "g18_41", "g18_42", "g18_43",   "g18_44", "g18_45", "g18_46", "g18_47",
+    // 조용함과 빌드업: 등롱 → 뒤집기, 새 마디 셋, 같은 멜로디의 오르막(53~54)은 이번엔 멈춤 길이가 다르다
+    "lampWalk", "lampWalkT", "g18_50", "g18_51",   "g18_52", "g18_53", "g18_54", "g18_55",
+    // 큰 드롭 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더
+    "wUp", "g18w57", "g18w57", "g18w59",   "g18w60", "g18w61", "wDn", "g18_63",
+    // 행렬 둘(쳤다가 멈추기): 높은 등롱 ×2 → 뒤집기, 낮은 등롱 → 뒤집기, 새 마디 둘
+    "lampHigh", "lampHigh", "lampHighT", "lampWalk",   "lampWalkT", "g18_69", "g18_70", "g18_71",
+    // 정적과 마지막 몰아치기: 새 마디, 등롱 → 뒤집기. 곡이 멈추는 마디 75의 2.5박에 결승선
+    "g18_72", "lampWalk", "lampWalkT",
+    "goal", "flat", "flat",
+    // </gen:bars:R18>
+  ],
+  sections: [
+    { bar: 0, id: "intro" }, { bar: 8, id: "a" }, { bar: 16, id: "rush" }, { bar: 24, id: "c" }, { bar: 32, id: "b" }, { bar: 40, id: "a" }, { bar: 48, id: "c" },
+    { bar: 56, id: "rush" }, { bar: 64, id: "b" }, { bar: 72, id: "d" }, { bar: 75, id: "outro" },
+  ],
+};
+const COURSES = [ROUND1, ROUND2, ROUND3, ROUND4, ROUND5, ROUND6, ROUND7, ROUND8, ROUND9, ROUND10, ROUND11, ROUND12, ROUND13, ROUND14, ROUND15, ROUND16, ROUND17, ROUND18];
 const COURSE = ROUND1;
 
 // ---- 피버 구간(rush): 튀는 것 자체가 세지는 구간. 원버튼.
@@ -2141,6 +2247,7 @@ const padFace = (q) => (q.from > 0 ? q.lv * ZIG_STEP + SIZE : q.lv * ZIG_STEP);
 //   saw    { r, rail: [x0, h0, x1, h1], track(0~1) } 또는 { r, orbit: [x, h, R], P, at, a0, dir }   빨간 톱날(원). 레일을 오가거나 한 점을 돈다
 //   bar    { pivot: [x, h], len, w, P, at, a0, dir }   한쪽 팔만 있는 빨간 막대가 축을 돈다(풍차)
 //   plat   { w, h, track(왼쪽 끝 x) }   파란 발판(두께 한 칸, 윗면 높이 h칸). 오가며 공을 받는다
+//   blink  { x0, x1, y0, y1, P, at, len }   깜빡이는 등롱(18라운드부터): 제자리에 걸린 등롱이 P박마다 at에 켜져 len박 동안 빛난다. 켜져 있을 때만 닿으면 죽는다(꺼진 등롱은 지나가도 된다)
 //   jelly  { x, y, r0, r1, P, at }   해파리(17라운드부터): 제자리에서 박에 맞춰 부푼다. at에 가장 크게(r1) 부풀었다가(0.1박에 확) 반 주기 동안 천천히 줄어들고(r0) 그대로 쉰다. 몸통 전체(반지름 r)가 닿으면 죽는다
 //   flame  { x0, x1, track(불길 윗면의 높이) }   불기둥(16라운드부터): 바닥의 환풍구에서 박에 맞춰 솟는 불길. 프레스를 뒤집은 것 — 바닥에서 윗면까지가 몸통이다
 //   oring  { orbit: [x, h, R], P, at, a0, dir, r }   궤도 고리(15라운드부터): 충전 고리가 한 점(행성)을 돈다. 닿으면 충전 고리와 같다(이단 점프와 멈춤 1박을 다시 채운다). 닿아도 죽지 않는다
@@ -2166,6 +2273,7 @@ function moverShape(m, beat) {
   if (m.kind === "bar") { const a = m.a0 + m.dir * 2 * Math.PI * (beat - m.at) / m.P; return { ax: m.pivot[0], ay: m.pivot[1], bx: m.pivot[0] + m.len * Math.cos(a), by: m.pivot[1] + m.len * Math.sin(a), w: m.w, a }; }
   if (m.kind === "plat") { const x0 = trackAt(m.track, beat); return { x0, x1: x0 + m.w, y: m.h }; }
   if (m.kind === "flame") return { x0: m.x0, x1: m.x1, y1: trackAt(m.track, beat) };
+  if (m.kind === "blink") { const ph = ((((beat - m.at) % m.P) + m.P) % m.P); return { x0: m.x0, x1: m.x1, y0: m.y0, y1: m.y1, on: ph < m.len, ph }; }
   if (m.kind === "jelly") { const ph = ((((beat - m.at) % m.P) + m.P) % m.P) / m.P, back = ((((beat - m.at + 0.1) % m.P) + m.P) % m.P) / m.P, k = back < 0.1 / m.P ? back / (0.1 / m.P) : Math.max(0, 1 - ph / 0.5); return { x: m.x, y: m.y + 0.12 * Math.sin(2 * Math.PI * (beat - m.at) / m.P), r: m.r0 + (m.r1 - m.r0) * k, k }; }
   if (m.kind === "oring") { const a = m.a0 + m.dir * 2 * Math.PI * (beat - m.at) / m.P; return { x: m.orbit[0] + m.orbit[2] * Math.cos(a), y: m.orbit[1] + m.orbit[2] * Math.sin(a), r: m.r ?? 0.5, a }; }
   if (m.kind === "swing") { const a = m.amp * Math.cos(2 * Math.PI * (beat - m.at) / m.P); return { ax: m.pivot[0], ay: m.pivot[1], x: m.pivot[0] + m.len * Math.sin(a), y: m.pivot[1] - m.len * Math.cos(a), r: m.r, a }; }
@@ -2188,6 +2296,7 @@ function moverKills(m, beat, x, h) {
   const q = moverShape(m, beat);
   if (m.kind === "press") return bx1 > q.x0 && bx0 < q.x1 && by1 > q.y0;
   if (m.kind === "flame") return q.y1 > 0.05 && bx1 > q.x0 && bx0 < q.x1 && by0 < q.y1;
+  if (m.kind === "blink") return q.on && bx1 > q.x0 && bx0 < q.x1 && by1 > q.y0 && by0 < q.y1;
   if (m.kind === "saw" || m.kind === "roller" || m.kind === "swing" || m.kind === "jelly") { const cx = Math.max(bx0, Math.min(q.x, bx1)), cy = Math.max(by0, Math.min(q.y, by1)); return (cx - q.x) ** 2 + (cy - q.y) ** 2 < q.r * q.r; }
   if (m.kind === "ram") { const hit = (x0, x1, y0, y1) => bx1 > x0 && bx0 < x1 && by1 > y0 && by0 < y1; return hit(q.hx0, q.hx1, q.y0, q.y1) || hit(q.rx0, q.rx1, q.ry0, q.ry1) || hit(q.bx0, q.bx1, q.by0, q.by1); }
   if (m.kind === "bar") {      // 공(원)과 막대(두께 있는 선분)

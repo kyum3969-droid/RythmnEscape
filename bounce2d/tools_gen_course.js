@@ -517,6 +517,36 @@ TEMPLATES.R17 = {
   },
 };
 
+// 18라운드(The Midnight Procession): 한밤의 행렬. 새것은 깜빡이는 등롱(blink) — 박에 맞춰 켜졌다 꺼지고, 켜졌을 때만 닿으면 죽는다. 곡의 "쳤다가 멈추기"(32~39, 64~71)와 맞춘다.
+//   lampWalk ×2 → lampWalkT, lampHigh ×2 → lampHighT. 음이 오르는 44~45 → 같은 멜로디 53~54(멈춤 길이가 다르다). 피버 둘(첫 드롭, 큰 드롭). 결승선은 곡이 멈추는 마디 75의 2.5박.
+TEMPLATES.R18 = {
+  prefix: 'g18', bpm: 152.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, freshWindow: 3, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
+  rise: [{ at: 44, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 53, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 그루브 44~45, 같은 멜로디의 빌드업 53~54)
+  recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a9' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a9', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
+    const K = ['hlong', 'hshort', 'lidJ', 'swap', 'shift'];
+    const hill = (k, n, o = {}) => [{ hill: k, bars: n, ...o }, ...cont(n)], trap = (k, n) => [{ ht: k, kind: K }, ...cont(n)];
+    const RISE = 'flat';
+    return [
+      ['고요한 도입(거의 소리가 없다) — 등롱을 소개한다: 내려설 자리의 등롱이 켜질 때 한 박 멈춰서 넘기(뒤의 등롱은 그 사이에 꺼져 있다) ×2 → 뒤의 등롱도 내려설 때 켜진다', ['flat', 'flat', 'lampWalk', 'lampWalk', 'lampWalkT', one(), one(), 'cp']],
+      ['조용한 고음, 킥이 들어온다: 멈춤 길이 함정(짧다), 새 마디 넷', [...phrase('short-last'), one(), one(), one(), one(), 'cp']],
+      ['첫 드롭 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
+      ['가라앉음과 빌드업 — 높은 등롱: 반 박만 멈추고 내려가기 ×2 → 뒤의 낮은 등롱이 내려설 때 켜진다. 멈춤 길이 함정(길다)', ['lampHigh', 'lampHigh', 'lampHighT', ...phrase('long-last'), one(), 'cp']],
+      ['행렬(쳤다가 멈추기) — 등롱을 한 번씩 보여 주고 뒤집기, 한 마디짜리 계단 → 그 함정, 새 마디', ['lampWalk', 'lampWalkT', 'lampHigh', 'lampHighT', ...hill('B', 1, { need: { kind: K } }), ...trap('B', 1), one(), 'cp']],
+      ['그루브 — 가장 높은 탑: 네 마디에 걸쳐 여덟 칸까지, 음이 올라가는 44~45마디는 오르는 계단, 새 마디', [...hill('P', 4, { peak: 8 }), RISE, RISE, one(), 'cp']],
+      ['조용함과 빌드업: 등롱 → 뒤집기, 새 마디 셋, 같은 멜로디의 오르막(53~54)은 이번엔 멈춤 길이가 다르다', ['lampWalk', 'lampWalkT', one(), one(), one(), RISE, RISE, 'cp']],
+      ['큰 드롭 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더', ['wUp', { wm: 'E', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'pad' }, { wm: 'F', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'F', kind: 'pad' }, 'wDn', 'cp']],
+      ['행렬 둘(쳤다가 멈추기): 높은 등롱 ×2 → 뒤집기, 낮은 등롱 → 뒤집기, 새 마디 둘', ['lampHigh', 'lampHigh', 'lampHighT', 'lampWalk', 'lampWalkT', one(), one(), 'cp']],
+      ['정적과 마지막 몰아치기: 새 마디, 등롱 → 뒤집기. 곡이 멈추는 마디 75의 2.5박에 결승선', [one(), 'lampWalk', 'lampWalkT']],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {
@@ -958,6 +988,7 @@ function generate(T, seed) {
   const riseAt = new Map((T.rise || []).map((r) => [r.at, r]));
   T.sections.forEach(([, slots]) => slots.forEach((slot) => {
     if (riseSkip > 0) { riseSkip--; if (typeof slot !== 'string' && slot.m) riseCut.add(slot.m); return; }
+    if (typeof slot !== 'string' && slot.cont) return;      // (여러 마디짜리 계단의 나머지 칸: 계단은 첫 칸에서 한꺼번에 놓였다. 음이 오르는 자리 검사보다 먼저 건너뛴다 — 18라운드에서 계단 뒤의 자리에 오르는 계단이 끼어들어 두 마디가 밀렸다)
     const b = bars.length;
     if (riseAt.has(b)) {
       const r = riseAt.get(b); riseSkip = r.bars - 1; if (typeof slot !== 'string' && slot.m) riseCut.add(slot.m);

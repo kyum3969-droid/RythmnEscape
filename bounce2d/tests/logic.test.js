@@ -539,7 +539,7 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
   ok(pct[0] <= 15 && pct.slice(1).every((v) => v >= 18) && pct.slice(2).every((v) => v >= 20) && Math.max(...pct.slice(4)) >= 25, `멈춰 있는 시간(바운스 구간): ${pct.map((v, i) => `${i + 1}라운드 ${v}%`).join(', ')} — 1라운드는 그대로, 2라운드부터 늘어난다`);
   ok(lenTraps.slice(1, 7).every((v) => v >= 2) && lenTraps.slice(1).reduce((u, v) => u + v, 0) >= 20, `멈춤 길이의 함정(앞 마디와 똑같이 가다가 놓는 순간만 다르다. 계단의 것 포함): ${lenTraps.map((v, i) => `${i + 1}라운드 ${v}`).join(', ')}`);
   // 음이 올라가는 구간의 계단(곡에서 잰 자리): 오르는 계단(4칸 넘게 올라간다), 곡에서 같은 오르막이 다시 나오는 자리에는 멈춤 길이가 다른 계단. 카메라가 따라 올라간다
-  const RISE = { 2: [37, 57], 3: [4, 55], 4: [12, 67], 5: [29, 61], 6: [8, 56], 7: [21, 69], 9: [19, 66], 10: [36, 69], 11: [11, 59], 13: [17, 68], 14: [50, 61], 15: [29, 69], 16: [12, 37], 17: [12, 52] }, riseBad = [];
+  const RISE = { 2: [37, 57], 3: [4, 55], 4: [12, 67], 5: [29, 61], 6: [8, 56], 7: [21, 69], 9: [19, 66], 10: [36, 69], 11: [11, 59], 13: [17, 68], 14: [50, 61], 15: [29, 69], 16: [12, 37], 17: [12, 52], 18: [44, 53] }, riseBad = [];
   for (const [no, [a, z]] of Object.entries(RISE)) {
     const C = Lg.COURSES[no - 1], P = (b) => Lg.PATTERNS[C.bars[b]], L = Lg.buildLevel(C);
     if (![a, a + 1, z, z + 1].every((b) => P(b) && P(b).stair)) { riseBad.push(no + ': 계단 자리'); continue; }
@@ -549,7 +549,7 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
     while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.x >= a * 16 && s.x < (a + 2) * 16 && s.onGround) top = Math.max(top, 9 - s.y); }
     if (peak < 4 || top < 4 || !lenTrap || !C.climb) riseBad.push(`${no}: 높이 ${peak}/${top.toFixed(1)}, 멈춤 길이 함정 ${lenTrap}, 카메라 ${!!C.climb}`);
   }
-  ok(riseBad.length === 0, `음이 올라가는 구간의 계단(2~7·9~11·13~17라운드, 마디 ${Object.entries(RISE).map(([n, v]) => n + '라운드 ' + v.join('·')).join(', ')}): 네 칸 넘게 딛고 올라가고, 같은 오르막이 다시 나오면 멈춤 길이가 다르다${riseBad.length ? ' — ' + riseBad.join(' / ') : ''}`);
+  ok(riseBad.length === 0, `음이 올라가는 구간의 계단(2~7·9~11·13~18라운드, 마디 ${Object.entries(RISE).map(([n, v]) => n + '라운드 ' + v.join('·')).join(', ')}): 네 칸 넘게 딛고 올라가고, 같은 오르막이 다시 나오면 멈춤 길이가 다르다${riseBad.length ? ' — ' + riseBad.join(' / ') : ''}`);
   ok(Lg.COURSES.slice(2).every((C) => { const L = Lg.buildLevel(C); return L.cps.length && L.cps.every((c) => c.snap); }) && !Lg.buildLevel(Lg.COURSES[1]).cps.some((c) => c.snap), '체크포인트 마디에도 패턴: 3라운드부터 모든 체크포인트(개발하는 동안, 1·2라운드는 빈 체크포인트 마디)');
   ok(['ROUND 5', 'ROUND 6', 'ROUND 7', 'ROUND 8', 'ROUND 9'].every((r) => Lg.COURSES.find((c) => c.name.startsWith(r)).bars.includes('airStep')) && !Lg.COURSES.slice(0, 4).some((c) => c.bars.includes('airStep')), '그림의 공중 사슬은 5라운드부터 나온다');
 }
@@ -656,6 +656,22 @@ console.log('== 17라운드: 해파리 — 언제 부푸는지 읽고 그냥 지
   const jel = L.movers.filter((m) => m.kind === 'jelly').length;
   ok(flips >= 4 && ok2 === flips && jel >= 16 && L.cps.length === 9 && B.indexOf('goal') === 79,
     `17라운드: 해파리 ${jel}마리. 뒤집기 ${flips}곳(${where.join(', ')}) 모두, 앞 마디처럼 멈추면(또는 안 멈추면) 그 마디에서 죽는다(${ok2}곳). 체크포인트 ${L.cps.length}개, 결승선은 마디 79`);
+}
+console.log('== 18라운드: 깜빡이는 등롱 — 언제 켜지는지 읽고 멈춤 길이와 높이를 바꾸기 ==');
+{
+  const C = Lg.COURSES.find((c) => c.name.startsWith('ROUND 18')), B = C.bars, L = Lg.buildLevel(C);
+  const go = (pr, ho) => { const inp = Lg.planInput({ presses: pr, holds: ho }), s = Lg.spawnState(L, -1); while (!s.dead && !s.won) Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); return s; };
+  const P = L.ref.presses, H = L.ref.holds, inb = (b) => (v) => v >= b * 384 && v < (b + 1) * 384;
+  const pairs = [['lampWalk', 'lampWalkT'], ['lampHigh', 'lampHighT']];
+  let flips = 0, ok2 = 0; const where = [];
+  B.forEach((n, b) => { if (!pairs.some(([x, y]) => y === n && B[b - 1] === x)) return; flips++;
+    const hh = H.filter((h) => inb(b - 1)(h[0])).map(([x, y]) => [x + 384, y + 384]);
+    const pp = P.filter(inb(b - 1)).map((x) => x + 384);
+    const s = go([...P.filter((v) => !inb(b)(v)), ...pp], [...H.filter((h) => !inb(b)(h[0])), ...hh]);
+    if (s.dead && Math.floor(s.x / 16) === b) ok2++; where.push(`${b - 1}→${b}`); });
+  const lamps = L.movers.filter((m) => m.kind === 'blink').length;
+  ok(flips >= 6 && ok2 === flips && lamps >= 16 && L.cps.length === 9 && B.indexOf('goal') === 75,
+    `18라운드: 등롱 ${lamps}개. 뒤집기 ${flips}곳(${where.join(', ')}) 모두, 앞 마디의 손 그대로 하면 그 마디에서 죽는다(${ok2}곳). 체크포인트 ${L.cps.length}개, 결승선은 마디 75`);
 }
 console.log('== 이후 라운드용으로 보관한 함정(매달린 덩어리 없이, 착지 자리의 빨간 바닥으로 죽는다) ==');
 for (const [name, lead] of [['goStopB', 'peak'], ['stopGoB', 'peak'], ['holdStopB', 'mix'], ['ringFake', 'ringWave'], ['ringStopB', 'ringRun']]) {
