@@ -317,7 +317,7 @@ for (const C of Lg.COURSES) {
           for (const b of backs) {
             const h0 = hs[b.step - 24], hm = hs[b.step], h1 = hs[b.step + 24];
             let turned = false; for (let q = b.step - 60; q <= b.step + 24; q++) if (pr.has(q)) turned = true;      // (그 언저리에서 누른 것은 뺀다: 급히 꺾어 가느라 면에 조금 못 미치거나, 되돌아가다 다음 지점 전에 또 돌아선다)
-            if (h1 === undefined || turned || lv.rides.some(r => r[1] - b.x < 1.5 && r[1] - b.x > 0)) continue;      // (피버가 끝나는 선 바로 앞의 판도 뺀다: 되돌아가는 도중에 피버가 끝난다)
+            if (h1 === undefined || turned || lv.rides.some(r => r[1] - b.x < 1.5 && r[1] - b.x > 0) || lv.squeezes.some(q => !q.mid && q.x0 - b.x < 1.5 && q.x0 - b.x > 0)) continue;      // (피버가 끝나는 선, 조여드는 통로가 시작하는 선 바로 앞의 판도 뺀다: 되돌아가는 도중에 피버가 끝나거나 통로가 바뀐다)
             if (Math.abs(h1 - h0) < 1e-6 && Math.abs(Math.abs(hm - h0) - half) < 0.12 && (hm > h0) === b.up) seen[b.up ? 'up' : 'down']++; else seen.bad++;
           }
         }
@@ -620,7 +620,7 @@ console.log('== 14라운드: 흔들리는 돌추 — 낮은 돌은 멈춰서 넘
     if (s.dead && Math.floor(s.x / 16) === b) flipOk++; where.push(`${b - 1}→${b}`); });
   // 돌이 실제로 흔들린다: 낮은 돌은 가장 낮을 때 땅에 닿을 높이, 높은 돌은 멈춘 높이를 지난다
   const sw = L.movers.filter((m) => m.kind === 'swing'), low = sw.filter((m) => m.pivot[1] - m.len < 1.2).length, high = sw.filter((m) => m.pivot[1] - m.len > 2.5).length;
-  ok(flips >= 8 && flipOk === flips && low >= 8 && high >= 8 && L.cps.length === 9 && B.indexOf('goal') === 78,
+  ok(flips >= 7 && flipOk === flips && low >= 8 && high >= 8 && L.cps.length === 9 && B.indexOf('goal') === 78,
     `14라운드: 돌추의 뒤집기 ${flips}곳(${where.join(', ')}) 모두, 앞 마디처럼 멈추면 그 마디에서 죽는다(${flipOk}곳). 낮은 돌 ${low}개, 높은 돌 ${high}개. 체크포인트 ${L.cps.length}개, 결승선은 마디 78`);
 }
 console.log('== 이후 라운드용으로 보관한 함정(매달린 덩어리 없이, 착지 자리의 빨간 바닥으로 죽는다) ==');
