@@ -612,7 +612,7 @@ console.log('== 14라운드: 흔들리는 돌추 — 낮은 돌은 멈춰서 넘
   const go = (pr, ho) => { const inp = Lg.planInput({ presses: pr, holds: ho }), s = Lg.spawnState(L, -1); while (!s.dead && !s.won) Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); return s; };
   const P = L.ref.presses, H = L.ref.holds, inb = (b) => (v) => v >= b * 384 && v < (b + 1) * 384;
   // 뒤집기마다: 바로 앞 마디의 손(멈춤)을 그대로 옮겨 오면 그 마디에서 죽고, 정답(코스의 입력)으로는 산다
-  const pairs = [['vineDuck', 'vineHigh'], ['vineTwin', 'vineSwap']];
+  const pairs = [['vineDuck', 'vineHigh'], ['vineTwin', 'vineSwap'], ['vineDuck', 'vineShort'], ['vineSlow', 'vineHigh'], ['vineChain', 'vineChainS']];
   let flips = 0, flipOk = 0; const where = [];
   B.forEach((n, b) => { const pr = pairs.find(([a, z]) => z === n && B[b - 1] === a); if (!pr) return; flips++;
     const habit = H.filter((h) => inb(b - 1)(h[0])).map(([x, y]) => [x + 384, y + 384]);
@@ -620,7 +620,7 @@ console.log('== 14라운드: 흔들리는 돌추 — 낮은 돌은 멈춰서 넘
     if (s.dead && Math.floor(s.x / 16) === b) flipOk++; where.push(`${b - 1}→${b}`); });
   // 돌이 실제로 흔들린다: 낮은 돌은 가장 낮을 때 땅에 닿을 높이, 높은 돌은 멈춘 높이를 지난다
   const sw = L.movers.filter((m) => m.kind === 'swing'), low = sw.filter((m) => m.pivot[1] - m.len < 1.2).length, high = sw.filter((m) => m.pivot[1] - m.len > 2.5).length;
-  ok(flips >= 4 && flipOk === flips && low >= 8 && high >= 8 && L.cps.length === 9 && B.indexOf('goal') === 78,
+  ok(flips >= 8 && flipOk === flips && low >= 8 && high >= 8 && L.cps.length === 9 && B.indexOf('goal') === 78,
     `14라운드: 돌추의 뒤집기 ${flips}곳(${where.join(', ')}) 모두, 앞 마디처럼 멈추면 그 마디에서 죽는다(${flipOk}곳). 낮은 돌 ${low}개, 높은 돌 ${high}개. 체크포인트 ${L.cps.length}개, 결승선은 마디 78`);
 }
 console.log('== 이후 라운드용으로 보관한 함정(매달린 덩어리 없이, 착지 자리의 빨간 바닥으로 죽는다) ==');
