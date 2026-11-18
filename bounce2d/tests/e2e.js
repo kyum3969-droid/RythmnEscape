@@ -415,6 +415,23 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `9라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     ok(shakes > 0, `프레스가 땅을 내려찍으면 화면이 살짝 흔들린다(프레스 줄을 지나는 동안 ${shakes}번 본 순간에 흔들림)`);
+    // 10라운드(공장: 내려찍는 망치, 옆으로 튀어나오는 망치 = 수평 패턴, 분쇄 롤러)
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(10)')]); await ready();
+    st = await G(() => { const g = window.__game, L = g.L, t = g.track; const k = {}; for (const m of L.movers) k[m.kind] = (k[m.kind] || 0) + 1; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: L.cps.length, k }; });
+    ok(st.round === 9 && st.name.includes('Anvil and Piston') && Math.abs(st.bpm - 150) < 0.01 && st.off === 0.078 && st.cps === 10 && st.k.ram >= 30 && st.k.roller >= 20 && st.k.press >= 12, `10라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 옆 망치 ${st.k.ram}개, 분쇄 롤러 ${st.k.roller}개, 내려찍는 망치 ${st.k.press}개)`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots10 = { 10.75: 'r10_hammer_drop', 32.75: 'r10_ram_glide', 33.0: 'r10_ram_glide_hit', 42.75: 'r10_ram_mix', 48.75: 'r10_grind_pit', 72.0: 'r10_rise_stairs', 150.0: 'r10_rise_stairs2', 220.0: 'r10_stone_press', 278.0: 'r10_rise_trap', 330.0: 'r10_final' };
+    let sparks = 0;
+    for (let beat = 0; beat <= 360; beat += 0.25) {
+      await tick(beat);
+      if (shots10[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots10[beat] + '.png' }); }
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    sparks = await G(() => window.__game.fx.ramHits || 0);
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `10라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    ok(sparks > 0, `옆 망치가 다 튀어나오는 순간 불꽃이 튄다(완주하는 동안 ${sparks}번)`);
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(1)')]); await ready();
     ok(await G(() => window.__game.round) === 0, '다시 1라운드로 돌아올 수 있다');

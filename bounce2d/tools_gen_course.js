@@ -234,10 +234,10 @@ TEMPLATES.R8 = {
       ['리듬 — 오르면서 함정: 한 마디짜리 계단을 두 번 → 이단 점프로 오르던 단이 낮아졌다. 이어서 두 마디짜리 계단을 두 번(헛다리: 함정이 없다)', [...hill('A', 1, { need: { kind: ['lidJ'], where: 'up' } }), ...rep('A', 1), ...trap('A', 1, ['lidJ'], 'up'), ...hill('B', 2, { peak: 5 }), ...rep('B', 2), 'cp']],
       ['더 꽉 찬 리듬 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 내려오는 길의 빨간 단이 한 칸 뒤로 밀렸다. 이어서 새 계단 하나', [...hill('C', 2, { peak: 5, need: { kind: ['shift'], where: 'down' } }), ...rep('C', 2), ...trap('C', 2, ['shift'], 'down'), ...hill('D', 1), 'cp']],
       ['조용함 — 큰 산: 네 마디에 걸쳐 여덟 칸 높이까지 올랐다가 내려온다. 이어서 한 마디짜리를 두 번 → 손 바꿈(이단 점프로 오르던 자리에 빨간 단)', [...hill('M1', 4, { peak: 8 }), ...hill('E', 1, { need: { kind: ['swap'], where: 'up' } }), ...rep('E', 1), ...trap('E', 1, ['swap'], 'up'), 'cp']],
-      ['다시 꽉 찬 리듬 — 한 번만 보여 주고 함정(오르면서), 이어서 헛다리(두 번 하고 그냥 넘어간다)와 새 계단', [...hill('F', 2, { peak: 5, need: { kind: ['hlong', 'lidJ', 'swap'], where: 'up' } }), ...trap('F', 2, ['hlong', 'lidJ', 'swap'], 'up'), ...hill('G', 1), ...rep('G', 1), ...hill('H', 1), 'cp']],
+      ['다시 꽉 찬 리듬 — 한 번만 보여 주고 함정(오르면서), 이어서 헛다리(두 번 하고 그냥 넘어간다)와 새 계단', [...hill('F', 2, { peak: 5, need: { kind: ['hlong'], where: 'up' } }), ...trap('F', 2, ['hlong', 'lidJ', 'swap'], 'up'), ...hill('G', 1), ...rep('G', 1), ...hill('H', 1), 'cp']],
       ['가장 센 절정 — 피버 하나(넓은 통로, 튕김판): 판이 있는 마디를 두 번 → 판이 없다(눌러야 꺾인다). 끝은 좁은 통로의 튕김판', ['wUp', { wm: 'FA', pads: 1, calm: 1, run: 2, kind: 'pad' }, { wr: 'FA' }, { wt: 'FA', kind: 'pad' }, 'wDn', { zm: 'Z1', pads: 1, kind: 'none' }, { zm: 'Z2', pads: 1, kind: 'none' }, 'cp']],
-      ['엇박 베이스 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 밀린 빨간 단. 이어서 새 계단 하나', [...hill('J', 2, { peak: 5, need: { kind: ['hshort', 'hlong', 'shift'], where: 'down' } }), ...rep('J', 2), ...trap('J', 2, ['hshort', 'hlong', 'shift'], 'down'), ...hill('K', 1), 'cp']],
-      ['엇박 베이스, 더 꽉 차게 — 헛다리(같은 계단 세 번), 이어서 한 번만 보여 주고 함정', [...hill('L', 1), ...rep('L', 1), ...rep('L', 1), ...hill('N', 2, { peak: 5, need: { kind: ['hlong', 'hshort', 'lidJ', 'swap', 'shift'] } }), ...trap('N', 2, ['hlong', 'hshort', 'lidJ', 'swap', 'shift']), 'cp']],
+      ['엇박 베이스 — 내려오면서 함정: 두 마디짜리 계단을 두 번 → 밀린 빨간 단. 이어서 새 계단 하나', [...hill('J', 2, { peak: 5, need: { kind: ['hshort', 'hlong'], where: 'down' } }), ...rep('J', 2), ...trap('J', 2, ['hshort', 'hlong', 'shift'], 'down'), ...hill('K', 1), 'cp']],
+      ['엇박 베이스, 더 꽉 차게 — 헛다리(같은 계단 세 번), 이어서 한 번만 보여 주고 함정', [...hill('L', 1), ...rep('L', 1), ...rep('L', 1), ...hill('N', 2, { peak: 5, need: { kind: ['hlong', 'hshort'] } }), ...trap('N', 2, ['hlong', 'hshort', 'lidJ', 'swap', 'shift']), 'cp']],
       ['조용함 — 두 번째 큰 산, 이어서 한 마디짜리를 두 번 → 밀린 빨간 단', [...hill('M2', 4, { peak: 8 }), ...hill('P', 1, { need: { kind: ['hlong', 'shift'] } }), ...rep('P', 1), ...trap('P', 1, ['hlong', 'shift']), 'cp']],
       ['마지막 절정 — 세 번째 큰 산을 넘고, 그림의 공중 사슬(파란 단에 내려 튀며 멈추고, 충전 고리로 다시 올라 멈추고)을 지나 결승선으로', [...hill('M3', 4, { peak: 8 }), 'airStep', 'airRing']],
       ['', ['goal', 'flat', 'flat']],
@@ -270,6 +270,36 @@ TEMPLATES.R9 = {
       ['다시 질주 — 좁은 통로(하나 더 → 튕김판 → 판이 없다)', [{ zm: 'I', kind: 'add' }, { zr: 'I' }, { zt: 'I', kind: 'add' }, { zm: 'J', pads: 1, kind: 'pad' }, { zr: 'J' }, { zt: 'J', kind: 'pad' }, { zm: 'K', kind: 'none' }, 'cp']],
       ['그루브와 쌓아 올림 — 장애물을 한 번씩(프레스 밑 미끄러지기, 오가는 톱날, 풍차), 이어서 멈춤 길이의 함정(두 번 되풀이 → 끝의 멈춤이 짧다)', ['pressGlide', 'sawDive', 'barSpin', ...phrase('short-last'), one(), 'cp']],
       ['마지막 절정 — 넓은 통로가 굽이치고, 좁은 통로로 내려와 결승선', ['wUp', { wm: 'L', calm: 1, run: 2 }, { wr: 'L' }, { wt: 'L', kind: 'break' }, 'wDn', { zm: 'M', kind: 'none' }]],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
+// 10라운드(Anvil and Piston, 인더스트리얼 신스웨이브): 공장의 라운드. 새것은 수평 패턴 — 옆으로 튀어나오는 망치(낮은 망치 = 내려설 자리, 높은 망치 = 이단 점프한 공)와
+// 분쇄 롤러(바닥에 박힌 구덩이, 멈춘 높이에 뜬 롤러), 내려찍는 망치(logic.js의 hamGlide 등). 짜임은 그대로: 두 번 보여 주고 뒤집기(hamGlide×2 → hamMix, ramHop×2 → grindPit).
+// 앞 라운드의 것도 다 섞는다: 멈춤 길이 함정, 공중 사슬, 그림의 공중 사슬, 징검다리 위 프레스, 프레스 밑 미끄러지기, 충전 고리, 음이 올라가는 구간의 계단(17~18, 36~37 → 69~70에서 같은 오르막의 멈춤 길이 함정).
+// 피버는 곡의 꽉 찬 구간 셋(24~30, 40~46, 72~78)에만 — 공장의 기계를 보는 라운드다.
+TEMPLATES.R10 = {
+  prefix: 'g10', bpm: 150.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
+  rise: [{ at: 17, bars: 2, key: 'U' }, { at: 36, bars: 2, key: 'V', need: { kind: ['hlong', 'hshort'] } }, { at: 69, bars: 2, trap: 'V' }],      // 음이 올라가는 구간(곡에서 잰 자리. 빌드업 67~70 가운데 공중 사슬 뒤의 두 마디)
+  recipe: { g: 'a7', gf: 'a7', traps: 6, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a7' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a7', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const RISE = 'flat';      // (음이 올라가는 구간의 계단이 이 자리를 대신한다: 틀의 rise)
+    return [
+      ['도입(킥만): 내려찍는 망치를 소개한다 — 망치 둘 밑을 지나 셋째 박을 쓸어 가는 낮은 망치를 뛰어 넘기 ×2 → 구덩이 위를 멈춰서(뛰면 망치에). 이어서 옆 망치가 내려설 자리를 쓸어 가는 것을 뛰어 넘기 ×2', ['flat', 'flat', 'hamDrop', 'hamDrop', 'hamPit', 'ramHop', 'ramHop', 'cp']],
+      ['꽉 찬 A — 수평 패턴을 소개한다: 낮은 망치와 높은 망치 사이로 멈춰서 빠져나가기 ×2 → 뒤집기(뒤쪽에 롤러가 멈춘 높이에 떠 있다: 뛰어 넘는다). 옆 망치 뛰어 넘기 → 뒤집기(구덩이 위에 높은 망치: 멈춰서). 새 마디 둘', ['hamGlide', 'hamGlide', 'hamMix', 'ramHop', 'grindPit', one(), one(), 'cp']],
+      ['가라앉음: 음이 올라가는 두 마디는 오르는 계단. 이어서 멈춤 길이 함정(두 번 되풀이 → 끝의 멈춤이 짧다)과 새 마디. 곡이 끊기는 마디가 체크포인트', [one(), RISE, RISE, ...phrase('short-last'), one(), 'cp']],
+      ['꽉 찬 B — 피버 하나(좁은 통로): 되풀이 → 뚝, 튕김판 → 판이 없다', [{ zm: 'A' }, { zr: 'A' }, { zt: 'A', kind: 'break' }, { zm: 'B', pads: 1, kind: 'pad' }, { zr: 'B' }, { zt: 'B', kind: 'pad' }, { zm: 'C', kind: 'none' }, 'cp']],
+      ['가라앉음과 빌드업: 망치 밑 구덩이, 멈춤 길이 함정(길다), 빌드업의 두 마디는 오르는 계단', ['hamPit', ...phrase('long-last'), RISE, RISE, one(), 'cp']],
+      ['가장 센 드롭 — 피버 둘(넓은 통로): 되풀이 → 뚝, 튕김판 → 판이 없다', ['wUp', { wm: 'E', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'break' }, { wm: 'F', pads: 1, kind: 'pad' }, { wt: 'F', kind: 'pad' }, 'wDn', 'cp']],
+      ['브레이크다운(조용함) — 높은 곳: 징검다리 위의 프레스 ×2, 내려올 땅이 빨간 박스, 프레스 밑을 멈춰서 미끄러지기, 삼단 점프', ['stIn', 'stPress', 'stPress', 'stOutG', 'gAfter', 'pressGlide', 'ring3', 'cp']],
+      ['꽉 찬 — 공장을 지나간다: 멈춰서 빠져나가기 → 뒤집기, 옆 망치 → 뒤집기(구덩이), 망치 밑, 새 마디 둘', ['hamGlide', 'hamMix', 'ramHop', 'grindPit', 'hamDrop', one(), one(), 'cp']],
+      ['가라앉음과 빌드업: 멈춤 길이 함정(짧다), 그림의 공중 사슬, 빌드업은 같은 오르막 — 이번엔 멈춤 길이가 다르다', [...phrase('short-last'), 'airStep', 'airRing', RISE, RISE, 'cp']],
+      ['큰 드롭 — 피버 셋(좁은 통로): 하나 더 ×2, 튕김판 → 판이 없다', [{ zm: 'G', kind: 'add' }, { zr: 'G' }, { zt: 'G', kind: 'add' }, { zm: 'I', pads: 1, kind: 'pad' }, { zr: 'I' }, { zt: 'I', kind: 'pad' }, { zm: 'J', kind: 'none' }, 'cp']],
+      ['마지막 후렴 — 모든 기계: 멈춰서 빠져나가기 ×2 → 뒤집기, 그림의 공중 사슬, 옆 망치 → 구덩이, 망치. 곡이 끝맺는 한 방에 결승선', ['hamGlide', 'hamGlide', 'hamMix', 'airStep', 'airRing', 'ramHop', 'grindPit', 'hamDrop']],
       ['', ['goal', 'flat', 'flat']],
     ];
   },
