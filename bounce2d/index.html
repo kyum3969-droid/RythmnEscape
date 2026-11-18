@@ -1388,18 +1388,29 @@
           ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.55, ry * 0.8, 0, 0, Math.PI * 2); gs();
           ctx.restore();
         } else if (m.kind === "swing") {
-          // 흔들리는 돌추(14라운드): 나무 위의 축(9라운드의 볼트와 같은 짙은 금속)에 매달린 덩굴, 끝에 빨간 빗금 돌덩이(분홍 테두리, 둘레에 가시).
-          // 흔들리는 범위는 끊긴 호로, 지나온 자리는 잔상으로 보인다. 닿으면 죽는 것은 돌덩이뿐(그림 = 판정: moverShape)
+          // 흔들리는 돌추(14라운드): 나무 위의 축(9라운드의 볼트와 같은 짙은 금속)에 매달린 철사슬, 끝에 빨간 빗금 돌덩이(분홍 테두리, 둘레에 가시).
+          // 흔들리는 범위는 끊긴 호로, 지나온 자리는 잔상으로 보인다. 닿으면 죽는 것은 돌덩이뿐(그림 = 판정: moverShape). 사슬은 닿아도 된다
           const q = moverShape(m, beat), ax = sx(q.ax), ay = Y(q.ay), hx = sx(q.x), hy = Y(q.y), R = q.r * T, Lp = m.len * T;
           ctx.save(); ctx.setLineDash([T * 0.18, T * 0.14]); ctx.strokeStyle = "rgba(255,143,171,0.3)"; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(ax, ay, Lp, Math.PI / 2 - m.amp, Math.PI / 2 + m.amp); ctx.stroke(); ctx.restore();
           for (let i = 4; i >= 1; i--) { const p2 = moverShape(m, beat - 0.04 * i); ctx.fillStyle = `rgba(255,107,144,${0.13 * (1 - i / 5)})`; ctx.beginPath(); ctx.arc(sx(p2.x), Y(p2.y), R, 0, Math.PI * 2); ctx.fill(); }      // 지나온 자리의 잔상
-          // 덩굴: 축에서 돌까지 살짝 처진 줄, 군데군데 잎
-          const mx = (ax + hx) / 2 - Math.sin(q.a) * T * 0.25, my = (ay + hy) / 2;
-          ctx.strokeStyle = "#3c5a2a"; ctx.lineWidth = T * 0.13; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(mx, my, hx, hy); ctx.stroke();
-          ctx.strokeStyle = "#7fae4f"; ctx.lineWidth = T * 0.04; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(mx, my, hx, hy); ctx.stroke(); ctx.lineCap = "butt";
-          ctx.fillStyle = "#6f9f45"; for (let i = 1; i <= 4; i++) { const u = i / 5.2, lx = (1 - u) * (1 - u) * ax + 2 * u * (1 - u) * mx + u * u * hx, ly = (1 - u) * (1 - u) * ay + 2 * u * (1 - u) * my + u * u * hy, sd = i % 2 ? 1 : -1;
-            ctx.beginPath(); ctx.ellipse(lx + sd * T * 0.14, ly, T * 0.15, T * 0.07, sd * 0.6 + q.a, 0, Math.PI * 2); ctx.fill(); }
+          // 철사슬(의견: "줄이 초록색인데 철사슬로"): 축에서 돌까지 곧게 당겨진 사슬. 고리가 번갈아 앞면(타원)·옆면(가는 막대)으로 보인다.
+          // 9라운드의 막대·볼트와 같은 회색 금속(#8d95a6, 그림자 #1a1d24). 닿아도 죽지 않는다(판정은 돌덩이뿐)
+          { const dx = hx - ax, dy = hy - ay, len = Math.hypot(dx, dy), ang = Math.atan2(dy, dx), step = T * 0.3, nL = Math.max(2, Math.floor(len / step));
+            for (let i = 0; i < nL; i++) {
+              const u = (i + 0.5) / nL, lx = ax + dx * u, ly = ay + dy * u;
+              ctx.save(); ctx.translate(lx, ly); ctx.rotate(ang);
+              if (i % 2 === 0) {      // 앞면: 길쭉한 고리
+                ctx.strokeStyle = "#1a1d24"; ctx.lineWidth = T * 0.11; ctx.beginPath(); ctx.ellipse(0, 0, step * 0.62, T * 0.11, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = T * 0.06; ctx.beginPath(); ctx.ellipse(0, 0, step * 0.62, T * 0.11, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.strokeStyle = "rgba(230,236,245,0.55)"; ctx.lineWidth = T * 0.025; ctx.beginPath(); ctx.ellipse(0, -T * 0.02, step * 0.5, T * 0.07, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();      // 윗면의 반사광
+              } else {                // 옆면: 가는 막대
+                ctx.fillStyle = "#1a1d24"; ctx.fillRect(-step * 0.66, -T * 0.055, step * 1.32, T * 0.11);
+                ctx.fillStyle = "#8d95a6"; ctx.fillRect(-step * 0.6, -T * 0.03, step * 1.2, T * 0.06);
+              }
+              ctx.restore();
+            }
+          }
           ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(ax, ay, T * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = 2.5; ctx.stroke();      // 축
           ctx.fillStyle = "#8d95a6"; ctx.beginPath(); ctx.arc(ax, ay, T * 0.06, 0, Math.PI * 2); ctx.fill();
           // 돌덩이: 둘레에 가시가 난 팔각 돌, 9라운드의 빨간 그라디언트와 빗금, 분홍 테두리
@@ -1408,7 +1419,7 @@
           stone(); const g6 = ctx.createLinearGradient(0, -R, 0, R); g6.addColorStop(0, "#2a0816"); g6.addColorStop(1, "#86173f"); ctx.fillStyle = g6; sb(0); ctx.fill();
           ctx.save(); ctx.clip(); ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 3; ctx.beginPath(); for (let x = -R * 2; x < R; x += T * 0.36) { ctx.moveTo(x, R); ctx.lineTo(x + 2 * R, -R); } ctx.stroke(); ctx.restore();
           stone(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(10 + 8 * pulse); gs(); sb(0); ctx.lineJoin = "round";
-          ctx.fillStyle = "#1a1d24"; ctx.fillRect(-R * 0.22, -R * 1.02, R * 0.44, R * 0.26);      // 덩굴을 묶은 쇠고리
+          ctx.fillStyle = "#1a1d24"; ctx.fillRect(-R * 0.22, -R * 1.02, R * 0.44, R * 0.26);      // 사슬을 묶은 쇠고리
           ctx.restore();
         } else if (m.kind === "plat") {
           // 오가는 길(레일): 발판이 지나는 범위 전체에 끊긴 선, 양 끝에 볼트
