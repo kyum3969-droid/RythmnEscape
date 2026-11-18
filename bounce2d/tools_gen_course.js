@@ -457,6 +457,36 @@ TEMPLATES.R15 = {
   },
 };
 
+// 16라운드(Searing Horizon): 사막. 새것은 불기둥(flame) — 낮은 불은 멈춰서(위에 바위 처마), 높은 불은 이단 점프로 넘는다. flameHold ×2 → flameJump, flameJump ×2 → flameHold.
+//   모래 언덕 계단, 음이 오르는 12~13 → 37~38(멈춤 길이가 다르다). 피버 셋(첫 드롭, 가장 큰 후렴, 마지막 드롭), 끝은 조용한 아웃트로.
+TEMPLATES.R16 = {
+  prefix: 'g16', bpm: 152.0, floatReds: true, vary: true, density: 0.9, fresh: true, freshWindow: 6, cpFill: true, cpLevel: 'a8', holdW: 3, hds: [0.5, 1],
+  rise: [{ at: 12, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 37, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 벌스 12~13, 빌드업 37~38)
+  recipe: { g: 'a8', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a8' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a8', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
+    const K = ['hlong', 'hshort', 'lidJ', 'swap', 'shift'];
+    const hill = (k, n, o = {}) => [{ hill: k, bars: n, ...o }, ...cont(n)], rep = (k, n) => [{ hr: k }, ...cont(n)], trap = (k, n) => [{ ht: k, kind: K }, ...cont(n)];
+    const RISE = 'flat';
+    return [
+      ['도입(킥이 한 마디씩 걸러 나온다): 모래 언덕 한 마디짜리 계단 ×2 → 같은 계단의 함정, 새 마디 둘', ['flat', 'flat', ...hill('A', 1, { need: { kind: K } }), ...rep('A', 1), ...trap('A', 1), one(), one(), 'cp']],
+      ['벌스 — 불기둥을 소개한다: 낮은 불을 멈춰서 넘기(위에 바위 처마) ×2 → 높은 불(이단 점프로). 음이 올라가는 12~13마디는 오르는 계단', ['flameHold', 'flameHold', 'flameJump', one(), RISE, RISE, one(), 'cp']],
+      ['첫 드롭 — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
+      ['가라앉음 — 뒤집기를 거꾸로: 높은 불 ×2 → 낮은 불(이번엔 멈춘다). 이단 점프 → 멈춤 → 덩어리가 길다', ['flameJump', 'flameJump', 'flameHold', 'djHold', 'djHoldL', one(), one(), 'cp']],
+      ['중간과 빌드업: 멈춤 길이 함정(짧다), 새 마디 둘, 같은 오르막(37~38)은 이번엔 멈춤 길이가 다르다', [...phrase('short-last'), one(), one(), RISE, RISE, 'cp']],
+      ['저음 그루브 — 불을 섞어서: 낮은 불 → 높은 불 → 낮은 불, 삼단 점프 → 미끼 고리, 울타리 → 그대로 두기', ['flameHold', 'flameJump', 'flameHold', 'ring3', 'ring3Bait', 'fenceJ', 'fence', 'cp']],
+      ['가장 큰 후렴 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더', ['wUp', { wm: 'E', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'pad' }, { wm: 'F', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'F', kind: 'pad' }, 'wDn', 'cp']],
+      ['저음만 남는 브레이크다운 — 큰 모래 언덕: 네 마디에 걸쳐 여덟 칸까지, 그림의 공중 사슬, 새 마디 하나', [...hill('P', 4, { peak: 8 }), 'airStep', 'airRing', one(), 'cp']],
+      ['마지막 드롭 — 피버 셋(좁은 통로): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'G', pads: 1, kind: 'pad' }, { zr: 'G' }, { zt: 'G', kind: 'pad' }, { zm: 'H', pads: 1 }, { zr: 'H' }, { zt: 'H', kind: 'break' }, { zm: 'I', pads: 1, kind: 'none' }, 'cp']],
+      ['아웃트로(고음만 남아 사그라든다): 낮은 불 → 높은 불, 새 마디 다섯. 곡이 사그라드는 마디 79에 결승선', ['flameHold', 'flameJump', one(), one(), one(), one(), one()]],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {

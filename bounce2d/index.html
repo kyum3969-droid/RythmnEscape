@@ -130,6 +130,9 @@
     #dev, #opts { padding-top: 8px; }
     #opts small { display: none; }
     #devJumps { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .panel:has(#rounds) { max-width: 760px; }      /* 라운드가 열여섯 개: 가로 화면에서는 패널을 넓혀 한 줄에 일곱 개(세 줄) */
+    #rounds { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 5px; }
+    #rounds .btn.small { font-size: 11px; padding: 5px 5px; }
   }
   @media (prefers-reduced-motion: reduce) { #toast.show { animation-duration: 0.01s; } }
 </style>
@@ -1372,6 +1375,29 @@
           ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(0, 0, R * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ffd1dc"; ctx.lineWidth = 2; ctx.stroke();
           ctx.fillStyle = "#2a0816"; for (let i = 0; i < 3; i++) { const a2 = (i / 3) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(a2) * R * 0.52, Math.sin(a2) * R * 0.52, R * 0.09, 0, Math.PI * 2); ctx.fill(); }
           ctx.restore();
+        } else if (m.kind === "flame") {
+          // 불기둥(16라운드): 바닥의 쇠 환풍구(9라운드의 볼트와 같은 금속)에서 솟는 불길. 아래는 희고 위로 갈수록 주황 → 빨강, 윗면이 일렁인다.
+          // 테두리는 다른 위험한 것과 같은 분홍. 솟기 0.35박 전부터 환풍구가 달아오르고 불티가 튄다(곧 솟는다는 예고). 그림 = 판정(moverShape)
+          const q = moverShape(m, beat), tr = m.track, ph = ((((beat - tr.at) % tr.P) + tr.P) % tr.P), rise = tr.keys[1][0];
+          const warn = ph > rise - 0.35 && ph < rise + 0.1 ? Math.min(1, (ph - (rise - 0.35)) / 0.35) : 0;
+          const xa = sx(m.x0), xb = sx(m.x1), g0 = view.groundY, vw = xb - xa;
+          ctx.fillStyle = "#1a1d24"; ctx.fillRect(xa - T * 0.2, g0 - T * 0.12, vw + T * 0.4, T * 0.2);      // 환풍구
+          ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = 2; ctx.strokeRect(xa - T * 0.2, g0 - T * 0.12, vw + T * 0.4, T * 0.2);
+          ctx.fillStyle = warn > 0 || q.y1 > 0.05 ? `rgba(255,${140 + 80 * warn | 0},60,${0.5 + 0.5 * Math.max(warn, q.y1 > 0.05 ? 1 : 0)})` : "#3a3f4a";
+          for (let k = 0; k < 4; k++) ctx.fillRect(xa + (vw * (k + 0.2)) / 4, g0 - T * 0.08, vw / 8, T * 0.12);
+          if (warn > 0 && Math.random() < 0.5) burst((m.x0 + m.x1) / 2 + (Math.random() - 0.5) * (m.x1 - m.x0), ROWS - 1, 1, "accent", 4, false);
+          if (q.y1 > 0.05) {
+            const top = Y(q.y1), n = 7, wob = (k) => Math.sin(now * 18 + k * 1.7) * T * 0.12 + Math.sin(now * 31 + k * 2.9) * T * 0.06;
+            const body = () => { ctx.beginPath(); ctx.moveTo(xa, g0); ctx.lineTo(xa, top + T * 0.25);
+              for (let k = 0; k <= n; k++) { const x = xa + (vw * k) / n, tip = k % 2 ? T * 0.3 : 0; ctx.lineTo(x, top - tip + wob(k)); }
+              ctx.lineTo(xb, top + T * 0.25); ctx.lineTo(xb, g0); ctx.closePath(); };
+            const fg = ctx.createLinearGradient(0, g0, 0, top - T * 0.3); fg.addColorStop(0, "#fff4d6"); fg.addColorStop(0.3, "#ffb347"); fg.addColorStop(0.7, "#ff5a36"); fg.addColorStop(1, "#c4124a");
+            body(); ctx.fillStyle = fg; sb(0); ctx.fill();
+            ctx.save(); ctx.clip(); ctx.strokeStyle = "rgba(255,240,200,0.35)"; ctx.lineWidth = 3; ctx.beginPath();      // 위로 흐르는 불결
+            for (let k = 0; k < 4; k++) { const x = xa + vw * (0.2 + 0.2 * k), off = ((now * 6 + k * 0.37) % 1) * (g0 - top); ctx.moveTo(x, g0 - off); ctx.lineTo(x + Math.sin(now * 9 + k) * T * 0.08, g0 - off - T * 0.4); }
+            ctx.stroke(); ctx.restore();
+            body(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; sb(12 + 8 * pulse); gs(); sb(0);
+          }
         } else if (m.kind === "oring") {
           // 궤도 고리(15라운드): 행성(가운데의 작은 빛 — 닿아도 아무 일 없다)을 도는 충전 고리. 도는 길은 끊긴 원, 고리는 정지한 충전 고리와 같은 흰 고리.
           // 지나가는 쪽으로 꼬리가 남고, 쓰고 나면 흐려진다
@@ -1758,7 +1784,7 @@
     }
     for (const q of L.reds) out.push({ x0: q.x0, x1: q.x1, h: q.kind === "floor" ? q.tip / 2 : (q.tip + q.far) / 2, k: "R" });      // 피버의 이빨과 떠 있는 장애물
     for (const q of L.pads.values()) out.push({ x0: q.x - PAD_W, x1: q.x + PAD_W, h: padFace(q), k: "B" });
-    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
+    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.kind === "flame" ? 1 : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
     if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) { const q0 = L.bands.get(c - 1); if (q0 && q0.some((v) => v[0] === lo && v[1] === hi)) continue; let e = c; while ((L.bands.get(e + 1) || []).some((v) => v[0] === lo && v[1] === hi)) e++; out.push({ x0: c, x1: e + 1, h: (lo + hi) / 2, k: "R" }); }      // 계단의 빨간 단과 뚜껑      // 피버의 튕김판
     const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
     const BH = Array.from({ length: L.cols }, (_, c) => boxH(c));
