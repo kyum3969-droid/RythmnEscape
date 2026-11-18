@@ -211,6 +211,7 @@
   // 라운드: 고르면 코스와 곡을 다시 만들어야 해서 화면을 새로 연다
   const round = Math.max(0, Math.min(COURSES.length - 1, store.get("round", 0) | 0));
   const COURSE = COURSES[round];
+  const ROUND_NO = round;
   const L = buildLevel(COURSE);
   // 그릴 때 쓰는 바닥 높이(반 칸 단위): 빨간 덩어리에 높은 박스를 합친 것. 붙어 있으면 한 덩어리로 그려진다(높은 박스를 따로 표시하지 않는다).
   const FLOOR2 = L.floorH ? (() => {
@@ -283,6 +284,9 @@
       A.noise = A.ctx.createBuffer(1, len, A.ctx.sampleRate);
       const d = A.noise.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      // 피버 연출용 분석기: 곡이 이것을 지나 스피커로 간다(소리는 바꾸지 않는다). 그림이 실제 곡의 주파수에 맞춰 움직인다
+      A.an = A.ctx.createAnalyser(); A.an.fftSize = 256; A.an.smoothingTimeConstant = 0.72; A.an.connect(A.ctx.destination);
+      A.spec = new Uint8Array(A.an.frequencyBinCount);
     }
     if (A.ctx.state === "suspended") A.ctx.resume();
   }
@@ -291,7 +295,7 @@
     stopTrack();
     for (const b of [A.bus, A.songBus]) if (b) { b.gain.setTargetAtTime(0, A.ctx.currentTime, 0.012); setTimeout(() => b.disconnect(), 250); }
     // 곡은 효과음과 다른 길로 내보낸다(곡에는 아무 처리도 하지 않는다: 압축기나 필터를 거치면 효과음이 날 때 곡 소리가 눌린다)
-    A.songBus = A.ctx.createGain(); A.songBus.gain.value = 0.85; A.songBus.connect(A.ctx.destination);
+    A.songBus = A.ctx.createGain(); A.songBus.gain.value = 0.85; A.songBus.connect(A.an || A.ctx.destination);
     A.bus = A.ctx.createGain();
     A.bus.connect(A.master);
   }
@@ -630,6 +634,7 @@
       else if (e.type === "climb") { puff(state.x, state.y, 4, 0.5); fx.stepAt = now; }
       else if (e.type === "bonk") { puff(state.x, state.y - SIZE, 4, 0.5); fx.bonkAt = now; }     // 파란 박스 밑면에 머리가 닿음
       else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "FEVER" : "BOUNCE"); fx.cpFlash = now; fx.chain = 0;
+        if (e.mode === "rush") { fx.feverAt = now; fx.flash = Math.max(fx.flash, 0.3); }      // 피버 연출: 들어서는 순간 번쩍, 바탕에 충격파
         if (e.mode !== "rush" && squeezeGap(L, state.x - 0.2) !== null) {     // 조여든 통로 끝에서 터져 나온다
           for (let k = 0; k < 5; k++) burst(state.x, state.y - HALF, 12, k % 2 ? "white" : "accent", 16, true);
           fx.shake = 0.4; fx.flash = 0.8;
@@ -713,6 +718,69 @@
   })();
   const sAt = (x) => { if (x <= 0) return x; const f = x * 8, i = Math.min(STRETCH.length - 2, Math.floor(f)); return STRETCH[i] + (STRETCH[i + 1] - STRETCH[i]) * (f - i); };
 
+  // 피버 연출: 곡의 주파수(분석기가 없거나 곡이 안 나오면 박자로 흉내 낸다) — n개의 0~1 값(낮은 소리 → 높은 소리)
+  function spectrum(n, beat, pulse) {
+    const out = new Array(n); let live = false;
+    if (A.an && A.spec && A.src && !fake.on) { A.an.getByteFrequencyData(A.spec); live = A.spec.some((v) => v > 0); }
+    for (let i = 0; i < n; i++) {
+      if (live) { const k = Math.min(A.spec.length - 1, Math.floor(Math.pow(i / n, 1.7) * A.spec.length * 0.85)); out[i] = A.spec[k] / 255; }
+      else out[i] = Math.min(1, (0.25 + 0.55 * hash(i, Math.floor(beat * 2))) * (0.55 + 0.6 * pulse) * (1 - 0.45 * i / n));
+    }
+    return out;
+  }
+  // 피버 연출의 색: 마디가 바뀔 때마다 색상환을 돈다(라운드마다 시작 색이 다르다. 빨강·분홍은 건너뛴다 — 닿으면 죽는 것의 색). 그 구간의 강조색과 섞는다
+  function feverHue(beat, pal, mixK = 0.65) {
+    const hue = (45 + (Math.floor(beat / 4) * 57 + ROUND_NO * 41) % 270) / 360,      /* 45°~315°: 빨강·분홍(위험한 것의 색)은 쓰지 않는다 */ f = (n) => { const k = (n + hue * 12) % 12; return 0.62 - 0.38 * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+    return mix(pal.accent, [f(0) * 255, f(8) * 255, f(4) * 255], mixK);
+  }
+  function feverBack(beat, now, pulse, k, pal, cx, cy, r0, w, h, camX) {
+    const ri = Math.max(0, L.rides.findIndex((r) => camX >= r[0] - 4 && camX <= r[1] + 2)), style = (ri + ROUND_NO) % 3;
+    const a = k * 0.95, R = Math.hypot(w, h), acc = feverHue(beat, pal), sun = mix(pal.sun, acc, 0.35);
+    ctx.save();
+    if (style === 0) {          // 빛의 굴: 소실점에서 둥근 네모가 반 박마다 하나씩 다가온다. 박마다 밝아진다
+      const N = 9, asp = w / h;
+      for (let i = 0; i < N; i++) {
+        const p = (beat * 0.5 + i / N) % 1, sz = Math.pow(p, 2.3) * R * 0.9, hw = sz * Math.sqrt(asp), hh = sz / Math.sqrt(asp);
+        if (sz < 4) continue;
+        ctx.strokeStyle = css(i % 2 ? sun : acc, a * (0.12 + 0.35 * pulse) * Math.sin(Math.PI * p));
+        ctx.lineWidth = 1 + 4 * p;
+        ctx.beginPath(); ctx.roundRect(cx - hw, cy - hh, hw * 2, hh * 2, Math.min(hw, hh) * 0.25); ctx.stroke();
+      }
+      ctx.strokeStyle = css(acc, a * 0.1); ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i < 16; i++) { const th = (i / 16) * Math.PI * 2 + beat * 0.08; ctx.moveTo(cx + Math.cos(th) * r0 * 1.4, cy + Math.sin(th) * r0 * 1.4); ctx.lineTo(cx + Math.cos(th) * R, cy + Math.sin(th) * R); }
+      ctx.stroke();
+    } else if (style === 1) {   // 소리 고리: 해를 둘러싼 막대들이 곡의 소리(낮은 소리 → 높은 소리, 좌우 대칭)에 맞춰 뻗는다. 바닥에도 반사
+      const n = 48, sp = spectrum(n / 2, beat, pulse);
+      ctx.lineCap = "round";
+      for (let i = 0; i < n; i++) {
+        const v = sp[i < n / 2 ? i : n - 1 - i], th = -Math.PI / 2 + (i / n) * Math.PI * 2, len = r0 * (0.15 + 2.6 * v * v);
+        const g = ctx.createLinearGradient(cx, cy, cx + Math.cos(th) * (r0 * 1.3 + len), cy + Math.sin(th) * (r0 * 1.3 + len));
+        g.addColorStop(0, css(sun, 0)); g.addColorStop(0.4, css(acc, a * 0.55)); g.addColorStop(1, css(sun, a * 0.75));
+        ctx.strokeStyle = g; ctx.lineWidth = Math.max(2, r0 * 0.11);
+        ctx.beginPath(); ctx.moveTo(cx + Math.cos(th) * r0 * 1.25, cy + Math.sin(th) * r0 * 1.25); ctx.lineTo(cx + Math.cos(th) * (r0 * 1.3 + len), cy + Math.sin(th) * (r0 * 1.3 + len)); ctx.stroke();
+      }
+      const bw = w / 32;
+      for (let i = 0; i < 32; i++) { const v = sp[Math.min(sp.length - 1, Math.abs(16 - i) % sp.length)], hh = h * 0.28 * v;
+        ctx.fillStyle = css(acc, a * 0.16); ctx.fillRect(i * bw + 1, view.groundY - hh, bw - 2, hh); }
+    } else {                    // 빛줄기: 소실점에서 별빛이 쏟아져 나온다. 소리가 클수록 빠르고 길다
+      const sp = spectrum(8, beat, pulse), lo = (sp[0] + sp[1] + sp[2]) / 3, speed = 0.35 + 0.9 * lo;
+      ctx.lineCap = "round";
+      for (let i = 0; i < 90; i++) {
+        const th = hash(i, 1) * Math.PI * 2, z = (hash(i, 2) + now * speed * (0.6 + 0.8 * hash(i, 3))) % 1, r1 = Math.pow(z, 2.6) * R, r2 = r1 * (0.78 - 0.25 * lo);
+        if (r1 < r0) continue;
+        ctx.strokeStyle = css(i % 3 ? [255, 255, 255] : acc, a * (0.15 + 0.5 * z) * (0.6 + 0.6 * pulse));
+        ctx.lineWidth = 0.8 + 2.4 * z;
+        ctx.beginPath(); ctx.moveTo(cx + Math.cos(th) * r2, cy + Math.sin(th) * r2); ctx.lineTo(cx + Math.cos(th) * r1, cy + Math.sin(th) * r1); ctx.stroke();
+      }
+    }
+    // 모든 피버: 박마다 화면 가장자리가 강조색으로 숨 쉰다, 들어서는 순간 소실점에서 충격파
+    const vg = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, R * 0.62);
+    vg.addColorStop(0, css(acc, 0)); vg.addColorStop(1, css(acc, a * (0.06 + 0.2 * pulse)));
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
+    const ft = now - (fx.feverAt ?? -9);
+    if (ft >= 0 && ft < 0.9) { const p = ft / 0.9; ctx.strokeStyle = css([255, 255, 255], (1 - p) * 0.8); ctx.lineWidth = 3 + 14 * (1 - p); ctx.beginPath(); ctx.arc(cx, cy, r0 + p * R * 0.8, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+  }
   function draw(beat, now) {
     const { w, h } = view, BT = view.T;
     const pal = paletteAt(beat);
@@ -754,6 +822,9 @@
 
     // 박자마다 퍼지는 고리
     const cxs = w * 0.68, cys = view.groundY - T * 3.4 + camY * T * 0.06, r0 = T * 1.5;
+    // ---- 피버 연출(그림뿐, 판정과 상관없다): 피버마다 바탕이 바뀐다 — 빛의 굴 / 소리 고리 / 빛줄기. 해(박자 고리의 가운데)가 소실점이다.
+    //   곡의 박에 맞춰 움직이고, 실제 곡의 주파수(분석기)를 쓴다. 통로와 장애물은 그대로 그 위에 그려진다(읽기에 방해되지 않게 바탕만)
+    if (round > 0) feverBack(beat, now, pulse, round, pal, cxs, cys, r0, w, h, camX);
     ctx.fillStyle = css(pal.sun, 0.9);
     ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1 + 0.07 * pulse), 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 2;
@@ -1060,6 +1131,20 @@
         ctx.beginPath();
         for (let c = Math.floor(ca / 16) * 16; c < cb; c += 16) { const y = sy(ROWS - 1 - ceilAt(L, c + 1)); ctx.lineTo(sx(Math.max(c, ca)), y); ctx.lineTo(sx(Math.min(c + 16, cb)), y); }
         gs(); sb(0);
+        // 피버 연출: 벽 속(천장 위, 바닥 밑)에 곡의 소리에 맞춰 움직이는 막대. 통로 안에는 아무것도 그리지 않는다(장애물이 그대로 잘 보이게). 굽은 통로에서는 쉰다
+        if (!WALLD) {
+          const n = 40, sp = spectrum(n, beat, pulse), col = feverHue(beat, pal), bw = w / n;
+          for (let c = Math.floor(ca / 16) * 16; c < cb; c += 16) {
+            const xs = sx(Math.max(c, ca)), xe = sx(Math.min(c + 16, cb)), yc = sy(ROWS - 1 - ceilAt(L, c + 1));
+            for (let i = Math.max(0, Math.floor(xs / bw)); i < n && i * bw < xe; i++) {
+              const xa = Math.max(xs, i * bw + 2), xb = Math.min(xe, (i + 1) * bw - 2); if (xb <= xa) continue;
+              const v = sp[Math.abs(i - n / 2) * 2 % n], hh = T * (0.25 + 2.4 * v * v);
+              ctx.fillStyle = css(col, 0.22 + 0.35 * v); sb(0);
+              ctx.fillRect(xa, yc - 4 - hh, xb - xa, hh);
+              ctx.fillRect(xa, view.groundY + 4, xb - xa, hh * 0.8);
+            }
+          }
+        }
       }
       // 파란 발판·계단: 닿아도 죽지 않고 튕기기만 한다. 바닥에서 솟은 것과 천장에 매달린 것.
       if (L.stairLo.size || L.stairHi.size) {
