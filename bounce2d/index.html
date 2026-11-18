@@ -1262,6 +1262,10 @@
         } else if (m.kind === "roller") {
           // 분쇄 롤러(10라운드): 9라운드의 톱날과 같은 빨간 그라디언트·분홍 테두리·가운데 축. 이는 굵은 톱니바퀴(바닥에 박힌 것은 둘이 맞물려 안쪽으로 돈다)
           const q = moverShape(m, beat), cx = sx(q.x), cy = Y(q.y), R = q.r * T;
+          if (m.rail) {      // 오르내리는 롤러: 9라운드 톱날의 레일과 같은 끊긴 선과 양 끝 볼트
+            ctx.save(); ctx.setLineDash([T * 0.18, T * 0.14]); ctx.strokeStyle = "rgba(255,143,171,0.35)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx(m.rail[0]), Y(m.rail[1])); ctx.lineTo(sx(m.rail[2]), Y(m.rail[3])); ctx.stroke(); ctx.restore();
+            for (const [bx, by] of [[m.rail[0], m.rail[1]], [m.rail[2], m.rail[3]]]) { ctx.fillStyle = "#1a1d24"; ctx.beginPath(); ctx.arc(sx(bx), Y(by), T * 0.1, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#8d95a6"; ctx.lineWidth = 2; ctx.stroke(); }
+          }
           ctx.save(); ctx.translate(cx, cy); ctx.rotate(q.a);
           const nT = 10; ctx.beginPath();
           for (let i = 0; i < nT; i++) { const a0 = (i / nT) * Math.PI * 2, a1 = a0 + Math.PI / nT * 0.55, a2 = a0 + Math.PI / nT * 1.45, a3 = a0 + (Math.PI * 2) / nT;
@@ -1610,7 +1614,7 @@
     }
     for (const q of L.reds) out.push({ x0: q.x0, x1: q.x1, h: q.kind === "floor" ? q.tip / 2 : (q.tip + q.far) / 2, k: "R" });      // 피버의 이빨과 떠 있는 장애물
     for (const q of L.pads.values()) out.push({ x0: q.x - PAD_W, x1: q.x + PAD_W, h: padFace(q), k: "B" });
-    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" ? "B" : "R" }); }      // 움직이는 장애물
+    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" ? "B" : "R" }); }      // 움직이는 장애물
     if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) { const q0 = L.bands.get(c - 1); if (q0 && q0.some((v) => v[0] === lo && v[1] === hi)) continue; let e = c; while ((L.bands.get(e + 1) || []).some((v) => v[0] === lo && v[1] === hi)) e++; out.push({ x0: c, x1: e + 1, h: (lo + hi) / 2, k: "R" }); }      // 계단의 빨간 단과 뚜껑      // 피버의 튕김판
     const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
     const BH = Array.from({ length: L.cols }, (_, c) => boxH(c));

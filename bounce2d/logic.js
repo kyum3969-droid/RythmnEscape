@@ -45,7 +45,9 @@ const DIVE = (x, at, o = {}) => ({ kind: "saw", r: o.r ?? 0.6, rail: [x, 0.6, x,
 const RAM = (xw, y0, y1, reach, at, o = {}) => ({ kind: "ram", xw, dir: o.dir ?? -1, y0, y1, reach, head: o.head ?? 0.7, house: o.house ?? 1, track: { P: o.P ?? 4, at: at - 0.15, keys: [[0, 0, "io"], [0.15, 1, "out"], [0.4, 1, "lin"], [0.8, 0, "io"]] } });
 const LOW = (xw, at, reach = 1.6) => RAM(xw, 0, 0.9, reach, at), LOWR = (xw, at, reach = 1.2) => RAM(xw, 0, 0.9, reach, at, { dir: 1 }), HIGH = (xw, at, reach = 4) => RAM(xw, 3.5, 4.5, reach, at);
 const PIT = (c) => [{ kind: "roller", x: c - 0.62, y: 0, r: 0.62, dir: 1 }, { kind: "roller", x: c + 0.62, y: 0, r: 0.62, dir: -1 }];
-const HAM = (k, o = {}) => PRESS(k, { ...o, skin: "hammer" });      // 내려찍는 망치(프레스와 같고 머리가 망치)
+const HAM = (k, o = {}) => PRESS(k, { ...o, skin: "hammer" });
+// LIFT(x, at, up) 구덩이 위에서 위아래로 오르내리는 롤러(두 박에 한 번). at박에 아래(멈춘 높이, 2.6칸)에 있고, up이면 반대로 at박에 위(4.5칸)에 있다
+const LIFT = (x, at, up = false) => ({ kind: "roller", r: 0.5, dir: 1, rail: [x, 2.6, x, 4.5], track: { P: 2, at: at - 1, keys: up ? [[0, 0, "io"], [1, 1, "io"]] : [[0, 1, "io"], [1, 0, "io"]] } });      // 내려찍는 망치(프레스와 같고 머리가 망치)
 const PATTERNS = {
   idle:      { holds: [], presses: [] },
   // ---- 함정 마디: 앞의 마디들과 똑같이 누르면 죽는다. "연속으로 치다가 뚝 끊기".
@@ -669,14 +671,15 @@ const PATTERNS = {
   //   hamGlide  낮은 망치와 높은 망치 사이로 멈춰서 빠져나가기 ×2(첫 박, 셋째 박). 뛰면 높은 망치, 그냥 튀면 낮은 망치
   //   hamMix    (hamGlide의 뒤집기) 앞은 같고, 뒤에는 구덩이 위에 롤러가 멈춘 높이에 떠 있다 — 멈추면 갈리고, 뛰어 넘는다
   //   ramHop    낮은 망치가 내려설 자리 둘을 뒤에서 쓸어 간다: 두 번 다 뛰어 넘는다
-  //   grindPit  (ramHop의 뒤집기) 구덩이 둘 — 속임수: 첫째 구덩이 한가운데에는 멈춘 높이에 롤러가 떠 있어서 이단 점프만 된다(멈추면 갈린다).
-  //             둘째 구덩이는 똑같아 보여서 또 뛰고 싶은데, 그때 높은 망치가 벽에서 튀어나온다 — 멈춰서 건넌다(뛰면 망치에)
+  //   grindPit  (ramHop의 뒤집기) 구덩이 둘. 두 구덩이 위에서 롤러가 박에 맞춰 위아래로 오르내리는데 서로 엇갈린다(하나가 내려가면 다른 하나는 올라간다).
+  //             공이 첫째 구덩이를 지날 때 그 롤러는 멈춘 높이로 내려와 있다 → 이단 점프로 넘는다(멈추면 갈린다).
+  //             둘째 구덩이를 지날 때 그 롤러는 위로 올라가 있다 → 멈춰서 그 밑으로(뛰면 갈린다). 같은 구덩이인데 손이 다르다
   //   hamPit    내려찍는 망치 둘 밑을 지나, 구덩이 위를 멈춰서 건너고(뛰면 망치에), 끝에 망치
   //   hamDrop   내려찍는 망치 둘 밑을 지나, 셋째 박에 내려설 자리를 낮은 망치가 쓸어 간다 — 뛰어 넘는다
   hamGlide: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, set: true, movers: [LOW(5, 1), HIGH(7, 1), LOW(13, 3), HIGH(15, 3)], traps: [{ presses: [0.5], holds: [[2.5, 3.5]] }] },
   hamMix: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18, set: true, movers: [LOW(5, 1), HIGH(7, 1), ...PIT(12), { kind: "roller", x: 11.85, y: 2.6, r: 0.5, dir: 1 }], traps: [{ full: { presses: [], holds: [[0.5, 1.5], [2.5, 3.5]] } }] },
   ramHop: { holds: [], presses: [0.5, 2.5], tol: 0.18, set: true, movers: [LOWR(2.6, 1), LOWR(10.6, 3)] },
-  grindPit: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18, set: true, movers: [...PIT(4), { kind: "roller", x: 4, y: 2.6, r: 0.5, dir: 1 }, ...PIT(12), HIGH(15, 3)], traps: [{ full: { presses: [0.5, 2.5], holds: [] } }, { full: { presses: [], holds: [[0.5, 1.5], [2.5, 3.5]] } }] },
+  grindPit: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18, set: true, movers: [...PIT(4), ...PIT(12), LIFT(4, 1), LIFT(12, 3, true)], traps: [{ full: { presses: [0.5, 2.5], holds: [] } }, { full: { presses: [], holds: [[0.5, 1.5], [2.5, 3.5]] } }] },
   hamPit: { holds: [[1.5, 2.5]], presses: [], tol: 0.18, set: true, movers: [HAM(0), HAM(1), ...PIT(8), HAM(3)], traps: [{ presses: [0.5] }, { presses: [3.5] }] },
   hamDrop: { holds: [], presses: [2.5], tol: 0.18, set: true, movers: [HAM(0), HAM(1), LOWR(10.6, 3)], traps: [{ presses: [0.5] }, { presses: [1.5] }] },
   // ---- 울타리(9라운드부터): 땅에서 튀는 길의 한가운데 밑에 빨간 기둥이 줄지어 서 있다. 공은 그냥 튀어서 넘어간다(누를 것이 없다 — "아무것도 안 하는" 버릇이 생긴다).
@@ -1350,7 +1353,11 @@ function moverShape(m, beat) {
     return { e, u: e / m.reach, hx0, hx1, y0: m.y0, y1: m.y1, rx0: Math.min(m.xw, tip), rx1: Math.max(m.xw, tip), ry0: yc - 0.18, ry1: yc + 0.18,
       bx0: d < 0 ? m.xw : m.xw - hw, bx1: d < 0 ? m.xw + hw : m.xw, by0: m.y0 - 0.15, by1: m.y1 + 0.15 };
   }
-  if (m.kind === "roller") return { x: m.x, y: m.y, r: m.r, a: m.dir * beat * Math.PI * (m.spin ?? 1) };      // 분쇄 롤러: 제자리에서 돈다(둘이 맞물려 안쪽으로)
+  if (m.kind === "roller") {      // 분쇄 롤러: 제자리에서 돈다(둘이 맞물려 안쪽으로). rail이 있으면 레일을 따라 오르내린다
+    const a = m.dir * beat * Math.PI * (m.spin ?? 1);
+    if (m.rail) { const u = trackAt(m.track, beat); return { x: m.rail[0] + (m.rail[2] - m.rail[0]) * u, y: m.rail[1] + (m.rail[3] - m.rail[1]) * u, r: m.r, a }; }
+    return { x: m.x, y: m.y, r: m.r, a };
+  }
   return null;
 }
 // 공(가운데 x, 발 높이 h)이 그 장애물에 닿았나. 판정은 그림보다 조금 작다(공 둘레 0.06칸)
@@ -1460,7 +1467,7 @@ function emptyLevel(course) {
       if (m.orbit) m.orbit[0] += X;
       if (m.pivot) m.pivot[0] += X;
       if (m.xw !== undefined) m.xw += X;
-      if (m.kind === "roller") m.x += X;
+      if (m.kind === "roller" && m.x !== undefined) m.x += X;
       if (m.kind === "plat") m.track.keys = m.track.keys.map(([t, v, e]) => [t, v + X, e]);
       m.bar = b; movers.push(m);
     }
