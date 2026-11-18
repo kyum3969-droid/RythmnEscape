@@ -191,6 +191,7 @@
           <button class="btn small" id="devZones">아래쪽 버튼 안내: 켜짐</button>
           <button class="btn small" id="devGems">수정: 켜짐</button>
           <button class="btn small" id="devLabels">플레이 중 번호표: 꺼짐</button>
+          <button class="btn small" id="devWorld">월드: 라운드대로</button>
           <button class="btn small" id="devInspect">코스 둘러보기</button>
         </div>
         <div id="devJumps" hidden></div>
@@ -200,6 +201,7 @@
 </div>
 
 <script src="logic.js"></script>
+<script src="themes.js"></script>
 <script src="track.js"></script>
 <script>
 // ===================== 화면 · 음악 · 입력 =====================
@@ -237,6 +239,11 @@
   let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true), devGems = store.get("devGems", true), devLabels = store.get("devLabels", false);
   const showMarks = () => !dev || devMarks;
   const showGems = () => !dev || devGems;            // 길 위에 줄지어 있는 수정(공이 갈 길을 보여 준다)
+  // 월드 테마(themes.js): 라운드마다 하늘·해·먼 풍경·땅의 결·날씨·꼬리가 다르다. 개발자 모드에서는 아무 라운드에서나 다른 월드로 바꿔 볼 수 있다
+  let devWorld = store.get("devWorld", null);
+  let THEME = THEMES.themeFor(ROUND_NO, dev ? devWorld : null);
+  const ART = THEMES.ART;
+  let wallPat = null, wallPatKind = null;          // 땅·천장·벽의 결(타일 무늬). 테마가 바뀌면 다시 만든다
 
   // ---------------------------------------------------------------- 색 (구간마다 바뀜)
   const PAL = {
@@ -573,6 +580,7 @@
     $("devZones").textContent = "아래쪽 버튼 안내: " + (devZones ? "켜짐" : "꺼짐");
     $("devGems").textContent = "수정: " + (devGems ? "켜짐" : "꺼짐");
     $("devLabels").textContent = "플레이 중 번호표: " + (devLabels ? "켜짐" : "꺼짐");
+    $("devWorld").textContent = "월드: " + (devWorld && THEMES.WORLDS[devWorld] ? THEMES.WORLDS[devWorld].name + " (미리 보기)" : "라운드대로 · " + THEMES.themeFor(ROUND_NO).name);
     $("app").classList.toggle("nozones", dev && !devZones);
     const box = $("devJumps");
     box.hidden = !dev;
@@ -732,29 +740,7 @@
     return out;
   }
   // ---- 피버 연출: 라운드마다 다르다(의견: "피버 연출 디자인은 라운드마다 차별화 좀 줘"). 라운드의 곡과 주제에 맞춘 바탕 둘을 피버마다 번갈아 쓰고, 벽 속 장식도 라운드마다 다르다.
-  //   바탕: tunnel 빛의 굴 / ring 소리 고리 / stars 빛줄기 / road 달리는 길 / code 디지털 비 / confetti 꽃종이 / rays 햇살 / grid 지평선 격자 / lamps 가로등 / bubbles 방울 / embers 불티
-  //         rain 빗줄기 / gears 톱니바퀴 / ribbons 비단 띠 / snow 눈 / leaves 나뭇잎 / planets 행성 / haze 아지랑이 / lanterns 등불
-  //   벽: eq 막대 / wave 물결 / dots 점 격자
-  const FEVER_FX = [
-    { back: ['road', 'stars'], wall: 'eq' },        // 1 Octane Horizon: 달리는 길
-    { back: ['code', 'grid'], wall: 'dots' },       // 2 Terminal Pursuit: 화면 속 추격
-    { back: ['confetti', 'ring'], wall: 'eq' },     // 3 Final Quarter Credit
-    { back: ['rays', 'haze'], wall: 'wave' },       // 4 Miles Before Sunrise: 해 뜨기 전
-    { back: ['grid', 'ring'], wall: 'dots' },       // 5 Concrete Pulse: 도시의 맥박
-    { back: ['lamps', 'road'], wall: 'eq' },        // 6 Streetlight Velocity: 가로등
-    { back: ['confetti', 'bubbles'], wall: 'dots' },// 7 Sunday in the Playroom: 놀이방
-    { back: ['rays', 'embers'], wall: 'wave' },     // 8 Velocity of a Thousand Suns: 천 개의 해
-    { back: ['rain', 'road'], wall: 'eq' },         // 9 Midnight Asphalt Rush: 한밤의 젖은 도로
-    { back: ['gears', 'embers'], wall: 'dots' },    // 10 Anvil and Piston: 공장의 불꽃
-    { back: ['ribbons', 'tunnel'], wall: 'wave' },  // 11 Velocity of Silk: 비단
-    { back: ['snow', 'rays'], wall: 'wave' },       // 12 Across the Iron Peak: 눈 덮인 봉우리
-    { back: ['stars', 'tunnel'], wall: 'eq' },      // 13 Final Level Sprint: 결승선을 향해
-    { back: ['leaves', 'rays'], wall: 'wave' },     // 14 Temple Canopy Pursuit: 정글
-    { back: ['planets', 'stars'], wall: 'dots' },   // 15 Orbital Momentum: 우주
-    { back: ['haze', 'embers'], wall: 'eq' },       // 16 Searing Horizon: 사막의 열기
-    { back: ['bubbles', 'rays'], wall: 'wave' },    // 17 Coral Cathedral: 바다 밑
-    { back: ['lanterns', 'embers'], wall: 'dots' }, // 18 The Midnight Procession: 한밤의 행렬
-  ];
+  //   라운드마다 무엇을 쓰는지는 themes.js의 ROUND_THEME(fever)에 있다. 여기 feverPrim은 그 그림들이다(평소의 날씨로도 옅게 빌려 쓴다).
   // 새 연출들. a = 세기(0~1), acc·sun = 색(빨강·분홍은 쓰지 않는다), 소실점(cx, cy)
   function feverPrim(prim, beat, now, pulse, a, acc, sun, cx, cy, r0, w, h, R) {
     const H = (i, k) => hash(i, k), W = [255, 255, 255], gy = view.groundY;
@@ -829,7 +815,7 @@
     return mix(pal.accent, [f(0) * 255, f(8) * 255, f(4) * 255], mixK);
   }
   function feverBack(beat, now, pulse, k, pal, cx, cy, r0, w, h, camX) {
-    const ri = Math.max(0, L.rides.findIndex((r) => camX >= r[0] - 4 && camX <= r[1] + 2)), fxr = FEVER_FX[ROUND_NO] || FEVER_FX[0], prim = fxr.back[ri % fxr.back.length];
+    const ri = Math.max(0, L.rides.findIndex((r) => camX >= r[0] - 4 && camX <= r[1] + 2)), fxr = THEME.fever, prim = fxr.back[ri % fxr.back.length];
     const style = prim === 'tunnel' ? 0 : prim === 'ring' ? 1 : prim === 'stars' ? 2 : -1;
     const a = k * 0.95, R = Math.hypot(w, h), acc = feverHue(beat, pal), sun = mix(pal.sun, acc, 0.35);
     ctx.save();
@@ -904,6 +890,10 @@
     view.zT = T;
     const sx = (wx) => view.px + (sAt(wx) - camS) * T;
     const sy = (wy) => view.groundY + (wy - (ROWS - 1)) * T;
+    // 땅·천장·벽의 결(월드마다): 미리 그린 타일(두 칸 × 두 칸)을 세상에 붙여 깐다. 화면과 함께 흐르고, 굽은 통로에서는 토막과 함께 기운다
+    if (wallPatKind !== THEME.ground) { wallPatKind = THEME.ground; const tc = ART.tile(THEME.ground); wallPat = tc ? ctx.createPattern(tc, "repeat") : null; }
+    if (wallPat && wallPat.setTransform) wallPat.setTransform(new DOMMatrix([T / 64, 0, 0, T / 64, sx(0), view.groundY]));
+    const WALLF = wallPat || SIL;
     // 오르내리는 카메라: 공이 딛는 높이(패턴대로 갈 때의 줄)를 서서히 따라간다. 내려가는 길은 한 박 남짓 미리 내려다본다(땅 밑으로는 화면이 한 칸 반밖에 안 보인다). 올라간 만큼 먼 풍경은 내려앉는다
     const camY = CLIMB.length ? camLine(camX + state.lead) : 0;
     view.camY = camY;
@@ -920,28 +910,23 @@
     const cxs = w * 0.68, cys = view.groundY - T * 3.4 + camY * T * 0.06, r0 = T * 1.5;
     // ---- 피버 연출(그림뿐, 판정과 상관없다): 피버마다 바탕이 바뀐다 — 빛의 굴 / 소리 고리 / 빛줄기. 해(박자 고리의 가운데)가 소실점이다.
     //   곡의 박에 맞춰 움직이고, 실제 곡의 주파수(분석기)를 쓴다. 통로와 장애물은 그대로 그 위에 그려진다(읽기에 방해되지 않게 바탕만)
+    // 월드의 그림(themes.js)에 넘기는 것: 화면, 박자, 색, 카메라, 해의 자리
+    const E = { g: ctx, w, h, BT, T, gy: view.groundY, beat, now, pulse, pal, camS, camY, cx: cxs, cy: cys, r0, skyGrad: g };
+    ctx.save(); ART.sky[THEME.sky](E); ctx.restore();          // 하늘의 장식(별, 구름, 주사선 …)
     if (round > 0) feverBack(beat, now, pulse, round, pal, cxs, cys, r0, w, h, camX);
-    ctx.fillStyle = css(pal.sun, 0.9);
-    ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1 + 0.07 * pulse), 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 3; i++) {
-      const p = ((beat + i * 0.5) % 1.5) / 1.5;
-      ctx.strokeStyle = css(pal.sun, (1 - p) * 0.5);
-      ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1.1 + p * 2.6), 0, Math.PI * 2); ctx.stroke();
-    }
+    ctx.save(); ART.sun[THEME.sun](E); ctx.restore();          // 해(박자 고리의 가운데): 월드마다 다르다
 
-    // 먼 풍경 (2겹, 박자에 맞춰 들썩임): 평소엔 이퀄라이저 막대, 언덕 구간에서는 둥근 능선으로 바뀐다
+    // 먼 풍경 (2겹, 박자에 맞춰 들썩임): 평소엔 월드의 풍경(themes.js의 far: 도시, 산맥, 공장, 유적 …), 언덕 구간에서는 둥근 능선으로 바뀐다
     for (const [layer, bw, par, dark, amp] of [[1, BT * 1.7, 0.18, 0.45, 3.6], [2, BT * 1.0, 0.42, 0.68, 2.4]]) {
-      ctx.fillStyle = css(mix(pal.bottom, [0, 0, 0], dark));
-      const off = camS * BT * par, i0 = Math.floor(off / bw), drop = camY * BT * par * 0.8;      // drop = 카메라가 올라간 만큼 내려앉는 양(가까운 겹일수록 많이)
+      const col = mix(pal.bottom, [0, 0, 0], dark);
+      const off = camS * BT * par, drop = camY * BT * par * 0.8;      // drop = 카메라가 올라간 만큼 내려앉는 양(가까운 겹일수록 많이)
       if (round < 1) {
-        ctx.globalAlpha = 1 - round;
-        for (let i = i0; i * bw - off < w + bw; i++) {
-          const hh = (0.6 + amp * hash(i, layer)) * BT * (1 + 0.22 * pulse * hash(i, layer + 9));
-          ctx.fillRect(i * bw - off, view.groundY - hh + drop, bw - 3, hh + h);
-        }
+        ctx.save(); ctx.globalAlpha = 1 - round;
+        ART.far[THEME.far[layer - 1]](E, { layer, bw, par, amp, off, drop, col });
+        ctx.restore();
       }
       if (round > 0) {
+        ctx.fillStyle = css(col);
         ctx.globalAlpha = round * (1 - 0.55 * round);      // 피버: 능선을 반쯤 비쳐 보이게(피버 연출이 그 뒤에 있다)
         ctx.beginPath(); ctx.moveTo(-20, h + 20);
         for (let x = -20; x <= w + 20; x += 10) {
@@ -952,6 +937,14 @@
         ctx.lineTo(w + 20, h + 20); ctx.closePath(); ctx.fill();
       }
       ctx.globalAlpha = 1;
+    }
+    // 평소의 날씨(비, 눈, 나뭇잎, 먼지 …): 풍경 앞, 땅과 장애물 뒤. 피버에서는 피버 연출로 바뀐다
+    if (THEME.ambient && round < 1) {
+      const aa = (1 - round) * THEME.ambientA;
+      ctx.save();
+      if (ART.ambient[THEME.ambient]) ART.ambient[THEME.ambient](E, aa);
+      else feverPrim(THEME.ambient, beat, now, pulse, aa, pal.accent, pal.sun, cxs, cys, r0, w, h, Math.hypot(w, h));
+      ctx.restore();
     }
 
     // 굽은 통로(코스의 cam 표): 통로 자체가 굽어 있고 공이 그 굽이로 들어간다. 화면은 돌지 않는다 — 길을 "곧은 토막"들의 줄로 보고, 토막마다 제 자리·제 기울기로 그린다.
@@ -1038,10 +1031,11 @@
     // 통로 바깥(땅 밑, 천장 너머)의 칠: 곧은 길에서는 화면 끝까지 꽉 찬 검정. 굽은 통로에서는 벽 두께(BENT_WALL칸)만큼만 칠한다.
     // 화면 끝까지(3000픽셀) 칠했더니, 길이 크게 돌아 나가는 곳(5라운드 48~53: 90° → 135° → 90° → 0°)에서 뒤쪽 토막의 바깥 칠이 앞쪽 통로를 덮어
     // 맵이 새까맣게 보였고, 덮인 벽에 붙은 이빨은 벽 없이 떠 보였다. 벽 너머로는 하늘과 풍경이 보인다
-    const WALL = SIL, WALLD = pass.bent ? BENT_WALL * T : null;
+    const WALL = WALLF, WALLD = pass.bent ? BENT_WALL * T : null;
     if (layer === 0) {
     ctx.fillStyle = WALL;
     ctx.fillRect(sx(cA - WIDE) - 1, view.groundY - 0.5, sx(cB + 1 + WIDE) - sx(cA - WIDE) + 2, WALLD ?? h + FAR);
+    ctx.save(); ART.edge[THEME.edge](E, sx(cA), sx(cB + 1), sx(0)); ctx.restore();      // 땅 윗선 바로 밑의 장식(차선, 서리, 이끼 …): 땅 속에만
     ctx.beginPath(); ctx.moveTo(sx(cA), view.groundY); ctx.lineTo(sx(cB + 1), view.groundY);
     ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5;
     ctx.shadowColor = css(pal.accent); sb(8 + 10 * pulse);
@@ -1112,12 +1106,17 @@
         const darkTop = K.sky || K.allC, bg = ctx.createLinearGradient(0, darkTop ? yTop : yBot, 0, darkTop ? yBot : yTop);
         bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#6d1236");
         sb(0); ctx.fillStyle = bg; ctx.fill("evenodd");
-        ctx.save(); ctx.clip("evenodd");                                    // 빗금
-        ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2;
-        ctx.beginPath();
-        const span = yBot - yTop, gap = T * 0.36;
-        for (let x = Math.floor((xMin - span) / gap) * gap - ((camX * T) % gap); x < xMax; x += gap) { ctx.moveTo(x, yBot); ctx.lineTo(x + span, yTop); }
-        gs(); ctx.restore();
+        ctx.save(); ctx.clip("evenodd");                                    // 안쪽의 결: 빗금(원래의 것) 또는 월드의 결(themes.js grain: 주사선, 픽셀, 금, 구멍, 마름모)
+        const grain = ART.grain[THEME.grain];
+        if (grain) grain(E, { x0: xMin, x1: xMax, y0: yTop, y1: yBot }, sx(0), Math.round(K.x0 * 8) + Math.round(K.x1 * 3));
+        else {
+          ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2;
+          ctx.beginPath();
+          const span = yBot - yTop, gap = T * 0.36;
+          for (let x = Math.floor((xMin - span) / gap) * gap - ((camX * T) % gap); x < xMax; x += gap) { ctx.moveTo(x, yBot); ctx.lineTo(x + span, yTop); }
+          gs();
+        }
+        ctx.restore();
         ctx.beginPath(); for (const lp of P) trace(lp, true);
         ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(9 + 8 * pulse); gs();
         ctx.lineJoin = "round"; sb(0);
@@ -1210,7 +1209,7 @@
           const n = 40, sp = spectrum(n, beat, pulse), col = feverHue(beat, pal), bw = w / n;
           for (let c = Math.floor(ca / 16) * 16; c < cb; c += 16) {
             const xs = sx(Math.max(c, ca)), xe = sx(Math.min(c + 16, cb)), yc = sy(ROWS - 1 - ceilAt(L, c + 1));
-            const wallFx = (FEVER_FX[ROUND_NO] || FEVER_FX[0]).wall;
+            const wallFx = THEME.fever.wall;
             if (wallFx === 'wave' || wallFx === 'dots') {      // 물결(곡의 소리만큼 출렁이는 선 셋) / 점 격자(소리만큼 켜지는 점)
               ctx.save(); ctx.beginPath(); ctx.rect(xs, 0, xe - xs, h); ctx.clip();
               for (const [y0, dirY] of [[yc - 6, -1], [view.groundY + 6, 1]]) {
@@ -1275,7 +1274,7 @@
           ctx.beginPath(); ctx.moveTo(sx(xa), sign > 0 ? yT : view.groundY);
           for (let x = xa; x <= xb + 1e-6; x += 0.25) ctx.lineTo(sx(Math.min(x, xb)), yAt(Math.min(x, xb)));
           ctx.lineTo(sx(xb), sign > 0 ? yT : view.groundY); ctx.closePath();
-          sb(0); ctx.fillStyle = SIL; ctx.fill();
+          sb(0); ctx.fillStyle = WALL; ctx.fill();
           ctx.beginPath();
           for (let x = xa; x <= xb + 1e-6; x += 0.25) ctx.lineTo(sx(Math.min(x, xb)), yAt(Math.min(x, xb)));
           ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 3; ctx.shadowColor = css(pal.accent); sb(10 + 12 * pulse); gs(); sb(0);
@@ -1746,6 +1745,7 @@
     for (const p of fx.particles) {
       if (!inPass(p.x)) continue;
       const a = p.life / p.max;
+      if (p.kind) { ART.particle(ctx, p, sx(p.x), sy(p.y), p.size * T, a, pal); continue; }      // 공의 꼬리 입자(월드마다)
       ctx.fillStyle = p.color === "accent" ? css(pal.accent, a) : p.color === "blue" ? `rgba(120,200,255,${a * 0.9})` : `rgba(255,255,255,${a * 0.7})`;
       const s = p.size * T;
       ctx.save(); ctx.translate(sx(p.x), sy(p.y)); if (p.rot) ctx.rotate(p.rot + p.life * 8);
@@ -2152,6 +2152,7 @@
   COURSES.forEach((c, i) => {                     // 라운드 고르기
     const b = document.createElement("button");
     b.className = "btn small"; b.textContent = c.name; b.disabled = i === round;
+    const wt = THEMES.themeFor(i); b.title = wt.name; b.style.borderLeft = `3px solid ${wt.color}`;      // 월드마다 다른 색의 줄
     b.addEventListener("click", () => gotoRound(i));
     $("rounds").appendChild(b);
   });
@@ -2216,11 +2217,18 @@
   window.addEventListener("keyup", (e) => { if (HOLD_KEYS.has(e.key) || e.key === rushKey) { keyHold = false; rushKey = null; setZones(); } });
   window.addEventListener("blur", () => { keyHold = false; holdPointers.clear(); setZones(); });
   $("pauseBtn").addEventListener("click", pause);
-  $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); renderDev(); });
+  $("devToggle").addEventListener("click", () => { dev = !dev; store.set("dev", dev); THEME = THEMES.themeFor(ROUND_NO, dev ? devWorld : null); renderDev(); });
   $("devMarks").addEventListener("click", () => { devMarks = !devMarks; store.set("devMarks", devMarks); renderDev(); });
   $("devZones").addEventListener("click", () => { devZones = !devZones; store.set("devZones", devZones); renderDev(); });
   $("devGems").addEventListener("click", () => { devGems = !devGems; store.set("devGems", devGems); renderDev(); });
   $("devLabels").addEventListener("click", () => { devLabels = !devLabels; store.set("devLabels", devLabels); renderDev(); });
+  // 월드 미리 보기: 라운드대로 → 월드 일곱 개를 차례로. 코스·판정은 그대로, 그림만 바뀐다(피버 연출은 라운드 것 그대로)
+  $("devWorld").addEventListener("click", () => {
+    const ids = [null, ...Object.keys(THEMES.WORLDS)], k = (ids.indexOf(devWorld) + 1) % ids.length;
+    devWorld = ids[k]; store.set("devWorld", devWorld);
+    THEME = THEMES.themeFor(ROUND_NO, devWorld); fx.particles = fx.particles.filter((p) => !p.kind);
+    renderDev();
+  });
   $("devInspect").addEventListener("click", openInspect);
   $("insRange").addEventListener("input", (e) => inspectAt(+e.target.value / 100 * L.goalX));
   $("insPct").addEventListener("change", (e) => inspectAt(+e.target.value / 100 * L.goalX));
@@ -2242,6 +2250,11 @@
         const zig = state.mode === "rush";
         fx.tail.push({ x: state.x, y: state.y - HALF, d: state.dashing > 0 || zig });
         while (fx.tail.length > (zig ? 22 + Math.min(14, fx.chain >> 1) : 16)) fx.tail.shift();
+        const tr = ART.trail[THEME.trail];      // 공의 꼬리 입자(월드마다: 불꽃, 픽셀, 불티, 먼지, 잎, 방울, 별가루, 반짝이)
+        if (tr) {
+          fx.trailT = Math.min(tr.every * 3, (fx.trailT || 0) + dt);
+          while (fx.trailT >= tr.every) { fx.trailT -= tr.every; const q = tr.make(state.x, state.y - HALF); q.k = Math.random() < 0.5; fx.particles.push(q); }
+        }
         refreshHud();
       }
     } else if (phase === "dead" && !fake.on && now - deadAt > 0.55) respawn();

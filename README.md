@@ -11,7 +11,7 @@
 | 위치 | 내용 |
 |---|---|
 | [DESIGN.md](DESIGN.md) | 게임 디자인: 정한 것과 그 이유, 좋은 함정의 모양, 멈춤의 철학 |
-| [bounce2d/](bounce2d/) | 게임 본체(웹). `index.html`(화면·입력), `logic.js`(규칙·패턴·코스), `tests/` |
+| [bounce2d/](bounce2d/) | 게임 본체(웹). `index.html`(화면·입력), `logic.js`(규칙·패턴·코스), `themes.js`(월드마다의 그림), `tests/` |
 | [bounce2d/README.md](bounce2d/README.md) | 라운드마다 만든 것과 고친 것, 도구 사용법 |
 | `bounce2d/music/` | 라운드별 곡(Gemini로 만든 것) |
 
@@ -26,10 +26,11 @@ cd bounce2d && python3 -m http.server 8000
 ```
 cd bounce2d
 node tests/logic.test.js   # 규칙·패턴·코스(모든 라운드를 패턴대로 완주, 함정, 밀도)
+node tests/themes.test.js  # 월드 테마(그림 이름, 그림 함수, 색 약속)
 node tests/e2e.js          # 실제 화면(Playwright)
 ```
 
 ## 라운드
-1~18라운드. 라운드마다 곡과 주제가 다르다(예: 10라운드 공장의 망치와 분쇄 롤러, 11라운드 속임수, 12라운드 쇠 봉우리, 14라운드 정글 신전의 흔들리는 돌추, 15라운드 궤도 고리, 16라운드 불기둥, 17라운드 해파리, 18라운드 깜빡이는 등롱). 피버 연출도 라운드마다 다르다. 자세한 것은 [bounce2d/README.md](bounce2d/README.md).
+1~18라운드. 라운드마다 곡과 주제가 다르다(예: 10라운드 공장의 망치와 분쇄 롤러, 11라운드 속임수, 12라운드 쇠 봉우리, 14라운드 정글 신전의 흔들리는 돌추, 15라운드 궤도 고리, 16라운드 불기둥, 17라운드 해파리, 18라운드 깜빡이는 등롱). 피버 연출도 라운드마다 다르다. 그림은 일곱 월드(네온 하이웨이, 디지털 그리드, 강철 공장, 새벽 산맥, 잃어버린 유적, 깊은 곳, 꿈의 축제)로 묶어 월드마다 하늘·해·풍경·땅이 다르다. 자세한 것은 [bounce2d/README.md](bounce2d/README.md).
 
 이 저장소에 있던 이전 프로토타입들(턴제 탈출 `index.html`·`web3d/`·`godot/`, 누르면 점프하는 `runner2d/`)은 지웠다. git 기록에는 남아 있다.
