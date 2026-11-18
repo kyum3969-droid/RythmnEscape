@@ -669,13 +669,14 @@ const PATTERNS = {
   //   hamGlide  낮은 망치와 높은 망치 사이로 멈춰서 빠져나가기 ×2(첫 박, 셋째 박). 뛰면 높은 망치, 그냥 튀면 낮은 망치
   //   hamMix    (hamGlide의 뒤집기) 앞은 같고, 뒤에는 구덩이 위에 롤러가 멈춘 높이에 떠 있다 — 멈추면 갈리고, 뛰어 넘는다
   //   ramHop    낮은 망치가 내려설 자리 둘을 뒤에서 쓸어 간다: 두 번 다 뛰어 넘는다
-  //   grindPit  (ramHop의 뒤집기) 구덩이 둘. 첫째는 뛰어 넘고, 둘째는 위에 높은 망치 — 멈춰서 건넌다
+  //   grindPit  (ramHop의 뒤집기) 구덩이 둘 — 속임수: 첫째 구덩이 한가운데에는 멈춘 높이에 롤러가 떠 있어서 이단 점프만 된다(멈추면 갈린다).
+  //             둘째 구덩이는 똑같아 보여서 또 뛰고 싶은데, 그때 높은 망치가 벽에서 튀어나온다 — 멈춰서 건넌다(뛰면 망치에)
   //   hamPit    내려찍는 망치 둘 밑을 지나, 구덩이 위를 멈춰서 건너고(뛰면 망치에), 끝에 망치
   //   hamDrop   내려찍는 망치 둘 밑을 지나, 셋째 박에 내려설 자리를 낮은 망치가 쓸어 간다 — 뛰어 넘는다
   hamGlide: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, set: true, movers: [LOW(5, 1), HIGH(7, 1), LOW(13, 3), HIGH(15, 3)], traps: [{ presses: [0.5], holds: [[2.5, 3.5]] }] },
   hamMix: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18, set: true, movers: [LOW(5, 1), HIGH(7, 1), ...PIT(12), { kind: "roller", x: 11.85, y: 2.6, r: 0.5, dir: 1 }], traps: [{ full: { presses: [], holds: [[0.5, 1.5], [2.5, 3.5]] } }] },
   ramHop: { holds: [], presses: [0.5, 2.5], tol: 0.18, set: true, movers: [LOWR(2.6, 1), LOWR(10.6, 3)] },
-  grindPit: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18, set: true, movers: [...PIT(4), ...PIT(12), HIGH(15, 3)], traps: [{ full: { presses: [0.5, 2.5], holds: [] } }] },
+  grindPit: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18, set: true, movers: [...PIT(4), { kind: "roller", x: 4, y: 2.6, r: 0.5, dir: 1 }, ...PIT(12), HIGH(15, 3)], traps: [{ full: { presses: [0.5, 2.5], holds: [] } }, { full: { presses: [], holds: [[0.5, 1.5], [2.5, 3.5]] } }] },
   hamPit: { holds: [[1.5, 2.5]], presses: [], tol: 0.18, set: true, movers: [HAM(0), HAM(1), ...PIT(8), HAM(3)], traps: [{ presses: [0.5] }, { presses: [3.5] }] },
   hamDrop: { holds: [], presses: [2.5], tol: 0.18, set: true, movers: [HAM(0), HAM(1), LOWR(10.6, 3)], traps: [{ presses: [0.5] }, { presses: [1.5] }] },
   // ---- 울타리(9라운드부터): 땅에서 튀는 길의 한가운데 밑에 빨간 기둥이 줄지어 서 있다. 공은 그냥 튀어서 넘어간다(누를 것이 없다 — "아무것도 안 하는" 버릇이 생긴다).
