@@ -28,6 +28,8 @@ for (const t of themes) {
   if (!ART.edge[t.edge]) miss.push('edge ' + t.edge);
   if (!(t.grain in ART.grain)) miss.push('grain ' + t.grain);
   if (t.trail && !ART.trail[t.trail]) miss.push('trail ' + t.trail);
+  if (!ART.box[t.box]) miss.push('box ' + t.box);
+  if (!ART.red[t.red]) miss.push('red ' + t.red);
   if (t.ambient && !ART.ambient[t.ambient] && !FEVER_PRIMS.includes(t.ambient)) miss.push('ambient ' + t.ambient);
   if (!t.fever || !t.fever.back.every((b) => FEVER_PRIMS.includes(b)) || !WALLS.includes(t.fever.wall)) miss.push('fever ' + JSON.stringify(t.fever));
 }
@@ -63,6 +65,7 @@ for (const [w, h] of [[844, 390], [390, 844]]) for (const beat of [-0.5, 0, 3.7,
   for (const k in ART.far) for (const [layer, bwk, par, dark, amp] of [[1, 1.7, 0.18, 0.45, 3.6], [2, 1.0, 0.42, 0.68, 2.4]]) run(`far ${k}/${layer}`, () => ART.far[k](e, { layer, bw: BT * bwk, par, amp, off: e.camS * BT * par, drop: camY * BT * par * 0.8, col: [20, 30, 40] }));
   for (const k in ART.edge) run('edge ' + k, () => ART.edge[k](e, -30, w + 30, -e.camS * e.T + 100));
   for (const k in ART.grain) if (ART.grain[k]) run('grain ' + k, () => ART.grain[k](e, { x0: 100, x1: 100 + e.T * 3, y0: -40, y1: gy }, -e.camS * e.T + 100, 17));
+  for (const k in ART.box) run('box ' + k, () => { const B = ART.box[k]; for (const f of ['lo', 'hi', 'lit', 'deep', 'deepSky', 'line', 'glow']) if (typeof B[f] !== 'string') throw new Error(f + ' 색이 없다'); for (const hit of [0, 0.5, 1]) { if (!/^rgb/.test(B.flash(hit))) throw new Error('flash'); B.inner(e, { x0: 100, x1: 100 + e.T * 4, y0: gy - e.T * 2, y1: gy }, [[100, 100 + e.T * 2, gy - e.T], [100 + e.T * 2, 100 + e.T * 4, gy - e.T * 2]], 5, hit); B.inner(e, { x0: 100, x1: 300, y0: -40, y1: 80 }, [], 6, hit); } });
   for (const k in ART.ambient) run('ambient ' + k, () => ART.ambient[k](e, 0.4));
   for (const k in ART.trail) run('trail ' + k, () => { const p = ART.trail[k].make(10, 5); if (!(p.life > 0 && p.max > 0 && p.size > 0 && p.kind)) throw new Error('입자 모양이 이상하다'); for (const a of [1, 0.5, 0.01]) ART.particle(e.g, p, 100, 100, p.size * e.T, a, pal); });
 }
@@ -75,7 +78,7 @@ console.log('== 색 약속: 풍경·날씨·꼬리에 빨강·분홍을 쓰지 �
   const hue = (r, g, b) => { [r, g, b] = [r / 255, g / 255, b / 255]; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2; if (!d) return [0, 0]; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; return [h, d / (1 - Math.abs(2 * l - 1))]; };
   const hits = [];
   src.forEach((line, n) => {
-    if (/const RED = /.test(line) || /\/\/ .*빨강/.test(line) && !/[\[(#]\d/.test(line)) return;
+    if (/위험색/.test(line)) return;      // 빨간 덩어리에만 쓰는 색(표시해 둔 줄)
     const cols = [...line.matchAll(/\[(\d{1,3}), (\d{1,3}), (\d{1,3})\]/g), ...line.matchAll(/rgba\((\d{1,3}),(\d{1,3}),(\d{1,3})/g)].map((m) => m.slice(1, 4).map(Number));
     for (const m of line.matchAll(/#([0-9a-f]{6})\b/gi)) cols.push([0, 2, 4].map((k) => parseInt(m[1].slice(k, k + 2), 16)));
     for (const c of cols) { const [h, s] = hue(...c); if (s > 0.35 && (h >= 320 || h <= 15)) hits.push(`${n + 1}: rgb(${c})`); }

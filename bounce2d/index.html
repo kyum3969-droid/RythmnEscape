@@ -1104,7 +1104,8 @@
         for (const lp of P) for (const [x, y] of lp) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yTop = Math.min(yTop, y); yBot = Math.max(yBot, y); }
         ctx.beginPath(); for (const lp of P) trace(lp, false);
         const darkTop = K.sky || K.allC, bg = ctx.createLinearGradient(0, darkTop ? yTop : yBot, 0, darkTop ? yBot : yTop);
-        bg.addColorStop(0, "#12050d"); bg.addColorStop(1, "#6d1236");
+        const RS = ART.red[THEME.red] || ART.red.plain;      // 바탕색(월드마다: 원래의 검붉은 빛, 용암석 …)
+        bg.addColorStop(0, RS.lo); bg.addColorStop(1, RS.hi);
         sb(0); ctx.fillStyle = bg; ctx.fill("evenodd");
         ctx.save(); ctx.clip("evenodd");                                    // 안쪽의 결: 빗금(원래의 것) 또는 월드의 결(themes.js grain: 주사선, 픽셀, 금, 구멍, 마름모)
         const grain = ART.grain[THEME.grain];
@@ -1126,6 +1127,7 @@
     // 높을수록 이른 박에 튄다(한 칸에 1/8박). 박스마다 자기가 튀는 박에 빛난다. 빨간 덩어리보다 나중에 그려서, 박스 위의 빨간 덩어리가 얹힌 것처럼 보인다.
     {
       const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
+      const BX = ART.box[THEME.box] || ART.box.plain;      // 재질(월드마다: 유리판, 얼음 …). 색은 파랑 계열, 윤곽은 그대로
       const hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25);
       for (let c = cA; c <= cB; c++) {
         if (!boxH(c)) continue;
@@ -1138,14 +1140,14 @@
         const trace = () => { ctx.beginPath(); ctx.moveTo(edge[0][0], edge[0][1]); for (const q of edge) ctx.lineTo(q[0], q[1]); };
         trace(); ctx.closePath();
         const bg = ctx.createLinearGradient(0, view.groundY, 0, top);
-        bg.addColorStop(0, "#081a3d"); bg.addColorStop(1, hit > 0 ? `rgb(${40 + 60 * hit},${110 + 80 * hit},255)` : "#1f6ee0");
+        bg.addColorStop(0, BX.lo); bg.addColorStop(1, hit > 0 ? BX.flash(hit) : BX.hi);
         sb(0); ctx.fillStyle = bg; ctx.fill();
         ctx.save(); ctx.clip();
-        ctx.strokeStyle = "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath();
-        for (let y = view.groundY - T * 0.48; y > top; y -= T * 0.48) { ctx.moveTo(edge[0][0], y); ctx.lineTo(edge[edge.length - 1][0], y); }
-        gs(); ctx.restore();
+        const tops = []; for (let k = 0; k + 1 < edge.length; k++) if (edge[k][1] === edge[k + 1][1] && edge[k][1] < view.groundY) tops.push([edge[k][0], edge[k + 1][0], edge[k][1]]);
+        BX.inner(E, { x0: edge[0][0], x1: edge[edge.length - 1][0], y0: top, y1: view.groundY }, tops, a, hit);
+        ctx.restore();
         trace();
-        ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff";
+        ctx.strokeStyle = BX.line; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = BX.glow;
         sb(10 + 8 * pulse + 16 * hit); gs(); sb(0);
         c = e;
       }
@@ -1154,7 +1156,7 @@
     // 파란 천장은 맨 위(화면 밖)까지 이어진 박스다. 머리가 닿으면 번쩍인다.
     {
       const floating = (c, r) => { if (r < 0 || r >= ROWS - 1 || !isSolid(L, c, r)) return false; for (let k = r + 1; k < ROWS; k++) if (!isSolid(L, c, k)) return true; return false; };
-      const hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25), bonk = Math.max(0, 1 - (now - (fx.bonkAt || -9)) / 0.25);
+      const hit = Math.max(0, 1 - (now - fx.stepAt) / 0.25), bonk = Math.max(0, 1 - (now - (fx.bonkAt || -9)) / 0.25), BX = ART.box[THEME.box] || ART.box.plain;
       for (let r = 0; r < ROWS - 1; r++) for (let c = cA; c <= cB; c++) {
         if (!floating(c, r) || (c > cA && floating(c - 1, r)) || floating(c, r - 1)) continue;
         while (floating(c - 1, r) && !floating(c - 1, r - 1)) c--;      // 왼쪽 끝이 화면 밖으로 나가도 박스는 끝까지 그린다(안 그러면 지나가는 도중에 사라진다)
@@ -1164,13 +1166,12 @@
         const sky = r === 0, xa = sx(c), xb = sx(e + 1), ya = sky ? -40 : sy(r), yb = sy(rb + 1), near = state.x > c - 0.5 && state.x < e + 1.5;
         const on = near ? (state.onGround && state.y === r ? hit : Math.abs(state.y - SIZE - (rb + 1)) < 0.3 ? bonk : 0) : 0;
         const bg = ctx.createLinearGradient(0, yb, 0, Math.max(ya, yb - T * (sky ? 1.4 : 3)));     // 천장은 밑면 쪽만 밝고 위는 어둡다(화면을 덮지 않게)
-        bg.addColorStop(0, on > 0 ? `rgb(${40 + 60 * on},${110 + 80 * on},255)` : "#1f6ee0"); bg.addColorStop(1, sky ? "#0a1f47" : "#0b2a5e");
+        bg.addColorStop(0, on > 0 ? BX.flash(on) : BX.lit); bg.addColorStop(1, sky ? BX.deepSky : BX.deep);
         sb(0); ctx.fillStyle = bg; ctx.fillRect(xa, ya, xb - xa, yb - ya);
         ctx.save(); ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya); ctx.clip();
-        ctx.strokeStyle = "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath();
-        for (let y = yb - T * 0.48; y > ya; y -= T * 0.48) { ctx.moveTo(xa, y); ctx.lineTo(xb, y); }
-        gs(); ctx.restore();
-        ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; sb(10 + 8 * pulse + 16 * on);
+        BX.inner(E, { x0: xa, x1: xb, y0: ya, y1: yb }, sky ? [] : [[xa, xb, ya]], c * 3 + r, on);
+        ctx.restore();
+        ctx.strokeStyle = BX.line; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = BX.glow; sb(10 + 8 * pulse + 16 * on);
         ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya); gs(); sb(0);
         c = e;
       }
@@ -1346,14 +1347,17 @@
           if (fall) { ctx.strokeStyle = "rgba(255,180,200,0.55)"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < 4; i++) { const lx = xa + w * (0.15 + 0.23 * i); ctx.moveTo(lx, yt - T * 0.2); ctx.lineTo(lx, yt - T * 1.4); } ctx.stroke(); }
           // 머리: 빗금 친 빨간 덩어리, 아랫면은 톱니
           const ham = m.skin === "hammer";      // 망치(10라운드): 톱니 대신 평평한 때리는 면. 색과 빗금은 9라운드의 프레스와 같다
-          const hg = ctx.createLinearGradient(0, yt, 0, yb); hg.addColorStop(0, "#2a0816"); hg.addColorStop(1, "#86173f");
+          const RS = ART.red[THEME.red] || ART.red.plain, pgrain = THEME.red !== "plain" && ART.grain[THEME.grain];      // 머리의 재질도 월드의 빨간 덩어리와 같게(망치는 그대로)
+          const hg = ctx.createLinearGradient(0, yt, 0, yb); hg.addColorStop(0, ham ? "#2a0816" : RS.headLo); hg.addColorStop(1, ham ? "#86173f" : RS.headHi);
           const head = () => { ctx.beginPath();
             if (ham) { const c = T * 0.22; ctx.moveTo(xa + c, yt); ctx.lineTo(xb - c, yt); ctx.lineTo(xb, yt + c); ctx.lineTo(xb, yb - c * 0.6); ctx.lineTo(xb - c * 0.6, yb); ctx.lineTo(xa + c * 0.6, yb); ctx.lineTo(xa, yb - c * 0.6); ctx.lineTo(xa, yt + c); }
             else { ctx.moveTo(xa, yt); ctx.lineTo(xb, yt); ctx.lineTo(xb, yb - T * 0.16);
             const nT = 5; for (let i = nT; i >= 0; i--) { const tx = xa + (w * i) / nT; ctx.lineTo(tx, yb - T * 0.16); if (i > 0) ctx.lineTo(tx - w / nT / 2, yb); } }
             ctx.closePath(); };
           head(); ctx.fillStyle = hg; sb(0); ctx.fill();
-          ctx.save(); ctx.clip(); ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 3; ctx.beginPath(); for (let x = xa - T * 1.2; x < xb; x += T * 0.42) { ctx.moveTo(x, yb); ctx.lineTo(x + T * 1.2, yt); } ctx.stroke();
+          ctx.save(); ctx.clip();
+          if (pgrain && !ham) pgrain(E, { x0: xa, x1: xb, y0: yt, y1: yb }, sx(0), Math.round(m.bar * 5 + q.x0));
+          else { ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 3; ctx.beginPath(); for (let x = xa - T * 1.2; x < xb; x += T * 0.42) { ctx.moveTo(x, yb); ctx.lineTo(x + T * 1.2, yt); } ctx.stroke(); }
           ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(xa, yt, w, T * 0.16); ctx.restore();      // 윗면의 반사광
           head(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(10 + 8 * pulse + 18 * warn + 20 * impact); gs(); sb(0); ctx.lineJoin = "round";
           ctx.fillStyle = "#14161c"; ctx.fillRect((xa + xb) / 2 - rodW * 0.8, yt - T * 0.12, rodW * 1.6, T * 0.12);      // 막대와 머리를 잇는 목
