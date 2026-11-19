@@ -34,6 +34,8 @@
     peaks:    { name: "새벽 산맥",     color: "#cfe6ff", sky: "dawn",  sun: "radiant", far: ["peaks", "pines"],        ground: "rockface", edge: "snowcap", grain: "magma", ambient: "motes",  trail: "mote", box: "ice", red: "magma" },
     ruins:    { name: "잃어버린 유적", color: "#d6f07a", sky: "birds", sun: "radiant", far: ["ziggurat", "canopy"],    ground: "stone",   edge: "moss",   grain: "cracks",  ambient: "leaves", trail: "leaf", box: "glyph", red: "cursed" },
     abyss:    { name: "깊은 곳",       color: "#8fd8ff", sky: "space", sun: "planet",  far: ["asteroids", "moonscape"], ground: "pores",  edge: "glow",   grain: "cells",   ambient: "motes",  trail: "stardust", box: "crystal", red: "coral" },
+    // 놀이방(7라운드만): 낮의 아이 방. 의견: "7라운드는 고칠 거 없을까?" → 곡(일요일의 놀이방)과 밤의 축제 그림이 안 맞았다. 피버는 볼풀 속
+    playroom: { name: "놀이방",        color: "#ffd86b", sky: "wallpaper", sun: "window", far: ["shelves", "floorToys"], ground: "playmat", edge: "track", grain: "letters", ambient: "motes", trail: "glitter", box: "toyblock", red: "toyblock" },
     festival: { name: "꿈의 축제",     color: "#ffd27a", sky: "dream", sun: "moon",    far: ["pagoda", "roofs"],       ground: "tiles",   edge: "stitch", grain: "diamond", ambient: "lanterns",     trail: "glitter", box: "gift", red: "lacquer" },
   };
 
@@ -51,7 +53,7 @@
     // 6 Streetlight Velocity: 피버는 지하철 객차 안(의견: "6라운드 피버 모드는 지하철 안으로. 장애물은 흔들리는 손잡이랑 의자들로").
     //   interior = 피버에 들어서면 객차 안이 화면을 덮는다(해와 먼 능선을 숨긴다). props = 피버 장애물을 물건으로 그린다(모양과 판정은 logic.js 코스의 rushProps)
     { world: "neon",     fever: { back: ["subway"], wall: "subway", props: "subway", interior: true } },
-    { world: "festival", far: ["toys", "blocks"], sun: "moon", fever: { back: ["confetti", "bubbles"], wall: "dots" } }, // 7 Sunday in the Playroom: 놀이방
+    { world: "playroom", fever: { back: ["ballpit"], wall: "ballpit", props: "ballpit", interior: true } },           // 7 Sunday in the Playroom: 낮의 놀이방, 피버는 볼풀 속(의견: "볼풀로 하자")
     { world: "peaks",    fever: { back: ["rays", "embers"], wall: "wave" } },                                      // 8 Velocity of a Thousand Suns: 천 개의 해
     { world: "neon",     ambient: "rain", fever: { back: ["rain", "road"], wall: "eq" } },                         // 9 Midnight Asphalt Rush: 한밤의 젖은 도로
     { world: "works",    ambient: "embers", fever: { back: ["gears", "embers"], wall: "dots" } },                  // 10 Anvil and Piston: 공장의 불꽃
@@ -169,6 +171,7 @@
       g.beginPath(); g.ellipse(x - s * 0.1, y - s * 0.22, s * 0.9, s * 0.16, 0, 0, TAU); g.fill();
     }
   }
+  const TOY_C = [[255, 214, 110], [150, 230, 200], [160, 200, 255], [200, 170, 255], [240, 240, 250]];      // 장난감 색(레몬·민트·하늘·연보라·흰색. 빨강·분홍은 위험한 것의 색이라 쓰지 않는다)
   const SKY = {
     none() {},
     neon(e) { stars(e, 70, 0.7); horizonGlow(e, e.pal.accent, 0.16 + 0.08 * e.pulse); },
@@ -232,6 +235,33 @@
         g.fillStyle = rgba(c, a); g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
         g.fillStyle = rgba(c, a * 1.4); g.beginPath(); g.arc(x, y, r * 0.55, 0, TAU); g.fill();
       }
+    },
+    wallpaper(e) {   // 놀이방: 줄무늬 벽지(작은 별 무늬), 벽 아래쪽 판자 띠, 천장에 매달린 모빌(별·달·구름·비행기가 박자에 맞춰 흔들린다)
+      const g = e.g, { w, h, BT } = e, off = e.camS * BT * 0.25, sw = BT * 0.7, wall = mix(e.pal.bottom, [255, 236, 210], 0.12);
+      g.fillStyle = rgba(wall, 0.5); g.fillRect(0, 0, w, h);
+      for (let k = Math.floor(off / sw) - 1; k * sw - off < w + sw; k++) {
+        const x = k * sw - off;
+        if (pm(k, 2) === 0) { g.fillStyle = rgba(WHITE, 0.045); g.fillRect(x, 0, sw, h); }
+        g.fillStyle = rgba(mix(e.pal.sun, WHITE, 0.5), 0.13);
+        for (let j = 0; j < 7; j++) { const cx = x + sw / 2, cy = (j + (pm(k, 2) ? 0.5 : 0)) * BT * 1.3 + BT * 0.4, r = BT * 0.07; g.beginPath(); g.moveTo(cx, cy - r * 1.6); g.lineTo(cx + r * 0.4, cy - r * 0.4); g.lineTo(cx + r * 1.6, cy); g.lineTo(cx + r * 0.4, cy + r * 0.4); g.lineTo(cx, cy + r * 1.6); g.lineTo(cx - r * 0.4, cy + r * 0.4); g.lineTo(cx - r * 1.6, cy); g.lineTo(cx - r * 0.4, cy - r * 0.4); g.fill(); }
+      }
+      const yb = e.gy - BT * 1.4 + e.camY * BT * 0.1;
+      g.fillStyle = rgba(mix(wall, BLACK, 0.25), 0.5); g.fillRect(0, yb, w, h - yb); g.fillStyle = rgba(WHITE, 0.08); g.fillRect(0, yb, w, BT * 0.07);
+      // 모빌
+      const bar = BT * 2.6;
+      g.save(); g.translate(w * 0.27, BT * 1.0); g.rotate(Math.sin(e.now * 0.9) * 0.07 + e.pulse * 0.03);
+      g.strokeStyle = rgba(WHITE, 0.35); g.lineWidth = 1.5; g.beginPath(); g.moveTo(0, -BT); g.lineTo(0, 0); g.moveTo(-bar / 2, 0); g.lineTo(bar / 2, 0); g.stroke();
+      for (let k = 0; k < 4; k++) {
+        const x = -bar / 2 + (bar * (k + 0.5)) / 4, len = BT * (0.6 + 0.35 * H(k, 701)), sw2 = Math.sin(e.now * 1.6 + k * 1.3) * 0.15, ex = x + Math.sin(sw2) * len, ey = Math.cos(sw2) * len, s2 = BT * 0.2;
+        g.strokeStyle = rgba(WHITE, 0.3); g.beginPath(); g.moveTo(x, 0); g.lineTo(ex, ey); g.stroke();
+        g.fillStyle = rgba(TOY_C[[0, 3, 4, 1][k]], 0.75); g.beginPath();
+        if (k === 0) { for (let t = 0; t < 10; t++) { const a = -Math.PI / 2 + (t * Math.PI) / 5, rr = t % 2 ? s2 * 0.45 : s2; g.lineTo(ex + Math.cos(a) * rr, ey + s2 + Math.sin(a) * rr); } }
+        else if (k === 1) { g.arc(ex, ey + s2, s2, 0, TAU); g.arc(ex + s2 * 0.5, ey + s2 * 0.75, s2 * 0.85, 0, TAU, true); }
+        else if (k === 2) { g.arc(ex - s2 * 0.5, ey + s2, s2 * 0.55, 0, TAU); g.arc(ex + s2 * 0.4, ey + s2 * 0.9, s2 * 0.7, 0, TAU); g.arc(ex, ey + s2 * 0.7, s2 * 0.6, 0, TAU); }
+        else { g.moveTo(ex - s2 * 1.1, ey + s2); g.lineTo(ex + s2 * 1.1, ey + s2 * 0.8); g.lineTo(ex - s2 * 0.6, ey + s2 * 1.3); g.closePath(); g.moveTo(ex - s2 * 0.1, ey + s2 * 0.4); g.lineTo(ex + s2 * 0.3, ey + s2 * 1.6); g.lineTo(ex - s2 * 0.4, ey + s2 * 0.95); }
+        g.fill("evenodd");
+      }
+      g.restore();
     },
   };
 
@@ -327,6 +357,27 @@
       }
       g.lineWidth = 2;
       for (let i = 0; i < 3; i++) { const p = pm(e.beat + i * 0.5, 1.5) / 1.5; g.strokeStyle = rgba(c, (1 - p) * 0.4); g.beginPath(); g.ellipse(x0, ys, e.r0 * (0.6 + p * 3.6), e.r0 * (0.12 + p * 0.55), 0, 0, TAU); g.stroke(); }
+    },
+    window(e) {      // 놀이방: 해 대신 창. 창 안은 낮 하늘(해와 박자 고리, 흘러가는 구름), 창틀과 십자 살, 창턱, 양쪽 커튼. 창에서 방으로 비스듬히 내리는 빛
+      const g = e.g, { cx, cy, r0, BT } = e, ww = r0 * 3.3, wh = r0 * 2.5, x0 = cx - ww / 2, y0 = cy - wh / 2;
+      g.fillStyle = rgba([255, 244, 200], 0.05 + 0.05 * e.pulse); g.beginPath(); g.moveTo(x0, y0 + wh); g.lineTo(x0 + ww, y0 + wh); g.lineTo(x0 + ww - r0 * 2.2, e.gy); g.lineTo(x0 - r0 * 3.4, e.gy); g.fill();
+      g.save(); g.beginPath(); g.roundRect(x0, y0, ww, wh, BT * 0.1); g.clip();
+      const gr = g.createLinearGradient(0, y0, 0, y0 + wh); gr.addColorStop(0, "#5fbcff"); gr.addColorStop(1, "#d6f1ff"); g.fillStyle = gr; g.fillRect(x0, y0, ww, wh);
+      const sx = x0 + ww * 0.72, sy = y0 + wh * 0.3, sr = r0 * 0.42;
+      g.lineWidth = 2; for (let i = 0; i < 3; i++) { const p = pm(e.beat + i * 0.5, 1.5) / 1.5; g.strokeStyle = rgba([255, 240, 170], (1 - p) * 0.7); g.beginPath(); g.arc(sx, sy, sr * (1.2 + p * 2.2), 0, TAU); g.stroke(); }
+      g.fillStyle = "#fff1a0"; g.beginPath(); g.arc(sx, sy, sr * (1 + 0.06 * e.pulse), 0, TAU); g.fill();
+      for (let i = 0; i < 3; i++) { const x = x0 + pm(H(i, 711) * ww + e.now * BT * 0.25 * (0.5 + H(i, 712)), ww + BT * 2) - BT, y = y0 + wh * (0.5 + 0.32 * H(i, 713)); g.fillStyle = "rgba(255,255,255,0.92)"; g.beginPath(); g.ellipse(x, y, BT * 0.5, BT * 0.18, 0, 0, TAU); g.ellipse(x + BT * 0.25, y - BT * 0.12, BT * 0.28, BT * 0.18, 0, 0, TAU); g.fill(); }
+      g.restore();
+      g.strokeStyle = "#f2ead8"; g.lineWidth = BT * 0.14; g.beginPath(); g.roundRect(x0, y0, ww, wh, BT * 0.1); g.stroke();
+      g.lineWidth = BT * 0.08; g.beginPath(); g.moveTo(cx, y0); g.lineTo(cx, y0 + wh); g.moveTo(x0, cy); g.lineTo(x0 + ww, cy); g.stroke();
+      g.fillStyle = "#e8dcc4"; g.fillRect(x0 - BT * 0.25, y0 + wh, ww + BT * 0.5, BT * 0.14);
+      const cur = mix(e.pal.accent, WHITE, 0.45), sway = Math.sin(e.now * 1.1) * BT * 0.05;
+      g.fillStyle = "#cfc6b4"; g.fillRect(x0 - BT * 0.6, y0 - BT * 0.32, ww + BT * 1.2, BT * 0.08);
+      for (const sd of [-1, 1]) {
+        const ex = sd < 0 ? x0 - BT * 0.5 : x0 + ww + BT * 0.5, inn = ex - sd * BT * 0.85;
+        g.fillStyle = rgba(cur, 0.88); g.beginPath(); g.moveTo(ex, y0 - BT * 0.28); g.lineTo(inn, y0 - BT * 0.28); g.quadraticCurveTo(inn + sd * BT * 0.5 + sway, cy, inn + sd * BT * 0.1, y0 + wh + BT * 0.3); g.lineTo(ex, y0 + wh + BT * 0.3); g.fill();
+        g.strokeStyle = rgba(BLACK, 0.12); g.lineWidth = 1.5; g.beginPath(); for (let k = 1; k < 3; k++) { const fx = ex + (inn - ex) * (k / 3); g.moveTo(fx, y0 - BT * 0.2); g.lineTo(fx + sd * BT * 0.05, y0 + wh + BT * 0.25); } g.stroke();
+      }
     },
   };
 
@@ -700,6 +751,42 @@
         g.fill(); g.stroke();
       });
     },
+    shelves(e, sp) {        // 놀이방(뒤): 벽 선반과 그 위의 장난감(책 묶음, 곰 인형, 블록, 공) — 장난감 색을 옅게 섞는다
+      const g = e.g, yb = base(e, sp), BT = e.BT, wood = mix(sp.col, [200, 170, 130], 0.35);
+      cells(e, sp, 2.2, (i, x, bw) => {
+        if (H(i, 721) < 0.25) return;
+        const sy = yb - BT * (2.4 + 1.2 * H(i, 722)), sw = bw * 0.8, sx = x + bw * 0.1;
+        g.fillStyle = rgba(wood); g.fillRect(sx, sy, sw, BT * 0.12); g.fillRect(sx + sw * 0.1, sy + BT * 0.12, BT * 0.08, BT * 0.25); g.fillRect(sx + sw * 0.85, sy + BT * 0.12, BT * 0.08, BT * 0.25);
+        let x2 = sx + BT * 0.15;
+        for (let n = 0; n < 6 && x2 < sx + sw - BT * 0.5; n++) {
+          const k = Math.floor(H(i * 7 + n, 723) * 4), c = mix(sp.col, TOY_C[pm(i + n, 5)], 0.45);
+          if (k === 0) { for (let b = 0; b < 3; b++) { const bh = BT * (0.4 + 0.25 * H(i * 11 + n * 3 + b, 724)); g.fillStyle = rgba(mix(sp.col, TOY_C[pm(i + n + b, 5)], 0.4)); g.fillRect(x2 + b * BT * 0.13, sy - bh, BT * 0.11, bh); } x2 += BT * 0.55; }
+          else if (k === 1) { const s2 = BT * 0.26; g.fillStyle = rgba(c); g.beginPath(); g.arc(x2 + s2, sy - s2 * 0.8, s2 * 0.8, 0, TAU); g.arc(x2 + s2, sy - s2 * 2.05, s2 * 0.62, 0, TAU); g.arc(x2 + s2 * 0.5, sy - s2 * 2.55, s2 * 0.24, 0, TAU); g.arc(x2 + s2 * 1.5, sy - s2 * 2.55, s2 * 0.24, 0, TAU); g.fill(); x2 += s2 * 2.3; }
+          else if (k === 2) { const s2 = BT * 0.3; g.fillStyle = rgba(c); g.beginPath(); g.roundRect(x2, sy - s2, s2, s2, s2 * 0.15); g.roundRect(x2 + s2 * 0.15, sy - s2 * 2, s2, s2, s2 * 0.15); g.fill(); x2 += s2 * 1.5; }
+          else { const r = BT * 0.2; g.fillStyle = rgba(c); g.beginPath(); g.arc(x2 + r, sy - r, r, 0, TAU); g.fill(); x2 += r * 2.4; }
+          x2 += BT * 0.08;
+        }
+      });
+    },
+    floorToys(e, sp) {      // 놀이방(앞): 바닥의 큰 장난감 — 장난감 기차, 줄무늬 공, 글자 블록 탑, 고리 쌓기(알록달록), 몇 개는 박마다 통통 튄다
+      const g = e.g, yb = base(e, sp), BT = e.BT;
+      cells(e, sp, 1.7, (i, x, bw) => {
+        const r = H(i, 751), cx = x + bw * 0.5, c = (k) => rgba(mix(sp.col, TOY_C[pm(i + k, 5)], 0.5)), hop = H(i, 752) > 0.7 ? -BT * 0.2 * e.pulse : 0;
+        if (r < 0.25) {          // 기차: 기관차와 객차 둘, 바퀴
+          const ch = BT * 0.55, cw = BT * 0.7;
+          for (let k = 0; k < 3; k++) { const x0 = cx - BT * 1.2 + k * (cw + BT * 0.1); g.fillStyle = c(k); g.beginPath(); g.roundRect(x0, yb - ch - BT * 0.12, cw, ch, BT * 0.08); if (k === 0) { g.rect(x0 + cw * 0.15, yb - ch - BT * 0.45, cw * 0.25, BT * 0.35); g.roundRect(x0 + cw * 0.5, yb - ch * 1.6, cw * 0.5, ch * 0.7, BT * 0.06); } g.fill(); g.fillStyle = rgba(mix(sp.col, BLACK, 0.3)); g.beginPath(); g.arc(x0 + cw * 0.25, yb - BT * 0.1, BT * 0.1, 0, TAU); g.arc(x0 + cw * 0.75, yb - BT * 0.1, BT * 0.1, 0, TAU); g.fill(); }
+        } else if (r < 0.45) {   // 줄무늬 공
+          const br = BT * 0.5; g.fillStyle = c(0); g.beginPath(); g.arc(cx, yb - br + hop, br, 0, TAU); g.fill();
+          g.save(); g.clip(); g.fillStyle = c(2); g.fillRect(cx - br, yb - br * 1.25 + hop, br * 2, br * 0.5); g.restore();
+        } else if (r < 0.65) {   // 글자 블록 탑
+          let y = yb; for (let k = 0; k < 3; k++) { const s2 = BT * (0.55 - k * 0.06), ox = (H(i * 3 + k, 753) - 0.5) * BT * 0.15; g.fillStyle = c(k); g.beginPath(); g.roundRect(cx - s2 / 2 + ox, y - s2 + (k === 2 ? hop : 0), s2, s2, s2 * 0.12); g.fill(); y -= s2; }
+        } else if (r < 0.85) {   // 고리 쌓기: 가는 기둥에 알록달록한 고리, 위에 둥근 꼭지
+          const n = 4; g.fillStyle = rgba(mix(sp.col, [220, 200, 160], 0.4)); g.fillRect(cx - BT * 0.05, yb - BT * 1.25, BT * 0.1, BT * 1.25);
+          for (let k = 0; k < n; k++) { const rw = BT * (0.42 - k * 0.07), y = yb - BT * 0.13 - k * BT * 0.24; g.fillStyle = c(k); g.beginPath(); g.ellipse(cx, y, rw, BT * 0.12, 0, 0, TAU); g.fill(); }
+          g.fillStyle = c(4); g.beginPath(); g.arc(cx, yb - BT * 1.3, BT * 0.12, 0, TAU); g.fill();
+        }
+      });
+    },
   };
 
   // ================================================================ 땅·천장·벽의 결: 미리 그린 타일(두 칸 × 두 칸)을 무늬로 깐다. 바탕은 원래의 검정, 결은 아주 옅게(통로의 경계가 먼저 보이게)
@@ -775,6 +862,12 @@
       c.fillStyle = "rgba(255,235,200,0.1)";
       for (const [x, y] of [[0, 0], [S / 2, S / 2], [S, 0], [0, S], [S, S], [S / 2, 0], [0, S / 2], [S, S / 2], [S / 2, S]]) { if ((x + y) % S) continue; c.beginPath(); c.moveTo(x, y - 5); c.lineTo(x + 1.5, y - 1.5); c.lineTo(x + 5, y); c.lineTo(x + 1.5, y + 1.5); c.lineTo(x, y + 5); c.lineTo(x - 1.5, y + 1.5); c.lineTo(x - 5, y); c.lineTo(x - 1.5, y - 1.5); c.fill(); }
     },
+    playmat(c, S) {           // 놀이방: 퍼즐 매트(두 가지 옅은 색이 엇갈린 칸, 이음매의 볼록한 이)
+      const q = S / 2, cols = ["rgba(150,230,200,0.11)", "rgba(200,170,255,0.11)"];
+      for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { c.fillStyle = cols[(i + j) % 2]; c.fillRect(i * q + 1, j * q + 1, q - 2, q - 2); }
+      for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { c.fillStyle = cols[(i + j + 1) % 2]; c.beginPath(); c.arc(i * q + q / 2, j * q + 1, q * 0.11, 0, Math.PI); c.arc(i * q + 1, j * q + q / 2, q * 0.11, -Math.PI / 2, Math.PI / 2); c.fill(); }
+      c.strokeStyle = "rgba(255,255,255,0.05)"; c.lineWidth = 2; c.beginPath(); c.moveTo(0, q); c.lineTo(S, q); c.moveTo(q, 0); c.lineTo(q, S); c.stroke();
+    },
   };
 
   // ================================================================ 땅 윗선 바로 밑의 장식(땅 속에만. 위로는 아무것도 솟지 않는다). x0~x1 = 그 토막의 땅, ox = 세계 x 0칸의 화면 x(무늬를 세상에 붙인다)
@@ -832,6 +925,12 @@
       g.setLineDash([T * 0.22, T * 0.28]); g.lineDashOffset = pm(x0 - ox, P);
       g.strokeStyle = rgba(mix(e.pal.sun, WHITE, 0.3), 0.3); g.lineWidth = Math.max(1.5, T * 0.06);
       g.beginPath(); g.moveTo(x0, e.gy + T * 0.3); g.lineTo(x1, e.gy + T * 0.3); g.stroke(); g.setLineDash([]);
+    },
+    track(e, x0, x1, ox) {     // 장난감 나무 기찻길: 나무 띠에 홈 두 줄, 이음 마디
+      const g = e.g, T = e.T, y1 = e.gy + T * 0.2, y2 = e.gy + T * 0.46;
+      g.fillStyle = rgba([214, 170, 110], 0.22); g.fillRect(x0, y1 - T * 0.08, x1 - x0, y2 - y1 + T * 0.16);
+      g.fillStyle = rgba([60, 40, 20], 0.35); g.fillRect(x0, y1 - 1.5, x1 - x0, 3); g.fillRect(x0, y2 - 1.5, x1 - x0, 3);
+      g.fillStyle = rgba([235, 205, 150], 0.3); each(e, x0 - T * 2, x1, ox, T * 2, (k, x) => g.fillRect(x, y1 - T * 0.08, 2, y2 - y1 + T * 0.16));
     },
   };
 
@@ -950,6 +1049,19 @@
         }
       },
     },
+    toyblock: {    // 놀이방: 파란 숫자 장난감 블록 — 칸마다 볼록한 모서리와 새긴 숫자(박스의 왼쪽 아래에 붙는다)
+      lo: "#0d2f6e", hi: "#3b8cf2", lit: "#4592f2", deep: "#16418a", deepSky: "#0e2c60", line: "#c4e4ff", glow: "#4aa8ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), bv = T * 0.08;
+        g.font = `bold ${Math.round(T * 0.5)}px sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+        for (let kx = 0, x = b.x0; x < b.x1 - 1; kx++, x += T) for (let ky = 0, y = b.y1 - T; y > y0 - T; ky++, y -= T) {
+          g.fillStyle = "rgba(255,255,255,0.18)"; g.fillRect(x + 2, y + 2, T - 4, bv); g.fillRect(x + 2, y + 2, bv, T - 4);
+          g.fillStyle = "rgba(0,10,40,0.28)"; g.fillRect(x + 2, y + T - 2 - bv, T - 4, bv); g.fillRect(x + T - 2 - bv, y + 2, bv, T - 4);
+          g.fillStyle = rgba([210, 235, 255], 0.5 + 0.3 * hit); g.fillText(String(1 + pm(kx * 3 + ky * 5 + seed, 9)), x + T / 2, y + T / 2 + 1);
+        }
+        g.textAlign = "start"; g.textBaseline = "alphabetic";
+      },
+    },
   };
   // 빨간 덩어리의 바탕색(어두운 쪽 → 밝은 쪽). head = 프레스 머리
   const RED_SKIN = {
@@ -974,6 +1086,7 @@
       deco(e, b, seed, trace) { const g = e.g, T = e.T; trace(); g.setLineDash([T * 0.05, T * 0.11]); g.lineDashOffset = -e.beat * T * 0.08; g.strokeStyle = rgba(RED, 0.4 + 0.25 * e.pulse); g.lineWidth = T * 0.26; g.stroke(); g.setLineDash([]); } },      /* 위험색 */
     lacquer: { lo: "#160406", hi: "#6a1218", headLo: "#180507", headHi: "#72161c",     /* 위험색: 꿈의 축제 — 금테 두른 붉은 옻칠 나무 */
       deco(e, b, seed, trace) { const g = e.g, T = e.T; g.lineJoin = "miter"; trace(); g.strokeStyle = rgba([255, 205, 110], 0.55 + 0.25 * e.pulse); g.lineWidth = T * 0.26; g.stroke(); trace(); g.strokeStyle = "#2a070b"; g.lineWidth = T * 0.17; g.stroke(); g.lineJoin = "round"; } },      /* 위험색 */
+    toyblock: { lo: "#5a0c1e", hi: "#d02a52", headLo: "#5a0c1e", headHi: "#d02a52" },      /* 위험색: 놀이방 — 빨간 장난감 블록 */
   };
 
   // ================================================================ 빨간 덩어리 안쪽의 결(클립 안에서 그린다. 색은 빨강 계열 그대로). b = { x0, x1, y0, y1 } 덩어리의 화면 범위, ox = 세계 x 0칸의 화면 x, seed = 덩어리마다 다른 수
@@ -1034,6 +1147,18 @@
       g.strokeStyle = rgba(RED, 0.2); g.lineWidth = 1.5; g.beginPath();
       for (let x = ox + Math.floor((b.x0 - span - ox) / q) * q; x < b.x1 + span; x += q) { g.moveTo(x, b.y1); g.lineTo(x + span, b.y0); g.moveTo(x, b.y0); g.lineTo(x + span, b.y1); }
       g.stroke();
+    },
+    letters(e, b, ox) {        // 놀이방: 빨간 알파벳 장난감 블록 — 칸마다 볼록한 모서리(밝은 위·왼쪽, 어두운 아래·오른쪽)와 새긴 글자
+      const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), kx0 = Math.floor((b.x0 - ox) / T), ky0 = Math.floor((y0 - e.gy) / T), L = "ABCDEFGHJKMNPRSTUWXYZ", bv = T * 0.08;
+      g.font = `bold ${Math.round(T * 0.52)}px sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+      for (let kx = kx0; ox + kx * T < b.x1; kx++) for (let ky = ky0; e.gy + ky * T < b.y1; ky++) {
+        const x = ox + kx * T, y = e.gy + ky * T;
+        g.fillStyle = "rgba(255,255,255,0.16)"; g.fillRect(x + 2, y + 2, T - 4, bv); g.fillRect(x + 2, y + 2, bv, T - 4);
+        g.fillStyle = "rgba(0,0,0,0.24)"; g.fillRect(x + 2, y + T - 2 - bv, T - 4, bv); g.fillRect(x + T - 2 - bv, y + 2, bv, T - 4);
+        g.strokeStyle = rgba(RED, 0.35); g.lineWidth = 1.2; g.strokeRect(x + T * 0.16, y + T * 0.16, T * 0.68, T * 0.68);
+        if (y + T * 0.15 >= b.y0 && y + T * 0.85 <= b.y1) { g.fillStyle = "rgba(255,205,215,0.55)"; g.fillText(L[pm(kx * 7 + ky * 3, L.length)], x + T / 2, y + T / 2 + 1); }      /* 위험색: 글자는 블록 안에 거의 다 들어가는 칸에만(반 칸으로 잘린 줄에는 새기지 않는다) */
+      }
+      g.textAlign = "start"; g.textBaseline = "alphabetic";
     },
   };
 
@@ -1139,6 +1264,29 @@
       }
       g.lineCap = "butt"; g.restore();
     },
+    ballpit(e, a) {        // 볼풀 속: 연보라 쿠션 벽, 위쪽 그물, 쿠션 기둥, 알록달록한 공 두 겹(아래에 가득 쌓이고, 몇 개는 박에 맞춰 튀어 오른다). 빨간 공은 장애물 몫이라 배경에 없다
+      const g = e.g, { w, h, BT } = e, wall = mix(e.pal.top, [70, 60, 120], 0.6);
+      g.save(); g.globalAlpha *= a;
+      const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, rgba(mix(wall, WHITE, 0.08))); gr.addColorStop(1, rgba(mix(wall, BLACK, 0.35))); g.fillStyle = gr; g.fillRect(0, -BT, w, h + 2 * BT);
+      g.save(); g.beginPath(); g.rect(0, 0, w, h * 0.62); g.clip();
+      const no = pm(e.camS * BT * 0.3, BT * 0.6); g.strokeStyle = rgba(WHITE, 0.08); g.lineWidth = 1.5; g.beginPath();
+      for (let x = -h - no; x < w + h; x += BT * 0.6) { g.moveTo(x, 0); g.lineTo(x + h, h); g.moveTo(x + h, 0); g.lineTo(x, h); }
+      g.stroke(); g.restore();
+      const po = e.camS * BT * 0.5, ps = BT * 7;
+      for (let k = Math.floor(po / ps) - 1; k * ps - po < w + ps; k++) { const x = k * ps - po; g.fillStyle = rgba(mix(TOY_C[pm(k, 4)], wall, 0.55), 0.9); g.beginPath(); g.roundRect(x, 0, BT * 0.5, h, BT * 0.25); g.fill(); g.fillStyle = rgba(WHITE, 0.1); g.fillRect(x + BT * 0.12, 0, BT * 0.08, h); }
+      for (const [L, par, rad, dark, n] of [[0, 0.25, 0.2, 0.62, 70], [1, 0.45, 0.28, 0.52, 36]]) {      // (통로 안에서 붉은 공 장애물과 헷갈리지 않게 어둡게)
+        const off = e.camS * BT * par, span = w + BT * 2;
+        for (let i = 0; i < n; i++) {
+          const x = pm(H(i, 731 + L) * span * 3 - off, span) - BT;
+          let y = h * (0.6 + 0.4 * Math.pow(H(i, 735 + L), 0.6));
+          const toss = H(i, 737 + L) > 0.93; if (toss) { const ph = pm(e.beat * 0.5 + H(i, 739 + L), 1); y = h * 0.58 - Math.sin(ph * Math.PI) * h * 0.3; }
+          const r = BT * rad * (0.8 + 0.4 * H(i, 741 + L)), c = mix(TOY_C[pm(i, 5)], wall, dark);
+          const al = toss ? 0.55 : 0.9; g.fillStyle = rgba(c, al); g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+          g.fillStyle = rgba(WHITE, 0.3 * (1 - dark) * al); g.beginPath(); g.ellipse(x - r * 0.35, y - r * 0.4, r * 0.32, r * 0.2, -0.6, 0, TAU); g.fill();
+        }
+      }
+      g.restore();
+    },
   };
   const FEVER_WALL = {
     subway(e, xs, xe, yc, gy, ox) {     // 천장 위: 어두운 천장 판에 청록 네온 조명 줄(박마다 밝아진다) / 바닥 밑: 어두운 바닥 판, 노란 네온 점자 안전선, 홈
@@ -1150,6 +1298,14 @@
       g.beginPath(); each(e, xs - T, xe, ox, T * 0.5, (k, x) => { if (x + T * 0.32 < xs || x > xe) return; g.moveTo(Math.max(xs, x), gy + T * 0.29); g.lineTo(Math.min(xe, x + T * 0.32), gy + T * 0.29); });
       neon(g, NEON_Y, 0.75, T * 0.09);
       g.fillStyle = "rgba(255,255,255,0.05)"; for (let y = gy + T * 0.6; y < gy + T * 1.5; y += T * 0.18) g.fillRect(xs, y, xe - xs, 1.5);
+    },
+    ballpit(e, xs, xe, yc, gy, ox) {     // 천장 위: 쿠션 패드(바느질 땀) / 바닥 밑: 가득 쌓인 공(세상에 붙어 흐른다)
+      const g = e.g, T = e.T, pad = mix(e.pal.top, [120, 100, 180], 0.5);
+      each(e, xs - T * 2, xe, ox, T * 1.6, (k, x) => { g.fillStyle = rgba(mix(pad, TOY_C[pm(k, 4)], 0.25), 0.95); g.beginPath(); g.roundRect(x + 2, yc - T * 1.05, T * 1.6 - 4, T * 0.9, T * 0.25); g.fill(); g.strokeStyle = "rgba(255,255,255,0.18)"; g.setLineDash([4, 4]); g.beginPath(); g.roundRect(x + T * 0.12, yc - T * 0.93, T * 1.36, T * 0.66, T * 0.18); g.stroke(); g.setLineDash([]); });
+      for (let row = 0; row < 4; row++) each(e, xs - T, xe + T, ox + (row % 2) * T * 0.21, T * 0.42, (k, x) => {
+        const y = gy + T * (0.24 + row * 0.34), r = T * 0.2, c = mix(TOY_C[pm(k * 3 + row, 5)], [20, 16, 40], 0.45 + row * 0.1);
+        g.fillStyle = rgba(c); g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); g.fillStyle = "rgba(255,255,255,0.2)"; g.beginPath(); g.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, TAU); g.fill();
+      });
     },
   };
   // 피버의 물건 장애물(6라운드 지하철: logic.js subwayProps). 모양 = 판정(propSpan)과 같은 윤곽 안에서 그린다.
@@ -1176,6 +1332,14 @@
     for (let k = 1; k <= 3; k++) { const a = P[k % 3], b = P[(k + 1) % 3]; g.arcTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, rad); }
     g.closePath();
   }
+  // 광택 있는 붉은 공 하나: b = [가운데 x(세계), 가운데 높이, 반지름(높이 칸)]
+  function redBall(g, pt, b, e) {
+    const c = pt(b[0], b[1]), tp = pt(b[0], b[1] + b[2]), r = Math.hypot(tp[0] - c[0], tp[1] - c[1]);
+    const gr = g.createRadialGradient(c[0] - r * 0.35, c[1] - r * 0.4, r * 0.1, c[0], c[1], r); gr.addColorStop(0, "#ff7a98"); gr.addColorStop(0.45, "#e0204e"); gr.addColorStop(1, "#7a0a26");      /* 위험색 */
+    g.fillStyle = gr; g.beginPath(); g.arc(c[0], c[1], r, 0, TAU); g.fill();
+    g.strokeStyle = rgba(DANGER_C, 0.5 + 0.4 * e.pulse); g.lineWidth = Math.max(1.2, e.T * 0.03); g.stroke();
+    g.fillStyle = "rgba(255,255,255,0.75)"; g.beginPath(); g.ellipse(c[0] - r * 0.38, c[1] - r * 0.42, r * 0.26, r * 0.15, -0.6, 0, TAU); g.fill();
+  }
   const PROPS = {
     subway: {
       chair(g, pt, q, e) {      // 버킷 시트 한 획 + 가운데 기둥 다리와 바닥 받침
@@ -1198,6 +1362,11 @@
         polyPts(g, ellPts(pt, 0, q.cy, q.rw * 0.94, q.rr * 0.94)); g.fillStyle = "rgba(40,6,18,0.6)"; g.fill(); neonTube(g, lw, k);      /* 위험색 */
         polyPts(g, ellPts(pt, 0, q.cy, q.rw * 0.52, q.rr * 0.52)); neonTube(g, lw * 0.45, k);
       },
+    },
+    ballpit: {      // 붉은 공(광택 있는 장난감 공): 더미(아래 둘, 위 하나), 거꾸로 된 더미, 공 하나. 분홍 테두리가 박마다 밝아진다
+      pile(g, pt, q, e) { for (const b of q.balls) redBall(g, pt, b, e); },
+      pileDown(g, pt, q, e) { for (const b of q.balls) redBall(g, pt, b, e); },
+      ball(g, pt, q, e) { for (const b of q.balls) redBall(g, pt, b, e); },
     },
   };
 

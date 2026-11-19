@@ -498,8 +498,8 @@ for (const C of Lg.COURSES) {
       if (lv.reds.some(q => q.shape)) {      // 물건 장애물(6라운드 지하철): 원래 이빨·마름모보다 크지 않고(판정이 커지지 않는다), 틀린 길로 간 공이 반 박 지점에서 닿는 자리를 덮는다
         const fits = lv.reds.every(q => { const sps = Array.from({ length: 41 }, (_, k) => -1 + k * 0.05).map(f => Lg.hazardSpan(q, f * q.w)).filter(sp => sp[0] <= sp[1]);
           const lo = Math.min(...sps.map(sp => sp[0])), hi = Math.max(...sps.map(sp => sp[1]));
-          return q.shape === 'chair' ? lo === 0 && hi <= q.tip + 1e-9 && hi >= 0.85 : q.shape === 'strap' ? hi === q.far && lo >= q.tip - 1e-9 && q.far - lo >= 0.85 : hi - lo >= 0.85; });
-        ok(fits, `[${tag}] 피버 장애물은 물건(의자·손잡이·고리): 원래 이빨보다 크지 않고, 바닥·천장의 공(0.8칸)을 덮는다`);
+          return q.kind === 'floor' ? lo <= 1e-9 && hi <= q.tip + 1e-9 && hi >= 0.85 : q.kind === 'ceil' ? hi >= q.far - 1e-9 && lo >= q.tip - 1e-9 && q.far - lo >= 0.85 : hi - lo >= 0.85; });
+        ok(fits, `[${tag}] 피버 장애물은 물건(${[...new Set(lv.reds.map(q => q.shape))].join('·')}): 원래 이빨보다 크지 않고, 바닥·천장의 공(0.8칸)을 덮는다`);
       } else
       ok(lv.reds.every(q => { const sp = Lg.hazardSpan(q, 0); return q.kind === 'floor' ? sp[0] === 0 && Math.abs(sp[1] - q.tip) < 1e-9 : q.kind === 'ceil' ? Math.abs(sp[0] - q.tip) < 1e-9 : (Math.abs(sp[1] - sp[0] - 3.2) < 1e-6 || Math.abs(sp[1] - sp[0] - 2.7) < 1e-6) && Lg.hazardSpan(q, q.w)[1] - Lg.hazardSpan(q, q.w)[0] < 1e-6; }), `[${tag}] 장애물 모양: 이빨은 삼각형, 떠 있는 것은 길이 3.2칸(연타 패턴에서는 2.7칸)의 마름모(양 끝이 뾰족)`);
     }

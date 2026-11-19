@@ -1602,6 +1602,7 @@ const ROUND6 = {
 // 장치는 새것이 없다(앞 라운드의 것을 되풀이할 마디에 섞는다). 피버는 절정 두 곳에만, 둘 다 넓은 통로이고 줄과 굽이는 앞 라운드와 겹치지 않는다.
 const ROUND7 = {
   name: "ROUND 7 · Sunday in the Playroom",
+  rushProps: "ballpit",                            // 피버는 볼풀 속: 이빨·마름모 대신 붉은 공 더미·공(판정도 그 모양. rushPropsApply)
   decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/sunday_in_the_playroom.mp3", offset: 0.064, measured: true },
@@ -2334,24 +2335,42 @@ function platUnder(L, x, row, beat) {
   return null;
 }
 // 장애물이 가운데에서 dx만큼 떨어진 곳에서 차지하는 높이 범위 [아래, 위]
-// 지하철 피버(6라운드): 이빨·마름모를 물건으로 바꾼다. 판정 = 그 물건의 모양(의견: "장애물은 걷어내고 의자 색 자체를 붉게. 의자 크기도 크다").
+// 피버의 물건 장애물: 이빨·마름모를 물건으로 바꾼다. 판정 = 그 물건의 모양.
 //   틀린 길로 간 공은 반 박 지점(xt)에서 바닥·천장(또는 그 높이)에 닿으므로, 물건은 그 자리만 덮으면 막는다. 이빨보다 작아서 조금 너그러워진다.
-//   - 바닥 이빨 → 의자(chair): 높이 min(1.5, 원래 끝 높이). 방석 아래는 막힌 것으로 친다(다리 사이 틈은 공보다 낮다), 한쪽에 등받이
-//   - 천장 이빨 → 손잡이(strap): 천장에서 내려온 끈과 둥근 삼각 고리. 길이 min(1.9, 원래 길이)
+//   너비는 화면에서 보이는 크기로 정하고 피버의 가로 늘림(RUSH_STRETCH)만큼 나눈다. h0 = 그림을 붙일 때의 기준 높이(가운데)
+//   지하철(6라운드, 의견: "장애물은 걷어내고 의자 색 자체를 붉게. 의자 크기도 크다")
+//   - 바닥 이빨 → 의자(chair): 높이 min(1.5, 원래 끝 높이). 방석 아래는 막힌 것으로 친다(다리 쪽 빈 곳은 공보다 낮다), 뒤쪽에 등받이
+//   - 천장 이빨 → 손잡이(strap): 천장에서 내려온 줄과 둥근 삼각 고리. 길이 min(1.9, 원래 길이)
 //   - 떠 있는 마름모 → 고리(ring): 틀린 길로 간 공이 올 자리에 둥근 고리
-//   너비는 화면에서 보이는 크기로 정하고 피버의 가로 늘림(RUSH_STRETCH)만큼 나눈다
-const PROP_X = 1 / RUSH_STRETCH, EMPTY_SPAN = [Infinity, -Infinity];
-function subwayProps(reds, rides) {
+//   볼풀(7라운드, 의견: "볼풀로 하자"): 붉은 공(balls). 공 셋을 쌓은 더미(아래 둘, 위 하나)
+//   - 바닥 이빨 → 더미(pile): 높이 min(1.5, 원래 끝 높이) = 공 반지름 R × (2 + √3)
+//   - 천장 이빨 → 거꾸로 된 더미(pileDown): 천장에 둘, 그 밑에 하나. 길이 min(1.9, 원래 길이)
+//   - 떠 있는 마름모 → 공 하나(ball): 틀린 길로 간 공이 올 자리, 반지름 0.45
+const PROP_X = 1 / RUSH_STRETCH, EMPTY_SPAN = [Infinity, -Infinity], R3 = Math.sqrt(3);
+function rushPropsApply(reds, rides, style) {
   for (const q of reds) {
-    if (q.kind === "floor") Object.assign(q, { shape: "chair", h: Math.min(1.5, q.tip), w: 0.78 * PROP_X });
-    else if (q.kind === "ceil") { const len = Math.min(1.9, q.far - q.tip), rr = Math.min(0.34, len * 0.36); Object.assign(q, { shape: "strap", len, rr, rw: rr * PROP_X, bw: 0.08 * PROP_X, w: rr * PROP_X }); }
-    else { const up = q.far > q.tip; Object.assign(q, { shape: "ring", cy: up ? q.far - 0.8 : q.far + 0.8, rr: 0.45, rw: 0.45 * PROP_X, w: 0.45 * PROP_X }); }
+    const up = q.far > q.tip;
+    if (style === "subway") {
+      if (q.kind === "floor") Object.assign(q, { shape: "chair", h: Math.min(1.5, q.tip), w: 0.78 * PROP_X });
+      else if (q.kind === "ceil") { const len = Math.min(1.9, q.far - q.tip), rr = Math.min(0.34, len * 0.36); Object.assign(q, { shape: "strap", len, rr, rw: rr * PROP_X, bw: 0.08 * PROP_X, w: rr * PROP_X }); }
+      else Object.assign(q, { shape: "ring", cy: up ? q.far - 0.8 : q.far + 0.8, rr: 0.45, rw: 0.45 * PROP_X, w: 0.45 * PROP_X });
+      q.h0 = q.shape === "chair" ? q.h / 2 : q.shape === "strap" ? q.far - q.len / 2 : q.cy;
+    } else if (style === "ballpit") {      // balls = [[가운데 x(세계), 가운데 높이, 반지름(높이 칸)]], 가로 반지름 = 반지름 × PROP_X
+      if (q.kind === "floor") { const h = Math.min(1.5, q.tip), R = h / (2 + R3); Object.assign(q, { shape: "pile", h, h0: h / 2, balls: [[-R * PROP_X, R, R], [R * PROP_X, R, R], [0, R * (1 + R3), R]], w: 2 * R * PROP_X }); }
+      else if (q.kind === "ceil") { const len = Math.min(1.9, q.far - q.tip), R = len / (2 + R3); Object.assign(q, { shape: "pileDown", len, h0: q.far - len / 2, balls: [[-R * PROP_X, q.far - R, R], [R * PROP_X, q.far - R, R], [0, q.far - R * (1 + R3), R]], w: 2 * R * PROP_X }); }
+      else { const cy = up ? q.far - 0.8 : q.far + 0.8; Object.assign(q, { shape: "ball", cy, h0: cy, balls: [[0, cy, 0.45]], w: 0.45 * PROP_X }); }
+    } else throw new Error("모르는 피버 물건: " + style);
     q.x0 = q.xt - q.w; q.x1 = q.xt + q.w; delete q.cut;
     for (const r of rides) if (q.xt >= r[0] && q.xt <= r[1]) { if (q.x1 > r[1]) { q.x1 = r[1]; q.cut = 1; } if (q.x0 < r[0]) { q.x0 = r[0]; q.cut = -1; } }
   }
 }
 function propSpan(q, dx) {
   const ax = Math.abs(dx);
+  if (q.balls) {      // 공들: 그 세로줄에 걸친 공들의 위아래 끝(공 사이 틈은 공보다 좁아 막힌 것으로 친다)
+    let lo = Infinity, hi = -Infinity;
+    for (const [bx, by, R] of q.balls) { const u = (dx - bx) / (R * PROP_X); if (Math.abs(u) >= 1) continue; const s = R * Math.sqrt(1 - u * u); lo = Math.min(lo, by - s); hi = Math.max(hi, by + s); }
+    return lo <= hi ? [lo, hi] : EMPTY_SPAN;
+  }
   if (q.shape === "chair") { const u = dx / q.w; if (u < -0.92 || u > 0.92) return EMPTY_SPAN; return u > 0.5 && u < 0.86 ? [0, q.h] : [0, q.h * 0.5]; }      // 등받이: 뒤쪽(0.5~0.86) 위로 끝까지, 나머지는 방석 높이까지
   if (q.shape === "strap") {      // 끈(가운데 가는 줄) + 둥근 삼각 고리(꼭짓점이 위, 반 너비 0.92·rw, 아래 끝 = 원래 고리의 아래 끝)
     const bot = q.far - q.len, cy = bot + q.rr; if (ax <= q.bw) return [bot, q.far];
@@ -2460,7 +2479,7 @@ function emptyLevel(course) {
   });
   for (const sq of squeezes) { const e = sq.pts[sq.pts.length - 1]; sq.pts.push({ step: Math.round(sq.x1 / TPB * SUB), x: sq.x1, g: e.g, top: !e.top }); }   // 끝에서 한 번 더 닿는다
   for (const sq of squeezes) smoothSqueeze(sq);
-  if (course.rushProps === "subway") subwayProps(reds, rides);
+  if (course.rushProps) rushPropsApply(reds, rides, course.rushProps);
   // 피버가 끝나는(시작하는) 자리에 걸친 이빨은 벽이 끝나는 선에서 자른다. 안 자르면 이빨의 절반이 벽 밖 허공에 튀어나와 보인다(피버가 끝나는 지점의 천장 이빨이 늘 그랬다).
   // cut = +1 오른쪽 절반을 잘랐다 / -1 왼쪽 절반을 잘랐다. 판정도 잘린 쪽에는 없다.
   for (const q of reds) for (const r of rides) if (q.xt >= r[0] && q.xt <= r[1]) {

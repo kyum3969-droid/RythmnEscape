@@ -88,8 +88,7 @@ for (const [w, h] of [[844, 390], [390, 844]]) for (const beat of [-0.5, 0, 3.7,
   for (const k in ART.fever) run('fever ' + k, () => { ART.fever[k](e, 1); ART.fever[k](e, 0.4); });
   for (const k in ART.feverWall) run('feverWall ' + k, () => ART.feverWall[k](e, 0, w, gy - e.T * 3, gy, -e.camS * e.T + 100));
   for (const k in ART.props) run('props ' + k, () => { const Z = ART.props[k], pt = (x, hh) => [100 + x * e.T * 1.5, gy - hh * e.T];
-    Z.chair(e.g, pt, { shape: 'chair', h: 1.5, w: 0.52 }, e, 1); Z.chair(e.g, pt, { shape: 'chair', h: 0.9, w: 0.52 }, e, 1);
-    Z.strap(e.g, pt, { shape: 'strap', far: 4.6, len: 0.9, rr: 0.32, rw: 0.21, bw: 0.05 }, e, 3); Z.ring(e.g, pt, { shape: 'ring', cy: 2.3, rr: 0.45, rw: 0.3 }, e, 3); });
+    for (const f in Z) for (const q of [{ h: 1.5, w: 0.52, far: 4.6, len: 0.9, rr: 0.32, rw: 0.21, bw: 0.05, cy: 2.3, balls: [[-0.27, 0.4, 0.4], [0.27, 0.4, 0.4], [0, 1.1, 0.4]] }, { h: 0.9, w: 0.52, far: 4.6, len: 1.9, rr: 0.34, rw: 0.23, bw: 0.05, cy: 3, balls: [[0, 3, 0.45]] }]) Z[f](e.g, pt, { ...q, shape: f }, e, 3); });
   for (const k in ART.ambient) run('ambient ' + k, () => ART.ambient[k](e, 0.4));
   for (const k in ART.trail) run('trail ' + k, () => { const p = ART.trail[k].make(10, 5); if (!(p.life > 0 && p.max > 0 && p.size > 0 && p.kind)) throw new Error('입자 모양이 이상하다'); for (const a of [1, 0.5, 0.01]) ART.particle(e.g, p, 100, 100, p.size * e.T, a, pal); });
 }
