@@ -71,6 +71,7 @@
   #devOpts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #devOpts .btn.small { color: var(--text); }
   #zoneR { right: 0; }
+  #perfHud { position: absolute; left: var(--gutter-l); top: 64px; z-index: 3; pointer-events: none; font-size: 11px; line-height: 1.3; font-variant-numeric: tabular-nums; color: #e8e8ff; background: rgba(6,6,16,0.7); padding: 4px 6px; border-radius: 6px; max-width: calc(100% - 32px); }
   #toast {
     position: absolute; left: 0; right: 0; top: 19%; text-align: center; pointer-events: none;
     font-size: 26px; font-weight: 700; letter-spacing: 0.12em; opacity: 0;
@@ -155,6 +156,7 @@
   <div class="zone" id="zoneL"><b>II</b></div>
   <div class="zone" id="zoneR"><b>▲</b></div>
   <div id="toast"></div>
+  <div id="perfHud" hidden></div>
   <div id="inspect" hidden>
     <button class="btn small" data-mv="-16">◀ 마디</button>
     <button class="btn small" data-mv="-4">◀ 박</button>
@@ -192,6 +194,7 @@
           <button class="btn small" id="devGems">수정: 켜짐</button>
           <button class="btn small" id="devLabels">플레이 중 번호표: 꺼짐</button>
           <button class="btn small" id="devWorld">월드: 라운드대로</button>
+          <button class="btn small" id="devPerf">성능 표시: 꺼짐</button>
           <button class="btn small" id="devInspect">코스 둘러보기</button>
         </div>
         <div id="devJumps" hidden></div>
@@ -236,7 +239,7 @@
   let dev = store.get("dev", false);     // 개발자 모드: 체크포인트로 바로 이동
   let devRun = false;                    // 건너뛰어 시작한 판은 최고 기록에 넣지 않는다
   // 개발자 기능: 안내 없이 해 보기. 길 위의 누르는 표시(II, ▲, 피버의 화살표)와 화면 아래쪽의 버튼 안내를 따로 끌 수 있다(개발자 모드일 때만 적용된다)
-  let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true), devGems = store.get("devGems", true), devLabels = store.get("devLabels", false);
+  let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true), devGems = store.get("devGems", true), devLabels = store.get("devLabels", false), devPerf = store.get("devPerf", false);
   const showMarks = () => !dev || devMarks;
   const showGems = () => !dev || devGems;            // 길 위에 줄지어 있는 수정(공이 갈 길을 보여 준다)
   // 월드 테마(themes.js): 라운드마다 하늘·해·먼 풍경·땅의 결·날씨·꼬리가 다르다. 개발자 모드에서는 아무 라운드에서나 다른 월드로 바꿔 볼 수 있다
@@ -600,6 +603,7 @@
     $("devZones").textContent = "아래쪽 버튼 안내: " + (devZones ? "켜짐" : "꺼짐");
     $("devGems").textContent = "수정: " + (devGems ? "켜짐" : "꺼짐");
     $("devLabels").textContent = "플레이 중 번호표: " + (devLabels ? "켜짐" : "꺼짐");
+    $("devPerf").textContent = "성능 표시: " + (devPerf ? "켜짐" : "꺼짐");
     $("devWorld").textContent = "월드: " + (devWorld && THEMES.WORLDS[devWorld] ? THEMES.WORLDS[devWorld].name + " (미리 보기)" : "라운드대로 · " + THEMES.themeFor(ROUND_NO).name);
     $("app").classList.toggle("nozones", dev && !devZones);
     const box = $("devJumps");
@@ -712,6 +716,7 @@
     for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; fx.particles.push({ x, y, vx: Math.cos(a) * 3.2, vy: Math.sin(a) * 1.1, life: 0.28, max: 0.28, size: 0.1, color: "white", g: 0 }); }
   }
   function burst(x, y, n, color, speed, shard) {
+    if (fx.particles.length > 360) fx.particles.splice(0, fx.particles.length - 360);     // 너무 많이 쌓이면 오래된 것부터
     for (let i = 0; i < n; i++) {
       const a = shard ? (Math.random() - 0.5) * 1.9 : Math.random() * Math.PI * 2, v = (0.3 + Math.random()) * speed;   // 유리 조각은 진행 방향으로 튄다
       fx.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: shard ? 0.75 : 0.6, max: shard ? 0.75 : 0.6, size: (shard ? 0.14 : 0.07) + Math.random() * 0.12, color, g: 14, rot: Math.random() * 6, shard });
@@ -720,6 +725,28 @@
 
   // ---------------------------------------------------------------- 그리기
   const canvas = $("view"), ctx = canvas.getContext("2d");
+  // 실시간 빛 번짐(shadowBlur) 끄기(의견: "피버 모드가 다 렉 걸린다"): 폰의 캔버스에서 번짐은 그리는 것마다 따로 흐리게 처리해서 가장 무겁다. 피버에는 번지는 것(이빨 테두리, 벽선, 공, 꼬리, 발판)이 몰려 있다.
+  //   NOBLUR.on이면 번짐 값을 무엇으로 넣든 0이 된다(그리는 곳을 하나하나 고치지 않고 한 곳에서). 피버 동안, 그리고 자동 화질이 한 번이라도 내려간 느린 기기에서는 늘 켠다.
+  //   빛나는 선(sb/gs로 긋는 것)은 넓고 옅은 선 두 번으로 흉내 낸다.
+  const NOBLUR = { on: false };
+  // 번짐을 끈 동안 공의 빛: 색마다 한 번 그려 둔 빛무리 그림을 붙인다(그라데이션도 매 장 만들지 않는다)
+  const GLOW = new Map();
+  function glowAt(col, r, a) {
+    const key = col.map((v) => Math.min(255, Math.round(v / 16) * 16)).join(",");     // 색이 박마다 조금씩 바뀌어도 그림은 몇 장만
+    let cv = GLOW.get(key);
+    if (!cv) {
+      if (GLOW.size > 40) GLOW.clear();
+      cv = document.createElement("canvas"); cv.width = cv.height = 96;
+      const g = cv.getContext("2d"), gr = g.createRadialGradient(48, 48, 0, 48, 48, 48);
+      gr.addColorStop(0, `rgba(${key},0.9)`); gr.addColorStop(0.45, `rgba(${key},0.4)`); gr.addColorStop(1, `rgba(${key},0)`);
+      g.fillStyle = gr; g.fillRect(0, 0, 96, 96); GLOW.set(key, cv);
+    }
+    const ga = ctx.globalAlpha; ctx.globalAlpha = ga * a; ctx.drawImage(cv, -r, -r, 2 * r, 2 * r); ctx.globalAlpha = ga;
+  }
+  {
+    const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "shadowBlur");
+    if (d && d.set) Object.defineProperty(ctx, "shadowBlur", { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, NOBLUR.on ? 0 : v); } });
+  }
   const view = { w: 0, h: 0, T: 40, px: 100, groundY: 300 };
   // 자동 화질(의견: "피버 구간 프레임 드랍이 아직 있는 것 같다"): 폰에서 끊기는 가장 흔한 까닭은 칠할 픽셀의 수다. 실제 기기에서 한 장 사이 간격을 재서,
   //   느리면(평균 22ms 넘게 0.8초) 캔버스의 해상도를 한 단계(×0.8) 낮추고, 여유가 생기면(평균 15ms 아래로 4초, 낮춘 뒤 10초 지나서) 다시 올린다.
@@ -902,6 +929,7 @@
     ctx.restore();
   }
   function draw(beat, now) {
+    const t0 = performance.now();
     const { w, h } = view, BT = view.T;
     const pal = paletteAt(beat);
     const pulse = phase === "running" || phase === "won" ? Math.pow(1 - (beat - Math.floor(beat)), 3) : 0;
@@ -909,6 +937,7 @@
     let round = 0;                                             // 0 = 기본 구간, 1 = 돌파 구간
     for (const r of L.rides) round = Math.max(round, Math.min(1, (camX - r[0] + 3) / 3, (r[1] + 1 - camX) / 3));
     round = Math.max(0, round);
+    NOBLUR.on = round > 0 || Q.downs > 0;      // 피버(들어서기 직전부터), 또는 느린 기기에서는 실시간 번짐을 끈다
     // 넓은 통로(천장이 두 배)에서는 화면이 물러나 통로 전체가 보이게 한다(화면이 충분히 높으면 그대로).
     // 물러나고 다가오는 것은 장애물이 없는 계단 마디에서 "확" 한 번에: 반 박 남짓, 살짝 지나쳤다가 제자리로.
     let wide = 0;
@@ -1024,6 +1053,7 @@
       }
     }
 
+    const t1 = performance.now();
     // 굽은 통로(코스의 cam 표): 통로 자체가 굽어 있고 공이 그 굽이로 들어간다. 화면은 돌지 않는다 — 길을 "곧은 토막"들의 줄로 보고, 토막마다 제 자리·제 기울기로 그린다.
     // 판정은 그대로다(곧은 통로를 굽혀 놓았을 뿐). 공이 가는 쪽 앞이 넉넉히 보이도록 공의 자리를 화면 안에서 옮기고(위로 갈 때는 아래쪽에 선다), 모자라면 물러난다.
     // 당기는 것은 통로가 얇아질 때뿐이다(조여드는 통로, 얇은 굴): 얇아진 만큼 다가간다.
@@ -1064,6 +1094,7 @@
         ctx.stroke();
       }
       ctx.restore();
+      if (NOBLUR.on) { trace(); ctx.strokeStyle = "rgba(255,59,107,0.22)"; ctx.lineWidth = 8 + 4 * pulse; ctx.lineJoin = "round"; ctx.stroke(); }
       trace(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.shadowColor = DANGER; ctx.shadowBlur = 10 + 8 * pulse; ctx.stroke(); ctx.shadowBlur = 0;
       ctx.restore();
     }
@@ -1107,7 +1138,7 @@
     }
     // 빛 번짐: 굽이 안의 짧은 토막(lite)에서는 진짜 번짐(shadowBlur) 대신 굵고 옅은 선을 겹쳐 흉내 낸다.
     // 진짜 번짐은 잘라 그리는 토막마다 따로 계산되어, 굽이가 화면에 들어오면 한 장 그리는 시간이 3~6배로 늘었다(화면이 뚝뚝 끊겼다).
-    const lite = !!pass.lite;
+    const lite = !!pass.lite || NOBLUR.on;
     let glowV = 0;
     const sb = (v) => { glowV = v; ctx.shadowBlur = lite ? 0 : v; };
     const glowSc = lite ? (() => { const m = ctx.getTransform(); return Math.hypot(m.a, m.b) || 1; })() : 1;      // 진짜 번짐은 화면 픽셀로 재므로, 흉내도 화면 픽셀로 맞춘다
@@ -1115,7 +1146,7 @@
       if (lite && glowV > 0) {
         const lw = ctx.lineWidth, ga = ctx.globalAlpha, st = ctx.strokeStyle, r = glowV / glowSc;
         ctx.strokeStyle = ctx.shadowColor;
-        for (const [f, a] of [[1.9, 0.045], [1.45, 0.06], [1.05, 0.08], [0.7, 0.1], [0.4, 0.12]]) { ctx.globalAlpha = ga * a; ctx.lineWidth = lw + r * f; ctx.stroke(); }
+        for (const [f, a] of NOBLUR.on ? [[1.5, 0.09], [0.6, 0.16]] : [[1.9, 0.045], [1.45, 0.06], [1.05, 0.08], [0.7, 0.1], [0.4, 0.12]]) { ctx.globalAlpha = ga * a; ctx.lineWidth = lw + r * f; ctx.stroke(); }      // (번짐을 끈 동안은 두 번만)
         ctx.globalAlpha = ga; ctx.lineWidth = lw; ctx.strokeStyle = st;
       }
       ctx.stroke();
@@ -1316,8 +1347,10 @@
               for (const [y0, dirY] of [[yc - 6, -1], [view.groundY + 6, 1]]) {
                 if (wallFx === 'wave') for (let j = 0; j < 3; j++) { ctx.strokeStyle = css(col, 0.25 + 0.15 * j); ctx.lineWidth = 2; ctx.beginPath();
                   for (let x = xs; x <= xe; x += 8) { const v = sp[Math.floor(((x / w) * n)) % n] || 0; ctx.lineTo(x, y0 + dirY * (T * (0.3 + 0.5 * j) + Math.sin(x * 0.04 + beat * Math.PI + j) * T * 0.35 * (0.3 + v))); } ctx.stroke(); }
-                else for (let x = xs + 6; x <= xe; x += 14) { const v = sp[Math.floor(((x / w) * n)) % n] || 0, lit = Math.round(v * 5);
-                  for (let j = 0; j < 5; j++) { ctx.fillStyle = css(col, j < lit ? 0.6 : 0.12); ctx.beginPath(); ctx.arc(x, y0 + dirY * (j * 11 + 4), 3, 0, Math.PI * 2); ctx.fill(); } }
+                else { const on = new Path2D(), off = new Path2D();       // 점 수백 개를 켜진 것 / 꺼진 것 두 번에 칠한다(전에는 점마다 따로: 장마다 천 번 넘게)
+                  for (let x = xs + 6; x <= xe; x += 14) { const v = sp[Math.floor(((x / w) * n)) % n] || 0, lit = Math.round(v * 5);
+                    for (let j = 0; j < 5; j++) { const pth = j < lit ? on : off, yy = y0 + dirY * (j * 11 + 4); pth.moveTo(x + 3, yy); pth.arc(x, yy, 3, 0, Math.PI * 2); } }
+                  ctx.fillStyle = css(col, 0.12); ctx.fill(off); ctx.fillStyle = css(col, 0.6); ctx.fill(on); }
               }
               ctx.restore(); continue;
             }
@@ -1430,6 +1463,7 @@
         ctx.stroke();
       }
       ctx.restore();
+      if (NOBLUR.on) { path(); ctx.strokeStyle = "rgba(255,59,107,0.22)"; ctx.lineWidth = 8 + 4 * pulse; ctx.lineJoin = "round"; ctx.stroke(); }      // (번짐 대신 넓고 옅은 테두리 한 번)
       path(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.shadowColor = DANGER; ctx.shadowBlur = 10 + 8 * pulse; ctx.stroke(); ctx.shadowBlur = 0;
     }
     // ---- 움직이는 장애물(9라운드부터): 프레스, 톱날, 도는 막대, 움직이는 파란 발판. 모양은 판정과 같은 moverShape를 쓴다(그림 = 판정)
@@ -1856,16 +1890,25 @@
 
 
     // 입자
+    //   (의견: "피버모드가 다 렉 걸린다") 피버에서는 수정을 줄줄이 깨서 파편이 수백 개가 된다. 전에는 파편 하나마다 저장·회전·칠하기를 따로 해서
+    //   장마다 칠하기가 수백~천 번이었다. 이제 꼭짓점을 직접 돌려 계산하고, 색·밝기(5단계)가 같은 것끼리 한 번에 칠한다.
+    const PB = new Map();
     for (const p of fx.particles) {
       if (!inPass(p.x)) continue;
       const a = p.life / p.max;
       if (p.kind) { ART.particle(ctx, p, sx(p.x), sy(p.y), p.size * T, a, pal); continue; }      // 공의 꼬리 입자(월드마다)
-      ctx.fillStyle = p.color === "accent" ? css(pal.accent, a) : p.color === "blue" ? `rgba(120,200,255,${a * 0.9})` : `rgba(255,255,255,${a * 0.7})`;
-      const s = p.size * T;
-      ctx.save(); ctx.translate(sx(p.x), sy(p.y)); if (p.rot) ctx.rotate(p.rot + p.life * 8);
-      if (p.shard) { ctx.beginPath(); ctx.moveTo(-s * 0.6, s * 0.5); ctx.lineTo(0, -s * 0.8); ctx.lineTo(s * 0.7, s * 0.35); ctx.closePath(); ctx.fill(); }
-      else ctx.fillRect(-s / 2, -s / 2, s, s);
-      ctx.restore();
+      const ab = Math.max(1, Math.round(a * 5)), key = p.color + ab;
+      let path = PB.get(key); if (!path) { path = new Path2D(); PB.set(key, path); }
+      const s = p.size * T, px = sx(p.x), py = sy(p.y), r = p.rot ? p.rot + p.life * 8 : 0, c = Math.cos(r), n = Math.sin(r);
+      const pt = (u, v, first) => { const X = px + u * c - v * n, Y = py + u * n + v * c; if (first) path.moveTo(X, Y); else path.lineTo(X, Y); };
+      if (p.shard) { pt(-s * 0.6, s * 0.5, 1); pt(0, -s * 0.8); pt(s * 0.7, s * 0.35); }
+      else { pt(-s / 2, -s / 2, 1); pt(s / 2, -s / 2); pt(s / 2, s / 2); pt(-s / 2, s / 2); }
+      path.closePath();
+    }
+    for (const [key, path] of PB) {
+      const a = +key.slice(-1) / 5, col = key.slice(0, -1);
+      ctx.fillStyle = col === "accent" ? css(pal.accent, a) : col === "blue" ? `rgba(120,200,255,${a * 0.9})` : `rgba(255,255,255,${a * 0.7})`;
+      ctx.fill(path);
     }
 
     // 플레이어: 빛나는 구슬 + 꼬리
@@ -1914,6 +1957,7 @@
       if (state.frozen) {
         // 멈춘 동안: 공 색 자체가 바뀐다. 남은 멈춤 시간만큼 아래부터 밝게 차 있고, 줄어들수록 어두워진다.
         const left = state.freeze / FREEZE_STEPS;
+        if (NOBLUR.on) glowAt(pal.sun, R * 2.6, 0.8);
         ctx.shadowColor = css(pal.sun); ctx.shadowBlur = 26;
         ctx.fillStyle = css(mix(pal.sun, [8, 8, 20], 0.74));
         ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
@@ -1926,6 +1970,7 @@
         ctx.fillRect(-R, R - 2 * R * left, 2 * R, 2 * R);
         ctx.restore();
       } else {
+        if (NOBLUR.on) glowAt(pal.accent, R * (2.5 + 0.4 * pulse), 0.85);
         ctx.shadowColor = css(pal.accent); ctx.shadowBlur = 22 + 10 * pulse;
         const og = ctx.createRadialGradient(-T * 0.1, -T * 0.12, T * 0.05, 0, 0, R);
         og.addColorStop(0, "#ffffff"); og.addColorStop(0.55, css(mix(pal.accent, [255, 255, 255], 0.35))); og.addColorStop(1, css(pal.accent));
@@ -1970,6 +2015,7 @@
     }
     ctx.restore();
     }                                                  // (토막마다 그리기 끝)
+    const t2 = performance.now();
     ctx.restore();                                     // (당김·물러남을 푼다)
     ctx.restore();
 
@@ -1994,6 +2040,20 @@
     if (fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${fx.flash * 0.5})`; ctx.fillRect(0, 0, w, h); }
     const since = now - fx.cpFlash;
     if (since < 0.4) { ctx.fillStyle = css(pal.accent, (1 - since / 0.4) * 0.22); ctx.fillRect(0, 0, w, h); }
+    perfNote(t1 - t0, t2 - t1, performance.now() - t2, round > 0);
+  }
+  // ---- 개발자 기능: 성능 표시(폰에서 직접 재기). 0.5초마다 평균: 초당 장 수, 장 사이 간격(가장 긴 것), 그리는 데 든 CPU 시간(배경 / 통로·장애물·공 / 나머지).
+  //   간격이 길고 CPU 시간이 짧으면 GPU(칠하기)가 막히는 것이고, CPU 시간이 길면 계산이 막히는 것이다
+  const PERF = { n: 0, bg: 0, world: 0, rest: 0, gapSum: 0, gapMax: 0, last: 0, shown: 0, fever: false };
+  function perfNote(bg, world, rest, fever) {
+    const now = performance.now(), gap = PERF.last ? now - PERF.last : 0; PERF.last = now;
+    if (!(dev && devPerf)) { $("perfHud").hidden = true; return; }
+    PERF.n++; PERF.bg += bg; PERF.world += world; PERF.rest += rest; if (gap < 1000) { PERF.gapSum += gap; PERF.gapMax = Math.max(PERF.gapMax, gap); } PERF.fever = PERF.fever || fever;
+    if (now - PERF.shown < 500) return;
+    const n = Math.max(1, PERF.n), f = (v) => (v / n).toFixed(1), gapAvg = PERF.gapSum / n;
+    $("perfHud").hidden = false;
+    $("perfHud").textContent = `${(1000 / Math.max(1, gapAvg)).toFixed(0)}fps · 간격 ${gapAvg.toFixed(1)}ms (최대 ${PERF.gapMax.toFixed(0)}) · 그리기 ${f(PERF.bg + PERF.world + PERF.rest)}ms = 배경 ${f(PERF.bg)} + 통로 ${f(PERF.world)} + 나머지 ${f(PERF.rest)} · 화질 ${Math.round(Q.scale * 100)}% · 번짐 ${NOBLUR.on ? "끔" : "켬"}${PERF.fever ? " · 피버" : ""}`;
+    Object.assign(PERF, { n: 0, bg: 0, world: 0, rest: 0, gapSum: 0, gapMax: 0, shown: now, fever: false });
   }
   const REF_PATH = L.ref ? traceRun(L, L.ref).trace : null;
   // ---- 개발자 기능: 번호표. 상자마다 "마디-종류번호"(빨간 것은 R, 파란 것은 B. 그 마디에서 왼쪽부터 센다)를 붙여, 고칠 곳을 말로 짚을 수 있게 한다.
@@ -2337,6 +2397,7 @@
   $("devZones").addEventListener("click", () => { devZones = !devZones; store.set("devZones", devZones); renderDev(); });
   $("devGems").addEventListener("click", () => { devGems = !devGems; store.set("devGems", devGems); renderDev(); });
   $("devLabels").addEventListener("click", () => { devLabels = !devLabels; store.set("devLabels", devLabels); renderDev(); });
+  $("devPerf").addEventListener("click", () => { devPerf = !devPerf; store.set("devPerf", devPerf); renderDev(); });
   // 월드 미리 보기: 라운드대로 → 월드 일곱 개를 차례로. 코스·판정은 그대로, 그림만 바뀐다(피버 연출은 라운드 것 그대로)
   $("devWorld").addEventListener("click", () => {
     const ids = [null, ...Object.keys(THEMES.WORLDS)], k = (ids.indexOf(devWorld) + 1) % ids.length;
