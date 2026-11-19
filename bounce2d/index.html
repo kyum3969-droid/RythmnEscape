@@ -893,7 +893,7 @@
     // 땅·천장·벽의 결(월드마다): 미리 그린 타일(두 칸 × 두 칸)을 세상에 붙여 깐다. 화면과 함께 흐르고, 굽은 통로에서는 토막과 함께 기운다
     if (wallPatKind !== THEME.ground) { wallPatKind = THEME.ground; const tc = ART.tile(THEME.ground); wallPat = tc ? ctx.createPattern(tc, "repeat") : null; }
     if (wallPat && wallPat.setTransform) wallPat.setTransform(new DOMMatrix([T / 64, 0, 0, T / 64, sx(0), view.groundY]));
-    const WALLF = wallPat || SIL;
+    const WALLF = THEME.ground === "plain" ? SIL : wallPat || SIL;      // 기본 월드: 원래의 검정 그대로
     // 오르내리는 카메라: 공이 딛는 높이(패턴대로 갈 때의 줄)를 서서히 따라간다. 내려가는 길은 한 박 남짓 미리 내려다본다(땅 밑으로는 화면이 한 칸 반밖에 안 보인다). 올라간 만큼 먼 풍경은 내려앉는다
     const camY = CLIMB.length ? camLine(camX + state.lead) : 0;
     view.camY = camY;

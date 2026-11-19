@@ -26,6 +26,8 @@
   // ================================================================ 월드
   // color: 라운드 고르기 화면에서 버튼 옆 줄의 색
   const WORLDS = {
+    // 기본: 처음의 그림 그대로(둥근 해와 고리, 이퀄라이저 막대 풍경, 검은 땅, 빗금). 1~5라운드(의견: "5라운드까지는 원래 기본 디자인으로, 6라운드부터 개별 테마로")
+    classic:  { name: "기본",          color: "#a9a9c9", sky: "none",  sun: "disc",    far: ["eq", "eq"],             ground: "plain",   edge: "none",   grain: "stripes", ambient: null,     trail: null,    box: "plain", red: "plain" },
     neon:     { name: "네온 하이웨이", color: "#7df9ff", sky: "neon",  sun: "synth",   far: ["neonPeaks", "skyline"],  ground: "asphalt", edge: "lane",   grain: "scan",    ambient: null,     trail: "spark", box: "plain", red: "plain" },
     digital:  { name: "디지털 그리드", color: "#5cf2ff", sky: "scan",  sun: "pixel",   far: ["eq", "circuitCity"],     ground: "circuit", edge: "bits",   grain: "pixel",   ambient: null,     trail: "pixel", box: "plain", red: "plain" },
     works:    { name: "강철 공장",     color: "#ffd23f", sky: "smog",  sun: "smog",    far: ["chimneys", "works"],     ground: "plate",   edge: "hazard", grain: "stripes", ambient: "dust",   trail: "ember", box: "plain", red: "plain" },
@@ -41,11 +43,11 @@
   //         rain 빗줄기 / gears 톱니바퀴 / ribbons 비단 띠 / snow 눈 / leaves 나뭇잎 / planets 행성 / haze 아지랑이 / lanterns 등불
   //   벽: eq 막대 / wave 물결 / dots 점 격자
   const ROUND_THEME = [
-    { world: "neon",     fever: { back: ["road", "stars"], wall: "eq" } },                                         // 1 Octane Horizon: 달리는 길
-    { world: "digital",  ambient: "code", fever: { back: ["code", "grid"], wall: "dots" } },                       // 2 Terminal Pursuit: 화면 속 추격
-    { world: "digital",  fever: { back: ["confetti", "ring"], wall: "eq" } },                                      // 3 Final Quarter Credit: 오락실
-    { world: "peaks",    fever: { back: ["rays", "haze"], wall: "wave" } },                                        // 4 Miles Before Sunrise: 해 뜨기 전
-    { world: "works",    far: ["skyline", "works"], ambient: null, fever: { back: ["grid", "ring"], wall: "dots" } }, // 5 Concrete Pulse: 도시의 맥박
+    { world: "classic",  fever: { back: ["road", "stars"], wall: "eq" } },                                         // 1 Octane Horizon: 달리는 길
+    { world: "classic",  fever: { back: ["code", "grid"], wall: "dots" } },                                        // 2 Terminal Pursuit: 화면 속 추격
+    { world: "classic",  fever: { back: ["confetti", "ring"], wall: "eq" } },                                      // 3 Final Quarter Credit: 오락실
+    { world: "classic",  fever: { back: ["rays", "haze"], wall: "wave" } },                                        // 4 Miles Before Sunrise: 해 뜨기 전
+    { world: "classic",  fever: { back: ["grid", "ring"], wall: "dots" } },                                        // 5 Concrete Pulse: 도시의 맥박
     { world: "neon",     fever: { back: ["lamps", "road"], wall: "eq" } },                                         // 6 Streetlight Velocity: 가로등
     { world: "festival", far: ["toys", "blocks"], sun: "moon", fever: { back: ["confetti", "bubbles"], wall: "dots" } }, // 7 Sunday in the Playroom: 놀이방
     { world: "peaks",    fever: { back: ["rays", "embers"], wall: "wave" } },                                      // 8 Velocity of a Thousand Suns: 천 개의 해
