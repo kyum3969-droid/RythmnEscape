@@ -1313,6 +1313,7 @@
   const NEON_C = [94, 230, 255], NEON_V = [183, 155, 255], NEON_Y = [255, 214, 90];
   // 네온 선: 넓고 옅은 빛 + 가늘고 밝은 선(번짐(shadowBlur) 없이)
   function neon(g, c, a, lw) { g.strokeStyle = rgba(c, a * 0.28); g.lineWidth = lw * 4; g.stroke(); g.strokeStyle = rgba(mix(c, WHITE, 0.35), a); g.lineWidth = lw; g.stroke(); }
+  const PIT = new Map(), PIT_WALL = [44, 38, 82];      // 볼풀 그림의 저장소(쌓인 공 층, 벽의 무늬), 쌓인 공에 섞는 벽 색(고정)
   const FEVER_BG = {
     subway(e, a) {         // 네온시티의 지하철 객차 안: 어두운 보랏빛 벽, 청록 네온 창틀(밖은 터널, 박마다 터널 등이 창을 차례로 스쳐 간다), 보라·청록 네온 광고판, 네온 조명 줄, 노란 네온 문, 크롬 기둥. 차가 박마다 살짝 흔들린다. 빨강은 장애물 몫이라 쓰지 않는다
       const g = e.g, { w, h, BT } = e, sway = Math.sin(e.now * 2.3) * BT * 0.03 + e.pulse * BT * 0.03;
@@ -1361,24 +1362,47 @@
       g.lineCap = "butt"; g.restore();
     },
     ballpit(e, a) {        // 볼풀 속: 연보라 쿠션 벽, 위쪽 그물, 쿠션 기둥, 알록달록한 공 두 겹(아래에 가득 쌓이고, 몇 개는 박에 맞춰 튀어 오른다). 빨간 공은 장애물 몫이라 배경에 없다
+      //   (의견: "7라운드도 피버 프레임 드랍 있음" → 쌓인 공 두 겹은 한 번 그려 둔 그림(층마다 화면 폭 + 두 칸)을 흐르는 만큼 밀어 붙인다. 매 장 그리는 공은 튀어 오르는 몇 개뿐)
       const g = e.g, { w, h, BT } = e, wall = mix(e.pal.top, [70, 60, 120], 0.6);
       g.save(); g.globalAlpha *= a;
-      const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, rgba(mix(wall, WHITE, 0.08))); gr.addColorStop(1, rgba(mix(wall, BLACK, 0.35))); g.fillStyle = gr; g.fillRect(0, -BT, w, h + 2 * BT);
-      g.save(); g.beginPath(); g.rect(0, 0, w, h * 0.62); g.clip();
-      const no = pm(e.camS * BT * 0.3, BT * 0.6); g.strokeStyle = rgba(WHITE, 0.08); g.lineWidth = 1.5; g.beginPath();
-      for (let x = -h - no; x < w + h; x += BT * 0.6) { g.moveTo(x, 0); g.lineTo(x + h, h); g.moveTo(x + h, 0); g.lineTo(x, h); }
-      g.stroke(); g.restore();
+      //   벽(그라데이션)과 그물은 한 장의 그림으로 미리 그려 두고, 그물이 흐른 만큼(그물 한 칸의 나머지)만 밀어 붙인다: 화면 전체 칠하기 + 긴 선 120개 → 그림 한 장
+      const dpr = Math.min(2, (g.canvas && g.canvas.width / w) || 1), net = BT * 0.6, wq = wall.map((v) => Math.round(v / 6) * 6), bkey = `pitbg:${Math.round(w)}:${Math.round(h)}:${Math.round(BT * 10)}:${dpr}:${wq.join(",")}`;
+      let bgc = PIT.get(bkey);
+      if (!bgc && typeof document !== "undefined") {
+        if (PIT.size > 16) PIT.clear();
+        bgc = document.createElement("canvas"); bgc.width = Math.ceil((w + net) * dpr); bgc.height = Math.ceil((h + 2 * BT) * dpr);
+        const c = bgc.getContext("2d"); c.scale(dpr, dpr); c.translate(0, BT);
+        const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, rgba(mix(wq, WHITE, 0.08))); gr.addColorStop(1, rgba(mix(wq, BLACK, 0.35))); c.fillStyle = gr; c.fillRect(0, -BT, w + net, h + 2 * BT);
+        c.save(); c.beginPath(); c.rect(0, 0, w + net, h * 0.62); c.clip(); c.strokeStyle = rgba(WHITE, 0.08); c.lineWidth = 1.5; c.beginPath();
+        for (let x = -h; x < w + net + h; x += net) { c.moveTo(x, 0); c.lineTo(x + h, h); c.moveTo(x + h, 0); c.lineTo(x, h); }
+        c.stroke(); c.restore();
+        PIT.set(bkey, bgc);
+      }
+      if (bgc) g.drawImage(bgc, -pm(e.camS * BT * 0.3, net), -BT, w + net, h + 2 * BT);
       const po = e.camS * BT * 0.5, ps = BT * 7;
       for (let k = Math.floor(po / ps) - 1; k * ps - po < w + ps; k++) { const x = k * ps - po; g.fillStyle = rgba(mix(TOY_C[pm(k, 4)], wall, 0.55), 0.9); g.beginPath(); g.roundRect(x, 0, BT * 0.5, h, BT * 0.25); g.fill(); g.fillStyle = rgba(WHITE, 0.1); g.fillRect(x + BT * 0.12, 0, BT * 0.08, h); }
-      for (const [L, par, rad, dark, n] of [[0, 0.25, 0.2, 0.62, 70], [1, 0.45, 0.28, 0.52, 36]]) {      // (통로 안에서 붉은 공 장애물과 헷갈리지 않게 어둡게)
-        const off = e.camS * BT * par, span = w + BT * 2;
-        for (let i = 0; i < n; i++) {
-          const x = pm(H(i, 731 + L) * span * 3 - off, span) - BT;
-          let y = h * (0.6 + 0.4 * Math.pow(H(i, 735 + L), 0.6));
-          const toss = H(i, 737 + L) > 0.93; if (toss) { const ph = pm(e.beat * 0.5 + H(i, 739 + L), 1); y = h * 0.58 - Math.sin(ph * Math.PI) * h * 0.3; }
-          const r = BT * rad * (0.8 + 0.4 * H(i, 741 + L)), c = mix(TOY_C[pm(i, 5)], wall, dark);
-          const al = toss ? 0.55 : 0.9; g.fillStyle = rgba(c, al); g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
-          g.fillStyle = rgba(WHITE, 0.3 * (1 - dark) * al); g.beginPath(); g.ellipse(x - r * 0.35, y - r * 0.4, r * 0.32, r * 0.2, -0.6, 0, TAU); g.fill();
+      const span = w + BT * 2;
+      for (const [L, par, rad, dark, n] of [[0, 0.35, 0.24, 0.56, 90]]) {      // (통로 안에서 붉은 공 장애물과 헷갈리지 않게 어둡게. 전에는 두 겹(흐르는 빠르기가 다른)이었는데 화면을 두 번 칠해서 한 겹으로)
+        //   그림은 공이 있는 아래쪽(화면 높이의 0.52 ~ 1)만, 색은 고정(구간 색이 섞이는 동안 다시 만들지 않게)
+        const y0 = h * 0.52, key = `pit${L}:${Math.round(w)}:${Math.round(h)}:${Math.round(BT * 10)}:${dpr}`;
+        let cv = PIT.get(key);
+        if (!cv && typeof document !== "undefined") {
+          if (PIT.size > 16) PIT.clear();
+          cv = document.createElement("canvas"); cv.width = Math.ceil(span * dpr); cv.height = Math.ceil((h - y0) * dpr);
+          const c = cv.getContext("2d"); c.scale(dpr, dpr); c.translate(0, -y0);
+          for (let i = 0; i < n; i++) {
+            if (H(i, 737 + L) > 0.93) continue;      // (튀어 오르는 공은 매 장 따로)
+            const y = h * (0.6 + 0.4 * Math.pow(H(i, 735 + L), 0.6)), r = BT * rad * (0.8 + 0.4 * H(i, 741 + L)), col = mix(TOY_C[pm(i, 5)], PIT_WALL, dark), x0 = pm(H(i, 731 + L) * span * 3, span);
+            for (const x of [x0, x0 - span, x0 + span]) { c.fillStyle = rgba(col, 0.9); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.fillStyle = rgba(WHITE, 0.3 * (1 - dark) * 0.9); c.beginPath(); c.ellipse(x - r * 0.35, y - r * 0.4, r * 0.32, r * 0.2, -0.6, 0, TAU); c.fill(); }
+          }
+          PIT.set(key, cv);
+        }
+        const sh = pm(e.camS * BT * par, span);      // 공 i의 자리 = pm(H·span·3 − 흐른 양, span) − BT: 그림을 흐른 만큼 왼쪽으로 민다
+        if (cv) { const hh = h - y0; g.drawImage(cv, -sh - BT, y0, span, hh); g.drawImage(cv, span - sh - BT, y0, span, hh); }
+        for (let i = 0; i < n; i++) {      // 튀어 오르는 공(몇 개)
+          if (H(i, 737 + L) <= 0.93) continue;
+          const x = pm(H(i, 731 + L) * span * 3 - e.camS * BT * par, span) - BT, ph = pm(e.beat * 0.5 + H(i, 739 + L), 1), y = h * 0.58 - Math.sin(ph * Math.PI) * h * 0.3, r = BT * rad * (0.8 + 0.4 * H(i, 741 + L));
+          g.fillStyle = rgba(mix(TOY_C[pm(i, 5)], wall, dark), 0.55); g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
         }
       }
       g.restore();
@@ -1411,13 +1435,18 @@
       neon(g, NEON_Y, 0.75, T * 0.09);
       g.fillStyle = "rgba(255,255,255,0.05)"; for (let y = gy + T * 0.6; y < gy + T * 1.5; y += T * 0.18) g.fillRect(xs, y, xe - xs, 1.5);
     },
-    ballpit(e, xs, xe, yc, gy, ox) {     // 천장 위: 쿠션 패드(바느질 땀) / 바닥 밑: 가득 쌓인 공(세상에 붙어 흐른다)
-      const g = e.g, T = e.T, pad = mix(e.pal.top, [120, 100, 180], 0.5);
-      each(e, xs - T * 2, xe, ox, T * 1.6, (k, x) => { g.fillStyle = rgba(mix(pad, TOY_C[pm(k, 4)], 0.25), 0.95); g.beginPath(); g.roundRect(x + 2, yc - T * 1.05, T * 1.6 - 4, T * 0.9, T * 0.25); g.fill(); g.strokeStyle = "rgba(255,255,255,0.18)"; g.setLineDash([4, 4]); g.beginPath(); g.roundRect(x + T * 0.12, yc - T * 0.93, T * 1.36, T * 0.66, T * 0.18); g.stroke(); g.setLineDash([]); });
-      for (let row = 0; row < 4; row++) each(e, xs - T, xe + T, ox + (row % 2) * T * 0.21, T * 0.42, (k, x) => {
-        const y = gy + T * (0.24 + row * 0.34), r = T * 0.2, c = mix(TOY_C[pm(k * 3 + row, 5)], [20, 16, 40], 0.45 + row * 0.1);
-        g.fillStyle = rgba(c); g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); g.fillStyle = "rgba(255,255,255,0.2)"; g.beginPath(); g.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, TAU); g.fill();
-      });
+    ballpit(e, xs, xe, yc, gy, ox) {     // 천장 위: 쿠션 패드(바느질 땀) / 바닥 밑: 가득 쌓인 공. 둘 다 한 번 그려 둔 무늬(타일)를 세상에 붙여 깐다(매 장 공 수백 개를 그리던 것)
+      const g = e.g, T = e.T, BT = e.BT, pad = [96, 84, 150], k0 = `${Math.round(BT * 10)}`;      // (색은 고정: 구간 색이 섞이는 동안 무늬를 다시 만들지 않게)
+      const tile = (name, tw, th, draw) => {
+        const key = name + k0; let pt = PIT.get(key);
+        if (!pt && typeof document !== "undefined") { const cv = document.createElement("canvas"); cv.width = Math.ceil(tw * 2); cv.height = Math.ceil(th * 2); const c = cv.getContext("2d"); c.scale(2, 2); draw(c); pt = g.createPattern(cv, "repeat-x"); PIT.set(key, pt); }
+        return pt;
+      };
+      const S = T / BT;
+      const pads = tile("pads", BT * 6.4, BT * 1.05, (c) => { for (let k = 0; k < 4; k++) { const x = k * BT * 1.6; c.fillStyle = rgba(mix(pad, TOY_C[k], 0.25), 0.95); c.beginPath(); c.roundRect(x + 2, 0, BT * 1.6 - 4, BT * 0.9, BT * 0.25); c.fill(); c.strokeStyle = "rgba(255,255,255,0.18)"; c.setLineDash([4, 4]); c.beginPath(); c.roundRect(x + BT * 0.12, BT * 0.12, BT * 1.36, BT * 0.66, BT * 0.18); c.stroke(); c.setLineDash([]); } });
+      const balls = tile("balls", BT * 2.1, BT * 1.5, (c) => { for (let row = 0; row < 4; row++) for (let k = -1; k <= 5; k++) { const x = k * BT * 0.42 + (row % 2) * BT * 0.21, y = BT * (0.24 + row * 0.34), r = BT * 0.2, col = mix(TOY_C[pm(k * 3 + row, 5)], [20, 16, 40], 0.45 + row * 0.1); c.fillStyle = rgba(col); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.fillStyle = "rgba(255,255,255,0.2)"; c.beginPath(); c.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, TAU); c.fill(); } });
+      if (pads && pads.setTransform) { pads.setTransform(new DOMMatrix([S / 2, 0, 0, S / 2, ox, yc - T * 1.05])); g.fillStyle = pads; g.fillRect(xs, yc - T * 1.05, xe - xs, T * 0.9); }
+      if (balls && balls.setTransform) { balls.setTransform(new DOMMatrix([S / 2, 0, 0, S / 2, ox, gy + 3])); g.fillStyle = balls; g.fillRect(xs, gy + 3, xe - xs, T * 1.5); }
     },
     plasma(e, xs, xe, yc, gy, ox) {      // 천장 위·바닥 밑: 어두운 벽 속을 흐르는 플라스마 물결(주황·금, 박마다 밝아진다)
       const g = e.g, T = e.T;

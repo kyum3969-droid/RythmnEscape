@@ -721,8 +721,22 @@
   // ---------------------------------------------------------------- 그리기
   const canvas = $("view"), ctx = canvas.getContext("2d");
   const view = { w: 0, h: 0, T: 40, px: 100, groundY: 300 };
+  // 자동 화질(의견: "피버 구간 프레임 드랍이 아직 있는 것 같다"): 폰에서 끊기는 가장 흔한 까닭은 칠할 픽셀의 수다. 실제 기기에서 한 장 사이 간격을 재서,
+  //   느리면(평균 22ms 넘게 0.8초) 캔버스의 해상도를 한 단계(×0.8) 낮추고, 여유가 생기면(평균 15ms 아래로 4초, 낮춘 뒤 10초 지나서) 다시 올린다.
+  //   판정·화면 배치(CSS 픽셀)와는 상관없고 그림만 조금 덜 선명해진다. 화면 밀도 1 아래로는 내리지 않는다(밀도 1인 기기는 0.75까지). 테스트의 가짜 시계에서는 쉰다
+  const Q = { scale: 1, ema: 16.7, slow: 0, fast: 0, lastDown: -1e9 };
+  function qualityTick(dtMs, nowMs) {
+    if (fake.on || phase !== "running" || dtMs > 100) { Q.slow = Q.fast = 0; return; }
+    Q.ema += (dtMs - Q.ema) * 0.08;
+    const base = Math.min(window.devicePixelRatio || 1, 2), minScale = Math.max(0.75 / base, 1 / base);
+    if (Q.ema > 22) { Q.slow += dtMs; Q.fast = 0; } else if (Q.ema < 15) { Q.fast += dtMs; Q.slow = 0; } else { Q.slow = Q.fast = 0; }
+    let changed = false;
+    if (Q.slow > 800 && Q.scale > minScale + 1e-3) { Q.scale = Math.max(minScale, Q.scale * 0.8); Q.slow = 0; Q.ema = 16.7; Q.lastDown = nowMs; changed = true; }
+    else if (Q.fast > 4000 && Q.scale < 1 && nowMs - Q.lastDown > 10000) { Q.scale = Math.min(1, Q.scale / 0.8); Q.fast = 0; changed = true; }
+    if (changed) { resize(); $("devTag").textContent = Q.scale < 0.999 ? `DEV · 화질 ${Math.round(Q.scale * 100)}%` : "DEV"; }      // (개발자 모드에서 지금 화질이 보인다)
+  }
   function resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2) * Q.scale;
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (!w || !h) return;
     canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
@@ -776,9 +790,9 @@
         if (prim === 'grid') { ctx.strokeStyle = css(acc, a * (0.1 + 0.4 * p)); ctx.lineWidth = 1 + 2 * p; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
         else { ctx.strokeStyle = css(sun, a * (0.2 + 0.6 * p)); ctx.lineWidth = 2 + 8 * p; ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + 18 * p * p + 2); ctx.stroke(); } }
     } else if (prim === 'code') {      // 디지털 비: 세로줄의 글자 조각이 떨어진다(박마다 밝아진다)
-      const cols = 28, cw = w / cols; ctx.font = `${Math.round(cw * 0.7)}px monospace`;
+      const cols = 20, cw = w / cols; ctx.font = `${Math.round(cw * 0.55)}px monospace`;      // (글자 긋기는 무겁다: 28줄 × 8글자 → 20줄 × 6글자)
       for (let c = 0; c < cols; c++) { const sp = 0.5 + H(c, 1), y0 = ((now * sp * 0.6 + H(c, 2)) % 1.3) * h;
-        for (let j = 0; j < 8; j++) { const y = y0 - j * cw * 0.9; if (y < 0 || y > h) continue; ctx.fillStyle = css(j === 0 ? W : acc, a * (j === 0 ? 0.7 : 0.35 * (1 - j / 8)) * (0.7 + 0.5 * pulse)); ctx.fillText(String.fromCharCode(0x30 + ((c * 7 + j * 3 + Math.floor(now * 8)) % 42)), c * cw, y); } }
+        for (let j = 0; j < 6; j++) { const y = y0 - j * cw * 0.9; if (y < 0 || y > h) continue; ctx.fillStyle = css(j === 0 ? W : acc, a * (j === 0 ? 0.7 : 0.35 * (1 - j / 6)) * (0.7 + 0.5 * pulse)); ctx.fillText(String.fromCharCode(0x30 + ((c * 7 + j * 3 + Math.floor(now * 8)) % 42)), c * cw, y); } }
     } else if (prim === 'confetti' || prim === 'snow' || prim === 'leaves' || prim === 'bubbles') {      // 떨어지거나(꽃종이·눈·잎) 떠오르는(방울) 것들
       const n = prim === 'snow' ? 90 : 55, up = prim === 'bubbles', cols = [acc, sun, [120, 230, 255], [255, 230, 120], [190, 255, 140], [200, 180, 255]];
       for (let i = 0; i < n; i++) {
@@ -853,15 +867,17 @@
       for (let i = 0; i < 16; i++) { const th = (i / 16) * Math.PI * 2 + beat * 0.08; ctx.moveTo(cx + Math.cos(th) * r0 * 1.4, cy + Math.sin(th) * r0 * 1.4); ctx.lineTo(cx + Math.cos(th) * R, cy + Math.sin(th) * R); }
       ctx.stroke();
     } else if (style === 1) {   // 소리 고리: 해를 둘러싼 막대들이 곡의 소리(낮은 소리 → 높은 소리, 좌우 대칭)에 맞춰 뻗는다. 바닥에도 반사
-      const n = 48, sp = spectrum(n / 2, beat, pulse);
-      ctx.lineCap = "round";
+      //   (막대마다 그라데이션을 새로 만들던 것을, 안쪽·바깥쪽 두 번의 단색 긋기로 바꿨다 — 한 장에 48개씩 만들던 그라데이션이 피버를 무겁게 했다)
+      const n = 48, sp = spectrum(n / 2, beat, pulse), inner = new Path2D(), outer = new Path2D();
       for (let i = 0; i < n; i++) {
-        const v = sp[i < n / 2 ? i : n - 1 - i], th = -Math.PI / 2 + (i / n) * Math.PI * 2, len = r0 * (0.15 + 2.6 * v * v);
-        const g = ctx.createLinearGradient(cx, cy, cx + Math.cos(th) * (r0 * 1.3 + len), cy + Math.sin(th) * (r0 * 1.3 + len));
-        g.addColorStop(0, css(sun, 0)); g.addColorStop(0.4, css(acc, a * 0.55)); g.addColorStop(1, css(sun, a * 0.75));
-        ctx.strokeStyle = g; ctx.lineWidth = Math.max(2, r0 * 0.11);
-        ctx.beginPath(); ctx.moveTo(cx + Math.cos(th) * r0 * 1.25, cy + Math.sin(th) * r0 * 1.25); ctx.lineTo(cx + Math.cos(th) * (r0 * 1.3 + len), cy + Math.sin(th) * (r0 * 1.3 + len)); ctx.stroke();
+        const v = sp[i < n / 2 ? i : n - 1 - i], th = -Math.PI / 2 + (i / n) * Math.PI * 2, len = r0 * (0.15 + 2.6 * v * v), c = Math.cos(th), sn = Math.sin(th);
+        const a0 = r0 * 1.25, am = r0 * 1.3 + len * 0.5, a1 = r0 * 1.3 + len;
+        inner.moveTo(cx + c * a0, cy + sn * a0); inner.lineTo(cx + c * am, cy + sn * am);
+        outer.moveTo(cx + c * am, cy + sn * am); outer.lineTo(cx + c * a1, cy + sn * a1);
       }
+      ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, r0 * 0.11);
+      ctx.strokeStyle = css(acc, a * 0.45); ctx.stroke(inner);
+      ctx.strokeStyle = css(sun, a * 0.7); ctx.stroke(outer);
       const bw = w / 32;
       for (let i = 0; i < 32; i++) { const v = sp[Math.min(sp.length - 1, Math.abs(16 - i) % sp.length)], hh = h * 0.28 * v;
         ctx.fillStyle = css(acc, a * 0.16); ctx.fillRect(i * bw + 1, view.groundY - hh, bw - 2, hh); }
@@ -931,7 +947,8 @@
     // 하늘
     const g = ctx.createLinearGradient(0, 0, 0, h);
     g.addColorStop(0, css(pal.top)); g.addColorStop(0.75, css(pal.bottom)); g.addColorStop(1, css(mix(pal.bottom, [0, 0, 0], 0.35)));
-    ctx.fillStyle = g; ctx.fillRect(-30, -30, w + 60, h + 60);
+    //   실내 피버(지하철·볼풀·해 속)에 다 들어가 화면이 흔들리지 않으면 하늘을 칠하지 않는다: 피버 무대가 화면 전체를 덮어서, 화면 한 장을 헛되이 한 번 더 칠하는 셈이었다
+    if (!(THEME.fever.interior && L.rides.some((r) => camX >= r[0] + 3 && camX <= r[1] - 3) && fx.shake <= 0)) { ctx.fillStyle = g; ctx.fillRect(-30, -30, w + 60, h + 60); }
 
     // 박자마다 퍼지는 고리
     const cxs = w * 0.68, cys = view.groundY - T * 3.4 + camY * T * 0.06, r0 = T * 1.5;
@@ -2337,6 +2354,7 @@
   // ---------------------------------------------------------------- 매 프레임
   let lastNow = performance.now() / 1000;
   function frame() {
+    const nowMs = performance.now(); qualityTick(nowMs - (frame.lastMs ?? nowMs), nowMs); frame.lastMs = nowMs;
     const now = performance.now() / 1000, dt = Math.min(0.05, now - lastNow);
     lastNow = now;
     if (phase === "running") {
@@ -2370,6 +2388,7 @@
     get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; }, round,
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },
     loadTrackPCM(samples, sr, name) { const b = new AudioBuffer({ length: samples.length, sampleRate: sr, numberOfChannels: 1 }); b.copyToChannel(samples, 0); return setTrackBuffer(b, name, null).ok; },
+    get quality() { return { scale: Q.scale, ema: Q.ema, canvasW: canvas.width }; },
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },
   };
 
