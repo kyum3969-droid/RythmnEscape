@@ -5,7 +5,7 @@ const out = path.join(__dirname, 'out') + '/';
 fs.mkdirSync(out, { recursive: true });
 const http = require('http');
 // 곡 파일을 fetch로 읽으므로 file:// 이 아니라 작은 서버로 연다
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' };
 const srv = http.createServer((q, r) => { const f = path.join(__dirname, '..', decodeURIComponent(q.url.split('?')[0])); fs.readFile(f, (e, d) => { if (e) { r.writeHead(404); r.end(); } else { r.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' }); r.end(d); } }); });
 let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') + msg); if (!c) fails++; };
 (async () => {

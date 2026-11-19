@@ -3,10 +3,13 @@
 //   1) 마디마다 키 패턴(멈춤·점프의 시각)을 무작위로 뽑고
 //   2) 실제로 달려 봐서(패턴 → 장애물 → 패턴대로 달리기, 입력 빼 보기, 일찍·늦게 눌러 보기) 통과한 것만 남기고
 //   3) 같은 마디를 되풀이한 뒤 한 군데를 바꾼 "함정" 마디를 끼워 넣는다.
-// 결과는 logic.js의 <gen:patterns:라운드>, <gen:bars:라운드> 표시 사이에 적힌다(코스는 고정된다. 게임을 켤 때마다 바뀌는 것이 아니다).
+// 결과는 patterns.js의 <gen:patterns:라운드>, courses.js의 <gen:bars:라운드> 표시 사이에 적힌다(코스는 고정된다. 게임을 켤 때마다 바뀌는 것이 아니다).
 // 사용: node bounce2d/tools_gen_course.js R2 [첫 씨앗] [돌려 볼 씨앗 수]  → 통과한 것 가운데 점수가 가장 높은 코스를 적는다
 const fs = require('fs'), path = require('path');
-const FILE = path.join(__dirname, 'logic.js');
+// 뽑은 것은 patterns.js(<gen:patterns:라운드>)와 courses.js(<gen:bars:라운드>)에 적는다. 두 파일을 이어 붙여 한 글처럼 고친 뒤 다시 나눠 적는다
+const DATA = ['patterns.js', 'courses.js'].map((f) => path.join(__dirname, f)), SEP = '\n//@@파일 경계@@\n';
+const readData = () => DATA.map((f) => fs.readFileSync(f, 'utf8')).join(SEP);
+const writeData = (src) => { const parts = src.split(SEP); if (parts.length !== DATA.length) throw new Error('파일 경계가 어긋났다'); DATA.forEach((f, i) => fs.writeFileSync(f, parts[i])); };
 const Lg = require('./logic.js');
 const { measure } = require('./tests/windows.js');
 const St = require('./tools_stairs.js');
@@ -1103,7 +1106,7 @@ function generate(T, seed) {
 
 module.exports = { generate, G, LEVELS, mulberry };
 
-// 있는 코스의 체크포인트 마디("cp")만 패턴으로 채워서 logic.js에 적는다(다른 마디와 주석은 그대로). 사용: node tools_gen_course.js R5 fillcp [씨앗]
+// 있는 코스의 체크포인트 마디("cp")만 패턴으로 채워서 patterns.js·courses.js에 적는다(다른 마디와 주석은 그대로). 사용: node tools_gen_course.js R5 fillcp [씨앗]
 function fillCp(T, course0) {
   const seed1 = +(process.argv[4] || 1);
   const fmt = (v) => JSON.stringify(v).replace(/"([a-zA-Z_]+)":/g, '$1: ').replace(/,/g, ', ').replace(/\[ /g, '[').replace(/: \[\[/g, ': [[');
@@ -1129,7 +1132,7 @@ function fillCp(T, course0) {
     if (!trapOk) console.error(`  (체크포인트 마디의 함정이 실제 코스에서 통하지 않는다)`);
     console.error(`씨앗 ${seed}: ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'}, 체크포인트 ${L.cps.length}개(패턴 있는 것 ${L.cps.filter((c) => c.snap).length})`);
     if (!s.won || L.fixed.length || !solved || !snaps || !trapOk) { for (const n of Object.keys(g.made)) delete Lg.PATTERNS[n]; continue; }
-    let src = fs.readFileSync(FILE, 'utf8');
+    let src = readData();
     const lines = Object.entries(g.made).map(([name, d]) => `  ${name}: { holds: ${fmt(d.holds)}, presses: ${fmt(d.presses)}, tol: ${d.tol}${d.tall ? ', tall: ' + fmt(d.tall) : ''}${d.boxes ? ', boxes: ' + fmt(d.boxes) : ''}${d.bands ? ', bands: ' + fmt(d.bands) : ''}${d.redBox ? ', redBox: ' + fmt(d.redBox) : ''}${d.loose ? ', loose: ' + fmt(d.loose) : ''}${d.floats ? ', floats: ' + fmt(d.floats) : ''}${d.caps ? ', caps: ' + fmt(d.caps) : ''}${d.lava ? ', lava: ' + fmt(d.lava) : ''}${d.rings ? ', rings: ' + fmt(d.rings) : ''}${d.chain ? ', chain: ' + d.chain : ''}${d.traps ? ', traps: ' + fmt(d.traps) : ''}${d.movers ? ', movers: ' + JSON.stringify(d.movers) : ''}${d.stair ? ', stair: true' : ''}, cp: true },   // ${g.notes[+name.replace(/^\D+\d*\D/, '')] || '체크포인트 마디'}`);
     const z = `  // </gen:patterns:${round}>`, zi = src.indexOf(z);
     if (zi < 0) throw new Error('표시가 없다: ' + z);
@@ -1139,8 +1142,8 @@ function fillCp(T, course0) {
     block = block.replace(/"([A-Za-z0-9_]+)"/g, (m, n) => { const nn = g.bars[k++]; if (nn !== n && n !== 'cp') throw new Error(`마디 이름이 어긋났다: ${k - 1} ${n} ${nn}`); return JSON.stringify(nn); });
     if (k !== g.bars.length) throw new Error('마디 수가 어긋났다: ' + k + ' / ' + g.bars.length);
     src = src.slice(0, i) + block + src.slice(j);
-    fs.writeFileSync(FILE, src);
-    console.error(`logic.js에 적었다: 씨앗 ${seed}, 체크포인트 마디 ${Object.keys(g.made).length}개`);
+    writeData(src);
+    console.error(`patterns.js·courses.js에 적었다: 씨앗 ${seed}, 체크포인트 마디 ${Object.keys(g.made).length}개`);
     return;
   }
   console.error('채우지 못했다'); process.exit(1);
@@ -1177,7 +1180,7 @@ for (let seed = seed0; seed < seed0 + tries; seed++) {
 if (!result) { console.error('통과하는 코스를 찾지 못했다'); process.exit(1); }
 for (const k of Object.keys(Lg.PATTERNS)) if (k.startsWith(T.prefix)) delete Lg.PATTERNS[k];
 
-// ---- logic.js에 적는다
+// ---- patterns.js·courses.js에 적는다
 const fmt = (v) => JSON.stringify(v).replace(/"([a-zA-Z_]+)":/g, '$1: ').replace(/,/g, ', ').replace(/\[ /g, '[').replace(/: \[\[/g, ': [[');
 const lines = [`  // 도구(tools_gen_course.js ${round} ${result.seed})가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.`];
 for (const [name, d] of Object.entries(result.made)) {
@@ -1192,10 +1195,10 @@ for (const [title, slots] of result.sections) {
   const names = result.bars.slice(at, at + slots.length); at += slots.length;
   barLines.push('    ' + names.map((n, i) => JSON.stringify(n) + ',' + (i % 4 === 3 && i < names.length - 1 ? '  ' : '')).join(' '));
 }
-let src = fs.readFileSync(FILE, 'utf8');
+let src = readData();
 const put = (tag, body) => { const a = `// <gen:${tag}:${round}>`, z = `// </gen:${tag}:${round}>`, i = src.indexOf(a), j = src.indexOf(z); if (i < 0 || j < 0) throw new Error('표시가 없다: ' + a); src = src.slice(0, i + a.length) + '\n' + body + '\n' + src.slice(src.lastIndexOf('\n', j) + 1); };
 put('patterns', lines.join('\n'));
 put('bars', barLines.join('\n'));
-fs.writeFileSync(FILE, src);
-console.error(`logic.js에 적었다: 씨앗 ${result.seed}, 새 패턴 ${Object.keys(result.made).length}개`);
+writeData(src);
+console.error(`patterns.js·courses.js에 적었다: 씨앗 ${result.seed}, 새 패턴 ${Object.keys(result.made).length}개`);
 }

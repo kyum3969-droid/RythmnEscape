@@ -11,7 +11,7 @@
 | 위치 | 내용 |
 |---|---|
 | [DESIGN.md](DESIGN.md) | 게임 디자인: 정한 것과 그 이유, 좋은 함정의 모양, 멈춤의 철학 |
-| [bounce2d/](bounce2d/) | 게임 본체(웹). `index.html`(화면·입력), `logic.js`(규칙·패턴·코스), `tests/` |
+| [bounce2d/](bounce2d/) | 게임 본체(웹). `index.html`(화면·입력)·`style.css`, `engine.js`(물리·레벨 만들기)·`patterns.js`(마디 패턴)·`courses.js`(라운드 데이터), `tests/`. 데이터는 `tools_export_json.js`로 JSON으로 뽑을 수 있다 |
 | [bounce2d/README.md](bounce2d/README.md) | 라운드마다 만든 것과 고친 것, 도구 사용법 |
 | `bounce2d/music/` | 라운드별 곡(Gemini로 만든 것) |
 
