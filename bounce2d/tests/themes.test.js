@@ -41,7 +41,7 @@ for (const t of themes) {
   if (!ART.box[t.box]) miss.push('box ' + t.box);
   if (!ART.red[t.red]) miss.push('red ' + t.red);
   if (t.ambient && !ART.ambient[t.ambient] && !FEVER_PRIMS.includes(t.ambient)) miss.push('ambient ' + t.ambient);
-  if (!t.fever || !t.fever.back.every((b) => FEVER_PRIMS.includes(b)) || !WALLS.includes(t.fever.wall)) miss.push('fever ' + JSON.stringify(t.fever));
+  if (!t.fever || !t.fever.back.every((b) => FEVER_PRIMS.includes(b) || ART.fever[b]) || !(WALLS.includes(t.fever.wall) || ART.feverWall[t.fever.wall]) || (t.fever.hazard && !ART.hazard[t.fever.hazard])) miss.push('fever ' + JSON.stringify(t.fever));
 }
 ok(miss.length === 0, `모든 라운드·월드의 그림 이름이 있다${miss.length ? ': ' + [...new Set(miss)].join(', ') : ''}`);
 ok(themeFor(1, 'peaks').fever === ROUND_THEME[1].fever && themeFor(1, 'peaks').sky === WORLDS.peaks.sky, '월드 미리 보기: 그림은 그 월드 것, 피버 연출은 라운드 것');
@@ -77,6 +77,9 @@ for (const [w, h] of [[844, 390], [390, 844]]) for (const beat of [-0.5, 0, 3.7,
   for (const k in ART.grain) if (ART.grain[k]) run('grain ' + k, () => ART.grain[k](e, { x0: 100, x1: 100 + e.T * 3, y0: -40, y1: gy }, -e.camS * e.T + 100, 17));
   for (const k in ART.box) run('box ' + k, () => { const B = ART.box[k]; for (const f of ['lo', 'hi', 'lit', 'deep', 'deepSky', 'line', 'glow']) if (typeof B[f] !== 'string') throw new Error(f + ' 색이 없다'); for (const hit of [0, 0.5, 1]) { if (!/^rgb/.test(B.flash(hit))) throw new Error('flash'); B.inner(e, { x0: 100, x1: 100 + e.T * 4, y0: gy - e.T * 2, y1: gy }, [[100, 100 + e.T * 2, gy - e.T], [100 + e.T * 2, 100 + e.T * 4, gy - e.T * 2]], 5, hit); B.inner(e, { x0: 100, x1: 300, y0: -40, y1: 80 }, [], 6, hit); } });
   for (const k in ART.red) run('red ' + k, () => { const R = ART.red[k]; for (const f of ['lo', 'hi', 'headLo', 'headHi']) if (typeof R[f] !== 'string') throw new Error(f + ' 색이 없다'); if (R.deco) { R.deco(e, { x0: 100, x1: 100 + e.T * 3, y0: -40, y1: gy }, 9, () => e.g.beginPath()); R.deco(e, { x0: 100, x1: 100 + e.T * 0.5, y0: gy - e.T, y1: gy }, 2, () => e.g.beginPath()); } });
+  for (const k in ART.fever) run('fever ' + k, () => { ART.fever[k](e, 1); ART.fever[k](e, 0.4); });
+  for (const k in ART.feverWall) run('feverWall ' + k, () => ART.feverWall[k](e, 0, w, gy - e.T * 3, gy, -e.camS * e.T + 100));
+  for (const k in ART.hazard) run('hazard ' + k, () => { const Z = ART.hazard[k]; for (const f of ['hang', 'stand', 'float']) if (typeof Z[f] !== 'function') throw new Error(f + ' 그림이 없다'); Z.hang(e.g, e.T, e.T, e.T * 2, e.now, 3); Z.stand(e.g, e.T, e.T, e.T * 2, e.now, 3); Z.float(e.g, e.T, e.T * 0.6, e.T, e.now, 3); Z.hang(e.g, e.T, 2, 3, e.now, 1); });
   for (const k in ART.ambient) run('ambient ' + k, () => ART.ambient[k](e, 0.4));
   for (const k in ART.trail) run('trail ' + k, () => { const p = ART.trail[k].make(10, 5); if (!(p.life > 0 && p.max > 0 && p.size > 0 && p.kind)) throw new Error('입자 모양이 이상하다'); for (const a of [1, 0.5, 0.01]) ART.particle(e.g, p, 100, 100, p.size * e.T, a, pal); });
 }

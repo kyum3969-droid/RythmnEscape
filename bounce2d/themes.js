@@ -48,7 +48,9 @@
     { world: "classic",  fever: { back: ["confetti", "ring"], wall: "eq" } },                                      // 3 Final Quarter Credit: 오락실
     { world: "classic",  fever: { back: ["rays", "haze"], wall: "wave" } },                                        // 4 Miles Before Sunrise: 해 뜨기 전
     { world: "classic",  fever: { back: ["grid", "ring"], wall: "dots" } },                                        // 5 Concrete Pulse: 도시의 맥박
-    { world: "neon",     fever: { back: ["lamps", "road"], wall: "eq" } },                                         // 6 Streetlight Velocity: 가로등
+    // 6 Streetlight Velocity: 피버는 지하철 객차 안(의견: "6라운드 피버 모드는 지하철 안으로. 장애물은 흔들리는 손잡이랑 의자들로").
+    //   interior = 피버에 들어서면 객차 안이 화면을 덮는다(해와 먼 능선을 숨긴다). hazard = 피버 장애물의 안쪽 그림(윤곽 = 판정은 그대로)
+    { world: "neon",     fever: { back: ["subway"], wall: "subway", hazard: "subway", interior: true } },
     { world: "festival", far: ["toys", "blocks"], sun: "moon", fever: { back: ["confetti", "bubbles"], wall: "dots" } }, // 7 Sunday in the Playroom: 놀이방
     { world: "peaks",    fever: { back: ["rays", "embers"], wall: "wave" } },                                      // 8 Velocity of a Thousand Suns: 천 개의 해
     { world: "neon",     ambient: "rain", fever: { back: ["rain", "road"], wall: "eq" } },                         // 9 Midnight Asphalt Rush: 한밤의 젖은 도로
@@ -1083,7 +1085,98 @@
     },
   };
 
-  const ART = { sky: SKY, sun: SUN, far: FAR, edge: EDGE, grain: GRAIN, trail: TRAIL, ambient: AMBIENT, box: BOX, red: RED_SKIN, tile, particle };
+  // ================================================================ 피버의 무대(라운드마다 따로 쓰는 것). 지금은 6라운드의 지하철 객차 안
+  //   FEVER_BG[이름](e, a): 피버 바탕(a = 세기 0~1. 1이면 화면을 다 덮는다). FEVER_WALL[이름](e, xs, xe, yc, gy, ox): 피버 통로의 천장 위·바닥 밑.
+  //   HAZARD[이름]: 피버 장애물(이빨·마름모)의 안쪽 그림. 윤곽(= 판정)과 분홍 빛 테두리, 붉은 바탕은 그대로 두고 그 안에 물건을 그린다(클립 안).
+  //     hang(g, T, hw, len, now, seed)  천장에서 내려온 이빨: 밑변(천장) y = 0, 너비 ±hw, 끝 y = len(아래로)
+  //     stand(g, T, hw, len, now, seed) 바닥에서 솟은 이빨: 밑변(바닥) y = 0, 끝 y = len(위로 — 그리는 쪽에서 뒤집어 준다)
+  //     float(g, T, hw, hh, now, seed)  떠 있는 마름모: 가운데가 0, 너비 ±hw, 높이 ±hh
+  const LAMP = [255, 226, 160];
+  const FEVER_BG = {
+    subway(e, a) {         // 지하철 객차 안: 천장 조명 줄, 광고판, 창문(밖은 터널, 박마다 터널 등이 창을 차례로 스쳐 간다), 문, 기둥, 뒤쪽 좌석. 차가 박마다 살짝 흔들린다
+      const g = e.g, { w, h, BT } = e, sway = Math.sin(e.now * 2.3) * BT * 0.03 + e.pulse * BT * 0.03;
+      const wall = mix(e.pal.top, [72, 80, 102], 0.6), wallD = mix(wall, BLACK, 0.4), trim = mix(wall, WHITE, 0.28);
+      g.save(); g.globalAlpha *= a; g.translate(0, sway);
+      let gr = g.createLinearGradient(0, 0, 0, h);
+      gr.addColorStop(0, rgba(mix(wall, WHITE, 0.2))); gr.addColorStop(0.16, rgba(wall)); gr.addColorStop(0.7, rgba(wallD)); gr.addColorStop(1, rgba(mix(wallD, BLACK, 0.45)));
+      g.fillStyle = gr; g.fillRect(0, -BT, w, h + 2 * BT);
+      const off = e.camS * BT * 0.55, step = BT * 4.6, wy0 = h * 0.2, wy1 = h * 0.5, ww = BT * 3.1;
+      // 천장 조명 줄
+      g.fillStyle = rgba(mix(WHITE, e.pal.accent, 0.12), 0.5 + 0.35 * e.pulse);
+      for (let k = Math.floor(off / (BT * 3)) - 1; k * BT * 3 - off < w + BT * 3; k++) g.fillRect(k * BT * 3 - off + BT * 0.2, h * 0.035, BT * 2.6, BT * 0.15);
+      // 터널 등: 화면 전체를 오른쪽에서 왼쪽으로 박마다 지나간다(창마다 잘려서 "창을 차례로 스쳐 가는" 빛이 된다)
+      const lamps = [0, 1].map((j) => { const p = pm(e.beat * 2 + j * 0.5, 1), lx = w * 1.25 - p * w * 1.7, len = BT * 2.4, lg = g.createLinearGradient(lx, 0, lx + len, 0); lg.addColorStop(0, rgba(LAMP, 0)); lg.addColorStop(0.12, rgba(LAMP, 0.95)); lg.addColorStop(1, rgba(LAMP, 0)); return [lg, lx, len, wy0 + (wy1 - wy0) * (0.25 + 0.45 * j)]; });
+      for (let k = Math.floor(off / step) - 1; k * step - off < w + step; k++) {
+        const x = k * step - off + BT * 0.7;
+        if (pm(k, 4) === 3) {        // 문: 두 짝, 작은 창, 노란 가장자리
+          const dw = BT * 1.5, dy0 = h * 0.16;
+          for (const dx of [0, dw + 3]) { g.fillStyle = rgba(mix(wall, WHITE, 0.12)); g.fillRect(x + dx, dy0, dw, h - dy0); g.fillStyle = "#06080e"; g.beginPath(); g.roundRect(x + dx + dw * 0.18, wy0, dw * 0.64, (wy1 - wy0) * 0.8, BT * 0.12); g.fill(); }
+          g.fillStyle = rgba([255, 214, 90], 0.55); g.fillRect(x - 3, dy0, 3, h - dy0); g.fillRect(x + 2 * dw + 3, dy0, 3, h - dy0);
+          continue;
+        }
+        g.fillStyle = rgba(trim, 0.9); g.beginPath(); g.roundRect(x - 4, wy0 - 4, ww + 8, wy1 - wy0 + 8, BT * 0.24); g.fill();
+        g.fillStyle = rgba(mix(e.pal.accent, wall, 0.55), 0.55); g.fillRect(x + BT * 0.2, h * 0.09, ww - BT * 0.4, h * 0.07);      // 광고판
+        g.fillStyle = rgba(WHITE, 0.35); g.fillRect(x + BT * 0.35, h * 0.105, (ww - BT * 0.7) * (0.4 + 0.4 * H(k, 601)), BT * 0.07); g.fillRect(x + BT * 0.35, h * 0.13, (ww - BT * 0.7) * (0.3 + 0.3 * H(k, 602)), BT * 0.05);
+        g.save(); g.beginPath(); g.roundRect(x, wy0, ww, wy1 - wy0, BT * 0.2); g.clip();
+        g.fillStyle = "#05070d"; g.fillRect(x, wy0, ww, wy1 - wy0);
+        g.strokeStyle = "rgba(120,140,170,0.18)"; g.lineWidth = 1.5; g.beginPath(); for (const f of [0.34, 0.42, 0.78]) { g.moveTo(x, wy0 + (wy1 - wy0) * f); g.lineTo(x + ww, wy0 + (wy1 - wy0) * f); } g.stroke();
+        for (const [lg, lx, len, ly] of lamps) { g.fillStyle = lg; g.fillRect(lx, ly - BT * 0.06, len, BT * 0.12); }
+        g.fillStyle = rgba(WHITE, 0.06); g.beginPath(); g.moveTo(x + ww * 0.15, wy0); g.lineTo(x + ww * 0.35, wy0); g.lineTo(x + ww * 0.1, wy1); g.lineTo(x - ww * 0.1, wy1); g.fill();
+        g.restore();
+        // 창 밑의 긴 의자(뒤쪽, 옅게)
+        g.fillStyle = rgba(mix(e.pal.accent, wallD, 0.62), 0.85); g.beginPath(); g.roundRect(x - BT * 0.1, h * 0.56, ww + BT * 0.2, h * 0.07, BT * 0.12); g.fill();
+        g.fillStyle = rgba(mix(e.pal.accent, wallD, 0.75), 0.9); g.fillRect(x - BT * 0.1, h * 0.63, ww + BT * 0.2, h * 0.05);
+        g.strokeStyle = rgba(BLACK, 0.25); g.lineWidth = 1.5; g.beginPath(); for (let sx2 = x + BT * 0.9; sx2 < x + ww; sx2 += BT * 0.9) { g.moveTo(sx2, h * 0.565); g.lineTo(sx2, h * 0.625); } g.stroke();
+      }
+      // 기둥(앞쪽, 조금 더 빨리 흐른다)
+      const off2 = e.camS * BT * 0.8, st2 = BT * 6.9;
+      for (let k = Math.floor(off2 / st2) - 1; k * st2 - off2 < w + st2; k++) { const x = k * st2 - off2 + BT * 2.2; g.fillStyle = rgba(mix(trim, WHITE, 0.2), 0.85); g.fillRect(x, 0, BT * 0.13, h); g.fillStyle = rgba(WHITE, 0.45); g.fillRect(x + BT * 0.03, 0, BT * 0.03, h); }
+      g.restore();
+    },
+  };
+  const FEVER_WALL = {
+    subway(e, xs, xe, yc, gy, ox) {     // 천장 위: 천장 판과 조명 줄(박마다 밝아진다) / 바닥 밑: 바닥 판, 노란 점자 안전선, 홈
+      const g = e.g, T = e.T;
+      g.fillStyle = "rgba(44,49,66,0.95)"; g.fillRect(xs, yc - T * 1.7, xe - xs, T * 1.7 - 3);
+      g.fillStyle = rgba(mix(WHITE, e.pal.accent, 0.15), 0.55 + 0.35 * e.pulse); each(e, xs - T * 3, xe, ox, T * 2.6, (k, x) => g.fillRect(Math.max(xs, x + T * 0.3), yc - T * 0.6, Math.max(0, Math.min(xe, x + T * 2.2) - Math.max(xs, x + T * 0.3)), T * 0.15));
+      g.fillStyle = "rgba(0,0,0,0.35)"; each(e, xs, xe, ox, T * 1.3, (k, x) => g.fillRect(x, yc - T * 1.25, T * 0.6, T * 0.06));
+      g.fillStyle = "rgba(38,42,56,0.95)"; g.fillRect(xs, gy + 3, xe - xs, T * 1.6);
+      g.fillStyle = rgba([255, 214, 90], 0.75); each(e, xs - T, xe, ox, T * 0.5, (k, x) => g.fillRect(Math.max(xs, x), gy + T * 0.22, Math.max(0, Math.min(xe, x + T * 0.32) - Math.max(xs, x)), T * 0.14));
+      g.fillStyle = "rgba(255,255,255,0.06)"; for (let y = gy + T * 0.55; y < gy + T * 1.5; y += T * 0.18) g.fillRect(xs, y, xe - xs, 1.5);
+    },
+  };
+  const HAZARD = {
+    subway: {
+      hang(g, T, hw, len, now, seed) {      // 흔들리는 손잡이: 천장에서 V자로 내려온 끈, 끝의 둥근 고리가 흔들린다
+        g.lineCap = "round";
+        g.strokeStyle = "#2a3248"; g.lineWidth = T * 0.14; g.beginPath(); g.moveTo(-hw * 0.72, 0); g.lineTo(0, len * 0.5); g.lineTo(hw * 0.72, 0); g.stroke();
+        g.strokeStyle = "rgba(150,170,210,0.35)"; g.lineWidth = T * 0.04; g.stroke();
+        const rr = Math.max(T * 0.08, Math.min(hw * 0.3, len * 0.15)), sw = Math.sin(now * 3.2 + seed) * 0.14;
+        g.save(); g.translate(0, len * 0.5); g.rotate(sw);
+        g.fillStyle = "#3a4258"; g.fillRect(-T * 0.08, -T * 0.06, T * 0.16, T * 0.16);
+        g.strokeStyle = "#e9e2cf"; g.lineWidth = T * 0.09; g.beginPath(); g.arc(0, rr + T * 0.08, rr, 0, TAU); g.stroke();
+        g.strokeStyle = "rgba(0,0,0,0.25)"; g.lineWidth = T * 0.03; g.beginPath(); g.arc(0, rr + T * 0.08, rr - T * 0.04, 0.2, Math.PI - 0.2); g.stroke();
+        g.restore(); g.lineCap = "butt";
+      },
+      stand(g, T, hw, len, now, seed) {     // 의자(옆에서 본 모습): 다리, 방석, 기울어진 등받이
+        const metal = "#8d97a8", fab = "#2d6a92";
+        g.fillStyle = metal; g.fillRect(-hw * 0.5, 0, T * 0.09, len * 0.28); g.fillRect(hw * 0.28, 0, T * 0.09, len * 0.28); g.fillRect(-hw * 0.55, len * 0.06, hw * 0.95, T * 0.06);
+        g.fillStyle = fab; g.beginPath(); g.roundRect(-hw * 0.72, len * 0.24, hw * 1.3, len * 0.15, T * 0.08); g.fill();
+        g.beginPath(); g.moveTo(hw * 0.2, len * 0.32); g.lineTo(hw * 0.5, len * 0.36); g.lineTo(hw * 0.1, len * 0.9); g.lineTo(-hw * 0.04, len * 0.86); g.closePath(); g.fillStyle = "#24597d"; g.fill();
+        g.fillStyle = "rgba(255,255,255,0.14)"; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(-hw * 0.6 + k * hw * 0.22, len * 0.315, T * 0.025, 0, TAU); g.fill(); }
+        g.strokeStyle = metal; g.lineWidth = T * 0.05; g.beginPath(); g.moveTo(hw * 0.42, len * 0.36); g.lineTo(hw * 0.04, len * 0.9); g.stroke();
+      },
+      float(g, T, hw, hh, now, seed) {      // 떠 있는 손잡이: 위에서 내려온 짧은 끈과 흔들리는 고리
+        const rr = Math.max(T * 0.08, Math.min(hw, hh) * 0.36), sw = Math.sin(now * 3.2 + seed) * 0.14;
+        g.save(); g.translate(0, -hh * 0.8); g.rotate(sw);
+        g.strokeStyle = "#2a3248"; g.lineWidth = T * 0.14; g.lineCap = "round"; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, hh * 0.8 - rr * 0.4); g.stroke();
+        g.strokeStyle = "#e9e2cf"; g.lineWidth = T * 0.09; g.beginPath(); g.arc(0, hh * 0.8 + rr * 0.6, rr, 0, TAU); g.stroke();
+        g.restore(); g.lineCap = "butt";
+      },
+    },
+  };
+
+  const ART = { sky: SKY, sun: SUN, far: FAR, edge: EDGE, grain: GRAIN, trail: TRAIL, ambient: AMBIENT, box: BOX, red: RED_SKIN, fever: FEVER_BG, feverWall: FEVER_WALL, hazard: HAZARD, tile, particle };
   // 피버 연출 그림(index.html의 feverPrim)이 아는 이름: 평소의 날씨로 빌려 쓸 수 있다
   const FEVER_PRIMS = ["tunnel", "ring", "stars", "road", "code", "confetti", "rays", "grid", "lamps", "bubbles", "embers", "rain", "gears", "ribbons", "snow", "leaves", "planets", "haze", "lanterns"];
   const THEMES = { WORLDS, ROUND_THEME, themeFor, ART, TILE, FEVER_PRIMS };
