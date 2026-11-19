@@ -49,8 +49,8 @@
     { world: "classic",  fever: { back: ["rays", "haze"], wall: "wave" } },                                        // 4 Miles Before Sunrise: 해 뜨기 전
     { world: "classic",  fever: { back: ["grid", "ring"], wall: "dots" } },                                        // 5 Concrete Pulse: 도시의 맥박
     // 6 Streetlight Velocity: 피버는 지하철 객차 안(의견: "6라운드 피버 모드는 지하철 안으로. 장애물은 흔들리는 손잡이랑 의자들로").
-    //   interior = 피버에 들어서면 객차 안이 화면을 덮는다(해와 먼 능선을 숨긴다). hazard = 피버 장애물의 안쪽 그림(윤곽 = 판정은 그대로)
-    { world: "neon",     fever: { back: ["subway"], wall: "subway", hazard: "subway", interior: true } },
+    //   interior = 피버에 들어서면 객차 안이 화면을 덮는다(해와 먼 능선을 숨긴다). props = 피버 장애물을 물건으로 그린다(모양과 판정은 logic.js 코스의 rushProps)
+    { world: "neon",     fever: { back: ["subway"], wall: "subway", props: "subway", interior: true } },
     { world: "festival", far: ["toys", "blocks"], sun: "moon", fever: { back: ["confetti", "bubbles"], wall: "dots" } }, // 7 Sunday in the Playroom: 놀이방
     { world: "peaks",    fever: { back: ["rays", "embers"], wall: "wave" } },                                      // 8 Velocity of a Thousand Suns: 천 개의 해
     { world: "neon",     ambient: "rain", fever: { back: ["rain", "road"], wall: "eq" } },                         // 9 Midnight Asphalt Rush: 한밤의 젖은 도로
@@ -1087,96 +1087,108 @@
 
   // ================================================================ 피버의 무대(라운드마다 따로 쓰는 것). 지금은 6라운드의 지하철 객차 안
   //   FEVER_BG[이름](e, a): 피버 바탕(a = 세기 0~1. 1이면 화면을 다 덮는다). FEVER_WALL[이름](e, xs, xe, yc, gy, ox): 피버 통로의 천장 위·바닥 밑.
-  //   HAZARD[이름]: 피버 장애물(이빨·마름모)의 안쪽 그림. 윤곽(= 판정)과 분홍 빛 테두리, 붉은 바탕은 그대로 두고 그 안에 물건을 그린다(클립 안).
-  //     hang(g, T, hw, len, now, seed)  천장에서 내려온 이빨: 밑변(천장) y = 0, 너비 ±hw, 끝 y = len(아래로)
-  //     stand(g, T, hw, len, now, seed) 바닥에서 솟은 이빨: 밑변(바닥) y = 0, 끝 y = len(위로 — 그리는 쪽에서 뒤집어 준다)
-  //     float(g, T, hw, hh, now, seed)  떠 있는 마름모: 가운데가 0, 너비 ±hw, 높이 ±hh
+  //   PROPS[이름]: 피버 장애물을 물건으로(아래). 물건의 모양과 판정은 코스(logic.js)의 rushProps가 정한다.
   const LAMP = [255, 226, 160];
+  const NEON_C = [94, 230, 255], NEON_V = [183, 155, 255], NEON_Y = [255, 214, 90];
+  // 네온 선: 넓고 옅은 빛 + 가늘고 밝은 선(번짐(shadowBlur) 없이)
+  function neon(g, c, a, lw) { g.strokeStyle = rgba(c, a * 0.28); g.lineWidth = lw * 4; g.stroke(); g.strokeStyle = rgba(mix(c, WHITE, 0.35), a); g.lineWidth = lw; g.stroke(); }
   const FEVER_BG = {
-    subway(e, a) {         // 지하철 객차 안: 천장 조명 줄, 광고판, 창문(밖은 터널, 박마다 터널 등이 창을 차례로 스쳐 간다), 문, 기둥, 뒤쪽 좌석. 차가 박마다 살짝 흔들린다
+    subway(e, a) {         // 네온시티의 지하철 객차 안: 어두운 보랏빛 벽, 청록 네온 창틀(밖은 터널, 박마다 터널 등이 창을 차례로 스쳐 간다), 보라·청록 네온 광고판, 네온 조명 줄, 노란 네온 문, 크롬 기둥. 차가 박마다 살짝 흔들린다. 빨강은 장애물 몫이라 쓰지 않는다
       const g = e.g, { w, h, BT } = e, sway = Math.sin(e.now * 2.3) * BT * 0.03 + e.pulse * BT * 0.03;
-      const wall = mix(e.pal.top, [72, 80, 102], 0.6), wallD = mix(wall, BLACK, 0.4), trim = mix(wall, WHITE, 0.28);
+      const wall = mix(e.pal.top, [26, 22, 52], 0.72), wallD = mix(wall, BLACK, 0.45);
       g.save(); g.globalAlpha *= a; g.translate(0, sway);
-      let gr = g.createLinearGradient(0, 0, 0, h);
-      gr.addColorStop(0, rgba(mix(wall, WHITE, 0.2))); gr.addColorStop(0.16, rgba(wall)); gr.addColorStop(0.7, rgba(wallD)); gr.addColorStop(1, rgba(mix(wallD, BLACK, 0.45)));
+      const gr = g.createLinearGradient(0, 0, 0, h);
+      gr.addColorStop(0, rgba(mix(wall, NEON_V, 0.12))); gr.addColorStop(0.2, rgba(wall)); gr.addColorStop(0.75, rgba(wallD)); gr.addColorStop(1, rgba(mix(wallD, BLACK, 0.5)));
       g.fillStyle = gr; g.fillRect(0, -BT, w, h + 2 * BT);
       const off = e.camS * BT * 0.55, step = BT * 4.6, wy0 = h * 0.2, wy1 = h * 0.5, ww = BT * 3.1;
-      // 천장 조명 줄
-      g.fillStyle = rgba(mix(WHITE, e.pal.accent, 0.12), 0.5 + 0.35 * e.pulse);
-      for (let k = Math.floor(off / (BT * 3)) - 1; k * BT * 3 - off < w + BT * 3; k++) g.fillRect(k * BT * 3 - off + BT * 0.2, h * 0.035, BT * 2.6, BT * 0.15);
-      // 터널 등: 화면 전체를 오른쪽에서 왼쪽으로 박마다 지나간다(창마다 잘려서 "창을 차례로 스쳐 가는" 빛이 된다)
+      g.beginPath(); for (let k = Math.floor(off / (BT * 3)) - 1; k * BT * 3 - off < w + BT * 3; k++) { const x = k * BT * 3 - off; g.moveTo(x + BT * 0.25, h * 0.04); g.lineTo(x + BT * 2.75, h * 0.04); }
+      g.lineCap = "round"; neon(g, NEON_C, 0.55 + 0.4 * e.pulse, BT * 0.07);
       const lamps = [0, 1].map((j) => { const p = pm(e.beat * 2 + j * 0.5, 1), lx = w * 1.25 - p * w * 1.7, len = BT * 2.4, lg = g.createLinearGradient(lx, 0, lx + len, 0); lg.addColorStop(0, rgba(LAMP, 0)); lg.addColorStop(0.12, rgba(LAMP, 0.95)); lg.addColorStop(1, rgba(LAMP, 0)); return [lg, lx, len, wy0 + (wy1 - wy0) * (0.25 + 0.45 * j)]; });
       for (let k = Math.floor(off / step) - 1; k * step - off < w + step; k++) {
         const x = k * step - off + BT * 0.7;
-        if (pm(k, 4) === 3) {        // 문: 두 짝, 작은 창, 노란 가장자리
+        if (pm(k, 4) === 3) {        // 문: 두 짝, 작은 창, 노란 네온 가장자리
           const dw = BT * 1.5, dy0 = h * 0.16;
-          for (const dx of [0, dw + 3]) { g.fillStyle = rgba(mix(wall, WHITE, 0.12)); g.fillRect(x + dx, dy0, dw, h - dy0); g.fillStyle = "#06080e"; g.beginPath(); g.roundRect(x + dx + dw * 0.18, wy0, dw * 0.64, (wy1 - wy0) * 0.8, BT * 0.12); g.fill(); }
-          g.fillStyle = rgba([255, 214, 90], 0.55); g.fillRect(x - 3, dy0, 3, h - dy0); g.fillRect(x + 2 * dw + 3, dy0, 3, h - dy0);
+          for (const dx of [0, dw + 3]) { g.fillStyle = rgba(mix(wall, WHITE, 0.08)); g.fillRect(x + dx, dy0, dw, h - dy0); g.fillStyle = "#05060c"; g.beginPath(); g.roundRect(x + dx + dw * 0.18, wy0, dw * 0.64, (wy1 - wy0) * 0.8, BT * 0.12); g.fill(); }
+          g.beginPath(); g.moveTo(x - 2, dy0); g.lineTo(x - 2, h); g.moveTo(x + 2 * dw + 5, dy0); g.lineTo(x + 2 * dw + 5, h); neon(g, NEON_Y, 0.6, BT * 0.05);
           continue;
         }
-        g.fillStyle = rgba(trim, 0.9); g.beginPath(); g.roundRect(x - 4, wy0 - 4, ww + 8, wy1 - wy0 + 8, BT * 0.24); g.fill();
-        g.fillStyle = rgba(mix(e.pal.accent, wall, 0.55), 0.55); g.fillRect(x + BT * 0.2, h * 0.09, ww - BT * 0.4, h * 0.07);      // 광고판
-        g.fillStyle = rgba(WHITE, 0.35); g.fillRect(x + BT * 0.35, h * 0.105, (ww - BT * 0.7) * (0.4 + 0.4 * H(k, 601)), BT * 0.07); g.fillRect(x + BT * 0.35, h * 0.13, (ww - BT * 0.7) * (0.3 + 0.3 * H(k, 602)), BT * 0.05);
+        // 광고판: 어두운 판에 네온 테두리와 빛나는 글줄(박마다 하나씩 깜빡)
+        const ac = H(k, 603) > 0.5 ? NEON_V : NEON_C, ay = h * 0.085, ah = h * 0.08;
+        g.fillStyle = "rgba(6,6,16,0.75)"; g.fillRect(x + BT * 0.2, ay, ww - BT * 0.4, ah);
+        g.beginPath(); g.rect(x + BT * 0.2, ay, ww - BT * 0.4, ah); neon(g, ac, 0.55, BT * 0.035);
+        g.fillStyle = rgba(ac, H(k, Math.floor(e.beat)) > 0.3 ? 0.8 : 0.3); g.fillRect(x + BT * 0.4, ay + ah * 0.3, (ww - BT * 0.8) * (0.4 + 0.4 * H(k, 601)), BT * 0.07); g.fillStyle = rgba(WHITE, 0.45); g.fillRect(x + BT * 0.4, ay + ah * 0.62, (ww - BT * 0.8) * (0.3 + 0.3 * H(k, 602)), BT * 0.045);
+        // 창
         g.save(); g.beginPath(); g.roundRect(x, wy0, ww, wy1 - wy0, BT * 0.2); g.clip();
-        g.fillStyle = "#05070d"; g.fillRect(x, wy0, ww, wy1 - wy0);
-        g.strokeStyle = "rgba(120,140,170,0.18)"; g.lineWidth = 1.5; g.beginPath(); for (const f of [0.34, 0.42, 0.78]) { g.moveTo(x, wy0 + (wy1 - wy0) * f); g.lineTo(x + ww, wy0 + (wy1 - wy0) * f); } g.stroke();
+        g.fillStyle = "#04050b"; g.fillRect(x, wy0, ww, wy1 - wy0);
+        g.strokeStyle = "rgba(120,140,170,0.16)"; g.lineWidth = 1.5; g.beginPath(); for (const f of [0.34, 0.42, 0.78]) { g.moveTo(x, wy0 + (wy1 - wy0) * f); g.lineTo(x + ww, wy0 + (wy1 - wy0) * f); } g.stroke();
         for (const [lg, lx, len, ly] of lamps) { g.fillStyle = lg; g.fillRect(lx, ly - BT * 0.06, len, BT * 0.12); }
-        g.fillStyle = rgba(WHITE, 0.06); g.beginPath(); g.moveTo(x + ww * 0.15, wy0); g.lineTo(x + ww * 0.35, wy0); g.lineTo(x + ww * 0.1, wy1); g.lineTo(x - ww * 0.1, wy1); g.fill();
+        g.fillStyle = rgba(NEON_C, 0.05); g.beginPath(); g.moveTo(x + ww * 0.15, wy0); g.lineTo(x + ww * 0.35, wy0); g.lineTo(x + ww * 0.1, wy1); g.lineTo(x - ww * 0.1, wy1); g.fill();
         g.restore();
-        // 창 밑의 긴 의자(뒤쪽, 옅게)
-        g.fillStyle = rgba(mix(e.pal.accent, wallD, 0.62), 0.85); g.beginPath(); g.roundRect(x - BT * 0.1, h * 0.56, ww + BT * 0.2, h * 0.07, BT * 0.12); g.fill();
-        g.fillStyle = rgba(mix(e.pal.accent, wallD, 0.75), 0.9); g.fillRect(x - BT * 0.1, h * 0.63, ww + BT * 0.2, h * 0.05);
-        g.strokeStyle = rgba(BLACK, 0.25); g.lineWidth = 1.5; g.beginPath(); for (let sx2 = x + BT * 0.9; sx2 < x + ww; sx2 += BT * 0.9) { g.moveTo(sx2, h * 0.565); g.lineTo(sx2, h * 0.625); } g.stroke();
+        g.beginPath(); g.roundRect(x - 3, wy0 - 3, ww + 6, wy1 - wy0 + 6, BT * 0.24); neon(g, NEON_C, 0.45 + 0.25 * e.pulse, BT * 0.04);
+        // 창 밑의 긴 의자(뒤쪽): 어두운 방석에 보라 네온 가장자리
+        g.fillStyle = "rgba(14,12,30,0.92)"; g.beginPath(); g.roundRect(x - BT * 0.1, h * 0.56, ww + BT * 0.2, h * 0.11, BT * 0.12); g.fill();
+        g.beginPath(); g.moveTo(x, h * 0.565); g.lineTo(x + ww, h * 0.565); neon(g, NEON_V, 0.4, BT * 0.035);
       }
-      // 기둥(앞쪽, 조금 더 빨리 흐른다)
+      // 크롬 기둥(앞쪽, 조금 더 빨리 흐른다): 청록 반사
       const off2 = e.camS * BT * 0.8, st2 = BT * 6.9;
-      for (let k = Math.floor(off2 / st2) - 1; k * st2 - off2 < w + st2; k++) { const x = k * st2 - off2 + BT * 2.2; g.fillStyle = rgba(mix(trim, WHITE, 0.2), 0.85); g.fillRect(x, 0, BT * 0.13, h); g.fillStyle = rgba(WHITE, 0.45); g.fillRect(x + BT * 0.03, 0, BT * 0.03, h); }
-      g.restore();
+      for (let k = Math.floor(off2 / st2) - 1; k * st2 - off2 < w + st2; k++) { const x = k * st2 - off2 + BT * 2.2; g.fillStyle = "rgba(150,160,190,0.55)"; g.fillRect(x, 0, BT * 0.12, h); g.fillStyle = rgba(NEON_C, 0.6); g.fillRect(x + BT * 0.03, 0, BT * 0.025, h); }
+      g.lineCap = "butt"; g.restore();
     },
   };
   const FEVER_WALL = {
-    subway(e, xs, xe, yc, gy, ox) {     // 천장 위: 천장 판과 조명 줄(박마다 밝아진다) / 바닥 밑: 바닥 판, 노란 점자 안전선, 홈
+    subway(e, xs, xe, yc, gy, ox) {     // 천장 위: 어두운 천장 판에 청록 네온 조명 줄(박마다 밝아진다) / 바닥 밑: 어두운 바닥 판, 노란 네온 점자 안전선, 홈
       const g = e.g, T = e.T;
-      g.fillStyle = "rgba(44,49,66,0.95)"; g.fillRect(xs, yc - T * 1.7, xe - xs, T * 1.7 - 3);
-      g.fillStyle = rgba(mix(WHITE, e.pal.accent, 0.15), 0.55 + 0.35 * e.pulse); each(e, xs - T * 3, xe, ox, T * 2.6, (k, x) => g.fillRect(Math.max(xs, x + T * 0.3), yc - T * 0.6, Math.max(0, Math.min(xe, x + T * 2.2) - Math.max(xs, x + T * 0.3)), T * 0.15));
-      g.fillStyle = "rgba(0,0,0,0.35)"; each(e, xs, xe, ox, T * 1.3, (k, x) => g.fillRect(x, yc - T * 1.25, T * 0.6, T * 0.06));
-      g.fillStyle = "rgba(38,42,56,0.95)"; g.fillRect(xs, gy + 3, xe - xs, T * 1.6);
-      g.fillStyle = rgba([255, 214, 90], 0.75); each(e, xs - T, xe, ox, T * 0.5, (k, x) => g.fillRect(Math.max(xs, x), gy + T * 0.22, Math.max(0, Math.min(xe, x + T * 0.32) - Math.max(xs, x)), T * 0.14));
-      g.fillStyle = "rgba(255,255,255,0.06)"; for (let y = gy + T * 0.55; y < gy + T * 1.5; y += T * 0.18) g.fillRect(xs, y, xe - xs, 1.5);
+      g.fillStyle = "rgba(16,14,30,0.96)"; g.fillRect(xs, yc - T * 1.7, xe - xs, T * 1.7 - 3);
+      g.beginPath(); each(e, xs - T * 3, xe, ox, T * 2.6, (k, x) => { g.moveTo(Math.max(xs, x + T * 0.3), yc - T * 0.55); g.lineTo(Math.min(xe, x + T * 2.2), yc - T * 0.55); });
+      g.lineCap = "round"; neon(g, NEON_C, 0.5 + 0.4 * e.pulse, T * 0.07); g.lineCap = "butt";
+      g.fillStyle = "rgba(14,13,24,0.96)"; g.fillRect(xs, gy + 3, xe - xs, T * 1.6);
+      g.beginPath(); each(e, xs - T, xe, ox, T * 0.5, (k, x) => { if (x + T * 0.32 < xs || x > xe) return; g.moveTo(Math.max(xs, x), gy + T * 0.29); g.lineTo(Math.min(xe, x + T * 0.32), gy + T * 0.29); });
+      neon(g, NEON_Y, 0.75, T * 0.09);
+      g.fillStyle = "rgba(255,255,255,0.05)"; for (let y = gy + T * 0.6; y < gy + T * 1.5; y += T * 0.18) g.fillRect(xs, y, xe - xs, 1.5);
     },
   };
-  const HAZARD = {
+  // 피버의 물건 장애물(6라운드 지하철: logic.js subwayProps). 모양 = 판정(propSpan)과 같게 그린다. 몸체는 붉게, 테두리는 분홍 네온.
+  //   pt(x, hh) = 세계 좌표(장애물 가운데에서 가로 x칸, 높이 hh칸)를 화면 점으로. q = 장애물(shape, h, w, len, rr, rw, bw, cy, far)
+  const RED_BODY = ["#4a0a1e", "#c8244f"], PINK = [255, 143, 171], DANGER_C = [255, 59, 107];      /* 위험색: 물건 장애물의 몸체와 네온 */
+  function polyPts(g, pts) { g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); }
+  function ellPts(pt, cx, cy, rx, ry, n = 22) { const out = []; for (let k = 0; k < n; k++) { const t = (k / n) * TAU; out.push(pt(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry)); } return out; }
+  function redFill(g, a, b) { const gr = g.createLinearGradient(a[0], a[1], b[0], b[1]); gr.addColorStop(0, RED_BODY[0]); gr.addColorStop(1, RED_BODY[1]); return gr; }      /* 위험색 */
+  const PROPS = {
     subway: {
-      hang(g, T, hw, len, now, seed) {      // 흔들리는 손잡이: 천장에서 V자로 내려온 끈, 끝의 둥근 고리가 흔들린다
-        g.lineCap = "round";
-        g.strokeStyle = "#2a3248"; g.lineWidth = T * 0.14; g.beginPath(); g.moveTo(-hw * 0.72, 0); g.lineTo(0, len * 0.5); g.lineTo(hw * 0.72, 0); g.stroke();
-        g.strokeStyle = "rgba(150,170,210,0.35)"; g.lineWidth = T * 0.04; g.stroke();
-        const rr = Math.max(T * 0.08, Math.min(hw * 0.3, len * 0.15)), sw = Math.sin(now * 3.2 + seed) * 0.14;
-        g.save(); g.translate(0, len * 0.5); g.rotate(sw);
-        g.fillStyle = "#3a4258"; g.fillRect(-T * 0.08, -T * 0.06, T * 0.16, T * 0.16);
-        g.strokeStyle = "#e9e2cf"; g.lineWidth = T * 0.09; g.beginPath(); g.arc(0, rr + T * 0.08, rr, 0, TAU); g.stroke();
-        g.strokeStyle = "rgba(0,0,0,0.25)"; g.lineWidth = T * 0.03; g.beginPath(); g.arc(0, rr + T * 0.08, rr - T * 0.04, 0.2, Math.PI - 0.2); g.stroke();
-        g.restore(); g.lineCap = "butt";
+      chair(g, pt, q, e) {     // 의자(옆모습): 다리 둘과 가로대, 방석, 한쪽 등받이. 붉은 몸체, 분홍 네온 테두리, 등받이에 네온 줄
+        const w = q.w, h = q.h, sb = h * 0.5, th = Math.min(0.24, h * 0.2);
+        const legs = [[-0.8 * w, -0.66 * w], [0.6 * w, 0.74 * w]].map(([a, b]) => [pt(a, 0), pt(b, 0), pt(b, sb - th), pt(a, sb - th)]);
+        const seat = [pt(-0.92 * w, sb - th), pt(0.92 * w, sb - th), pt(0.92 * w, sb), pt(-0.92 * w, sb)];
+        const back = [pt(0.3 * w, sb), pt(0.85 * w, sb), pt(0.85 * w, h - 0.08), pt(0.78 * w, h), pt(0.37 * w, h), pt(0.3 * w, h - 0.08)];
+        const fill = redFill(g, pt(0, 0), pt(0, h));
+        for (const P of [...legs, seat, back]) { polyPts(g, P); g.fillStyle = fill; g.fill(); }
+        g.beginPath(); for (const P of [...legs, seat, back]) { P.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); }
+        g.lineJoin = "round"; neon(g, PINK, 0.85 + 0.15 * e.pulse, Math.max(1.5, e.T * 0.045));
+        const a = pt(0.575 * w, sb + (h - sb) * 0.18), b = pt(0.575 * w, h - (h - sb) * 0.18);
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineCap = "round"; neon(g, [255, 220, 230], 0.5 + 0.5 * e.pulse, Math.max(1.5, e.T * 0.05)); g.lineCap = "butt";      /* 위험색 */
+        const s0 = pt(-0.8 * w, sb - th * 0.35), s1 = pt(0.25 * w, sb - th * 0.35); g.beginPath(); g.moveTo(s0[0], s0[1]); g.lineTo(s1[0], s1[1]); g.strokeStyle = "rgba(255,200,215,0.35)"; g.lineWidth = 1.2; g.setLineDash([3, 3]); g.stroke(); g.setLineDash([]);      /* 위험색 */
       },
-      stand(g, T, hw, len, now, seed) {     // 의자(옆에서 본 모습): 다리, 방석, 기울어진 등받이
-        const metal = "#8d97a8", fab = "#2d6a92";
-        g.fillStyle = metal; g.fillRect(-hw * 0.5, 0, T * 0.09, len * 0.28); g.fillRect(hw * 0.28, 0, T * 0.09, len * 0.28); g.fillRect(-hw * 0.55, len * 0.06, hw * 0.95, T * 0.06);
-        g.fillStyle = fab; g.beginPath(); g.roundRect(-hw * 0.72, len * 0.24, hw * 1.3, len * 0.15, T * 0.08); g.fill();
-        g.beginPath(); g.moveTo(hw * 0.2, len * 0.32); g.lineTo(hw * 0.5, len * 0.36); g.lineTo(hw * 0.1, len * 0.9); g.lineTo(-hw * 0.04, len * 0.86); g.closePath(); g.fillStyle = "#24597d"; g.fill();
-        g.fillStyle = "rgba(255,255,255,0.14)"; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(-hw * 0.6 + k * hw * 0.22, len * 0.315, T * 0.025, 0, TAU); g.fill(); }
-        g.strokeStyle = metal; g.lineWidth = T * 0.05; g.beginPath(); g.moveTo(hw * 0.42, len * 0.36); g.lineTo(hw * 0.04, len * 0.9); g.stroke();
+      strap(g, pt, q, e, seed) {   // 손잡이: 천장에서 내려온 붉은 끈과 둥근 고리(박마다 밝아지고, 고리가 조금 흔들린다 — 판정의 여유 안에서)
+        const bot = q.far - q.len, cy = bot + q.rr;
+        const belt = [pt(-q.bw, q.far + 0.2), pt(q.bw, q.far + 0.2), pt(q.bw, cy + q.rr * 0.8), pt(-q.bw, cy + q.rr * 0.8)];
+        polyPts(g, belt); g.fillStyle = redFill(g, pt(0, q.far), pt(0, bot)); g.fill(); neon(g, PINK, 0.7, Math.max(1.2, e.T * 0.03));
+        const piv = pt(0, cy + q.rr), sw = Math.sin(e.now * 3.2 + seed) * 0.05;
+        g.save(); g.translate(piv[0], piv[1]); g.rotate(sw); g.translate(-piv[0], -piv[1]);
+        polyPts(g, ellPts(pt, 0, cy, q.rw, q.rr)); g.fillStyle = "rgba(200,36,79,0.35)"; g.fill();      /* 위험색 */
+        neon(g, DANGER_C, 0.85 + 0.15 * e.pulse, Math.max(2, e.T * 0.1));
+        polyPts(g, ellPts(pt, 0, cy, q.rw * 0.62, q.rr * 0.62)); g.strokeStyle = "rgba(255,210,220,0.5)"; g.lineWidth = 1.2; g.stroke();      /* 위험색 */
+        g.restore();
       },
-      float(g, T, hw, hh, now, seed) {      // 떠 있는 손잡이: 위에서 내려온 짧은 끈과 흔들리는 고리
-        const rr = Math.max(T * 0.08, Math.min(hw, hh) * 0.36), sw = Math.sin(now * 3.2 + seed) * 0.14;
-        g.save(); g.translate(0, -hh * 0.8); g.rotate(sw);
-        g.strokeStyle = "#2a3248"; g.lineWidth = T * 0.14; g.lineCap = "round"; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, hh * 0.8 - rr * 0.4); g.stroke();
-        g.strokeStyle = "#e9e2cf"; g.lineWidth = T * 0.09; g.beginPath(); g.arc(0, hh * 0.8 + rr * 0.6, rr, 0, TAU); g.stroke();
-        g.restore(); g.lineCap = "butt";
+      ring(g, pt, q, e) {          // 떠 있는 고리: 굵은 붉은 네온 고리와 위의 작은 걸쇠
+        polyPts(g, ellPts(pt, 0, q.cy, q.rw, q.rr)); g.fillStyle = "rgba(200,36,79,0.35)"; g.fill();      /* 위험색 */
+        neon(g, DANGER_C, 0.85 + 0.15 * e.pulse, Math.max(2, e.T * 0.11));
+        polyPts(g, ellPts(pt, 0, q.cy, q.rw * 0.6, q.rr * 0.6)); g.strokeStyle = "rgba(255,210,220,0.5)"; g.lineWidth = 1.2; g.stroke();      /* 위험색 */
+        const c0 = pt(-q.rw * 0.25, q.cy + q.rr * 0.96), c1 = pt(q.rw * 0.25, q.cy + q.rr * 1.0); g.fillStyle = "#c8244f"; g.fillRect(Math.min(c0[0], c1[0]), Math.min(c0[1], c1[1]) - 2, Math.abs(c1[0] - c0[0]), 4);      /* 위험색 */
       },
     },
   };
 
-  const ART = { sky: SKY, sun: SUN, far: FAR, edge: EDGE, grain: GRAIN, trail: TRAIL, ambient: AMBIENT, box: BOX, red: RED_SKIN, fever: FEVER_BG, feverWall: FEVER_WALL, hazard: HAZARD, tile, particle };
+  const ART = { sky: SKY, sun: SUN, far: FAR, edge: EDGE, grain: GRAIN, trail: TRAIL, ambient: AMBIENT, box: BOX, red: RED_SKIN, fever: FEVER_BG, feverWall: FEVER_WALL, props: PROPS, tile, particle };
   // 피버 연출 그림(index.html의 feverPrim)이 아는 이름: 평소의 날씨로 빌려 쓸 수 있다
   const FEVER_PRIMS = ["tunnel", "ring", "stars", "road", "code", "confetti", "rays", "grid", "lamps", "bubbles", "embers", "rain", "gears", "ribbons", "snow", "leaves", "planets", "haze", "lanterns"];
   const THEMES = { WORLDS, ROUND_THEME, themeFor, ART, TILE, FEVER_PRIMS };

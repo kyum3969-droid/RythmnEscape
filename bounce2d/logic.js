@@ -1542,6 +1542,7 @@ const ROUND5 = {
 // 조여드는 통로(연출)는 넣지 않았다: 이 곡은 절정이 끝까지 같은 세기로 가다가 뚝 끊긴다(점점 세지는 자리가 없다).
 const ROUND6 = {
   name: "ROUND 6 · Streetlight Velocity",
+  rushProps: "subway",                             // 피버는 지하철 객차 안: 이빨·마름모 대신 의자·손잡이·고리(판정도 그 모양. subwayProps)
   decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/streetlight_velocity.mp3", offset: 0.056, measured: true },
@@ -2333,7 +2334,31 @@ function platUnder(L, x, row, beat) {
   return null;
 }
 // 장애물이 가운데에서 dx만큼 떨어진 곳에서 차지하는 높이 범위 [아래, 위]
+// 지하철 피버(6라운드): 이빨·마름모를 물건으로 바꾼다. 판정 = 그 물건의 모양(의견: "장애물은 걷어내고 의자 색 자체를 붉게. 의자 크기도 크다").
+//   틀린 길로 간 공은 반 박 지점(xt)에서 바닥·천장(또는 그 높이)에 닿으므로, 물건은 그 자리만 덮으면 막는다. 이빨보다 작아서 조금 너그러워진다.
+//   - 바닥 이빨 → 의자(chair): 높이 min(1.5, 원래 끝 높이). 방석 아래는 막힌 것으로 친다(다리 사이 틈은 공보다 낮다), 한쪽에 등받이
+//   - 천장 이빨 → 손잡이(strap): 천장에서 내려온 끈과 둥근 고리. 길이 min(1.9, 원래 길이)
+//   - 떠 있는 마름모 → 고리(ring): 틀린 길로 간 공이 올 자리에 둥근 고리
+//   너비는 화면에서 보이는 크기로 정하고 피버의 가로 늘림(RUSH_STRETCH)만큼 나눈다
+const PROP_X = 1 / RUSH_STRETCH, EMPTY_SPAN = [Infinity, -Infinity];
+function subwayProps(reds, rides) {
+  for (const q of reds) {
+    if (q.kind === "floor") Object.assign(q, { shape: "chair", h: Math.min(1.5, q.tip), w: 0.78 * PROP_X });
+    else if (q.kind === "ceil") { const len = Math.min(1.9, q.far - q.tip), rr = Math.min(0.34, len * 0.36); Object.assign(q, { shape: "strap", len, rr, rw: rr * PROP_X, bw: 0.08 * PROP_X, w: rr * PROP_X }); }
+    else { const up = q.far > q.tip; Object.assign(q, { shape: "ring", cy: up ? q.far - 0.8 : q.far + 0.8, rr: 0.45, rw: 0.45 * PROP_X, w: 0.45 * PROP_X }); }
+    q.x0 = q.xt - q.w; q.x1 = q.xt + q.w; delete q.cut;
+    for (const r of rides) if (q.xt >= r[0] && q.xt <= r[1]) { if (q.x1 > r[1]) { q.x1 = r[1]; q.cut = 1; } if (q.x0 < r[0]) { q.x0 = r[0]; q.cut = -1; } }
+  }
+}
+function propSpan(q, dx) {
+  const ax = Math.abs(dx);
+  if (q.shape === "chair") { const u = dx / q.w; if (u < -0.92 || u > 0.92) return EMPTY_SPAN; return u > 0.3 && u < 0.85 ? [0, q.h] : [0, q.h * 0.5]; }
+  if (q.shape === "strap") { const bot = q.far - q.len, cy = bot + q.rr; if (ax <= q.bw) return [bot, q.far]; if (ax >= q.rw) return EMPTY_SPAN; const sp = q.rr * Math.sqrt(1 - (ax / q.rw) ** 2); return [cy - sp, cy + sp]; }
+  if (ax >= q.rw) return EMPTY_SPAN;
+  const sp = q.rr * Math.sqrt(1 - (ax / q.rw) ** 2); return [q.cy - sp, q.cy + sp];
+}
 function hazardSpan(q, dx) {
+  if (q.shape) return propSpan(q, dx);
   const a = Math.min(1, Math.abs(dx) / q.w), slope = TOOTH_H / TOOTH_W * q.w;      // 뾰족한 쪽 비탈: 이빨과 같은 기울기
   if (q.kind === "floor") return [0, q.tip * (1 - a)];
   if (q.kind === "ceil") return [q.tip + (q.far - q.tip) * a, q.far];
@@ -2431,6 +2456,7 @@ function emptyLevel(course) {
   });
   for (const sq of squeezes) { const e = sq.pts[sq.pts.length - 1]; sq.pts.push({ step: Math.round(sq.x1 / TPB * SUB), x: sq.x1, g: e.g, top: !e.top }); }   // 끝에서 한 번 더 닿는다
   for (const sq of squeezes) smoothSqueeze(sq);
+  if (course.rushProps === "subway") subwayProps(reds, rides);
   // 피버가 끝나는(시작하는) 자리에 걸친 이빨은 벽이 끝나는 선에서 자른다. 안 자르면 이빨의 절반이 벽 밖 허공에 튀어나와 보인다(피버가 끝나는 지점의 천장 이빨이 늘 그랬다).
   // cut = +1 오른쪽 절반을 잘랐다 / -1 왼쪽 절반을 잘랐다. 판정도 잘린 쪽에는 없다.
   for (const q of reds) for (const r of rides) if (q.xt >= r[0] && q.xt <= r[1]) {
@@ -3008,6 +3034,11 @@ function rushStep(L, s, press, ev, hold, r) {
   const xa = s.x - HALF_RUSH * 0.8, xb = s.x + HALF_RUSH * 0.8, lo = h + 0.06, hi = h + SIZE - 0.06;
   for (const q of L.reds) {
     if (xb <= q.x0 || xa >= q.x1) continue;
+    if (q.shape) {                                    // 물건(의자·손잡이·고리)은 모양이 좌우로 다르니 공이 걸친 폭을 몇 군데 본다
+      const u0 = Math.max(xa, q.x0), u1 = Math.min(xb, q.x1);
+      for (let k = 0; k <= 4; k++) { const sp = propSpan(q, u0 + ((u1 - u0) * k) / 4 - q.xt); if (hi > sp[0] && lo < sp[1]) return die(s, "spike", ev); }
+      continue;
+    }
     const span = hazardSpan(q, Math.max(xa, Math.min(q.xt, xb)) - q.xt);       // 공에서 장애물 가운데에 가장 가까운 x에서 본다
     if (hi > span[0] && lo < span[1]) return die(s, "spike", ev);
   }

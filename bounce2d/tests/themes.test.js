@@ -41,10 +41,18 @@ for (const t of themes) {
   if (!ART.box[t.box]) miss.push('box ' + t.box);
   if (!ART.red[t.red]) miss.push('red ' + t.red);
   if (t.ambient && !ART.ambient[t.ambient] && !FEVER_PRIMS.includes(t.ambient)) miss.push('ambient ' + t.ambient);
-  if (!t.fever || !t.fever.back.every((b) => FEVER_PRIMS.includes(b) || ART.fever[b]) || !(WALLS.includes(t.fever.wall) || ART.feverWall[t.fever.wall]) || (t.fever.hazard && !ART.hazard[t.fever.hazard])) miss.push('fever ' + JSON.stringify(t.fever));
+  if (!t.fever || !t.fever.back.every((b) => FEVER_PRIMS.includes(b) || ART.fever[b]) || !(WALLS.includes(t.fever.wall) || ART.feverWall[t.fever.wall]) || (t.fever.props && !ART.props[t.fever.props])) miss.push('fever ' + JSON.stringify(t.fever));
 }
 ok(miss.length === 0, `모든 라운드·월드의 그림 이름이 있다${miss.length ? ': ' + [...new Set(miss)].join(', ') : ''}`);
 ok(themeFor(1, 'peaks').fever === ROUND_THEME[1].fever && themeFor(1, 'peaks').sky === WORLDS.peaks.sky, '월드 미리 보기: 그림은 그 월드 것, 피버 연출은 라운드 것');
+
+console.log('== 피버의 물건 장애물 ==');
+for (let i = 0; i < Lg.COURSES.length; i++) {
+  const c = Lg.COURSES[i], t = themeFor(i);
+  if (!c.rushProps && !t.fever.props) continue;
+  const lv = Lg.buildLevel(c), shapes = new Set(lv.reds.map((q) => q.shape));
+  ok(c.rushProps === t.fever.props && lv.reds.every((q) => q.shape && ART.props[t.fever.props][q.shape]), `${i + 1}라운드: 피버 장애물이 모두 물건(${[...shapes].join(', ')})이고 그 그림이 있다 (코스와 테마가 같은 무대: ${c.rushProps})`);
+}
 
 console.log('== 그림 함수가 오류 없이 돈다 (가짜 캔버스) ==');
 // 가짜 캔버스: 어떤 호출도 받아 준다. 숫자 인자에 NaN·무한대가 들어가면 기록한다(그림이 사라지거나 깨지는 원인)
@@ -79,7 +87,9 @@ for (const [w, h] of [[844, 390], [390, 844]]) for (const beat of [-0.5, 0, 3.7,
   for (const k in ART.red) run('red ' + k, () => { const R = ART.red[k]; for (const f of ['lo', 'hi', 'headLo', 'headHi']) if (typeof R[f] !== 'string') throw new Error(f + ' 색이 없다'); if (R.deco) { R.deco(e, { x0: 100, x1: 100 + e.T * 3, y0: -40, y1: gy }, 9, () => e.g.beginPath()); R.deco(e, { x0: 100, x1: 100 + e.T * 0.5, y0: gy - e.T, y1: gy }, 2, () => e.g.beginPath()); } });
   for (const k in ART.fever) run('fever ' + k, () => { ART.fever[k](e, 1); ART.fever[k](e, 0.4); });
   for (const k in ART.feverWall) run('feverWall ' + k, () => ART.feverWall[k](e, 0, w, gy - e.T * 3, gy, -e.camS * e.T + 100));
-  for (const k in ART.hazard) run('hazard ' + k, () => { const Z = ART.hazard[k]; for (const f of ['hang', 'stand', 'float']) if (typeof Z[f] !== 'function') throw new Error(f + ' 그림이 없다'); Z.hang(e.g, e.T, e.T, e.T * 2, e.now, 3); Z.stand(e.g, e.T, e.T, e.T * 2, e.now, 3); Z.float(e.g, e.T, e.T * 0.6, e.T, e.now, 3); Z.hang(e.g, e.T, 2, 3, e.now, 1); });
+  for (const k in ART.props) run('props ' + k, () => { const Z = ART.props[k], pt = (x, hh) => [100 + x * e.T * 1.5, gy - hh * e.T];
+    Z.chair(e.g, pt, { shape: 'chair', h: 1.5, w: 0.52 }, e); Z.chair(e.g, pt, { shape: 'chair', h: 0.9, w: 0.52 }, e);
+    Z.strap(e.g, pt, { shape: 'strap', far: 4.6, len: 0.9, rr: 0.32, rw: 0.21, bw: 0.05 }, e, 3); Z.ring(e.g, pt, { shape: 'ring', cy: 2.3, rr: 0.45, rw: 0.3 }, e); });
   for (const k in ART.ambient) run('ambient ' + k, () => ART.ambient[k](e, 0.4));
   for (const k in ART.trail) run('trail ' + k, () => { const p = ART.trail[k].make(10, 5); if (!(p.life > 0 && p.max > 0 && p.size > 0 && p.kind)) throw new Error('입자 모양이 이상하다'); for (const a of [1, 0.5, 0.01]) ART.particle(e.g, p, 100, 100, p.size * e.T, a, pal); });
 }

@@ -1017,21 +1017,14 @@
       for (const j of [i, i - 1, i + 1]) { const p = P[j]; if (!p) continue; const pt = toPass(p, x, y); if (!p.clip || inPoly(pt, p.clip)) return pt; }
       return toPass(P[i], x, y);
     };
-    // 피버 장애물의 안쪽 그림(라운드마다 따로: themes.js HAZARD). 장애물의 밑변 → 끝 방향을 그림의 아래쪽으로 놓고 그린다(굽은 통로에서는 기운 채로).
-    //   천장에서 내려온 이빨 = hang, 바닥에서 솟은 이빨 = stand(좌우가 뒤집히지 않게), 떠 있는 마름모 = float(위 → 아래)
-    function hazardSkin(HZ, q, tip, far, hw) {
-      const dx = tip[0] - far[0], dy = tip[1] - far[1], len = Math.hypot(dx, dy) || 1, seed = Math.round(q.xt * 7);
-      ctx.save();
-      if (q.kind === "float") {
-        const [top, bot] = q.far > q.tip ? [far, tip] : [tip, far], ux = bot[0] - top[0], uy = bot[1] - top[1];
-        ctx.translate((tip[0] + far[0]) / 2, (tip[1] + far[1]) / 2); ctx.rotate(Math.atan2(-ux, uy));
-        HZ.float(ctx, T, hw, len / 2, now, seed);
-      } else {
-        ctx.translate(far[0], far[1]);
-        if (q.far > q.tip) { ctx.rotate(Math.atan2(-dx, dy)); HZ.hang(ctx, T, hw, len, now, seed); }
-        else { ctx.rotate(Math.atan2(dx, -dy)); ctx.scale(1, -1); HZ.stand(ctx, T, hw, len, now, seed); }
-      }
-      ctx.restore();
+    // 피버의 물건 장애물(6라운드 지하철: 의자·손잡이·고리). 모양 = 판정(logic.js propSpan). 세계 좌표 → 화면 점 pt로 그려서 굽은 통로에서도 벽을 따라 기운다
+    //   물건마다 한 번만 자리·기울기를 잡아(가운데 높이에서) 통째로 옮긴다: 점마다 따로 옮기면 굽이의 이음매에서 모양이 일그러졌다
+    function drawProp(q, P) {
+      const PR = ART.props[THEME.fever.props]; if (!PR || !PR[q.shape]) return;
+      const h0 = q.shape === "chair" ? q.h / 2 : q.shape === "strap" ? q.far - q.len / 2 : q.cy, B = P(q.xt, h0), A0 = P(q.xt - 0.25, h0), A1 = P(q.xt + 0.25, h0), U1 = P(q.xt, h0 + 0.5);
+      const ax = (A1[0] - A0[0]) / 0.5, ay = (A1[1] - A0[1]) / 0.5, ux = (U1[0] - B[0]) / 0.5, uy = (U1[1] - B[1]) / 0.5;
+      const pt = (x, hh) => [B[0] + x * ax + (hh - h0) * ux, B[1] + x * ay + (hh - h0) * uy];
+      ctx.save(); PR[q.shape](ctx, pt, q, E, Math.round(q.xt * 7)); ctx.restore();
     }
     function bentHazard(q, baseT) {
       const hMid = q.kind === "float" ? (q.far > q.tip ? hazardSpan(q, q.w)[0] : hazardSpan(q, q.w)[1]) : q.far;
@@ -1045,9 +1038,7 @@
       const bg = ctx.createLinearGradient(farP[0], farP[1], tipP[0], tipP[1]); bg.addColorStop(0, q.kind === "float" ? "#3a0a22" : "#12050d"); bg.addColorStop(1, "#7a1440");
       trace(); ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fill();
       ctx.save(); ctx.clip();
-      const HZ = THEME.fever.hazard && ART.hazard[THEME.fever.hazard];
-      if (HZ) hazardSkin(HZ, q, tipP, farP, q.w * T);
-      else {
+      {
         ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2; ctx.beginPath();
         const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), sp = y1 - y0 + x1 - x0;
         for (let x = x0 - sp; x < x1; x += T * 0.36) { ctx.moveTo(x, y1); ctx.lineTo(x + sp, y1 - sp); }
@@ -1115,7 +1106,7 @@
     if (layer === 0) {
     ctx.fillStyle = WALL;
     ctx.fillRect(sx(cA - WIDE) - 1, view.groundY - 0.5, sx(cB + 1 + WIDE) - sx(cA - WIDE) + 2, WALLD ?? h + FAR);
-    ctx.save(); ART.edge[THEME.edge](E, sx(cA), sx(cB + 1), sx(0)); ctx.restore();      // 땅 윗선 바로 밑의 장식(차선, 서리, 이끼 …): 땅 속에만
+    if (round <= 0.5) { ctx.save(); ART.edge[THEME.edge](E, sx(cA), sx(cB + 1), sx(0)); ctx.restore(); }      // 땅 윗선 바로 밑의 장식(차선, 서리, 이끼 …): 땅 속에만. 피버 안에서는 끈다(피버의 벽 장식이 따로 있다)
     ctx.beginPath(); ctx.moveTo(sx(cA), view.groundY); ctx.lineTo(sx(cB + 1), view.groundY);
     ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5;
     ctx.shadowColor = css(pal.accent); sb(8 + 10 * pulse);
@@ -1389,6 +1380,11 @@
     // (여기서부터는 낱개로 놓인 것들: 굽은 길에서는 제 토막에서만, 테두리로 자르지 않고 통째로 그린다. 안 그러면 토막의 이음매에 걸친 것이 두 겹으로 보인다)
     for (const q of L.reds) {
       if (q.x1 < cA || q.x0 > cB || !inPass(q.xt)) continue;
+      if (q.shape) {      // 물건 장애물(지하철의 의자·손잡이·고리): 굽은 통로에서는 그 자리 토막의 벽을 따라
+        if (pass.bent) { ctx.save(); ctx.setTransform(baseT); drawProp(q, (x, hh) => bentPt(x, hh)); ctx.restore(); }
+        else drawProp(q, (x, hh) => [sx(x), sy(ROWS - 1 - hh)]);
+        continue;
+      }
       // 굽이의 이음매(기울기가 바뀌는 자리)에 걸친 장애물: 한 토막의 기울기로 통째로 그리면 꺾인 벽에서 끝이 떠 보인다(또는 벽을 뚫는다).
       // 그래서 장애물의 테두리를 잘게 나눠, 점마다 그 자리 토막의 벽을 따라 옮겨 그린다(벽을 자르는 모서리 선과 같은 규칙이라 벽에 붙는다)
       if (pass.bent && bend.passes.some((p2) => p2 !== pass && p2.th !== pass.th && q.x0 < p2.x1 && q.x1 > p2.x0)) { bentHazard(q, baseT); continue; }
@@ -1406,9 +1402,7 @@
       bg.addColorStop(0, q.kind === "float" ? "#3a0a22" : "#12050d"); bg.addColorStop(1, "#7a1440");
       ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fill();
       ctx.save(); ctx.clip();
-      const HZ = THEME.fever.hazard && ART.hazard[THEME.fever.hazard];
-      if (HZ) hazardSkin(HZ, q, [xt, yTip], [xt, yFar], xb - xt);      // 라운드마다 따로 만든 장애물 그림(6라운드: 손잡이·의자). 윤곽과 테두리는 그대로
-      else {
+      {
         ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2; ctx.beginPath();
         const top = Math.min(yFar, yTip), span = Math.abs(yFar - yTip);
         for (let x = xa - span; x < xb; x += T * 0.36) { ctx.moveTo(x, top + span); ctx.lineTo(x + span, top); }
