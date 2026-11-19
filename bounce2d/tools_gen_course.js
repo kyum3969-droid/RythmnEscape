@@ -188,18 +188,18 @@ TEMPLATES.R6 = {
 // 피버는 절정 두 곳에만. 새 장치 튕김판(B: 공중에 뜬 파란 판. 닿으면 누르지 않아도 꺾인다)이 나온다: 판이 있는 마디를 세 번 → 네 번째엔 판이 없다(눌러야 한다).
 // 좁은 통로의 줄(19가지)은 바닥났지만, 튕김판이 있는 줄은 새것이라 좁은 통로에도 쓴다. 바운스에는 삼단 점프(충전 고리)와 미끼 고리를 넣었다.
 TEMPLATES.R7 = {
-  prefix: 'g7', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
+  prefix: 'g7', bpm: 152.0, freshWideAll: true, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7m', maxHoldRun: 3,
   rise: [{ at: 21, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 69, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 21~22, 69~70)
-  recipe: { g: 'a7', gf: 'a7', traps: 13, from: 0, kinds: { 'stop-last': 2, 'hand-last': 2, 'stop-first': 2, 'hand-first': 2, 'short-last': 2, 'long-last': 2, 'short-first': 2, 'long-first': 2 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
+  recipe: { g: 'a7m', gf: 'a7m', traps: 13, from: 0, kinds: { 'stop-last': 2, 'hand-last': 2, 'stop-first': 2, 'hand-first': 2, 'short-last': 2, 'long-last': 2, 'short-first': 2, 'long-first': 2 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
   sections() {
     //   one() 새 마디 하나 / phrase(함정, 되풀이 횟수) 새 마디를 그만큼 되풀이한 뒤 함정 / feint(횟수) 헛다리: 그만큼 되풀이하고 함정 없이 넘어간다
     //   함정의 종류를 배열로 주면 그 종류로만 만든다(처음 소개하는 자리), 글자로 주면 안 될 때 다른 종류로 바꾼다
     let key = 0;
-    const one = () => ({ m: 'f' + key++, g: 'a7' });
+    const one = () => ({ m: 'f' + key++, g: 'a7m' });
     const ALL = ['short-last', 'long-last', 'stop-last', 'hand-last', 'short-first', 'long-first', 'stop-first', 'hand-first'];      // (멈춤 길이 함정을 먼저 해 본다)
     const kindsOf = (kind) => (Array.isArray(kind) ? kind : [kind, ...ALL.filter((x) => x !== kind && x.slice(-5) === kind.slice(-5))]);      // 안 되면 같은 자리(앞·끝)의 다른 종류로. 자리는 바꾸지 않는다(앞에서 걸 함정은 앞에서)
-    const phrase = (kind, reps = 2) => { const k = 'p' + key++; return [{ m: k, g: 'a7', need: kindsOf(kind) }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: kindsOf(kind) }]; };
-    const feint = (reps) => { const k = 'h' + key++; return [{ m: k, g: 'a7' }, ...Array.from({ length: reps - 1 }, () => ({ r: k }))]; };
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++; return [{ m: k, g: 'a7m', need: kindsOf(kind) }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: kindsOf(kind) }]; };
+    const feint = (reps) => { const k = 'h' + key++; return [{ m: k, g: 'a7m' }, ...Array.from({ length: reps - 1 }, () => ({ r: k }))]; };
     return [
       ['도입(조용함)이지만 쉬어 가지 않는다: 두 번 되풀이 → 끝에서 뚝, 한 번 보여 주고 → 끝에서 손 바꿈', ['flat', 'flat', ...phrase('stop-last', 2), ...phrase('hand-last', 1), 'cp']],
       ['리듬 — 헛다리를 소개한다: 같은 마디가 세 번 온다(세 번째에 함정이 없다). 이어지는 마디는 세 번 되풀이한 뒤에야 함정이 온다(끝의 멈춤이 길다)', [...feint(3), ...phrase('long-last', 3), 'cp']],
@@ -570,6 +570,9 @@ const LEVELS = {
   a5: { plain: 0.02, H: 0.26, D: 0.04, DH: 0.08, T: 0.05, FD: 0.05, CH: 0.04, HDH: 0.12, HRH: 0.18, DHRH: 0.16, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
   a6: { plain: 0.02, H: 0.32, D: 0.02, DH: 0.06, T: 0.03, FD: 0.04, CH: 0.03, HDH: 0.1, HRH: 0.2, DHRH: 0.18, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
   a7: { plain: 0.02, H: 0.32, D: 0.02, DH: 0.06, T: 0.03, FD: 0.04, CH: 0.03, CL: 0.01, HDH: 0.09, HRH: 0.2, DHRH: 0.18, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
+  // a7m(7라운드 다시 뽑기, 의견: "7라운드 초반부가 너무 밋밋하다. 일시정지만 계속 누르는 구간이 엄청 길게 이어진다"): a7은 멈춤(H)이 32%·이단 점프가 2%라
+  //   마디 5~20이 "꼭대기에서 멈춤 ×2"만 16마디 이어졌다. 멈춤은 그대로 주인공이되(H, 공중 사슬), 이단 점프·"뛰고 그 꼭대기에서 멈춤"·"멈췄다 놓자마자 뛰기"·높이 장치를 섞는다
+  a7m: { plain: 0.02, H: 0.16, D: 0.1, DH: 0.14, HD: 0.06, T: 0.07, FD: 0.07, CH: 0.06, CL: 0.01, HDH: 0.1, HRH: 0.12, DHRH: 0.09, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], hdd: [0.375, 0.5, 0.625], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
   // a8(14라운드부터): 쉬운 박을 더 줄이고 공중 사슬과 "이단 점프 → 멈춤"을 늘린다. 마디당 입력이 a7보다 많다(판정 폭 ±0.15박은 그대로)
   a8: { plain: 0, H: 0.2, D: 0.02, DH: 0.14, T: 0.03, FD: 0.03, CH: 0.03, CL: 0.01, HDH: 0.12, HRH: 0.2, DHRH: 0.22, hs: [0.5], hd: [0.75, 0.875, 1.0], dt: [0.375, 0.5, 0.625], dhd: [0.5, 0.75, 0.875], ch1: [0.5, 0.625, 0.75], ch2: [0.5, 0.75, 1.0] },
   // a9(10라운드 이후 다시 뽑기, 의견: "라운드끼리 비슷한 패턴을 전부 바꿔 달라"): a8의 리듬 종류를 넓힌다 — 멈춤을 꼭대기보다 1/8박 이르거나 늦게도 시작하고(0.375·0.625박),
@@ -1123,9 +1126,13 @@ for (let seed = seed0; seed < seed0 + tries; seed++) {
   const traps = Object.values(g.notes).filter((n) => /함정|뚝/.test(n)).length, rests = g.bars.filter((n) => n === 'idle' || n === 'box').length;
   const spots = new Set([...L.ref.presses, ...L.ref.holds.map((h) => h[0])].map((st) => st % BAR)).size, inputs = L.ref.presses.length + L.ref.holds.length;
   const dens = Lg.touchDensity(course, L);
+  // 멈춤만 하는 마디가 이어지는 길이(T.maxHoldRun을 넘으면 넘는 만큼 감점): 같은 손동작만 길게 이어지면 밋밋하다
+  let hrun = 0, hbest = 0;
+  for (const n of g.bars) { const p = Lg.PATTERNS[n]; const ho = p && p.mode !== 'rush' && !p.presses.length && p.holds.length && !p.rings && !p.stair && !p.floats && !p.boxes && !p.caps; hrun = ho ? hrun + 1 : 0; hbest = Math.max(hbest, hrun); }
+  const holdPen = T.maxHoldRun ? Math.max(0, hbest - T.maxHoldRun) * 30 : 0;
   const kindsGot = new Set(g.traps.map((x) => x.kind)), want = T.recipe ? T.recipe.traps + 2 : null;      // 조건이 있는 라운드: 함정 수가 목표에 가깝고, 소개할 함정이 다 나와야 한다
-  const score = T.recipe ? (T.recipe.intro.every((it) => kindsGot.has(it.kind)) ? 0 : -100) - Math.abs(traps - want) * 3 + spots * 0.5 + inputs * 0.05 - rests + (T.density ? (dens.busy >= T.density ? 0 : -100) + dens.busy * 20 : 0) : traps * 3 + spots * 0.5 + inputs * 0.1 - rests * 2;
-  console.error(`씨앗 ${seed}: ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'} | 함정 ${traps}, 누르는 자리 ${spots}가지, 입력 ${inputs}번, 쉬는 마디 ${rests}, 밀도 ${(dens.busy * 100).toFixed(1)}%(누르기만 ${(dens.touch * 100).toFixed(1)}%) → 점수 ${score.toFixed(1)}${T.novel ? `, 새 리듬을 못 찾은 마디 ${g.novelMiss}` : ""}`);
+  const score = -holdPen + (T.recipe ? (T.recipe.intro.every((it) => kindsGot.has(it.kind)) ? 0 : -100) - Math.abs(traps - want) * 3 + spots * 0.5 + inputs * 0.05 - rests + (T.density ? (dens.busy >= T.density ? 0 : -100) + dens.busy * 20 : 0) : traps * 3 + spots * 0.5 + inputs * 0.1 - rests * 2);
+  console.error(`씨앗 ${seed}: 멈춤만 연속 ${hbest}마디, ${s.won ? '완주' : '죽음(마디 ' + Math.floor(s.x / 16) + ')'}, 걷어 낸 칸 ${L.fixed.length}, 자동 풀이 ${solved ? '통과' : '실패'} | 함정 ${traps}, 누르는 자리 ${spots}가지, 입력 ${inputs}번, 쉬는 마디 ${rests}, 밀도 ${(dens.busy * 100).toFixed(1)}%(누르기만 ${(dens.touch * 100).toFixed(1)}%) → 점수 ${score.toFixed(1)}${T.novel ? `, 새 리듬을 못 찾은 마디 ${g.novelMiss}` : ""}`);
   if (s.won && !L.fixed.length && solved && (!result || score > result.score)) result = { ...g, seed, score };
 }
 if (!result) { console.error('통과하는 코스를 찾지 못했다'); process.exit(1); }
