@@ -724,7 +724,8 @@
   }
 
   // ---------------------------------------------------------------- 그리기
-  const canvas = $("view"), ctx = canvas.getContext("2d");
+  const canvas = $("view"), mainCtx = canvas.getContext("2d");
+  let ctx = mainCtx;          // 굽은 통로의 바탕을 펼친 그림(BSTRIP)에 그리는 동안만 그쪽 캔버스로 바뀐다
   // 실시간 빛 번짐(shadowBlur) 끄기(의견: "피버 모드가 다 렉 걸린다"): 폰의 캔버스에서 번짐은 그리는 것마다 따로 흐리게 처리해서 가장 무겁다. 피버에는 번지는 것(이빨 테두리, 벽선, 공, 꼬리, 발판)이 몰려 있다.
   //   NOBLUR.on이면 번짐 값을 무엇으로 넣든 0이 된다(그리는 곳을 하나하나 고치지 않고 한 곳에서). 피버 동안, 그리고 자동 화질이 한 번이라도 내려간 느린 기기에서는 늘 켠다.
   //   빛나는 선(sb/gs로 긋는 것)은 넓고 옅은 선 두 번으로 흉내 낸다.
@@ -743,9 +744,19 @@
     }
     const ga = ctx.globalAlpha; ctx.globalAlpha = ga * a; ctx.drawImage(cv, -r, -r, 2 * r, 2 * r); ctx.globalAlpha = ga;
   }
-  {
+  function noBlurHook(c) {
     const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "shadowBlur");
-    if (d && d.set) Object.defineProperty(ctx, "shadowBlur", { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, NOBLUR.on ? 0 : v); } });
+    if (d && d.set) Object.defineProperty(c, "shadowBlur", { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, NOBLUR.on ? 0 : v); } });
+  }
+  noBlurHook(mainCtx);
+  // 굽은 통로의 바탕(땅·천장·벽·발판·벽 장식)을 펼친 채로 한 번 그려 두는 그림. 토막마다 이것을 잘라 돌려 붙인다(아래 "굽은 통로" 참고).
+  //   캔버스는 하나만 두고, 모자랄 때만 키운다(플레이 중 캔버스를 새로 만들면 폰에서 멈칫한다)
+  const BSTRIP = { cv: null, g: null, w: 0, h: 0 }, BSTRIP_RES = 0.7;
+  function bstripCtx(pw, ph) {
+    if (!BSTRIP.cv) { BSTRIP.cv = document.createElement("canvas"); BSTRIP.g = BSTRIP.cv.getContext("2d"); noBlurHook(BSTRIP.g); }
+    if (pw > BSTRIP.w || ph > BSTRIP.h) { BSTRIP.w = Math.max(BSTRIP.w, Math.ceil(pw / 256) * 256); BSTRIP.h = Math.max(BSTRIP.h, Math.ceil(ph / 128) * 128); BSTRIP.cv.width = BSTRIP.w; BSTRIP.cv.height = BSTRIP.h; noBlurHook(BSTRIP.g); }
+    const g = BSTRIP.g; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, Math.min(BSTRIP.w, pw + 2), Math.min(BSTRIP.h, ph + 2));
+    return g;
   }
   const view = { w: 0, h: 0, T: 40, px: 100, groundY: 300 };
   // 자동 화질(의견: "피버 구간 프레임 드랍이 아직 있는 것 같다"): 폰에서 끊기는 가장 흔한 까닭은 칠할 픽셀의 수다. 실제 기기에서 한 장 사이 간격을 재서,
@@ -1119,19 +1130,53 @@
     // 두 번에 나눠 그린다: 먼저 모든 토막의 바탕(땅, 천장, 벽, 발판 — 테두리로 잘라서), 그다음 모든 토막의 낱개(장애물, 수정, 공 — 자르지 않고 제 토막에서만).
     // 한꺼번에 그리면 굽이의 이음매에서 앞 토막의 장애물이 뒤 토막의 바탕에 가려진다.
     if (camY) ctx.translate(0, camY * T);      // 오르내리는 카메라: 올라간 만큼 세상을 내려 그린다(이 아래의 당김·물러남과 함께 풀린다)
-    for (const layer of [0, 1]) for (const pass of bend.passes) {
+    // 굽은 통로(의견: "7라운드 마지막 피버 초입, 휘어져 들어가는 구간 렉이 너무 심하다" — 폰에서 12fps, 장 사이 86ms, 그 가운데 통로 그리기 21.6ms):
+    //   굽이는 칸마다 한 토막이라 U자 굽이에서는 토막이 열 개 넘게 보이고, 전에는 토막마다 바탕 전체(땅·천장·벽·발판·벽 장식)를 처음부터 다시 그렸다.
+    //   이제 굽이의 짧은 토막들(칸 한두 개)의 바탕은 펼친 그림(BSTRIP)에 한 번만 그리고(아래 strip 토막), 토막마다 그 그림에서 제 칸들만 잘라 돌려 붙인다.
+    //   긴 곧은 토막과 낱개(장애물·수정·공)는 전처럼 토막마다 그린다.
+    let strip = null;
+    if (bend.bent) {
+      let ua = Infinity, ub = -Infinity, top = 0;
+      const lo = Math.floor(camX - bend.back) - 1, hi = Math.ceil(camX + bend.fwd) + 1;
+      for (const p of bend.passes) { if (p.cull || !p.lite) continue; const m = (p.mg ?? 3) + 6; let a = Math.max(lo, p.x0 - m), b = Math.min(hi, p.x1 + m);
+        while (a < b && sx(a + 1) < sx(p.rx) + p.a0 - 2 * T) a++; while (b > a && sx(b) > sx(p.rx) + p.a1 + 2 * T) b--;
+        if (b > a) { ua = Math.min(ua, a); ub = Math.max(ub, b); } }
+      if (ub > ua) {
+        for (let x = Math.max(0, ua); x <= Math.min(L.cols, ub); x += 2) top = Math.max(top, ceilAt(L, x));
+        const m0 = mainCtx.getTransform(), sc = Math.hypot(m0.a, m0.b) || 1;
+        const x0 = sx(ua), x1 = sx(ub + 1), y0 = view.groundY - (top + BENT_WALL + 1) * T, y1 = view.groundY + (BENT_WALL + 1) * T;
+        // 해상도는 화면의 0.7배(굽이를 도는 동안은 늘 움직이고 있어서 흐림이 잘 안 보인다. 칠할 픽셀이 절반으로 준다). 너무 크면 더 낮춘다
+        const k = Math.min(BSTRIP_RES, 4096 / ((x1 - x0) * sc), 2048 / ((y1 - y0) * sc)), ps = sc * k;
+        strip = { x0: ua + 6, x1: ub - 6, mg: 6, bent: true, strip: true, rx: 0, a0: -1e9, a1: 1e9, lite: true, fx0: x0, fy0: y0, fw: x1 - x0, fh: y1 - y0, ps, pw: Math.ceil((x1 - x0) * ps), ph: Math.ceil((y1 - y0) * ps) };
+      }
+    }
+    for (const layer of [0, 1]) for (const pass of layer === 0 && strip ? [strip, ...bend.passes] : bend.passes) {
     if (pass.cull) continue;                 // 화면 밖의 토막
+    ctx = mainCtx; E.g = ctx;
+    if (strip && layer === 0 && pass.lite && !pass.strip) {      // 펼친 바탕에서 제 칸들만 잘라 돌려 붙인다(자르는 테두리는 전과 같다)
+      const m = (pass.mg ?? 3) + 6, a = Math.max(strip.x0 - 6, pass.x0 - m), b = Math.min(strip.x1 + 7, pass.x1 + m);
+      if (b <= a) continue;
+      const fa = Math.max(strip.fx0, sx(a)), fb = Math.min(strip.fx0 + strip.fw, sx(b));
+      if (fb <= fa) continue;
+      ctx.save();
+      ctx.beginPath(); pass.clip.forEach((q, n) => (n ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.clip();
+      ctx.translate(pass.qx, pass.qy); ctx.rotate(-pass.th); ctx.translate(-sx(pass.rx), -view.groundY);
+      ctx.drawImage(BSTRIP.cv, (fa - strip.fx0) * strip.ps, 0, (fb - fa) * strip.ps, strip.ph, fa, strip.fy0, fb - fa, strip.fh);
+      ctx.restore();
+      continue;
+    }
+    if (pass.strip) { ctx = bstripCtx(pass.pw, pass.ph); E.g = ctx; ctx.setTransform(pass.ps, 0, 0, pass.ps, -pass.fx0 * pass.ps, -pass.fy0 * pass.ps); }
     ctx.save();
     const baseT = ctx.getTransform();        // (토막의 회전을 걸기 전: 이음매에 걸친 장애물을 토막마다 따로 휘어 그릴 때 쓴다)
-    if (layer === 0 && pass.clip) { ctx.beginPath(); pass.clip.forEach((q, n) => (n ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.clip(); }
-    if (pass.bent) { ctx.translate(pass.qx, pass.qy); ctx.rotate(-pass.th); ctx.translate(-sx(pass.rx), -view.groundY); }
+    if (layer === 0 && pass.clip && !pass.strip) { ctx.beginPath(); pass.clip.forEach((q, n) => (n ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.clip(); }
+    if (pass.bent && !pass.strip) { ctx.translate(pass.qx, pass.qy); ctx.rotate(-pass.th); ctx.translate(-sx(pass.rx), -view.groundY); }
     const FAR = bend.bent || CLIMB.length ? 3000 : 40;
     const inPass = (x) => x >= pass.x0 - 1e-6 && x < pass.x1;
     // 지형: 땅
     // 굽이 안의 토막은 이웃으로 조금만 넘겨 그린다(이음매의 쐐기를 메울 만큼만). 바탕의 칠(땅, 천장 너머)만 넉넉히 넓게 칠한다.
     const MG = pass.mg ?? 3, WIDE = pass.bent ? 6 : 0;
     let cA = Math.max(pass.x0 - MG, Math.floor(camX - bend.back) - 1), cB = Math.min(pass.x1 + MG, Math.ceil(camX + bend.fwd) + 1);
-    if (pass.bent) {                           // 화면에 걸치는 칸만(앞뒤로 두 칸 여유)
+    if (pass.bent && !pass.strip) {            // 화면에 걸치는 칸만(앞뒤로 두 칸 여유)
       const lo = sx(pass.rx) + pass.a0 - 2 * T, hi = sx(pass.rx) + pass.a1 + 2 * T;
       while (cA < cB && sx(cA + 1) < lo) cA++;
       while (cB > cA && sx(cB) > hi) cB--;
@@ -2015,6 +2060,7 @@
     }
     ctx.restore();
     }                                                  // (토막마다 그리기 끝)
+    ctx = mainCtx; E.g = ctx;
     const t2 = performance.now();
     ctx.restore();                                     // (당김·물러남을 푼다)
     ctx.restore();
@@ -2250,6 +2296,16 @@
       // 토막의 길 방향으로 화면에 걸치는 범위(픽셀. 토막이 시작하는 점에서 잰 것): 긴 곧은 토막에서 화면 밖의 칸을 그리지 않으려고
       let a0 = 1e9, a1 = -1e9;
       for (const q of cs) { const a = (q[0] - qx) * c - (q[1] - qy) * sN; a0 = Math.min(a0, a); a1 = Math.max(a1, a); }
+      // 자를 테두리를 이 토막에 필요한 띠로 좁힌다(의견: "7라운드 마지막 피버 초입, 휘어져 들어가는 구간 렉이 너무 심하다". 폰에서 12fps, 장 사이 86ms).
+      //   전에는 쐐기의 두 변을 6000픽셀까지 뻗어서, 한 칸짜리 토막 하나를 잘라 칠할 때마다 화면 전체 크기의 자르개를 만들고 칠했다.
+      //   U자 굽이에서는 그런 토막이 수십 개라 폰의 GPU가 한 장에 화면 수십 장 분량을 칠했다. 이제는 길과 수직으로 땅 밑 벽 두께부터 천장 위 벽 두께까지,
+      //   길 방향으로 화면에 걸치는 만큼만 남긴다(그 밖은 어차피 칠하지 않는 곳: 벽 너머로는 하늘과 풍경이 보인다).
+      { let top = 0; for (let x = Math.max(0, x0 - 4); x <= Math.min(L.cols, g.x1 + 4); x += 4) top = Math.max(top, ceilAt(L, x)); top = Math.max(top, ceilAt(L, Math.min(L.cols, g.x1)));
+        const nlo = -(BENT_WALL + 1) * T, nhi = (top + BENT_WALL + 1) * T, nv = nrm(g.th);
+        const cut = (poly, f) => { const out = []; for (let j = 0; j < poly.length; j++) { const A = poly[j], B = poly[(j + 1) % poly.length], fa = f(A), fb = f(B); if (fa >= 0) out.push(A); if ((fa >= 0) !== (fb >= 0)) { const t = fa / (fa - fb); out.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); } } return out; };
+        const nAt = (q) => (q[0] - qx) * nv[0] + (q[1] - qy) * nv[1], aAt = (q) => (q[0] - qx) * c - (q[1] - qy) * sN;
+        let poly = cut(clip, (q) => nAt(q) - nlo); poly = cut(poly, (q) => nhi - nAt(q)); poly = cut(poly, (q) => aAt(q) - (a0 - 2 * T)); poly = cut(poly, (q) => a1 + 2 * T - aAt(q));
+        if (poly.length >= 3) clip.splice(0, clip.length, ...poly); else cull = true; }
       passes.push({ x0: g.x0, x1: g.x1, rx: x0, th: g.th, bent: true, qx, qy, clip, cull, mg, a0, a1, lite: g.x1 - g.x0 <= 2 });
     }
     return { passes, bent: true, th, k, ax, ay, back: range, fwd: range };
