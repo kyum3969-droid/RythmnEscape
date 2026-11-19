@@ -11,6 +11,7 @@
 | 위치 | 내용 |
 |---|---|
 | [DESIGN.md](DESIGN.md) | 게임 디자인: 정한 것과 그 이유, 좋은 함정의 모양, 멈춤의 철학 |
+| [VISUAL_RESEARCH.md](VISUAL_RESEARCH.md) | 시각 연출 조사: 다른 리듬·퍼즐 게임이 연출을 어떻게 쌓아 가나, 그리고 라운드별 연출 단계안 |
 | [bounce2d/](bounce2d/) | 게임 본체(웹). `index.html`(화면·입력), `logic.js`(규칙·패턴·코스), `themes.js`(월드마다의 그림), `tests/` |
 | [bounce2d/README.md](bounce2d/README.md) | 라운드마다 만든 것과 고친 것, 도구 사용법 |
 | `bounce2d/music/` | 라운드별 곡(Gemini로 만든 것) |
