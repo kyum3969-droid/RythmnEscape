@@ -1745,6 +1745,23 @@
       ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; ctx.shadowBlur = 10 + 8 * pulse + 16 * hit;
       ctx.strokeRect(xa, y0, xb - xa, th); ctx.shadowBlur = 0;
     }
+    // 멈춤의 길이(course.holdLen, 1라운드): II 자리에서 손을 떼는 자리까지 공이 떠 가는 높이에 띠를 긋고, 끝에 "놓기" 표시(세로 막대 + 빈 고리).
+    //   공이 지나간 부분은 사라진다(남은 길이가 줄어드는 게 보인다)
+    if (L.holdSpans && L.holdSpans.length && showMarks()) {
+      const bx = camX + state.lead;
+      for (const q of L.holdSpans) {
+        if (q.x1 < cA - 1 || q.x0 > cB + 1 || q.x1 < bx - 0.2 || !inPass(q.x0)) continue;
+        const a = Math.max(q.x0, Math.min(q.x1, bx)), y = sy(ROWS - 1 - q.h), xa = sx(a), xb = sx(q.x1), wv = T * 0.3;
+        ctx.save();
+        ctx.lineCap = "round"; ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.35), 0.3); ctx.lineWidth = wv;
+        ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke();
+        ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.6), 0.85); ctx.lineWidth = 2; ctx.setLineDash([T * 0.12, T * 0.1]); ctx.lineDashOffset = -beat * T * 0.5;
+        ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(xb, y - T * 0.42); ctx.lineTo(xb, y + T * 0.42); ctx.stroke();      // 놓기: 세로 막대
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(xb + T * 0.3, y, T * 0.16, 0, Math.PI * 2); ctx.stroke();                                          //        + 빈 고리
+        ctx.restore();
+      }
+    }
     // 수정: 맞는 길 위에 줄지어 있다. 지나가며 뚫는다. 눌러야 하는 자리에는 바뀔 방향을 가리키는 화살표가 있다.
     if (L.gems.length) {
       for (let i = 0; i < L.gems.length; i++) {
