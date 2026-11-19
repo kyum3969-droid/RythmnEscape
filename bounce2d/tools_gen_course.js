@@ -72,6 +72,7 @@ function fillStretches(lens, R, seed) {
 }
 // 3라운드: 버릇 묶음(2~6라운드)의 둘째. 앞 라운드의 "끝에서 뚝"에 더해 "끝에서 손 바꿈"과 "하나 더"를 소개한다
 TEMPLATES.R3 = {
+  swap: {10: "ch3_10", 12: "ch3_12", 18: "ch3_18"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g3', bpm: 152.0183, cpFill: true, cpLevel: 'a3',      // cpFill = 체크포인트 마디에도 패턴(개발하는 동안)
   rise: [{ at: 4, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 55, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 4~5, 55~56)
   recipe: { g: 'a3', traps: 8, from: 1, kinds: { 'stop-last': 1, 'hand-last': 2, add: 2, 'short-last': 4, 'long-last': 3 }, reps: { 2: 7, 3: 3 }, intro: [{ stretch: 1, kind: 'hand-last' }, { stretch: 2, kind: 'add' }, { stretch: 3, kind: 'short-last' }], fill: { one: 6, pair: 2, set: 1.2, rest: 0.6 } },
@@ -97,6 +98,7 @@ TEMPLATES.R3 = {
 // 4라운드: 높이로 속이는 함정을 소개한다(떠 있는 파란 박스, 파란 천장, 떠 있는 빨간 박스). 이 마디들은 손으로 만든 것이라 자리를 정해 두고,
 // 그 사이를 조건대로 뽑은 마디가 채운다(손 함정은 앞 라운드의 것을 복습: 끝에서 뚝, 끝에서 손 바꿈, 하나 더).
 TEMPLATES.R4 = {
+  swap: {11: "ch4_11", 69: "ch4_69", 70: "ch4_70"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g4', bpm: 152.005, floatReds: true, vary: true, density: 0.95, cpFill: true, cpLevel: 'a4',
   rise: [{ at: 12, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 67, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 12~13, 67~68)
   // g = 되풀이 → 함정 짜임에 쓰는 단계(높이 장치 없음), gf = 그 사이를 채우는 마디의 단계(높이 장치를 섞는다)
@@ -123,6 +125,7 @@ TEMPLATES.R4 = {
 // 5라운드: 피버 위주. 피버의 짜임은 "새 마디 → 한 번 더 → 함정"이고, 함정은 뚝(누르던 자리에서 끊김)과 하나 더(안 누르던 자리에서 한 번 더) 두 가지다.
 // 통로의 굽이는 코스의 cam 표에 있다(logic.js의 ROUND5). 굽이가 걸리는 넓은 통로의 짜임(H와 그 뒤 마디)은 성기게 뽑는다(calm: 마디의 첫 박은 누르지 않는다, run: 반 박 간격으로 이어 누르기는 두 번까지) — 굽이를 볼 틈이 있어야 한다. 좁은 통로는 원래 한 박에 한 번까지라 그대로 둔다. 바운스 구간은 4라운드와 같은 조건(밀도 95%, 변주)에 새 함정 fJ3G를 넣는다.
 TEMPLATES.R5 = {
+  swap: {},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g5', bpm: 152.0, floatReds: true, vary: true, density: 0.95, cpFill: true, cpLevel: 'a5',
   rise: [{ at: 29, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 61, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 29~30, 61~62)      // cpFill = 체크포인트 마디에도 패턴(개발하는 동안)
   recipe: { g: 'a5', gf: 'a5', traps: 4, from: 0, kinds: { 'stop-last': 2, 'hand-last': 2, 'short-last': 3, 'long-last': 3, 'short-first': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },
@@ -151,6 +154,7 @@ TEMPLATES.R5 = {
 // 피버는 곡의 절정 두 곳에만 둔다(남발하지 않는다): 얇은 굴이 있는 굽은 통로 / 왼쪽 위로 넘어가는 넓은 통로. 굽이는 코스의 cam 표에 있다(logic.js의 ROUND6).
 // 조여드는 통로는 없다(곡에 점점 세지는 자리가 없다). 징검다리는 구간의 끝(체크포인트 앞)이나 gAfter 앞에 둔다.
 TEMPLATES.R6 = {
+  swap: {},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g6', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a6',
   rise: [{ at: 8, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 56, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 8~9, 56~57)      // fresh = 앞 라운드에 나온 피버 문제를 다시 내지 않는다
   recipe: { g: 'a6', gf: 'a6', traps: 9, from: 0, kinds: { 'stop-last': 2, 'hand-last': 3, 'short-last': 3, 'long-last': 3 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
@@ -188,6 +192,7 @@ TEMPLATES.R6 = {
 // 피버는 절정 두 곳에만. 새 장치 튕김판(B: 공중에 뜬 파란 판. 닿으면 누르지 않아도 꺾인다)이 나온다: 판이 있는 마디를 세 번 → 네 번째엔 판이 없다(눌러야 한다).
 // 좁은 통로의 줄(19가지)은 바닥났지만, 튕김판이 있는 줄은 새것이라 좁은 통로에도 쓴다. 바운스에는 삼단 점프(충전 고리)와 미끼 고리를 넣었다.
 TEMPLATES.R7 = {
+  swap: {},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g7', bpm: 152.0, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
   rise: [{ at: 21, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 69, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 21~22, 69~70)
   recipe: { g: 'a7', gf: 'a7', traps: 13, from: 0, kinds: { 'stop-last': 2, 'hand-last': 2, 'stop-first': 2, 'hand-first': 2, 'short-last': 2, 'long-last': 2, 'short-first': 2, 'long-first': 2 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용. 뽑을 마디의 자리는 아래에 손으로 정했다)
@@ -252,6 +257,7 @@ TEMPLATES.R8 = {
 //   충전 고리(삼단 점프)와 높이 장치(떠 있는 박스, 징검다리)도 움직이는 장애물과 섞는다: fJumpP, stPress, ring3Saw, ring3, ring3Far, ring3Bait.
 //   피버는 다섯 곳(질주 구간). 지난 시안의 "움직이는 이빨"은 뺐다(벽 속의 이빨이 튀어나오는 것은 읽기 어렵고 세련돼 보이지 않았다).
 TEMPLATES.R9 = {
+  swap: {},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g9', bpm: 150.0, freshWideAll: true, floatReds: true, vary: true, density: 0.95, fresh: true, cpFill: true, cpLevel: 'a7',
   rise: [{ at: 19, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 66, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 마디 19~20, 66~67)
   recipe: { g: '7v', gf: '7v', traps: 4, from: 0, kinds: { 'stop-last': 3, 'hand-last': 3, 'stop-first': 3, 'hand-first': 3 }, reps: { 1: 3, 2: 4, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -280,6 +286,7 @@ TEMPLATES.R9 = {
 // 앞 라운드의 것도 다 섞는다: 멈춤 길이 함정, 공중 사슬, 그림의 공중 사슬, 징검다리 위 프레스, 프레스 밑 미끄러지기, 충전 고리, 음이 올라가는 구간의 계단(17~18, 36~37 → 69~70에서 같은 오르막의 멈춤 길이 함정).
 // 피버는 곡의 꽉 찬 구간 셋(24~30, 40~46, 72~78)에만 — 공장의 기계를 보는 라운드다.
 TEMPLATES.R10 = {
+  swap: {14: "ch10_14", 62: "ch10_62", 83: "ch10_83"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g10', bpm: 150.0, floatReds: true, vary: true, density: 0.95, fresh: true, novel: true, cpFill: true, cpLevel: 'a9',
   rise: [{ at: 17, bars: 2, key: 'U' }, { at: 36, bars: 2, key: 'V', need: { kind: ['hlong', 'hshort'] } }, { at: 69, bars: 2, trap: 'V' }],      // 음이 올라가는 구간(곡에서 잰 자리. 빌드업 67~70 가운데 공중 사슬 뒤의 두 마디)
   recipe: { g: 'a9', gf: 'a7', traps: 6, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -311,6 +318,7 @@ TEMPLATES.R10 = {
 //   음이 올라가는 11~12마디의 오르는 계단 → 같은 멜로디의 59~60마디에서 멈춤 길이가 다른 계단. 멈춤 길이 함정도 섞는다.
 // 피버는 가장 센 드롭(40~46)과 마지막 드롭(72~77) 두 곳.
 TEMPLATES.R11 = {
+  swap: {6: "ch11_6", 22: "ch11_22", 27: "ch11_27"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g11', bpm: 150.0, floatReds: true, vary: true, density: 0.95, fresh: true, novel: true, cpFill: true, cpLevel: 'a9',
   rise: [{ at: 11, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 59, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리. 같은 멜로디가 두 번)
   recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -340,6 +348,7 @@ TEMPLATES.R11 = {
 //   가장 밝은 후렴(56~)과 마지막 후렴(72~)은 네 마디짜리 큰 봉우리(여덟 칸)를 넘는다. 피버는 후렴 둘(16~22, 48~54)에만.
 //   앞 라운드의 것도 섞는다: 속임수(djHold→duckDrop, grindPit→liftSwap, ring3→ring3Bait), 망치, 징검다리 위 프레스, 그림의 공중 사슬, 멈춤 길이 함정.
 TEMPLATES.R12 = {
+  swap: {14: "ch12_14", 40: "ch12_40", 69: "ch12_69"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g12', bpm: 150.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
   recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
   sections() {
@@ -370,6 +379,7 @@ TEMPLATES.R12 = {
 //   거의 소리가 없는 여덟 마디는 공중(멈춤과 고리, 5~7), 빌드업은 움직이는 장애물(9), 후렴 둘은 큰 쇠 봉우리, 조용함은 징검다리 위 프레스와 같은 오르막의 함정.
 //   피버는 후렴 하나(24~30, 좁은 통로)와 마지막 질주(72~78, 넓은 통로) 두 곳. 곡이 한 마디 멈췄다가 다시 치는 박(마디 80)에 결승선.
 TEMPLATES.R13 = {
+  swap: {6: "ch13_6", 21: "ch13_21", 38: "ch13_38"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g13', bpm: 150.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
   rise: [{ at: 17, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 68, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 브레이크의 17~18, 조용한 빌드업의 68~69)
   recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -401,6 +411,7 @@ TEMPLATES.R13 = {
 //   낮은 돌(땅을 쓴다) → 멈춰서 넘기 ×2 → 덩굴이 짧은 높은 돌(멈춘 높이를 지난다) → 아무것도 안 누르고 밑으로. 한 마디에 둘(낮고 높게) ×2 → 순서가 바뀐다.
 //   나무 위로 오르는 계단(쇠 봉우리 없이), 음이 오르는 50~51 → 61~62(멈춤 길이가 다르다). 피버는 후렴 둘(16~22, 40~46)에만, 세 번째 후렴(64~)은 큰 계단.
 TEMPLATES.R14 = {
+  swap: {36: "ch14_36", 37: "ch14_37", 38: "ch14_38"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g14', bpm: 150.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
   rise: [{ at: 50, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 61, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 브레이크다운의 50~51, 벌스의 61~62)
   recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -431,6 +442,7 @@ TEMPLATES.R14 = {
 // 15라운드(Orbital Momentum): 우주. 새것은 궤도 고리(oring) — 행성 둘레를 도는 충전 고리를 지나가는 순간에 맞춰 잡는다(orbRing ×2 → 1/4박 늦은 orbLate).
 //   붉은 달(궤도를 도는 톱날의 다른 그림), 음이 오르는 29~30 → 69~70(멈춤 길이가 다르다), 별까지 오르는 네 마디 계단. 피버는 셋(16~22, 40~46, 72~78), 마지막은 조여드는 통로.
 TEMPLATES.R15 = {
+  swap: {14: "ch15_14", 38: "ch15_38", 59: "ch15_59"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g15', bpm: 150.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, freshWindow: 6, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
   rise: [{ at: 29, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 69, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 빌드업 29~30, 같은 빌드업 69~70)
   recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -460,6 +472,7 @@ TEMPLATES.R15 = {
 // 16라운드(Searing Horizon): 사막. 새것은 불기둥(flame) — 낮은 불은 멈춰서(위에 바위 처마), 높은 불은 이단 점프로 넘는다. flameHold ×2 → flameJump, flameJump ×2 → flameHold.
 //   모래 언덕 계단, 음이 오르는 12~13 → 37~38(멈춤 길이가 다르다). 피버 셋(첫 드롭, 가장 큰 후렴, 마지막 드롭), 끝은 조용한 아웃트로.
 TEMPLATES.R16 = {
+  swap: {11: "ch16_11", 29: "ch16_29", 30: "ch16_30"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g16', bpm: 152.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, freshWindow: 6, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
   rise: [{ at: 12, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 37, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 벌스 12~13, 빌드업 37~38)
   recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -490,6 +503,7 @@ TEMPLATES.R16 = {
 // 17라운드(Coral Cathedral): 바다 밑 산호 성당. 새것은 해파리(jelly) — 박마다 부풀었다 줄어든다. 위상(언제 부푸는가)을 읽고 그냥 지나가기·짧게 멈추기·한 박 멈추기를 고른다.
 //   jelLow ×2 → jelLowT, jelShort ×2 → jelShortT. 산호 계단, 음이 오르는 12~13 → 52~53, 성당 첨탑처럼 높은 네 마디 계단(56~59, 음이 크게 오르는 자리). 피버 셋.
 TEMPLATES.R17 = {
+  swap: {11: "ch17_11", 46: "ch17_46", 62: "ch17_62"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g17', bpm: 152.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, freshWindow: 3, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
   rise: [{ at: 12, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 52, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 벌스 12~13, 조용한 빌드업 52~53)
   recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -520,6 +534,7 @@ TEMPLATES.R17 = {
 // 18라운드(The Midnight Procession): 한밤의 행렬. 새것은 깜빡이는 등롱(blink) — 박에 맞춰 켜졌다 꺼지고, 켜졌을 때만 닿으면 죽는다. 곡의 "쳤다가 멈추기"(32~39, 64~71)와 맞춘다.
 //   lampWalk ×2 → lampWalkT, lampHigh ×2 → lampHighT. 음이 오르는 44~45 → 같은 멜로디 53~54(멈춤 길이가 다르다). 피버 둘(첫 드롭, 큰 드롭). 결승선은 곡이 멈추는 마디 75의 2.5박.
 TEMPLATES.R18 = {
+  swap: {11: "ch18_11", 38: "ch18_38", 69: "ch18_69"},      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간: tools_chains.js)
   prefix: 'g18', bpm: 152.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, freshWindow: 3, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
   rise: [{ at: 44, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 53, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 그루브 44~45, 같은 멜로디의 빌드업 53~54)
   recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
@@ -1020,6 +1035,7 @@ function generate(T, seed) {
     if (riseSkip > 0) { riseSkip--; if (typeof slot !== 'string' && slot.m) riseCut.add(slot.m); return; }
     if (typeof slot !== 'string' && slot.cont) return;      // (여러 마디짜리 계단의 나머지 칸: 계단은 첫 칸에서 한꺼번에 놓였다. 음이 오르는 자리 검사보다 먼저 건너뛴다 — 18라운드에서 계단 뒤의 자리에 오르는 계단이 끼어들어 두 마디가 밀렸다)
     const b = bars.length;
+    if (T.swap && T.swap[b] && typeof slot !== 'string' && slot.m && /^f/.test(slot.m)) { bars.push(T.swap[b]); roles[b] = 'chain'; return; }      // 고리 사슬로 바꾼 새 마디(곡의 연타 구간에서 뽑았다: tools_chains.js). 다시 뽑아도 그 자리는 사슬로 남는다
     if (riseAt.has(b)) {
       const r = riseAt.get(b); riseSkip = r.bars - 1; if (typeof slot !== 'string' && slot.m) riseCut.add(slot.m);
       if (r.key) stairSlot({ hill: r.key, bars: r.bars, peak: r.peak || 2 + 2 * r.bars, holdW: 3, hds: [0.5, 1], need: r.need }, b);

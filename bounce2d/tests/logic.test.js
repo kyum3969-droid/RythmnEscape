@@ -240,7 +240,7 @@ for (const C of Lg.COURSES) {
     const go = (pr, ho, until) => { const inp = Lg.planInput({ presses: pr, holds: ho }), s = Lg.spawnState(lv, -1); while (!s.dead && !s.won && s.x < until) Lg.stepState(lv, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); return s; };
     let bars = 0, checks = 0, bad = [];
     C.bars.forEach((name, b) => {
-      const p = Lg.PATTERNS[name]; if (!p || !p.set) return; bars++;
+      const p = Lg.PATTERNS[name]; if (!p || !p.set || /^ch(ain|\d)/.test(name)) return; bars++;      // (고리 사슬은 따로 검사한다)
       const lo = b * BAR, inb = (v) => v >= lo && v < lo + BAR, end = (b + 2) * 16;
       P.forEach((v, i) => { if (!inb(v)) return; checks++;
         if (!go(P.filter((_, j) => j !== i), H, end).dead) bad.push(`${b}:${name} 누름 빼도 산다`);
@@ -531,7 +531,7 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
   const share = [], lenTraps = [];
   for (const C of Lg.COURSES) {
     const L = Lg.buildLevel(C), inp = Lg.planInput(L.ref), s = Lg.spawnState(L, -1); let all = 0, fr = 0;
-    while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.mode !== 'bounce') continue; const n = C.bars[Math.floor(s.x / 16)], p = Lg.PATTERNS[n]; if (!p || p.mode === 'rush' || n === 'flat' || n === 'goal' || n.startsWith('chain')) continue; all++; if (s.frozen) fr++; }
+    while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.mode !== 'bounce') continue; const n = C.bars[Math.floor(s.x / 16)], p = Lg.PATTERNS[n]; if (!p || p.mode === 'rush' || n === 'flat' || n === 'goal' || /^ch(ain|\d)/.test(n)) continue; all++; if (s.frozen) fr++; }
     share.push(fr / all);
     lenTraps.push(C.bars.filter((n) => { const p = Lg.PATTERNS[n]; return p && p.mode !== 'rush' && (p.traps || []).some((t) => { const hs = t.full ? t.full.holds : p.stair && !t.presses ? t.holds : null; return hs && hs.length === p.holds.length && (!t.full || JSON.stringify(t.full.presses) === JSON.stringify(p.presses)) && hs.some((h, i) => h[0] === p.holds[i][0] && h[1] !== p.holds[i][1]); }); }).length);      // (계단의 멈춤 길이 함정도 센다)
   }
@@ -705,6 +705,27 @@ console.log('== 고리 사슬: 1~3칸 간격의 고리마다 탁탁 쳐서 용�
   while (!so.dead && !so.won) { const ev = []; Lg.stepState(old, so, ip.press.has(so.step + 1), ev, ip.hold.has(so.step + 1)); if (ev.some((e) => e.type === 'double')) vmax = Math.max(vmax, -so.vy); }
   ok(bars.length >= 6 && miss === total && flat && so.won && Math.abs(vmax - 9) < 0.3,
     `고리 사슬 마디 ${bars.length}개(${bars.join(', ')}): 고리마다 누르는 것 ${total}번 가운데 어느 하나를 빼먹어도 그 마디에서 용암에 떨어진다(${miss}번). 반 박마다 치는 사슬에서 공의 높이는 ${span.join('·')}칸 안에서만 오르내린다(거의 직선). 4칸 간격의 고리는 전처럼 보통 이단 점프(세기 ${vmax.toFixed(1)})`);
+}
+console.log('== 앞 라운드의 고리 사슬(곡의 연타 구간에서 뽑았다): 고리마다 누름이 꼭 필요하고, 멈춤을 쭉 누르고만 있으면 못 건넌다 ==');
+{
+  const sig = (p) => JSON.stringify([p.presses, p.holds]), bad = [], per = []; let n = 0;
+  const seen = new Map();
+  Lg.COURSES.forEach((C, ri) => C.bars.forEach((nm, b) => { const p = Lg.PATTERNS[nm]; if (p && p.mode !== 'rush' && nm !== 'flat' && nm !== 'goal') { const k = sig(p); if (!seen.has(k)) seen.set(k, new Set()); seen.get(k).add(ri + 1); } }));
+  Lg.COURSES.forEach((C, ri) => {
+    const B = C.bars, bars = B.map((nm, b) => (/^ch\d+_/.test(nm) ? b : -1)).filter((b) => b >= 0); if (!bars.length) return;
+    const L = Lg.buildLevel(C), P = L.ref.presses, H = L.ref.holds, inb = (b) => (v) => v >= b * 384 && v < (b + 1) * 384;
+    const go = (pr, ho) => { const inp = Lg.planInput({ presses: pr, holds: ho }), s = Lg.spawnState(L, -1); while (!s.dead && !s.won) Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); return s; };
+    for (const b of bars) {
+      n++;
+      const mine = P.filter(inb(b));
+      for (const v of mine) { const s = go(P.filter((q) => q !== v), H); if (!(s.dead && Math.floor(s.x / 16) === b)) bad.push(`${ri + 1}라운드 마디 ${b}: ${(v - b * 384) / 96}박을 빼도 산다`); }
+      const s2 = go(P.filter((v) => !inb(b)(v) || v === mine[0]), [...H, [mine[0] + 6, (b + 1) * 384]]);      // 첫 고리만 누르고 그 뒤로는 멈춤을 쭉
+      if (!(s2.dead && Math.floor(s2.x / 16) === b)) bad.push(`${ri + 1}라운드 마디 ${b}: 멈춤을 쭉 누르고 건넌다`);
+      const k = sig(Lg.PATTERNS[B[b]]); if (ri + 1 >= 10 && seen.get(k).size > 1) bad.push(`${ri + 1}라운드 마디 ${b}: 리듬이 ${[...seen.get(k)].join('·')}라운드와 같다`);
+    }
+    per.push(`${ri + 1}:${bars.length}`);
+  });
+  ok(n >= 30 && bad.length === 0, `고리 사슬 마디 ${n}개(라운드:개수 ${per.join(' ')}): 고리마다 누름을 하나라도 빼면 그 마디에서 떨어지고, 멈춤을 쭉 누르고만 있어도 떨어진다. 10라운드부터는 리듬이 다른 라운드와 겹치지 않는다${bad.length ? ' — ' + bad.slice(0, 5).join(' / ') : ''}`);
 }
 console.log('== 꾸밈 박스: 공중에 떠 있는 작은 빨간 박스(쓰임새 없이 빽빽해 보이게). 패턴대로 치면 닿지 않는다 ==');
 {
