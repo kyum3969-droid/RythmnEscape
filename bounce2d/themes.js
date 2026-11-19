@@ -36,6 +36,8 @@
     abyss:    { name: "깊은 곳",       color: "#8fd8ff", sky: "space", sun: "planet",  far: ["asteroids", "moonscape"], ground: "pores",  edge: "glow",   grain: "cells",   ambient: "motes",  trail: "stardust", box: "crystal", red: "coral" },
     // 놀이방(7라운드만): 낮의 아이 방. 의견: "7라운드는 고칠 거 없을까?" → 곡(일요일의 놀이방)과 밤의 축제 그림이 안 맞았다. 피버는 볼풀 속
     playroom: { name: "놀이방",        color: "#ffd86b", sky: "wallpaper", sun: "window", far: ["shelves", "floorToys"], ground: "playmat", edge: "track", grain: "letters", ambient: "motes", trail: "glitter", box: "toyblock", red: "toyblock" },
+    // 태양 궤도(8라운드만): "천 개의 해" — 하늘에 해가 여럿, 해의 가장자리를 따라 달린다. 피버는 해 속으로 돌진(의견: "8라운드는 어케 할까?" → 산은 12라운드에 맡긴다)
+    solar:    { name: "태양 궤도",     color: "#ffc35c", sky: "suns", sun: "corona", far: ["plasmaRidge", "solarArray"], ground: "solarcell", edge: "sunline", grain: "sunspot", ambient: "embers", trail: "ember", box: "glasspanel", red: "sunspot" },
     festival: { name: "꿈의 축제",     color: "#ffd27a", sky: "dream", sun: "moon",    far: ["pagoda", "roofs"],       ground: "tiles",   edge: "stitch", grain: "diamond", ambient: "lanterns",     trail: "glitter", box: "gift", red: "lacquer" },
   };
 
@@ -54,7 +56,7 @@
     //   interior = 피버에 들어서면 객차 안이 화면을 덮는다(해와 먼 능선을 숨긴다). props = 피버 장애물을 물건으로 그린다(모양과 판정은 logic.js 코스의 rushProps)
     { world: "neon",     fever: { back: ["subway"], wall: "subway", props: "subway", interior: true } },
     { world: "playroom", fever: { back: ["ballpit"], wall: "ballpit", props: "ballpit", interior: true } },           // 7 Sunday in the Playroom: 낮의 놀이방, 피버는 볼풀 속(의견: "볼풀로 하자")
-    { world: "peaks",    fever: { back: ["rays", "embers"], wall: "wave" } },                                      // 8 Velocity of a Thousand Suns: 천 개의 해
+    { world: "solar",    fever: { back: ["suntunnel"], wall: "plasma", props: "solar", interior: true } },          // 8 Velocity of a Thousand Suns: 천 개의 해, 피버는 해 속으로(장애물은 홍염·불덩이)
     { world: "neon",     ambient: "rain", fever: { back: ["rain", "road"], wall: "eq" } },                         // 9 Midnight Asphalt Rush: 한밤의 젖은 도로
     { world: "works",    ambient: "embers", fever: { back: ["gears", "embers"], wall: "dots" } },                  // 10 Anvil and Piston: 공장의 불꽃
     { world: "festival", far: ["pagoda", "silkHills"], ambient: "motes", fever: { back: ["ribbons", "tunnel"], wall: "wave" } },     // 11 Velocity of Silk: 비단
@@ -171,6 +173,7 @@
       g.beginPath(); g.ellipse(x - s * 0.1, y - s * 0.22, s * 0.9, s * 0.16, 0, 0, TAU); g.fill();
     }
   }
+  const GOLD = [255, 196, 92], SOL_W = [255, 244, 210], SOL_O = [255, 150, 60];      // 태양 궤도의 빛(금·흰·주황. 주황은 색상 25° 안팎으로 빨강과 떨어져 있다)
   const TOY_C = [[255, 214, 110], [150, 230, 200], [160, 200, 255], [200, 170, 255], [240, 240, 250]];      // 장난감 색(레몬·민트·하늘·연보라·흰색. 빨강·분홍은 위험한 것의 색이라 쓰지 않는다)
   const SKY = {
     none() {},
@@ -262,6 +265,18 @@
         g.fill("evenodd");
       }
       g.restore();
+    },
+    suns(e) {        // 태양 궤도: 별과 크고 작은 해 여럿(멀리 있는 해일수록 천천히 흐른다). 박마다 해 하나씩 차례로 크게 맥동한다
+      const g = e.g, { w, BT } = e; stars(e, 90, 0.8);
+      const n = 7, beatK = pm(Math.floor(e.beat), n);
+      for (let i = 0; i < n; i++) {
+        const par = 0.01 + 0.025 * H(i, 801), span = w + BT * 6, x = pm(H(i, 802) * span * 2 - e.camS * BT * par, span) - BT * 3, y = e.gy * (0.1 + 0.55 * H(i, 803)) + e.camY * BT * 0.03;
+        if (Math.hypot(x - e.cx, y - e.cy) < e.r0 * 3) continue;
+        const r = BT * (0.12 + 0.35 * H(i, 804) * H(i, 804)), on = i === beatK ? e.pulse : 0, c = mix(SOL_W, SOL_O, H(i, 805) * 0.7);
+        halo(e, x, y, r * 0.6, r * (3.2 + 2.5 * on), c, 0.35 + 0.35 * on);
+        g.fillStyle = rgba(mix(c, WHITE, 0.4)); g.beginPath(); g.arc(x, y, r * (1 + 0.25 * on), 0, TAU); g.fill();
+      }
+      horizonGlow(e, GOLD, 0.16);
     },
   };
 
@@ -378,6 +393,28 @@
         g.fillStyle = rgba(cur, 0.88); g.beginPath(); g.moveTo(ex, y0 - BT * 0.28); g.lineTo(inn, y0 - BT * 0.28); g.quadraticCurveTo(inn + sd * BT * 0.5 + sway, cy, inn + sd * BT * 0.1, y0 + wh + BT * 0.3); g.lineTo(ex, y0 + wh + BT * 0.3); g.fill();
         g.strokeStyle = rgba(BLACK, 0.12); g.lineWidth = 1.5; g.beginPath(); for (let k = 1; k < 3; k++) { const fx = ex + (inn - ex) * (k / 3); g.moveTo(fx, y0 - BT * 0.2); g.lineTo(fx + sd * BT * 0.05, y0 + wh + BT * 0.25); } g.stroke();
       }
+    },
+    corona(e) {      // 태양 궤도: 큰 해 — 천천히 도는 코로나 빛살, 가장자리에서 솟았다 가라앉는 홍염 고리(박마다), 표면의 쌀알 무늬, 박자 고리
+      const g = e.g, r = e.r0 * 1.15 * (1 + 0.04 * e.pulse);
+      halo(e, e.cx, e.cy, r * 0.7, r * 2.8, GOLD, 0.34 + 0.12 * e.pulse);
+      g.fillStyle = rgba(GOLD, 0.12 + 0.1 * e.pulse); g.beginPath();
+      for (let i = 0; i < 18; i++) { const th = (i / 18) * TAU - e.now * 0.04, L = r * (1.5 + 0.7 * H(i, 811) + 0.5 * e.pulse), wd = 0.06; g.moveTo(e.cx + Math.cos(th - wd) * r, e.cy + Math.sin(th - wd) * r); g.lineTo(e.cx + Math.cos(th) * L, e.cy + Math.sin(th) * L); g.lineTo(e.cx + Math.cos(th + wd) * r, e.cy + Math.sin(th + wd) * r); }
+      g.fill();
+      beatRings(e, 0.3, GOLD);
+      g.lineCap = "round";
+      for (let i = 0; i < 3; i++) {      // 홍염 고리
+        const th = -Math.PI * (0.25 + 0.5 * H(i, 812)) + i * 2.1, ph = pm(e.beat * 0.5 + i / 3, 1), hgt = r * (0.25 + 0.55 * Math.sin(ph * Math.PI)), a0 = th - 0.18, a1 = th + 0.18;
+        const p0 = [e.cx + Math.cos(a0) * r, e.cy + Math.sin(a0) * r], p1 = [e.cx + Math.cos(a1) * r, e.cy + Math.sin(a1) * r], pc = [e.cx + Math.cos(th) * (r + hgt * 2), e.cy + Math.sin(th) * (r + hgt * 2)];
+        g.beginPath(); g.moveTo(p0[0], p0[1]); g.quadraticCurveTo(pc[0], pc[1], p1[0], p1[1]);
+        g.strokeStyle = rgba(SOL_O, 0.3); g.lineWidth = r * 0.14; g.stroke(); g.strokeStyle = rgba(mix(SOL_O, SOL_W, 0.5), 0.85); g.lineWidth = r * 0.05; g.stroke();
+      }
+      g.lineCap = "butt";
+      const gr = g.createRadialGradient(e.cx - r * 0.2, e.cy - r * 0.2, r * 0.1, e.cx, e.cy, r);
+      gr.addColorStop(0, rgba(SOL_W)); gr.addColorStop(0.65, rgba(mix(SOL_W, GOLD, 0.6))); gr.addColorStop(1, rgba(SOL_O));
+      g.fillStyle = gr; g.beginPath(); g.arc(e.cx, e.cy, r, 0, TAU); g.fill();
+      g.save(); g.clip(); g.fillStyle = rgba(SOL_O, 0.16);
+      for (let i = 0; i < 22; i++) { const a = H(i, 813) * TAU, d = r * Math.sqrt(H(i, 814)), rr = r * (0.06 + 0.06 * H(i, 815)); g.beginPath(); g.arc(e.cx + Math.cos(a + e.now * 0.02) * d, e.cy + Math.sin(a + e.now * 0.02) * d, rr, 0, TAU); g.fill(); }
+      g.restore();
     },
   };
 
@@ -787,6 +824,33 @@
         }
       });
     },
+    plasmaRidge(e, sp) {    // 태양 궤도(뒤): 이글거리는 표면의 능선 — 금빛 가장자리, 봉우리 위로 솟는 홍염 고리(박마다 하나씩 차례로)
+      const g = e.g, yb = base(e, sp), BT = e.BT, f = (u) => (0.6 + sp.amp * 0.35 * (0.6 * vn(u / 3.4, 821) + 0.4 * vn(u / 1.3, 822))) * BT;
+      ridgePath(e, sp, f, 8); g.fillStyle = rgba(sp.col); g.fill();
+      ridgeLine(e, sp, f, 8); g.strokeStyle = rgba(GOLD, 0.25 + 0.15 * e.pulse); g.lineWidth = 2; g.stroke();
+      g.lineCap = "round";
+      cells(e, sp, 2.4, (i, x, bw) => {
+        if (H(i, 823) < 0.45) return;
+        const cx = x + bw * 0.5, top = yb - f((cx + sp.off) / BT), on = pm(Math.floor(e.beat), 4) === pm(i, 4), hh = BT * (0.8 + 0.8 * H(i, 824)) * (on ? 1 + 0.4 * e.pulse : 1), ww = BT * (0.5 + 0.4 * H(i, 825));
+        g.beginPath(); g.moveTo(cx - ww, top + 2); g.bezierCurveTo(cx - ww, top - hh, cx + ww, top - hh, cx + ww, top + 2);
+        g.strokeStyle = rgba(SOL_O, on ? 0.45 : 0.2); g.lineWidth = BT * 0.14; g.stroke(); g.strokeStyle = rgba(mix(SOL_O, SOL_W, 0.4), on ? 0.85 : 0.35); g.lineWidth = BT * 0.04; g.stroke();
+      });
+      g.lineCap = "butt";
+    },
+    solarArray(e, sp) {     // 태양 궤도(앞): 기운 태양광 판들의 줄과 받침 기둥. 판의 금빛 반짝임이 박마다 왼쪽에서 오른쪽으로 훑고 지나간다
+      const g = e.g, yb = base(e, sp), BT = e.BT;
+      g.fillStyle = rgba(sp.col); g.fillRect(0, yb - BT * 0.12, e.w, BT * 0.12 + e.h);
+      cells(e, sp, 1.25, (i, x, bw) => {
+        if (H(i, 831) < 0.2) return;
+        const hh = BT * (0.7 + 0.6 * H(i, 832)), pw = bw * 0.8, px = x + bw * 0.1, th = BT * 0.28;
+        g.fillStyle = rgba(sp.col); g.fillRect(px + pw * 0.45, yb - hh, BT * 0.08, hh);
+        g.beginPath(); g.moveTo(px, yb - hh + th * 0.5); g.lineTo(px + pw, yb - hh - th * 0.8); g.lineTo(px + pw, yb - hh - th * 0.8 + th); g.lineTo(px, yb - hh + th * 1.5); g.closePath(); g.fill();
+        const wave = pm(e.beat, 1), sxn = (px - (-BT)) / (e.w + 2 * BT), glint = Math.max(0, 1 - Math.abs(sxn - wave) * 6);
+        g.strokeStyle = rgba(GOLD, 0.12 + 0.6 * glint); g.lineWidth = 1.5; g.beginPath();
+        for (let k = 1; k < 4; k++) { const t = k / 4; g.moveTo(px + pw * t, yb - hh + th * 0.5 - th * 1.3 * t); g.lineTo(px + pw * t, yb - hh + th * 1.5 - th * 1.3 * t); }
+        g.moveTo(px, yb - hh + th); g.lineTo(px + pw, yb - hh - th * 0.3); g.stroke();
+      });
+    },
   };
 
   // ================================================================ 땅·천장·벽의 결: 미리 그린 타일(두 칸 × 두 칸)을 무늬로 깐다. 바탕은 원래의 검정, 결은 아주 옅게(통로의 경계가 먼저 보이게)
@@ -868,6 +932,12 @@
       for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { c.fillStyle = cols[(i + j + 1) % 2]; c.beginPath(); c.arc(i * q + q / 2, j * q + 1, q * 0.11, 0, Math.PI); c.arc(i * q + 1, j * q + q / 2, q * 0.11, -Math.PI / 2, Math.PI / 2); c.fill(); }
       c.strokeStyle = "rgba(255,255,255,0.05)"; c.lineWidth = 2; c.beginPath(); c.moveTo(0, q); c.lineTo(S, q); c.moveTo(q, 0); c.lineTo(q, S); c.stroke();
     },
+    solarcell(c, S) {         // 태양 궤도: 태양 전지판 — 칸마다 가는 금빛 선과 모서리의 작은 점
+      const q = S / 4; c.strokeStyle = "rgba(255,196,92,0.07)"; c.lineWidth = 1.5;
+      for (let k = 0; k <= 4; k++) { c.beginPath(); c.moveTo(0, k * q); c.lineTo(S, k * q); c.moveTo(k * q, 0); c.lineTo(k * q, S); c.stroke(); }
+      c.strokeStyle = "rgba(255,196,92,0.035)"; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(k * q + q / 2, 0); c.lineTo(k * q + q / 2, S); c.stroke(); }
+      c.fillStyle = "rgba(255,230,170,0.12)"; for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) c.fillRect(i * q - 1.5, j * q - 1.5, 3, 3);
+    },
   };
 
   // ================================================================ 땅 윗선 바로 밑의 장식(땅 속에만. 위로는 아무것도 솟지 않는다). x0~x1 = 그 토막의 땅, ox = 세계 x 0칸의 화면 x(무늬를 세상에 붙인다)
@@ -931,6 +1001,11 @@
       g.fillStyle = rgba([214, 170, 110], 0.22); g.fillRect(x0, y1 - T * 0.08, x1 - x0, y2 - y1 + T * 0.16);
       g.fillStyle = rgba([60, 40, 20], 0.35); g.fillRect(x0, y1 - 1.5, x1 - x0, 3); g.fillRect(x0, y2 - 1.5, x1 - x0, 3);
       g.fillStyle = rgba([235, 205, 150], 0.3); each(e, x0 - T * 2, x1, ox, T * 2, (k, x) => g.fillRect(x, y1 - T * 0.08, 2, y2 - y1 + T * 0.16));
+    },
+    sunline(e, x0, x1, ox) {   // 태양 궤도: 윗선 밑의 금빛 띠, 박마다 빛이 오른쪽으로 흘러간다
+      const g = e.g, T = e.T, y = e.gy + T * 0.3;
+      g.fillStyle = rgba(GOLD, 0.16); g.fillRect(x0, y - T * 0.04, x1 - x0, T * 0.08);
+      each(e, x0, x1, ox + pm(e.beat, 1) * T * 1.2, T * 1.2, (k, x) => { const gr = g.createLinearGradient(x - T * 0.8, 0, x, 0); gr.addColorStop(0, rgba(GOLD, 0)); gr.addColorStop(1, rgba(mix(GOLD, SOL_W, 0.5), 0.55)); g.fillStyle = gr; g.fillRect(x - T * 0.8, y - T * 0.05, T * 0.8, T * 0.1); });
     },
   };
 
@@ -1062,6 +1137,16 @@
         g.textAlign = "start"; g.textBaseline = "alphabetic";
       },
     },
+    glasspanel: {  // 태양 궤도: 빛나는 파란 유리 패널 — 가는 격자, 비스듬한 금빛 반사(딛는 순간 밝아진다)
+      lo: "#0a2350", hi: "#3a86e8", lit: "#4290ec", deep: "#123c7c", deepSky: "#0c2858", line: "#d4ecff", glow: "#5ab0ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), q = T * 0.5;
+        g.strokeStyle = rgba([200, 230, 255], 0.16); g.lineWidth = 1; g.beginPath();
+        for (let x = b.x0 + q; x < b.x1; x += q) { g.moveTo(x, y0); g.lineTo(x, b.y1); } for (let y = b.y1 - q; y > y0; y -= q) { g.moveTo(b.x0, y); g.lineTo(b.x1, y); } g.stroke();
+        g.fillStyle = rgba(GOLD, 0.12 + 0.25 * hit); const hh = b.y1 - y0;
+        for (let x = b.x0 + T * (0.2 + 0.4 * H(seed, 851)); x < b.x1; x += T * 2.2) { g.beginPath(); g.moveTo(x, b.y1); g.lineTo(x + T * 0.2, b.y1); g.lineTo(x + T * 0.2 + Math.min(hh, T * 2) * 0.6, b.y1 - Math.min(hh, T * 2)); g.lineTo(x + Math.min(hh, T * 2) * 0.6, b.y1 - Math.min(hh, T * 2)); g.fill(); }
+      },
+    },
   };
   // 빨간 덩어리의 바탕색(어두운 쪽 → 밝은 쪽). head = 프레스 머리
   const RED_SKIN = {
@@ -1087,6 +1172,7 @@
     lacquer: { lo: "#160406", hi: "#6a1218", headLo: "#180507", headHi: "#72161c",     /* 위험색: 꿈의 축제 — 금테 두른 붉은 옻칠 나무 */
       deco(e, b, seed, trace) { const g = e.g, T = e.T; g.lineJoin = "miter"; trace(); g.strokeStyle = rgba([255, 205, 110], 0.55 + 0.25 * e.pulse); g.lineWidth = T * 0.26; g.stroke(); trace(); g.strokeStyle = "#2a070b"; g.lineWidth = T * 0.17; g.stroke(); g.lineJoin = "round"; } },      /* 위험색 */
     toyblock: { lo: "#5a0c1e", hi: "#d02a52", headLo: "#5a0c1e", headHi: "#d02a52" },      /* 위험색: 놀이방 — 빨간 장난감 블록 */
+    sunspot: { lo: "#14030a", hi: "#7a1420", headLo: "#14030a", headHi: "#7a1420" },      /* 위험색: 태양 궤도 — 흑점(어둡고 붉게 달아오른 덩어리) */
   };
 
   // ================================================================ 빨간 덩어리 안쪽의 결(클립 안에서 그린다. 색은 빨강 계열 그대로). b = { x0, x1, y0, y1 } 덩어리의 화면 범위, ox = 세계 x 0칸의 화면 x, seed = 덩어리마다 다른 수
@@ -1159,6 +1245,16 @@
         if (y + T * 0.15 >= b.y0 && y + T * 0.85 <= b.y1) { g.fillStyle = "rgba(255,205,215,0.55)"; g.fillText(L[pm(kx * 7 + ky * 3, L.length)], x + T / 2, y + T / 2 + 1); }      /* 위험색: 글자는 블록 안에 거의 다 들어가는 칸에만(반 칸으로 잘린 줄에는 새기지 않는다) */
       }
       g.textAlign = "start"; g.textBaseline = "alphabetic";
+    },
+    sunspot(e, b, ox, seed) {  // 태양 궤도: 흑점 — 어두운 쌀알 칸들 사이로 붉게 달아오른 틈(박마다 밝아진다), 군데군데 더 어두운 핵
+      const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), q = T * 0.42;
+      g.strokeStyle = rgba(RED, 0.3 + 0.25 * e.pulse); g.lineWidth = Math.max(1.2, T * 0.04); g.beginPath();
+      for (let ky = 0, y = b.y1; y > y0 - q; ky++, y -= q * 0.87) for (let kx = 0, x = b.x0 + (ky % 2 ? q / 2 : 0); x < b.x1 + q; kx++, x += q) {
+        const r = q * (0.36 + 0.1 * H(seed + kx * 7 + ky, 841)); g.moveTo(x + r, y); for (let t = 1; t <= 6; t++) { const a = (t / 6) * TAU; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+      }
+      g.stroke();
+      g.fillStyle = "rgba(10,2,4,0.45)";      /* 위험색 */
+      for (let k = 0; k < Math.max(1, Math.round((b.x1 - b.x0) / (T * 1.5))); k++) { const x = b.x0 + (b.x1 - b.x0) * H(seed + k, 842), y = y0 + (b.y1 - y0) * H(seed + k, 843); g.beginPath(); g.ellipse(x, y, T * 0.28, T * 0.2, 0, 0, TAU); g.fill(); }
     },
   };
 
@@ -1287,6 +1383,22 @@
       }
       g.restore();
     },
+    suntunnel(e, a) {      // 해 속으로 돌진: 소실점(해)이 눈부신 빛, 바깥은 짙은 주황·밤색. 불꽃 고리가 반 박마다 다가오고, 플라스마 줄기가 소실점에서 뻗는다. 빨강은 장애물 몫이라 쓰지 않는다
+      const g = e.g, { w, h, cx, cy } = e, R = Math.hypot(w, h);
+      g.save(); g.globalAlpha *= a;
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, R * 0.75);
+      gr.addColorStop(0, rgba(SOL_W)); gr.addColorStop(0.12, rgba(GOLD)); gr.addColorStop(0.4, rgba([150, 70, 24])); gr.addColorStop(1, rgba([32, 20, 12]));
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      g.strokeStyle = rgba(mix(GOLD, SOL_W, 0.3), 0.14); g.lineWidth = 2; g.beginPath();
+      for (let i = 0; i < 28; i++) { const th = (i / 28) * TAU + Math.sin(e.now * 0.7 + i) * 0.04, r1 = R * (0.08 + 0.05 * H(i, 861)); g.moveTo(cx + Math.cos(th) * r1, cy + Math.sin(th) * r1); g.lineTo(cx + Math.cos(th) * R, cy + Math.sin(th) * R); }
+      g.stroke();
+      for (let i = 0; i < 8; i++) {
+        const p = pm(e.beat * 0.5 + i / 8, 1), rr = Math.pow(p, 2.2) * R * 0.85; if (rr < 6) continue;
+        g.beginPath(); for (let k = 0; k <= 40; k++) { const th = (k / 40) * TAU, wob = 1 + 0.05 * Math.sin(th * 7 + e.now * 4 + i); const x = cx + Math.cos(th) * rr * wob * 1.15, y = cy + Math.sin(th) * rr * wob * 0.85; k ? g.lineTo(x, y) : g.moveTo(x, y); }
+        g.strokeStyle = rgba(SOL_O, (0.18 + 0.3 * e.pulse) * Math.sin(Math.PI * p)); g.lineWidth = 2 + 10 * p; g.stroke();
+      }
+      g.restore();
+    },
   };
   const FEVER_WALL = {
     subway(e, xs, xe, yc, gy, ox) {     // 천장 위: 어두운 천장 판에 청록 네온 조명 줄(박마다 밝아진다) / 바닥 밑: 어두운 바닥 판, 노란 네온 점자 안전선, 홈
@@ -1306,6 +1418,15 @@
         const y = gy + T * (0.24 + row * 0.34), r = T * 0.2, c = mix(TOY_C[pm(k * 3 + row, 5)], [20, 16, 40], 0.45 + row * 0.1);
         g.fillStyle = rgba(c); g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); g.fillStyle = "rgba(255,255,255,0.2)"; g.beginPath(); g.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, TAU); g.fill();
       });
+    },
+    plasma(e, xs, xe, yc, gy, ox) {      // 천장 위·바닥 밑: 어두운 벽 속을 흐르는 플라스마 물결(주황·금, 박마다 밝아진다)
+      const g = e.g, T = e.T;
+      g.fillStyle = "rgba(30,19,12,0.96)"; g.fillRect(xs, yc - T * 1.7, xe - xs, T * 1.7 - 3); g.fillRect(xs, gy + 3, xe - xs, T * 1.6);
+      for (const [y0, d] of [[yc - T * 0.5, -1], [gy + T * 0.5, 1]]) for (let j = 0; j < 3; j++) {
+        g.strokeStyle = rgba(j === 1 ? GOLD : SOL_O, (0.25 + 0.3 * e.pulse) * (1 - j * 0.25)); g.lineWidth = 2; g.beginPath();
+        for (let x = xs; x <= xe + 8; x += 8) { const y = y0 + d * j * T * 0.3 + Math.sin((x - ox) * 0.05 + e.now * 3 + j) * T * 0.12; x === xs ? g.moveTo(x, y) : g.lineTo(x, y); }
+        g.stroke();
+      }
     },
   };
   // 피버의 물건 장애물(6라운드 지하철: logic.js subwayProps). 모양 = 판정(propSpan)과 같은 윤곽 안에서 그린다.
@@ -1331,6 +1452,17 @@
     g.beginPath(); g.moveTo((P[0][0] + P[1][0]) / 2, (P[0][1] + P[1][1]) / 2);
     for (let k = 1; k <= 3; k++) { const a = P[k % 3], b = P[(k + 1) % 3]; g.arcTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, rad); }
     g.closePath();
+  }
+  // 홍염(불기둥): 밑동(pt의 높이 base)에서 끝까지, 너비 ±w, 높이 h·(1 − u²) — logic.js propSpan과 같은 윤곽. dir = +1 위로 솟음, −1 아래로 늘어짐
+  //   붉은 바깥 불꽃 + 안쪽의 밝은 혀(박마다 출렁), 분홍 테두리. 끝이 조금 흔들려도 윤곽 안에서만
+  function flame(g, pt, w, h, base, dir, e, seed) {
+    const outline = (k, sway) => { const P = []; for (let i = 0; i <= 24; i++) { const u = -1 + (2 * i) / 24, hh = h * k * (1 - u * u), wob = sway * Math.sin(e.now * 7 + seed + u * 3) * (hh / h) * 0.12; P.push(pt(u * w * k + wob * w, base + dir * hh)); } return P; };
+    const tip = pt(0, base + dir * h), root = pt(0, base);
+    polyPts(g, outline(1, 0));
+    const gr = g.createLinearGradient(root[0], root[1], tip[0], tip[1]); gr.addColorStop(0, "#5a0818"); gr.addColorStop(0.5, "#d0203f"); gr.addColorStop(1, "#ff6a7c");      /* 위험색 */
+    g.fillStyle = gr; g.fill(); g.strokeStyle = rgba(DANGER_C, 0.6 + 0.4 * e.pulse); g.lineWidth = Math.max(1.5, e.T * 0.035); g.lineJoin = "round"; g.stroke();      /* 위험색 */
+    const k2 = 0.55 + 0.15 * e.pulse; polyPts(g, outline(k2, 1)); g.fillStyle = "rgba(255,200,170,0.55)"; g.fill();      /* 위험색 */
+    polyPts(g, outline(k2 * 0.5, 1.5)); g.fillStyle = "rgba(255,245,225,0.6)"; g.fill();
   }
   // 광택 있는 붉은 공 하나: b = [가운데 x(세계), 가운데 높이, 반지름(높이 칸)]
   function redBall(g, pt, b, e) {
@@ -1367,6 +1499,17 @@
       pile(g, pt, q, e) { for (const b of q.balls) redBall(g, pt, b, e); },
       pileDown(g, pt, q, e) { for (const b of q.balls) redBall(g, pt, b, e); },
       ball(g, pt, q, e) { for (const b of q.balls) redBall(g, pt, b, e); },
+    },
+    solar: {        // 홍염(바닥에서 솟음 / 천장에서 늘어짐)과 불덩이(붉은 공에 꼬리 불꽃)
+      flame(g, pt, q, e, seed) { flame(g, pt, q.w, q.h, 0, 1, e, seed); },
+      flameDown(g, pt, q, e, seed) { flame(g, pt, q.w, q.len, q.far, -1, e, seed); },
+      fireball(g, pt, q, e) {
+        const [bx, by, R] = q.balls[0], c = pt(bx, by), tp = pt(bx, by + R), r = Math.hypot(tp[0] - c[0], tp[1] - c[1]);
+        for (let k = 0; k < 4; k++) { const p = pm(e.now * 2.5 + k / 4, 1); g.fillStyle = `rgba(255,120,110,${0.35 * (1 - p)})`; g.beginPath(); g.arc(c[0] + r * (0.4 + p * 1.6), c[1] + Math.sin(k * 2 + e.now * 5) * r * 0.2, r * (0.55 - 0.35 * p), 0, TAU); g.fill(); }      /* 위험색: 뒤로 흩날리는 불티(판정 밖이라 옅게) */
+        const gr = g.createRadialGradient(c[0] - r * 0.25, c[1] - r * 0.25, r * 0.1, c[0], c[1], r); gr.addColorStop(0, "#fff0dc"); gr.addColorStop(0.35, "#ff6a7c"); gr.addColorStop(1, "#8a0c26");      /* 위험색 */
+        g.fillStyle = gr; g.beginPath(); g.arc(c[0], c[1], r * (1 + 0.04 * e.pulse), 0, TAU); g.fill();
+        g.strokeStyle = rgba(DANGER_C, 0.6 + 0.4 * e.pulse); g.lineWidth = Math.max(1.5, e.T * 0.035); g.stroke();      /* 위험색 */
+      },
     },
   };
 

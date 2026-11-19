@@ -1665,6 +1665,7 @@ const ROUND7 = {
 // 카메라는 공이 딛는 높이를 따라 오르내린다(climb). 여덟 칸 높이의 큰 산이 세 번 나온다. 피버는 가장 센 절정 한 곳뿐이다.
 const ROUND8 = {
   name: "ROUND 8 · Velocity of a Thousand Suns",
+  rushProps: "solar",                              // 피버는 해 속으로 돌진: 이빨·마름모 대신 홍염(불기둥)·불덩이(판정도 그 모양. rushPropsApply)
   decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/velocity_of_a_thousand_suns.mp3", offset: 0.073, measured: true },
@@ -2346,6 +2347,10 @@ function platUnder(L, x, row, beat) {
 //   - 바닥 이빨 → 더미(pile): 높이 min(1.5, 원래 끝 높이) = 공 반지름 R × (2 + √3)
 //   - 천장 이빨 → 거꾸로 된 더미(pileDown): 천장에 둘, 그 밑에 하나. 길이 min(1.9, 원래 길이)
 //   - 떠 있는 마름모 → 공 하나(ball): 틀린 길로 간 공이 올 자리, 반지름 0.45
+//   태양(8라운드, 의견: "피버 장애물도 바꿔 봐"): 홍염과 불덩이. 홍염은 밑동이 넓고 끝이 가는 불꽃(높이가 가운데에서 가장 높고 양옆으로 h·(1 − u²))
+//   - 바닥 이빨 → 솟는 홍염(flame): 높이 min(1.5, 원래 끝 높이)
+//   - 천장 이빨 → 늘어진 홍염(flameDown): 길이 min(1.9, 원래 길이)
+//   - 떠 있는 마름모 → 불덩이(fireball): 공 하나, 반지름 0.45
 const PROP_X = 1 / RUSH_STRETCH, EMPTY_SPAN = [Infinity, -Infinity], R3 = Math.sqrt(3);
 function rushPropsApply(reds, rides, style) {
   for (const q of reds) {
@@ -2359,6 +2364,10 @@ function rushPropsApply(reds, rides, style) {
       if (q.kind === "floor") { const h = Math.min(1.5, q.tip), R = h / (2 + R3); Object.assign(q, { shape: "pile", h, h0: h / 2, balls: [[-R * PROP_X, R, R], [R * PROP_X, R, R], [0, R * (1 + R3), R]], w: 2 * R * PROP_X }); }
       else if (q.kind === "ceil") { const len = Math.min(1.9, q.far - q.tip), R = len / (2 + R3); Object.assign(q, { shape: "pileDown", len, h0: q.far - len / 2, balls: [[-R * PROP_X, q.far - R, R], [R * PROP_X, q.far - R, R], [0, q.far - R * (1 + R3), R]], w: 2 * R * PROP_X }); }
       else { const cy = up ? q.far - 0.8 : q.far + 0.8; Object.assign(q, { shape: "ball", cy, h0: cy, balls: [[0, cy, 0.45]], w: 0.45 * PROP_X }); }
+    } else if (style === "solar") {
+      if (q.kind === "floor") { const h = Math.min(1.5, q.tip); Object.assign(q, { shape: "flame", h, h0: h / 2, w: 0.62 * PROP_X }); }
+      else if (q.kind === "ceil") { const len = Math.min(1.9, q.far - q.tip); Object.assign(q, { shape: "flameDown", len, h0: q.far - len / 2, w: 0.62 * PROP_X }); }
+      else { const cy = up ? q.far - 0.8 : q.far + 0.8; Object.assign(q, { shape: "fireball", cy, h0: cy, balls: [[0, cy, 0.45]], w: 0.45 * PROP_X }); }
     } else throw new Error("모르는 피버 물건: " + style);
     q.x0 = q.xt - q.w; q.x1 = q.xt + q.w; delete q.cut;
     for (const r of rides) if (q.xt >= r[0] && q.xt <= r[1]) { if (q.x1 > r[1]) { q.x1 = r[1]; q.cut = 1; } if (q.x0 < r[0]) { q.x0 = r[0]; q.cut = -1; } }
@@ -2366,6 +2375,7 @@ function rushPropsApply(reds, rides, style) {
 }
 function propSpan(q, dx) {
   const ax = Math.abs(dx);
+  if (q.shape === "flame" || q.shape === "flameDown") { const u = dx / q.w; if (Math.abs(u) >= 1) return EMPTY_SPAN; const k = 1 - u * u; return q.shape === "flame" ? [0, q.h * k] : [q.far - q.len * k, q.far]; }
   if (q.balls) {      // 공들: 그 세로줄에 걸친 공들의 위아래 끝(공 사이 틈은 공보다 좁아 막힌 것으로 친다)
     let lo = Infinity, hi = -Infinity;
     for (const [bx, by, R] of q.balls) { const u = (dx - bx) / (R * PROP_X); if (Math.abs(u) >= 1) continue; const s = R * Math.sqrt(1 - u * u); lo = Math.min(lo, by - s); hi = Math.max(hi, by + s); }
