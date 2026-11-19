@@ -547,6 +547,36 @@ TEMPLATES.R18 = {
   },
 };
 
+// 19라운드(Inside the Caldera): 화산의 분화구 안. 새것은 용암 덩이(bomb) — 바닥의 분화구에서 두 박마다 솟구쳐 포물선으로 올랐다 떨어진다. 언제 솟는가를 읽고 짧은 이단 점프·반 박 멈춤·그냥 지나가기를 고른다.
+//   bLeap ×2 → bLeapT, bVent ×2 → bVentT. 음이 오르는 브레이크다운 24~25 → 같은 멜로디 64~65(멈춤 길이가 다르다). 분화구 벽을 오르는 네 마디 계단(40~43, 조용한 사이). 피버 둘(두 드롭). 결승선은 마지막 드롭이 끝나는 마디 79.
+TEMPLATES.R19 = {
+  prefix: 'g19', bpm: 152.0, floatReds: true, vary: true, density: 0.9, fresh: true, novel: true, freshWindow: 3, cpFill: true, cpLevel: 'a9', holdW: 3, hds: [0.5, 1],
+  rise: [{ at: 24, bars: 2, key: 'U', need: { kind: ['hlong', 'hshort'] } }, { at: 64, bars: 2, trap: 'U' }],      // 음이 올라가는 구간(곡에서 잰 자리: 브레이크다운 24~25, 같은 브레이크다운 64~65)
+  recipe: { g: 'a9', gf: 'a7', traps: 8, from: 0, kinds: { 'short-last': 3, 'long-last': 3, 'hand-last': 2, 'stop-last': 2 }, reps: { 2: 7, 3: 3 }, intro: [], fill: { one: 6, pair: 2, set: 0, rest: 0 } },      // (점수 계산용)
+  sections() {
+    let key = 0;
+    const one = () => ({ m: 'f' + key++, g: 'a9' });
+    const phrase = (kind, reps = 2) => { const k = 'p' + key++, ks = [kind, ...['short-last', 'long-last', 'hand-last', 'stop-last'].filter((x) => x !== kind)]; return [{ m: k, g: 'a9', need: ks }, ...Array.from({ length: reps - 1 }, () => ({ r: k })), { t: k, kind: ks }]; };
+    const cont = (n) => Array.from({ length: n - 1 }, () => ({ cont: 1 }));
+    const K = ['hlong', 'hshort', 'lidJ', 'swap', 'shift'];
+    const hill = (k, n, o = {}) => [{ hill: k, bars: n, ...o }, ...cont(n)], rep = (k, n) => [{ hr: k }, ...cont(n)], trap = (k, n) => [{ ht: k, kind: K }, ...cont(n)];
+    const RISE = 'flat';
+    return [
+      ['도입(낮은 저음만) — 용암 덩이를 소개한다: 앞의 덩이는 공이 지나간 뒤에 솟고(그냥), 뒤의 덩이는 막 솟구칠 때 짧은 이단 점프로 넘기 ×2 → 앞의 덩이가 3/8박 일찍 솟는다(앞에서도 뛴다)', ['flat', 'flat', 'bLeap', 'bLeap', 'bLeapT', one(), one(), 'cp']],
+      ['벌스 — 낮은 덩이: 짧은 이단 점프 뒤, 내려설 자리 앞에서 반 박 멈춰 덩이가 떨어지길 기다리기 ×2 → 뒤의 덩이가 일찍 솟는다(이번엔 멈추지 않는다). 멈춤 길이 함정(짧다)', ['bVent', 'bVent', 'bVentT', ...phrase('short-last'), one(), 'cp']],
+      ['벌스 둘(하이햇이 들어온다): 한 마디짜리 계단 ×2 → 같은 계단의 함정, 새 마디 넷', [...hill('A', 1, { need: { kind: K } }), ...rep('A', 1), ...trap('A', 1), one(), one(), one(), one(), 'cp']],
+      ['브레이크다운과 빌드업: 음이 올라가는 24~25마디는 오르는 계단, 덩이 → 뒤집기, 한 번 보여 주고 멈춤이 길다, 새 마디', [RISE, RISE, 'bLeap', 'bLeapT', ...phrase('long-last', 1), one(), 'cp']],
+      ['첫 드롭(쾅 · · 쾅 하고 밟는 리듬) — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝', [{ zm: 'A', pads: 1, kind: 'pad' }, { zr: 'A' }, { zt: 'A', kind: 'pad' }, { zm: 'B', pads: 1 }, { zr: 'B' }, { zt: 'B', kind: 'break' }, { zm: 'C', pads: 1, kind: 'none' }, 'cp']],
+      ['조용한 사이(저음만) — 분화구 벽: 네 마디에 걸쳐 여덟 칸까지 오르고 내려온다, 새 마디 셋', [...hill('P', 4, { peak: 8 }), one(), one(), one(), 'cp']],
+      ['벌스 셋 — 한 번만 보여 주고 뒤집기: 낮은 덩이 → 일찍 솟는다, 높은 덩이 → 앞의 덩이도 일찍. 한 번 보여 주고 끝에서 뚝, 새 마디', ['bVent', 'bVentT', 'bLeap', 'bLeapT', ...phrase('stop-last', 1), one(), 'cp']],
+      ['벌스 넷: 두 마디짜리 계단(다섯 칸) → 같은 계단의 함정, 새 마디 셋', [...hill('B', 2, { peak: 5, need: { kind: K } }), ...trap('B', 2), one(), one(), one(), 'cp']],
+      ['브레이크다운 둘과 빌드업: 같은 멜로디의 오르막(64~65)은 이번엔 멈춤 길이가 다르다, 낮은 덩이 ×2 → 일찍 솟는다, 한 번 보여 주고 손 바꿈', [RISE, RISE, 'bVent', 'bVent', 'bVentT', ...phrase('hand-last', 1), 'cp']],
+      ['마지막 드롭 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더. 드롭이 끝나는 마디 79에 결승선', ['wUp', { wm: 'E', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wr: 'E' }, { wt: 'E', kind: 'pad' }, { wm: 'F', pads: 1, kind: 'pad', calm: 1, run: 2 }, { wt: 'F', kind: 'pad' }, 'wDn']],
+      ['', ['goal', 'flat', 'flat']],
+    ];
+  },
+};
+
 // ---- 바운스 한 번(공이 땅에서 튀는 순간 τ부터)에 넣을 수 있는 동작. 시각은 모두 1/8박 눈금
 //  H 꼭대기 언저리에서 멈춤 / D 이단 점프 / DH 이단 점프 뒤 그 꼭대기에서 멈춤 / HD 멈췄다가 놓자마자 이단 점프
 const LEVELS = {

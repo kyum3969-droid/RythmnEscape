@@ -539,7 +539,7 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
   ok(pct[0] <= 15 && pct.slice(1).every((v) => v >= 18) && pct.slice(2).every((v) => v >= 20) && Math.max(...pct.slice(4)) >= 25, `멈춰 있는 시간(바운스 구간): ${pct.map((v, i) => `${i + 1}라운드 ${v}%`).join(', ')} — 1라운드는 그대로, 2라운드부터 늘어난다`);
   ok(lenTraps.slice(1, 7).every((v) => v >= 2) && lenTraps.slice(1).reduce((u, v) => u + v, 0) >= 20, `멈춤 길이의 함정(앞 마디와 똑같이 가다가 놓는 순간만 다르다. 계단의 것 포함): ${lenTraps.map((v, i) => `${i + 1}라운드 ${v}`).join(', ')}`);
   // 음이 올라가는 구간의 계단(곡에서 잰 자리): 오르는 계단(4칸 넘게 올라간다), 곡에서 같은 오르막이 다시 나오는 자리에는 멈춤 길이가 다른 계단. 카메라가 따라 올라간다
-  const RISE = { 2: [37, 57], 3: [4, 55], 4: [12, 67], 5: [29, 61], 6: [8, 56], 7: [21, 69], 9: [19, 66], 10: [36, 69], 11: [11, 59], 13: [17, 68], 14: [50, 61], 15: [29, 69], 16: [12, 37], 17: [12, 52], 18: [44, 53] }, riseBad = [];
+  const RISE = { 2: [37, 57], 3: [4, 55], 4: [12, 67], 5: [29, 61], 6: [8, 56], 7: [21, 69], 9: [19, 66], 10: [36, 69], 11: [11, 59], 13: [17, 68], 14: [50, 61], 15: [29, 69], 16: [12, 37], 17: [12, 52], 18: [44, 53], 19: [24, 64] }, riseBad = [];
   for (const [no, [a, z]] of Object.entries(RISE)) {
     const C = Lg.COURSES[no - 1], P = (b) => Lg.PATTERNS[C.bars[b]], L = Lg.buildLevel(C);
     if (![a, a + 1, z, z + 1].every((b) => P(b) && P(b).stair)) { riseBad.push(no + ': 계단 자리'); continue; }
@@ -549,7 +549,7 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
     while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.x >= a * 16 && s.x < (a + 2) * 16 && s.onGround) top = Math.max(top, 9 - s.y); }
     if (peak < 4 || top < 4 || !lenTrap || !C.climb) riseBad.push(`${no}: 높이 ${peak}/${top.toFixed(1)}, 멈춤 길이 함정 ${lenTrap}, 카메라 ${!!C.climb}`);
   }
-  ok(riseBad.length === 0, `음이 올라가는 구간의 계단(2~7·9~11·13~18라운드, 마디 ${Object.entries(RISE).map(([n, v]) => n + '라운드 ' + v.join('·')).join(', ')}): 네 칸 넘게 딛고 올라가고, 같은 오르막이 다시 나오면 멈춤 길이가 다르다${riseBad.length ? ' — ' + riseBad.join(' / ') : ''}`);
+  ok(riseBad.length === 0, `음이 올라가는 구간의 계단(2~7·9~11·13~19라운드, 마디 ${Object.entries(RISE).map(([n, v]) => n + '라운드 ' + v.join('·')).join(', ')}): 네 칸 넘게 딛고 올라가고, 같은 오르막이 다시 나오면 멈춤 길이가 다르다${riseBad.length ? ' — ' + riseBad.join(' / ') : ''}`);
   ok(Lg.COURSES.slice(2).every((C) => { const L = Lg.buildLevel(C); return L.cps.length && L.cps.every((c) => c.snap); }) && !Lg.buildLevel(Lg.COURSES[1]).cps.some((c) => c.snap), '체크포인트 마디에도 패턴: 3라운드부터 모든 체크포인트(개발하는 동안, 1·2라운드는 빈 체크포인트 마디)');
   ok(['ROUND 5', 'ROUND 6', 'ROUND 7', 'ROUND 8', 'ROUND 9'].every((r) => Lg.COURSES.find((c) => c.name.startsWith(r)).bars.includes('airStep')) && !Lg.COURSES.slice(0, 4).some((c) => c.bars.includes('airStep')), '그림의 공중 사슬은 5라운드부터 나온다');
 }
@@ -668,6 +668,24 @@ console.log('== 빨간 덩어리의 그림: 맞닿은 덩어리는 하나로, �
   const kc = Lg.redOutlines(C);
   ok(ka.length === 1 && ka[0].loops.length === 1 && ka[0].loops[0].filter((v) => v.open).length === 1 && kb.length === 1 && Math.abs(bot - 4.3) < 1e-6 && kc.length === 1 && kc[0].sky,
     `맞닿은 바닥·계단 단은 한 덩어리(둘레 하나, 땅에 붙은 밑변만 안 긋는다), 밑이 다른 떠 있는 덩어리는 칸마다 제 밑(${bot}), 매달린 덩어리와 옆의 천장 덩어리도 한 덩어리`);
+}
+console.log('== 19라운드: 용암 덩이 — 언제 솟는지 읽고 짧은 이단 점프·반 박 멈춤·그냥 지나가기 ==');
+{
+  const C = Lg.COURSES.find((c) => c.name.startsWith('ROUND 19')), B = C.bars, L = Lg.buildLevel(C);
+  const go = (pr, ho) => { const inp = Lg.planInput({ presses: pr, holds: ho }), s = Lg.spawnState(L, -1); while (!s.dead && !s.won) Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); return s; };
+  const P = L.ref.presses, H = L.ref.holds, inb = (b) => (v) => v >= b * 384 && v < (b + 1) * 384;
+  const pairs = [['bVent', 'bVentT'], ['bLeap', 'bLeapT']];
+  let flips = 0, ok2 = 0; const where = [];
+  B.forEach((n, b) => { if (!pairs.some(([x, y]) => y === n && B[b - 1] === x)) return; flips++;
+    const hh = H.filter((h) => inb(b - 1)(h[0])).map(([x, y]) => [x + 384, y + 384]), pp = P.filter(inb(b - 1)).map((x) => x + 384);
+    const s = go([...P.filter((v) => !inb(b)(v)), ...pp], [...H.filter((h) => !inb(b)(h[0])), ...hh]);
+    if (s.dead && Math.floor(s.x / 16) === b) ok2++; where.push(`${b - 1}→${b}`); });
+  const bombs = L.movers.filter((m) => m.kind === 'bomb');
+  // 덩이는 솟아 있는 동안만 죽인다: 땅속에 있을 때(솟기 직전) 분화구 바로 위를 지나가도 산다
+  const m0 = bombs[0], down = Lg.moverShape(m0, m0.at - 0.1), up = Lg.moverShape(m0, m0.at + m0.fly / 2);
+  const shapeOk = !down.up && up.up && Math.abs(up.y - m0.H) < 1e-9 && !Lg.moverKills(m0, m0.at - 0.1, m0.x, 0) && Lg.moverKills(m0, m0.at + m0.fly / 2, m0.x, m0.H - 0.4);
+  ok(flips >= 6 && ok2 === flips && bombs.length >= 16 && shapeOk && L.cps.length === 9 && B.indexOf('goal') === 79,
+    `19라운드: 용암 덩이 ${bombs.length}개(솟아 있을 때만 죽인다). 뒤집기 ${flips}곳(${where.join(', ')}) 모두, 앞 마디의 손 그대로 하면 그 마디에서 죽는다(${ok2}곳). 체크포인트 ${L.cps.length}개, 결승선은 마디 79`);
 }
 console.log('== 꾸밈 박스: 공중에 떠 있는 작은 빨간 박스(쓰임새 없이 빽빽해 보이게). 패턴대로 치면 닿지 않는다 ==');
 {

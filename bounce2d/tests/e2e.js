@@ -545,8 +545,22 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     }
     st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
     ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `18라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
+    // 19라운드(분화구 안): 용암 덩이
+    await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
+    await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(19)')]); await ready();
+    st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length, bomb: g.L.movers.filter((m) => m.kind === 'bomb').length }; });
+    ok(st.round === 18 && st.name.includes('Inside the Caldera') && Math.abs(st.bpm - 152) < 0.01 && st.off === 0.054 && st.cps === 9 && st.bomb >= 16, `19라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 첫 박 ${st.off}초, 용암 덩이 ${st.bomb}개)`);
+    await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
+    const shots19 = { 9.75: 'r19_bomb_leap', 37.5: 'r19_bomb_vent', 130.0: 'r19_fever', 165.0: 'r19_wall', 296.0: 'r19_fever2' };
+    for (let beat = 0; beat <= 330; beat += 0.25) {
+      await tick(beat);
+      if (shots19[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots19[beat] + '.png' }); }
+      if (await G(() => window.__game.phase) !== 'running') break;
+    }
+    st = await G(() => ({ phase: window.__game.phase, cp: window.__game.state.cp, cps: window.__game.L.cps.length, gems: window.__game.gems }));
+    ok(st.phase === 'won' && st.cp === st.cps - 1 && st.gems.got === st.gems.total, `19라운드도 패턴대로 누르면 완주 (수정 ${st.gems.got}/${st.gems.total}개)`);
     const menuFit = await G(() => { const r = document.getElementById('rounds'); return r ? r.scrollHeight <= r.clientHeight + 2 && r.querySelectorAll('button').length : 0; });
-    ok(menuFit === 18, `라운드 고르기 메뉴에 18개 버튼이 모두 들어간다 (${menuFit})`);
+    ok(menuFit === 19, `라운드 고르기 메뉴에 19개 버튼이 모두 들어간다 (${menuFit})`);
     // 굽은 통로가 크게 돌아 나가는 곳(5라운드 48~53: 90° → 135° → 90° → 0°)에서 뒤쪽 토막의 바깥 칠이 앞쪽 통로를 덮어 화면이 새까맣던 것: 이제 벽 두께만큼만 칠한다
     await G(() => { const g = window.__game; g.fake.on = false; g.startFresh(); g.pause(); });
     await Promise.all([p.waitForNavigation(), p.click('#rounds button:nth-child(5)')]); await ready();

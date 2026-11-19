@@ -733,7 +733,7 @@
   }
   // ---- 피버 연출: 라운드마다 다르다(의견: "피버 연출 디자인은 라운드마다 차별화 좀 줘"). 라운드의 곡과 주제에 맞춘 바탕 둘을 피버마다 번갈아 쓰고, 벽 속 장식도 라운드마다 다르다.
   //   바탕: tunnel 빛의 굴 / ring 소리 고리 / stars 빛줄기 / road 달리는 길 / code 디지털 비 / confetti 꽃종이 / rays 햇살 / grid 지평선 격자 / lamps 가로등 / bubbles 방울 / embers 불티
-  //         rain 빗줄기 / gears 톱니바퀴 / ribbons 비단 띠 / snow 눈 / leaves 나뭇잎 / planets 행성 / haze 아지랑이 / lanterns 등불
+  //         rain 빗줄기 / gears 톱니바퀴 / ribbons 비단 띠 / snow 눈 / leaves 나뭇잎 / planets 행성 / haze 아지랑이 / lanterns 등불 / eruption 용암 분출
   //   벽: eq 막대 / wave 물결 / dots 점 격자
   const FEVER_FX = [
     { back: ['road', 'stars'], wall: 'eq' },        // 1 Octane Horizon: 달리는 길
@@ -754,6 +754,7 @@
     { back: ['haze', 'embers'], wall: 'eq' },       // 16 Searing Horizon: 사막의 열기
     { back: ['bubbles', 'rays'], wall: 'wave' },    // 17 Coral Cathedral: 바다 밑
     { back: ['lanterns', 'embers'], wall: 'dots' }, // 18 The Midnight Procession: 한밤의 행렬
+    { back: ['eruption', 'tunnel'], wall: 'eq' },   // 19 Inside the Caldera: 분화구 안의 분출
   ];
   // 새 연출들. a = 세기(0~1), acc·sun = 색(빨강·분홍은 쓰지 않는다), 소실점(cx, cy)
   function feverPrim(prim, beat, now, pulse, a, acc, sun, cx, cy, r0, w, h, R) {
@@ -802,6 +803,13 @@
         if (lan) { const s2 = 7 + 6 * H(i, 4), g = ctx.createRadialGradient(x, y, 0, x, y, s2 * 3); g.addColorStop(0, css([255, 214, 140], a * (0.5 + 0.3 * pulse))); g.addColorStop(1, css([255, 190, 90], 0));
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, s2 * 3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = css([255, 226, 160], a * 0.85); ctx.fillRect(x - s2 * 0.6, y - s2, s2 * 1.2, s2 * 1.6); }
         else { ctx.fillStyle = css(i % 2 ? [255, 210, 110] : sun, a * (1 - p) * 0.8); ctx.beginPath(); ctx.arc(x, y, 1.5 + 2 * H(i, 4), 0, Math.PI * 2); ctx.fill(); } }
+    } else if (prim === 'eruption') {      // 용암 분출: 박마다 화면 아래 어딘가에서 녹은 덩이들이 부채꼴로 솟구쳤다가 떨어진다(빨강 대신 주황·노랑 — 빨강은 닿으면 죽는 것의 색)
+      for (let j = 0; j < 3; j++) { const kb = Math.floor(beat) - j, age = beat - kb, fx0 = (0.1 + 0.8 * H(kb, 1)) * w;
+        const g0 = ctx.createRadialGradient(fx0, h, 0, fx0, h, h * 0.3); g0.addColorStop(0, css(sun, a * 0.35 * Math.max(0, 1 - age))); g0.addColorStop(1, css(sun, 0));
+        ctx.fillStyle = g0; ctx.beginPath(); ctx.arc(fx0, h, h * 0.3, 0, Math.PI * 2); ctx.fill();
+        for (let i = 0; i < 16; i++) { const hp = h * (0.3 + 0.35 * H(kb * 31 + i, 2)), tp = 0.6 + 0.3 * H(kb * 31 + i, 3), vy = 2 * hp / tp, gg = vy / tp, vx = (H(kb * 31 + i, 4) - 0.5) * w * 0.25;
+          const y = h - (vy * age - 0.5 * gg * age * age), x = fx0 + vx * age; if (y > h + 10) continue;
+          ctx.fillStyle = css(i % 3 ? [255, 176, 70] : [255, 226, 130], a * 0.75 * Math.max(0, 1 - age / 3)); ctx.beginPath(); ctx.arc(x, y, (2.5 + 3.5 * H(kb * 31 + i, 5)) * (1 + 0.3 * pulse), 0, Math.PI * 2); ctx.fill(); } }
     } else if (prim === 'rain') {      // 빗줄기: 비스듬히 빠르게 떨어진다
       ctx.strokeStyle = css([190, 225, 255], a * 0.35); ctx.lineWidth = 1.5; ctx.beginPath();
       for (let i = 0; i < 120; i++) { const p = (H(i, 1) + now * (1.6 + H(i, 2))) % 1, x = H(i, 3) * (w + 200) - p * 120, y = p * (h + 60) - 30; ctx.moveTo(x, y); ctx.lineTo(x - 10, y + 26); }
@@ -1486,6 +1494,37 @@
           bell(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; sb(10 + 10 * pulse + 16 * glow); gs(); sb(0);
           ctx.fillStyle = `rgba(255,240,245,${0.5 + 0.4 * glow})`; ctx.beginPath(); ctx.ellipse(cx - R * 0.25, cy - R * 0.45, R * 0.18, R * 0.1, -0.5, 0, Math.PI * 2); ctx.fill();      // 반사광
           ctx.restore();
+        } else if (m.kind === "bomb") {
+          // 용암 덩이(19라운드): 바닥의 분화구(검은 바위 둔덕, 안에 용암이 고여 있다)에서 솟구쳐 올랐다 떨어지는 녹은 바위.
+          // 덩이는 가운데가 희고 노란 불덩이, 겉은 검붉게 굳어 금이 가 있다. 테두리는 다른 위험한 것과 같은 분홍. 지나온 자리에 잔상과 불티가 남는다.
+          // 솟기 0.4박 전부터 분화구가 달아오르고 불티를 뱉는다(예고). 올라갈 높이는 점선으로 늘 보인다(언제 어디까지 솟는지 읽게). 그림 = 판정(moverShape)
+          const q = moverShape(m, beat), cx = sx(m.x), g0 = view.groundY, R = m.r * T, toNext = m.P - q.ph;
+          const warn = !q.up && toNext < 0.4 ? 1 - toNext / 0.4 : 0, hot = q.up ? 1 - q.u : warn;
+          ctx.save();
+          ctx.strokeStyle = `rgba(255,143,171,${0.18 + 0.3 * Math.max(warn, q.up ? 1 : 0)})`; ctx.lineWidth = 1.5; ctx.setLineDash([T * 0.08, T * 0.12]);      // 솟는 길(가장 높은 곳까지)
+          ctx.beginPath(); ctx.moveTo(cx, g0 - T * 0.2); ctx.lineTo(cx, Y(m.H + m.r)); ctx.stroke(); ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(cx - T * 0.18, Y(m.H + m.r)); ctx.lineTo(cx + T * 0.18, Y(m.H + m.r)); ctx.stroke();
+          const cw = T * 0.75, ch = T * 0.28;                                   // 분화구
+          ctx.fillStyle = "#1b1214"; ctx.beginPath(); ctx.moveTo(cx - cw, g0); ctx.quadraticCurveTo(cx - cw * 0.55, g0 - ch * 1.2, cx - cw * 0.35, g0 - ch); ctx.lineTo(cx + cw * 0.35, g0 - ch); ctx.quadraticCurveTo(cx + cw * 0.55, g0 - ch * 1.2, cx + cw, g0); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = "#5a3a3e"; ctx.lineWidth = 2; ctx.stroke();
+          const lg = ctx.createRadialGradient(cx, g0 - ch, 1, cx, g0 - ch, cw * 0.5);
+          lg.addColorStop(0, `rgba(255,${200 + 40 * hot | 0},120,${0.55 + 0.45 * hot})`); lg.addColorStop(1, "rgba(200,40,40,0)");
+          ctx.fillStyle = lg; ctx.beginPath(); ctx.ellipse(cx, g0 - ch, cw * 0.38, ch * 0.45, 0, 0, Math.PI * 2); ctx.fill();      // 고인 용암
+          if (warn > 0 && Math.random() < 0.3 + 0.5 * warn) burst(m.x + (Math.random() - 0.5) * 0.4, ROWS - 1 - 0.25, 1, "accent", 3 + 4 * warn, false);
+          if (q.up) {
+            const cy = Y(q.y);
+            for (let i = 5; i >= 1; i--) { const p2 = moverShape(m, beat - 0.03 * i); if (!p2.up) continue; ctx.fillStyle = `rgba(255,120,60,${0.16 * (1 - i / 6)})`; ctx.beginPath(); ctx.arc(cx, Y(p2.y), R * (1 - i * 0.08), 0, Math.PI * 2); ctx.fill(); }      // 잔상
+            const bg = ctx.createRadialGradient(cx - R * 0.25, cy - R * 0.25, R * 0.1, cx, cy, R);
+            bg.addColorStop(0, "#fff6d0"); bg.addColorStop(0.35, "#ffb347"); bg.addColorStop(0.7, "#e2452e"); bg.addColorStop(1, "#5a1420");
+            ctx.fillStyle = bg; sb(0); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "rgba(60,10,16,0.7)"; ctx.lineWidth = 2; ctx.beginPath();      // 굳은 겉의 금
+            const sp = beat * 2.2 + m.x;
+            for (let k = 0; k < 3; k++) { const a = sp + k * 2.1; ctx.moveTo(cx + Math.cos(a) * R * 0.95, cy + Math.sin(a) * R * 0.95); ctx.lineTo(cx + Math.cos(a + 0.4) * R * 0.45, cy + Math.sin(a + 0.4) * R * 0.45); }
+            ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.shadowColor = DANGER; sb(12 + 8 * pulse); gs(); sb(0);
+            if (Math.random() < 0.35) burst(m.x + (Math.random() - 0.5) * m.r, ROWS - 1 - q.y, 1, "accent", 2, false);      // 떨어지는 불티
+          }
+          ctx.restore();
         } else if (m.kind === "flame") {
           // 불기둥(16라운드): 바닥의 쇠 환풍구(9라운드의 볼트와 같은 금속)에서 솟는 불길. 아래는 희고 위로 갈수록 주황 → 빨강, 윗면이 일렁인다.
           // 테두리는 다른 위험한 것과 같은 분홍. 솟기 0.35박 전부터 환풍구가 달아오르고 불티가 튄다(곧 솟는다는 예고). 그림 = 판정(moverShape)
@@ -1895,7 +1934,7 @@
     }
     for (const q of L.reds) out.push({ x0: q.x0, x1: q.x1, h: q.kind === "floor" ? q.tip / 2 : (q.tip + q.far) / 2, k: "R" });      // 피버의 이빨과 떠 있는 장애물
     for (const q of L.pads.values()) out.push({ x0: q.x - PAD_W, x1: q.x + PAD_W, h: padFace(q), k: "B" });
-    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.kind === "flame" ? 1 : m.kind === "jelly" ? m.y : m.kind === "blink" ? (m.y0 + m.y1) / 2 : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
+    for (const m of L.movers || []) { const x = m.x0 ?? m.xw ?? m.x ?? (m.rail ? m.rail[0] : m.orbit ? m.orbit[0] : m.pivot ? m.pivot[0] : m.track.keys[0][1]); out.push({ x0: x - 0.5, x1: x + 0.5, h: m.kind === "press" ? m.hover + 0.6 : m.kind === "ram" ? (m.y0 + m.y1) / 2 : m.kind === "roller" ? m.y ?? (m.rail[1] + m.rail[3]) / 2 : m.kind === "swing" ? m.pivot[1] - m.len : m.kind === "flame" ? 1 : m.kind === "jelly" ? m.y : m.kind === "bomb" ? m.H / 2 : m.kind === "blink" ? (m.y0 + m.y1) / 2 : m.rail ? (m.rail[1] + m.rail[3]) / 2 : m.orbit ? m.orbit[1] : m.pivot ? m.pivot[1] : m.h - 0.5, k: m.kind === "plat" || m.kind === "oring" ? "B" : "R" }); }      // 움직이는 장애물
     if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) { const q0 = L.bands.get(c - 1); if (q0 && q0.some((v) => v[0] === lo && v[1] === hi)) continue; let e = c; while ((L.bands.get(e + 1) || []).some((v) => v[0] === lo && v[1] === hi)) e++; out.push({ x0: c, x1: e + 1, h: (lo + hi) / 2, k: "R" }); }      // 계단의 빨간 단과 뚜껑      // 피버의 튕김판
     if (L.decor) for (const [c, q] of L.decor) for (const [lo, hi] of q) { if ((L.decor.get(c - 1) || []).some((v) => v[0] === lo && v[1] === hi)) continue; let e = c; while ((L.decor.get(e + 1) || []).some((v) => v[0] === lo && v[1] === hi)) e++; out.push({ x0: c, x1: e + 1, h: (lo + hi) / 2, k: "R" }); }      // 꾸밈 박스
     const boxH = (c) => { let n = 0; while (n < ROWS - 1 && isSolid(L, c, ROWS - 2 - n)) n++; return n; };
