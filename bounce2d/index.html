@@ -336,7 +336,7 @@
   const WIDE_RUNS = [], WIDE_IN = 5;
   for (const b of [...L.wideBars, ...L.tallBars].sort((u, v) => u - v)) { const last = WIDE_RUNS[WIDE_RUNS.length - 1]; if (last && last[1] === b * 16) last[1] += 16; else WIDE_RUNS.push([b * 16, b * 16 + 16]); }   // 높은 계단 구간(바운스)도 같은 식으로 물러난다
   const wideZone = (x) => WIDE_RUNS.some(([xs, xe]) => x >= xs && x < xe - WIDE_IN);
-  const fx = { freezeAt: -9, releaseAt: -9, djAt: -9, djX: 0, djY: 0, djSmall: false, ballSX: 0, ballSY: 0, particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, punchAt: -9, punchDir: 1, stepAt: -9, wideOn: false, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9 };
+  const fx = { particles: [], tail: [], freezeGhosts: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, punchAt: -9, punchDir: 1, stepAt: -9, wideOn: false, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9, wasFrozen: false, freezeStartAt: -9, freezeEndAt: -9, ghostAt: -9, nearAt: -9, flow: 0, lastBar: -1, ringPopAt: -9, ringPopX: 0, ringPopY: 0, djRingAt: -9, djRingX: 0, djRingY: 0 };
 
   function begin(cp) {
     if (songLoading && !fake.on) { ensureAudio(); pendingStart = cp; $("ovStat").textContent = "곡을 불러오는 중…"; return; }   // 누른 순간에 소리 권한은 받아 두고, 곡이 준비되면 시작
@@ -346,8 +346,10 @@
     autoUntil = -1;
     if (cp >= 0 && L.cps[cp].snap && L.cps[cp].lead) { state = { ...L.cps[cp].lead }; autoUntil = L.cps[cp].snap.step; }
     broken.clear(); usedRings.clear();
-    fx.tail.length = 0; fx.particles.length = 0;
-    gotGems.clear(); fx.chain = 0; fx.wideOn = wideZone(state.x); fx.punchAt = -9;
+    fx.tail.length = 0; fx.particles.length = 0; fx.freezeGhosts.length = 0;
+    gotGems.clear(); fx.chain = 0; fx.ringChain = 0; fx.wideOn = wideZone(state.x); fx.punchAt = -9;
+    fx.wasFrozen = false; fx.freezeStartAt = -9; fx.freezeEndAt = -9; fx.ghostAt = -9; fx.nearAt = -9;
+    fx.flow = 0; fx.lastBar = Math.floor(state.x / 16); fx.ringPopAt = -9; fx.djRingAt = -9;
     gemPtr = 0; while (gemPtr < L.gems.length && L.gems[gemPtr].x <= state.x) gemPtr++;
     pressQueued = false;
     phase = "running";
@@ -472,6 +474,20 @@
       ev.length = 0;
       stepState(L, state, press, ev, auto ? REF_INP.hold.has(state.step + 1) : holding() || (bot && bot.hold.has(state.step + 1)));
       if (ev.length) handleEvents();
+      if (phase === "running") {
+        const curBar = Math.floor(state.x / 16);
+        if (curBar > fx.lastBar) { fx.lastBar = curBar; if (state.step >= autoUntil) fx.flow = Math.min(1, fx.flow + 0.12); }
+        if (state.frozen !== fx.wasFrozen) {
+          const tNow = performance.now() / 1000;
+          if (state.frozen) {
+            fx.freezeStartAt = tNow;
+          } else {
+            fx.freezeEndAt = tNow;
+            burst(state.x, state.y - HALF, 6, "sun", 7.5, false);
+          }
+          fx.wasFrozen = state.frozen;
+        }
+      }
       if (state.mode === "rush" && state.step % (4 * SUB) === 0 && phase === "running") {     // 마디가 바뀔 때: 연출 구간에 들어가고 나오는 것을 알린다
         const bar = Math.floor(state.x / 16), now2 = L.freeBars.has(bar), was = L.freeBars.has(bar - 1) && inRide(L, state.x - 1);
         if (now2 !== was) { setModeLabel(); toast(now2 ? "FREE RUN" : "FEVER"); }
@@ -484,7 +500,7 @@
       while (gemPtr < L.gems.length && L.gems[gemPtr].x <= state.x) {       // 길 위의 수정: 지나가며 뚫는다
         const gm = L.gems[gemPtr];
         if (phase === "running" && Math.abs((ROWS - 1 - state.y + HALF) - gm.h) < 0.7) {
-          gotGems.add(gemPtr); fx.chain++;                  // 소리는 내지 않는다(곡과 어울리지 않았다). 파편만 튄다
+          gotGems.add(gemPtr); fx.chain++; fx.flow = Math.min(1, fx.flow + 0.04); // 소리는 내지 않는다(곡과 어울리지 않았다). 파편만 튄다
           const big = gm.flip || gm.hold;
           if (big ? showMarks() || showGems() : showGems()) burst(gm.x + 0.1, ROWS - 1 - gm.h, big ? 9 : 3, "accent", big ? 13 : 8, true);      // 꺼 둔 것은 뚫는 파편도 튀지 않는다
           if (big && state.mode === "rush") fx.shake = Math.max(fx.shake, 0.06);
@@ -499,7 +515,14 @@
     for (const e of ev) {
       if (e.type === "jump") { fx.jumpAt = now; puff(state.x, state.y, 5, 0.6); }
       else if (e.type === "pad") { fx.jumpAt = now; fx.shake = 0.1; sfx("pad"); puff(state.x, state.y, 10, 1.1); }
-      else if (e.type === "ring") { usedRings.add(e.c); fx.ringChain++; burst(e.x ?? e.c + 0.5, e.y ?? e.r + 0.5, 10, "white", 8); }     // 소리는 내지 않는다(동작 소리는 곡과 안 어울려서 전부 뺐다)
+      else if (e.type === "ring") {
+        usedRings.add(e.c); fx.ringChain++;
+        const rx = e.x ?? e.c + 0.5, ry = e.y ?? e.r + 0.5;
+        fx.ringPopAt = now; fx.ringPopX = rx; fx.ringPopY = ry;
+        fx.flow = Math.min(1, fx.flow + 0.18);
+        const rc = fx.ringChain >= 3 ? "sun" : fx.ringChain >= 2 ? "accent" : "white";
+        burst(rx, ry, 10 + Math.min(6, fx.ringChain * 2), rc, 8.5 + Math.min(3, fx.ringChain * 0.6));
+      }     // 소리는 내지 않는다(동작 소리는 곡과 안 어울려서 전부 뺐다)
       else if (e.type === "bounce") {
         fx.jumpAt = now; puff(state.x, state.y, 6, 0.7);
       }
@@ -507,18 +530,7 @@
         fx.landAt = now; puff(state.x, state.y, 4, 0.4);
         if (state.y < ROWS - 1.5) { fx.stepAt = now; burst(state.x, state.y, 5, "blue", 7, true); }     // 파란 박스 위에 내려앉음: 박스가 번쩍
       }
-      else if (e.type === "double") {      // 이단 점프: 발밑에 납작한 충격파 + 아래로 뿜는 불꽃, 공이 위로 쭉 늘어난다(고리 사슬의 연속 뜀에서는 작게)
-        fx.jumpAt = now; fx.djAt = now; fx.djX = state.x; fx.djY = state.y; fx.djSmall = !!e.chain; ring(state.x, state.y);
-        for (let i = 0; i < (e.chain ? 3 : 7); i++) fx.particles.push({ x: state.x + (Math.random() - 0.5) * 0.5, y: state.y, vx: (Math.random() - 0.5) * 2, vy: 4 + Math.random() * 5, life: 0.3, max: 0.3, size: 0.07 + Math.random() * 0.07, color: "accent", g: 0 });
-      }
-      else if (e.type === "freeze") {      // 멈춤을 누르는 순간("착"): 공 둘레로 빛 고리가 퍼지고 빛 갈래가 튄다, 화면 가장자리가 잠깐 어두워진다(시간이 멈춘 느낌)
-        fx.freezeAt = now;
-        for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + Math.random() * 0.3; fx.particles.push({ x: state.x, y: state.y - HALF, vx: Math.cos(a) * 7, vy: Math.sin(a) * 7, life: 0.16, max: 0.16, size: 0.06, color: "white", g: 0 }); }
-      }
-      else if (e.type === "unfreeze" && phase === "running" && now - fx.freezeAt > 0.05) {      // 손을 떼는 순간(풀려남): 멈춤 링이 조각나 흩어지고 공이 아래로 늘어나며 떨어진다
-        fx.releaseAt = now;
-        for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; fx.particles.push({ x: state.x + Math.cos(a) * 0.55, y: state.y - HALF + Math.sin(a) * 0.55, vx: Math.cos(a) * 3.5, vy: Math.sin(a) * 3.5 + 1, life: 0.32, max: 0.32, size: 0.08, color: "sun", g: 8 }); }
-      }
+      else if (e.type === "double") { fx.jumpAt = now; fx.djRingAt = now; fx.djRingX = state.x; fx.djRingY = state.y; fx.flow = Math.min(1, fx.flow + 0.08); ring(state.x, state.y); }
       else if (e.type === "climb") { puff(state.x, state.y, 4, 0.5); fx.stepAt = now; }
       else if (e.type === "bonk") { puff(state.x, state.y - SIZE, 4, 0.5); fx.bonkAt = now; }     // 파란 박스 밑면에 머리가 닿음
       else if (e.type === "mode") { setModeLabel(); toast(e.mode === "rush" ? "FEVER" : "BOUNCE"); fx.cpFlash = now; fx.chain = 0;
@@ -546,7 +558,7 @@
         }
       } else if (e.type === "checkpoint") { fx.cpFlash = now; sfx("checkpoint"); toast("CHECKPOINT"); markTicks(); }
       else if (e.type === "die") {
-        phase = "dead"; deadAt = now; fx.shake = 0.35; fx.flash = 1;
+        phase = "dead"; deadAt = now; fx.shake = 0.35; fx.flash = 1; fx.flow = 0; fx.wasFrozen = false; fx.freezeGhosts.length = 0;
         stopClock(true); sfx("die");
         burst(state.x, state.y - HALF, 26, "accent", 13);
         const pct = progress();
@@ -814,12 +826,13 @@
     // ---- 피버 연출(그림뿐, 판정과 상관없다): 피버마다 바탕이 바뀐다 — 빛의 굴 / 소리 고리 / 빛줄기. 해(박자 고리의 가운데)가 소실점이다.
     //   곡의 박에 맞춰 움직이고, 실제 곡의 주파수(분석기)를 쓴다. 통로와 장애물은 그대로 그 위에 그려진다(읽기에 방해되지 않게 바탕만)
     if (round > 0) feverBack(beat, now, pulse, round, pal, cxs, cys, r0, w, h, camX);
+    const flowBoost = fx.flow || 0;
     ctx.fillStyle = css(pal.sun, 0.9);
-    ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1 + 0.07 * pulse), 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1 + (0.07 + 0.04 * flowBoost) * pulse), 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 2 + flowBoost * 0.8;
     for (let i = 0; i < 3; i++) {
       const p = ((beat + i * 0.5) % 1.5) / 1.5;
-      ctx.strokeStyle = css(pal.sun, (1 - p) * 0.5);
+      ctx.strokeStyle = css(pal.sun, (1 - p) * (0.5 + 0.18 * flowBoost));
       ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1.1 + p * 2.6), 0, Math.PI * 2); ctx.stroke();
     }
 
@@ -1711,7 +1724,7 @@
     for (const p of fx.particles) {
       if (!inPass(p.x)) continue;
       const a = p.life / p.max;
-      ctx.fillStyle = p.color === "accent" ? css(pal.accent, a) : p.color === "sun" ? css(mix(pal.sun, [255, 255, 255], 0.3), a) : p.color === "blue" ? `rgba(120,200,255,${a * 0.9})` : `rgba(255,255,255,${a * 0.7})`;
+      ctx.fillStyle = p.color === "accent" ? css(pal.accent, a) : p.color === "sun" ? css(pal.sun, a * 0.95) : p.color === "blue" ? `rgba(120,200,255,${a * 0.9})` : `rgba(255,255,255,${a * 0.7})`;
       const s = p.size * T;
       ctx.save(); ctx.translate(sx(p.x), sy(p.y)); if (p.rot) ctx.rotate(p.rot + p.life * 8);
       if (p.shard) { ctx.beginPath(); ctx.moveTo(-s * 0.6, s * 0.5); ctx.lineTo(0, -s * 0.8); ctx.lineTo(s * 0.7, s * 0.35); ctx.closePath(); ctx.fill(); }
@@ -1732,15 +1745,52 @@
       const cx = sx(camX + state.lead), cy = sy(state.y) - HALF * T;
       const zig = state.mode === "rush";
       const dashing = state.dashing > 0 || zig;
+      // 이단 점프 발밑 충격 타원 & 충전 고리 통과 확장 링
+      const djP = (now - fx.djRingAt) / 0.24;
+      if (djP >= 0 && djP < 1 && inPass(fx.djRingX)) {
+        ctx.save();
+        ctx.strokeStyle = css(pal.accent, (1 - djP) * 0.85);
+        ctx.lineWidth = 2.5 * (1 - djP) + 1;
+        ctx.beginPath();
+        ctx.ellipse(sx(fx.djRingX), sy(fx.djRingY), T * (0.35 + djP * 0.95), T * (0.12 + djP * 0.26), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      const rpP = (now - fx.ringPopAt) / 0.28;
+      if (rpP >= 0 && rpP < 1 && inPass(fx.ringPopX)) {
+        ctx.save();
+        ctx.strokeStyle = css(fx.ringChain >= 2 ? pal.sun : pal.accent, (1 - rpP) * 0.9);
+        ctx.lineWidth = 3 * (1 - rpP) + 1;
+        ctx.beginPath();
+        ctx.arc(sx(fx.ringPopX), sy(fx.ringPopY), T * (0.35 + rpP * 1.35), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // 멈춤(Freeze) 잔상(Afterimage): 지형이 밑으로 흐르는 속도감 강화
+      if (fx.freezeGhosts.length) {
+        for (const gh of fx.freezeGhosts) {
+          if (!inPass(gh.x)) continue;
+          const ga = (gh.life / gh.max) * 0.34;
+          ctx.fillStyle = css(pal.sun, ga);
+          ctx.beginPath();
+          ctx.arc(sx(gh.x), sy(gh.y), T * HALF * (0.72 + 0.22 * (gh.life / gh.max)), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       if (fx.tail.length > 1) {
         ctx.lineCap = "round";
+        const fl = fx.flow || 0;
         for (let i = 1; i < fx.tail.length; i++) {
           const a = i / fx.tail.length, p0 = fx.tail[i - 1], p1 = fx.tail[i];
           if (bend.bent && Math.abs(p1.x - p0.x) > 2) continue;
-          const hot = p1.d ? 0 : Math.min(1, fx.chain / 60);      // 연속 보상: 수정을 놓치지 않고 이어 먹을수록 꼬리가 길고 굵고 하얘진다
-          ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.55 * hot), a * (p1.d ? 0.9 : 0.45 + 0.35 * hot));
-          ctx.lineWidth = T * (p1.d ? 0.62 : 0.5 + 0.18 * hot) * a;
+          ctx.strokeStyle = css(pal.accent, a * (p1.d ? 0.9 : 0.45 + 0.25 * fl));
+          ctx.lineWidth = T * (p1.d ? 0.62 : 0.5 + 0.1 * fl) * a;
           ctx.beginPath(); ctx.moveTo(sx(p0.x), sy(p0.y)); ctx.lineTo(sx(p1.x), sy(p1.y)); ctx.stroke();
+          if (fl > 0.25) {
+            ctx.strokeStyle = `rgba(255,255,255,${a * (fl - 0.25) * 0.65})`;
+            ctx.lineWidth = T * 0.16 * a;
+            ctx.beginPath(); ctx.moveTo(sx(p0.x), sy(p0.y)); ctx.lineTo(sx(p1.x), sy(p1.y)); ctx.stroke();
+          }
         }
       }
       if (dashing) {          // 속도선
@@ -1752,32 +1802,10 @@
         }
         ctx.stroke();
       }
-      {      // 손맛: 멈춤과 이단 점프의 고리들(판정과 상관없는 그림)
-        const R0 = T * HALF;
-        fx.ballSX = cx; fx.ballSY = cy;
-        const kl = (now - fx.freezeAt) / 0.22;                                                // 멈춘 순간: 퍼지는 빛 고리
-        if (kl >= 0 && kl < 1) { ctx.strokeStyle = css(mix(pal.sun, [255, 255, 255], 0.5), (1 - kl) * 0.9); ctx.lineWidth = 1 + 3 * (1 - kl); ctx.beginPath(); ctx.arc(cx, cy, R0 * (1.1 + 1.7 * kl), 0, Math.PI * 2); ctx.stroke(); }
-        if (state.frozen) {                                                                  // 멈춘 동안: 남은 멈춤만큼 도는 에너지 링 + 뒤로 미끄러지는 잔상
-          const left = state.freeze / FREEZE_STEPS;
-          for (let i = 1; i <= 3; i++) { ctx.fillStyle = css(pal.sun, 0.16 / i); ctx.beginPath(); ctx.arc(cx - i * T * 0.42, cy, R0 * (1 - 0.1 * i), 0, Math.PI * 2); ctx.fill(); }
-          ctx.strokeStyle = css(pal.sun, 0.22); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R0 * 1.5, 0, Math.PI * 2); ctx.stroke();
-          ctx.strokeStyle = css(mix(pal.sun, [255, 255, 255], 0.4), 0.95); ctx.lineWidth = 3; ctx.lineCap = "round";
-          ctx.beginPath(); ctx.arc(cx, cy, R0 * 1.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); ctx.stroke();
-          const ae = -Math.PI / 2 + Math.PI * 2 * left; ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(cx + Math.cos(ae) * R0 * 1.5, cy + Math.sin(ae) * R0 * 1.5, T * 0.06, 0, Math.PI * 2); ctx.fill();
-        }
-        const kr = (now - fx.releaseAt) / 0.25;                                              // 풀려나는 순간: 링이 커지며 사라진다
-        if (kr >= 0 && kr < 1) { ctx.strokeStyle = css(pal.sun, (1 - kr) * 0.7); ctx.lineWidth = 2; ctx.setLineDash([T * 0.12, T * 0.1]); ctx.beginPath(); ctx.arc(cx, cy, R0 * (1.5 + 1.3 * kr), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
-        const kd = (now - fx.djAt) / 0.3;                                                    // 이단 점프: 뛴 자리(땅이 아니라 공중)에 남는 납작한 충격파
-        if (kd >= 0 && kd < 1) { const k2 = fx.djSmall ? 0.55 : 1; ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.5), (1 - kd) * 0.85 * k2); ctx.lineWidth = (1 + 3 * (1 - kd)) * k2;
-          ctx.beginPath(); ctx.ellipse(sx(fx.djX), sy(fx.djY), T * (0.35 + 1.5 * kd) * k2, T * (0.1 + 0.28 * kd) * k2, 0, 0, Math.PI * 2); ctx.stroke(); }
-      }
       let stretchX = 1, stretchY = 1;
-      const sinceJump = now - fx.jumpAt, sinceLand = now - fx.landAt;
-      const sinceDj = now - fx.djAt, sinceLock = now - fx.freezeAt, sinceRel = now - fx.releaseAt;
+      const sinceJump = now - fx.jumpAt, sinceLand = now - fx.landAt, sinceUnfreeze = now - fx.freezeEndAt;
       if (dashing) { stretchX = 1.7; stretchY = 0.62; }
-      else if (sinceDj < 0.16 && !fx.djSmall) { stretchX = 0.74; stretchY = 1.32; }      // 이단 점프: 위로 쭉
-      else if (state.frozen && sinceLock < 0.1) { stretchX = 1.18; stretchY = 0.86; }      // 멈춘 순간: 납작하게 "착"
-      else if (sinceRel < 0.12) { stretchX = 0.86; stretchY = 1.18; }                      // 풀려나는 순간: 아래로 늘어나며
+      else if (sinceUnfreeze >= 0 && sinceUnfreeze < 0.12) { stretchX = 1.24; stretchY = 0.82; }
       else if (sinceJump < 0.14) { stretchX = 0.82; stretchY = 1.2; }
       else if (sinceLand < 0.1 && state.onGround) { stretchX = 1.22; stretchY = 0.8; }
       ctx.save();
@@ -1812,6 +1840,31 @@
         ctx.beginPath(); ctx.arc(0, 0, T * 0.2, 0.3, 2.2); ctx.stroke();
       }
       ctx.restore();
+      // 멈춤 응축 링(진입) & 해방 링(해제) & 아슬아슬 통과(Near-Miss) 빛 번쩍임
+      const fIn = (now - fx.freezeStartAt) / 0.22;
+      if (fIn >= 0 && fIn < 1) {
+        ctx.strokeStyle = css(pal.sun, (1 - fIn) * 0.85);
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, T * (1.25 - 0.72 * fIn), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      const fOut = (now - fx.freezeEndAt) / 0.26;
+      if (fOut >= 0 && fOut < 1) {
+        ctx.strokeStyle = css(pal.sun, (1 - fOut) * 0.9);
+        ctx.lineWidth = 3 * (1 - fOut) + 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, T * (0.55 + 1.05 * fOut), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      const nmP = (now - fx.nearAt) / 0.16;
+      if (nmP >= 0 && nmP < 1) {
+        ctx.strokeStyle = `rgba(255,245,200,${(1 - nmP) * 0.85})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, T * (0.58 + 0.45 * nmP), 0, Math.PI * 2);
+        ctx.stroke();
+      }
       ctx.globalAlpha = 1;
       if (state.djAvail && !state.onGround) {                   // 이단 점프가 남아 있으면 공 위에 작은 ▲
         ctx.fillStyle = "rgba(255,255,255,0.9)";
@@ -1866,9 +1919,11 @@
         ctx.stroke(); ctx.restore();
       }
     }
-    {      // 멈춘 동안 화면 가장자리가 살짝 어둡다(시간이 멈춘 느낌). 누르는 순간 더 진하게 "착"
-      const kv = Math.max(0, 1 - (now - fx.freezeAt) / 0.22), va = (state.frozen && phase === "running" ? 0.14 : 0) + 0.3 * kv * (state.frozen ? 1 : 0);
-      if (va > 0.01) { const vg = ctx.createRadialGradient(fx.ballSX, fx.ballSY, h * 0.25, fx.ballSX, fx.ballSY, Math.max(w, h) * 0.85); vg.addColorStop(0, "rgba(4,4,12,0)"); vg.addColorStop(1, `rgba(4,4,12,${va})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h); }
+    if (state.frozen && phase === "running") {
+      const fv = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.34, w / 2, h / 2, Math.hypot(w, h) * 0.62);
+      fv.addColorStop(0, "rgba(0,0,0,0)");
+      fv.addColorStop(1, css(mix(pal.sun, [6, 8, 18], 0.75), 0.28));
+      ctx.fillStyle = fv; ctx.fillRect(0, 0, w, h);
     }
     if (fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${fx.flash * 0.5})`; ctx.fillRect(0, 0, w, h); }
     const since = now - fx.cpFlash;
@@ -2235,12 +2290,51 @@
       if (phase === "running") {
         const zig = state.mode === "rush";
         fx.tail.push({ x: state.x, y: state.y - HALF, d: state.dashing > 0 || zig });
-        while (fx.tail.length > (zig ? 22 + Math.min(14, fx.chain >> 1) : 12 + Math.min(16, fx.chain >> 2))) fx.tail.shift();
+        const maxTail = zig ? 22 + Math.min(14, fx.chain >> 1) + Math.round(fx.flow * 6) : 16 + Math.round(fx.flow * 12);
+        while (fx.tail.length > maxTail) fx.tail.shift();
+        if (state.frozen && now - fx.ghostAt > 0.045) {
+          fx.ghostAt = now;
+          fx.freezeGhosts.push({ x: state.x, y: state.y - HALF, life: 0.24, max: 0.24 });
+        }
+        // 아슬아슬 통과(Near-Miss) 감지: 장애물 바로 위/아래를 스칠 때 마찰 스파크
+        if (!zig && !state.onGround && state.step >= autoUntil && now - fx.nearAt > 0.14 && L.floorH) {
+          const c = Math.floor(state.x);
+          if (c >= 0 && c < L.cols) {
+            const bh = ROWS - 1 - state.y;
+            let fh = L.floorLo && L.floorLo[c] > 0 ? 0 : L.floorH[c];
+            for (const tq of L.talls) if (state.x >= tq.x - tq.w / 2 - 0.25 && state.x <= tq.x + tq.w / 2 + 0.25) fh = Math.max(fh, tq.h);
+            const ch = L.ceilH ? L.ceilH[c] : 99;
+            const gapF = fh > 0.1 ? bh - fh : 99;
+            const gapC = ch < 90 ? ch - (bh + SIZE) : 99;
+            const nearF = gapF > 0.02 && gapF < 0.62;
+            const nearC = gapC > 0.02 && gapC < 0.52;
+            if (nearF || nearC) {
+              fx.nearAt = now;
+              fx.flow = Math.min(1, fx.flow + 0.1);
+              const sySpark = nearF ? state.y : state.y - SIZE;
+              for (let i = 0; i < 6; i++) {
+                fx.particles.push({
+                  x: state.x - 0.1,
+                  y: sySpark,
+                  vx: -(2.6 + Math.random() * 4.2),
+                  vy: (nearF ? -1 : 1) * (0.6 + Math.random() * 2.4),
+                  life: 0.26 + Math.random() * 0.12,
+                  max: 0.38,
+                  size: 0.075 + Math.random() * 0.06,
+                  color: i % 2 ? "sun" : "white",
+                  g: nearF ? 7 : -4,
+                });
+              }
+            }
+          }
+        }
         refreshHud();
       }
-    } else if (phase === "dead" && !fake.on && now - deadAt > 0.55) respawn();
+    } else if (phase === "dead" && !fake.on && now - deadAt > 0.42) respawn();
     for (const p of fx.particles) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; }
     fx.particles = fx.particles.filter((p) => p.life > 0);
+    for (const gh of fx.freezeGhosts) gh.life -= dt;
+    fx.freezeGhosts = fx.freezeGhosts.filter((gh) => gh.life > 0);
     fx.shake = Math.max(0, fx.shake - dt * 1.6);
     fx.flash = Math.max(0, fx.flash - dt * 5);
     draw(phase === "running" ? songBeat() : state.step / SUB, now);
