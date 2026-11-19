@@ -2271,8 +2271,7 @@
     const mx = m0x + (w / 2 - dx * 0.26 * w - m0x) * u, my = m0y + (h / 2 - dy * 0.26 * h - m0y) * u;
     const ax = mx + Math.sin(th) * half, ay = my + Math.cos(th) * half;                         // 바닥 선 위의 점 = 가운데에서 통로 폭의 절반만큼 바닥 쪽으로
     // 가는 쪽으로 화면 끝까지 7칸(1.75박)이 안 보이면 그만큼 물러난다
-    const ex = Math.cos(th), ey = -Math.sin(th);      // (보이는 앞쪽은 지금 가는 쪽으로 잰다)
-    const tx = ex > 1e-6 ? (w - mx) / ex : ex < -1e-6 ? -mx / ex : 1e9, ty = ey > 1e-6 ? (h - my) / ey : ey < -1e-6 ? -my / ey : 1e9;
+    const tx = dx > 1e-6 ? (w - mx) / dx : dx < -1e-6 ? -mx / dx : 1e9, ty = dy > 1e-6 ? (h - my) / dy : dy < -1e-6 ? -my / dy : 1e9;
     // (기운 만큼만 적용한다. 곧게 갈 때는 물러나지 않는다 — 안 그러면 세로로 든 화면에서, 굽이가 화면 밖 멀리서 다가오기 시작하는 순간 화면이 뚝 줄어든다)
     const k = (1 + (Math.max(0.45, Math.min(1, Math.min(tx, ty) / (10.5 * T))) - 1) * u) * kThin;
     const jb = segAt(camX), gb = SEGS[jb], along = sAt(camX) - sAt(Math.max(gb.x0, 0));
