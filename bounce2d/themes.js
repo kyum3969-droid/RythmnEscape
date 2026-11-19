@@ -1103,7 +1103,8 @@
       const off = e.camS * BT * 0.55, step = BT * 4.6, wy0 = h * 0.2, wy1 = h * 0.5, ww = BT * 3.1;
       g.beginPath(); for (let k = Math.floor(off / (BT * 3)) - 1; k * BT * 3 - off < w + BT * 3; k++) { const x = k * BT * 3 - off; g.moveTo(x + BT * 0.25, h * 0.04); g.lineTo(x + BT * 2.75, h * 0.04); }
       g.lineCap = "round"; neon(g, NEON_C, 0.55 + 0.4 * e.pulse, BT * 0.07);
-      const lamps = [0, 1].map((j) => { const p = pm(e.beat * 2 + j * 0.5, 1), lx = w * 1.25 - p * w * 1.7, len = BT * 2.4, lg = g.createLinearGradient(lx, 0, lx + len, 0); lg.addColorStop(0, rgba(LAMP, 0)); lg.addColorStop(0.12, rgba(LAMP, 0.95)); lg.addColorStop(1, rgba(LAMP, 0)); return [lg, lx, len, wy0 + (wy1 - wy0) * (0.25 + 0.45 * j)]; });
+      // 터널 등(속도감): 네 줄이 서로 다른 박자·높이·길이로 창을 차례로 스쳐 간다. 이 무대에서는 공통의 질주 줄을 그리지 않으므로 이것이 속도감을 맡는다
+      const lamps = [0, 1, 2, 3].map((j) => { const p = pm(e.beat * (j % 2 ? 2 : 3) + j * 0.37, 1), len = BT * (1.6 + 1.4 * H(j, 611)), lx = w * 1.25 - p * (w * 1.5 + len), lg = g.createLinearGradient(lx, 0, lx + len, 0); lg.addColorStop(0, rgba(LAMP, 0)); lg.addColorStop(0.12, rgba(LAMP, 0.9 - 0.15 * (j > 1))); lg.addColorStop(1, rgba(LAMP, 0)); return [lg, lx, len, wy0 + (wy1 - wy0) * [0.22, 0.6, 0.38, 0.8][j]]; });
       for (let k = Math.floor(off / step) - 1; k * step - off < w + step; k++) {
         const x = k * step - off + BT * 0.7;
         if (pm(k, 4) === 3) {        // 문: 두 짝, 작은 창, 노란 네온 가장자리
@@ -1131,7 +1132,11 @@
       }
       // 크롬 기둥(앞쪽, 조금 더 빨리 흐른다): 청록 반사
       const off2 = e.camS * BT * 0.8, st2 = BT * 6.9;
-      for (let k = Math.floor(off2 / st2) - 1; k * st2 - off2 < w + st2; k++) { const x = k * st2 - off2 + BT * 2.2; g.fillStyle = "rgba(150,160,190,0.55)"; g.fillRect(x, 0, BT * 0.12, h); g.fillStyle = rgba(NEON_C, 0.6); g.fillRect(x + BT * 0.03, 0, BT * 0.025, h); }
+      for (let k = Math.floor(off2 / st2) - 1; k * st2 - off2 < w + st2; k++) {
+        const x = k * st2 - off2 + BT * 2.2, tr = g.createLinearGradient(x + BT * 0.12, 0, x + BT * 1.1, 0);      // 기둥 뒤의 옅은 흐름 자국(빛이 아니라 어두운 잔상)
+        tr.addColorStop(0, "rgba(120,130,170,0.16)"); tr.addColorStop(1, "rgba(120,130,170,0)"); g.fillStyle = tr; g.fillRect(x + BT * 0.12, 0, BT * 1.0, h);
+        g.fillStyle = "rgba(150,160,190,0.55)"; g.fillRect(x, 0, BT * 0.12, h); g.fillStyle = rgba(NEON_C, 0.6); g.fillRect(x + BT * 0.03, 0, BT * 0.025, h);
+      }
       g.lineCap = "butt"; g.restore();
     },
   };
