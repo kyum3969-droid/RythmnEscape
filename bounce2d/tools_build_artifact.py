@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""아티팩트 게시용 파일 만들기: style.css와 스크립트들(engine.js·patterns.js·courses.js·track.js)을 index.html 안에 넣고 문서 뼈대(doctype/head/body)를 뺀다.
+"""아티팩트 게시용 파일 만들기: style.css와 스크립트들(engine.js·patterns.js·courses.js·themes.js·track.js)을 index.html 안에 넣고 문서 뼈대(doctype/head/body)를 뺀다.
 사용: python3 bounce2d/tools_build_artifact.py 출력파일.html"""
 import re, sys, pathlib
 here = pathlib.Path(__file__).parent
@@ -7,7 +7,7 @@ s = (here / "index.html").read_text(encoding="utf-8")
 tag = '<link rel="stylesheet" href="style.css">'
 assert s.count(tag) == 1
 s = s.replace(tag, "<style>\n" + (here / "style.css").read_text(encoding="utf-8") + "</style>")
-for name in ["engine.js", "patterns.js", "courses.js", "track.js"]:
+for name in ["engine.js", "patterns.js", "courses.js", "themes.js", "track.js"]:
     tag = '<script src="%s"></script>' % name
     assert s.count(tag) == 1
     s = s.replace(tag, "<script>\n" + (here / name).read_text(encoding="utf-8") + "</script>")

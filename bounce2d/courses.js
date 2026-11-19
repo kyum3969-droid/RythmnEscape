@@ -256,6 +256,7 @@ const ROUND5 = {
 // 조여드는 통로(연출)는 넣지 않았다: 이 곡은 절정이 끝까지 같은 세기로 가다가 뚝 끊긴다(점점 세지는 자리가 없다).
 const ROUND6 = {
   name: "ROUND 6 · Streetlight Velocity",
+  rushProps: "subway",                             // 피버는 지하철 객차 안: 이빨·마름모 대신 의자·손잡이·고리(판정도 그 모양. subwayProps)
   decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/streetlight_velocity.mp3", offset: 0.056, measured: true },
@@ -315,6 +316,7 @@ const ROUND6 = {
 // 장치는 새것이 없다(앞 라운드의 것을 되풀이할 마디에 섞는다). 피버는 절정 두 곳에만, 둘 다 넓은 통로이고 줄과 굽이는 앞 라운드와 겹치지 않는다.
 const ROUND7 = {
   name: "ROUND 7 · Sunday in the Playroom",
+  rushProps: "ballpit",                            // 피버는 볼풀 속: 이빨·마름모 대신 붉은 공 더미·공(판정도 그 모양. rushPropsApply)
   decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/sunday_in_the_playroom.mp3", offset: 0.064, measured: true },
@@ -377,6 +379,7 @@ const ROUND7 = {
 // 카메라는 공이 딛는 높이를 따라 오르내린다(climb). 여덟 칸 높이의 큰 산이 세 번 나온다. 피버는 가장 센 절정 한 곳뿐이다.
 const ROUND8 = {
   name: "ROUND 8 · Velocity of a Thousand Suns",
+  rushProps: "solar",                              // 피버는 해 속으로 돌진: 이빨·마름모 대신 홍염(불기둥)·불덩이(판정도 그 모양. rushPropsApply)
   decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/velocity_of_a_thousand_suns.mp3", offset: 0.073, measured: true },
@@ -439,7 +442,7 @@ const ROUND9 = {
     { bar: 26, rot: 45 }, { bar: 28, rot: 0 },
     { bar: 42, rot: -45 }, { bar: 44, rot: 45 }, { bar: 46, rot: 0 },
     { bar: 58, rot: 45 }, { bar: 60, rot: -45 }, { bar: 62, rot: 0 },
-    { bar: 73, rot: 90 }, { bar: 75, rot: 45 }, { bar: 76, rot: 0 },
+    // (마지막 피버 72~78은 곧게 간다. 의견: "9라운드 CP9 마지막 피버 구간은 직선으로". 전에는 73에서 90°, 75에서 45°로 굽었다가 76에서 가로로)
   ],
   pal: {                                         // 이 라운드의 색: 한밤의 아스팔트 — 검푸른 회색에 노란 차선, 청록 네온. 주황·분홍은 쓰지 않는다(빨간 장애물과 헷갈린다)
     intro: { top: "#06070b", bottom: "#23272f", accent: "#ffe14d", sun: "#fff4b8" },
