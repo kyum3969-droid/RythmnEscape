@@ -736,7 +736,7 @@
   function feverBack(beat, now, pulse, k, pal, cx, cy, r0, w, h, camX) {
     const ri = Math.max(0, L.rides.findIndex((r) => camX >= r[0] - 4 && camX <= r[1] + 2)), fxr = FEVER_FX[ROUND_NO] || FEVER_FX[0], prim = fxr.back[ri % fxr.back.length];
     const style = prim === 'tunnel' ? 0 : prim === 'ring' ? 1 : prim === 'stars' ? 2 : -1;
-    const a = k * 0.95, R = Math.hypot(w, h), acc = feverHue(beat, pal), sun = mix(pal.sun, acc, 0.35);
+    const a = k * 0.72, R = Math.hypot(w, h), acc = feverHue(beat, pal), sun = mix(pal.sun, acc, 0.35); // 전경 가독성을 위해 배경 강도 절제
     ctx.save();
     if (style === 0) {          // 빛의 굴: 소실점에서 둥근 네모가 반 박마다 하나씩 다가온다. 박마다 밝아진다
       const N = 9, asp = w / h;
@@ -816,9 +816,9 @@
     ctx.save();
     if (fx.shake > 0) ctx.translate((Math.random() - 0.5) * fx.shake * 40, (Math.random() - 0.5) * fx.shake * 40);
 
-    // 하늘
+    // 하늘 (전경 오브젝트와 명도 경쟁을 줄이기 위해 배경 톤을 한 단계 눌러 대비 확보)
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, css(pal.top)); g.addColorStop(0.75, css(pal.bottom)); g.addColorStop(1, css(mix(pal.bottom, [0, 0, 0], 0.35)));
+    g.addColorStop(0, css(mix(pal.top, [6, 8, 18], 0.2))); g.addColorStop(0.75, css(mix(pal.bottom, [6, 8, 18], 0.24))); g.addColorStop(1, css(mix(pal.bottom, [0, 0, 0], 0.48)));
     ctx.fillStyle = g; ctx.fillRect(-30, -30, w + 60, h + 60);
 
     // 박자마다 퍼지는 고리
@@ -827,17 +827,17 @@
     //   곡의 박에 맞춰 움직이고, 실제 곡의 주파수(분석기)를 쓴다. 통로와 장애물은 그대로 그 위에 그려진다(읽기에 방해되지 않게 바탕만)
     if (round > 0) feverBack(beat, now, pulse, round, pal, cxs, cys, r0, w, h, camX);
     const flowBoost = fx.flow || 0;
-    ctx.fillStyle = css(pal.sun, 0.9);
+    ctx.fillStyle = css(pal.sun, 0.78);
     ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1 + (0.07 + 0.04 * flowBoost) * pulse), 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 2 + flowBoost * 0.8;
+    ctx.lineWidth = 1.8 + flowBoost * 0.7;
     for (let i = 0; i < 3; i++) {
       const p = ((beat + i * 0.5) % 1.5) / 1.5;
-      ctx.strokeStyle = css(pal.sun, (1 - p) * (0.5 + 0.18 * flowBoost));
+      ctx.strokeStyle = css(pal.sun, (1 - p) * (0.36 + 0.18 * flowBoost));
       ctx.beginPath(); ctx.arc(cxs, cys, r0 * (1.1 + p * 2.6), 0, Math.PI * 2); ctx.stroke();
     }
 
     // 먼 풍경 (2겹, 박자에 맞춰 들썩임): 평소엔 이퀄라이저 막대, 언덕 구간에서는 둥근 능선으로 바뀐다
-    for (const [layer, bw, par, dark, amp] of [[1, BT * 1.7, 0.18, 0.45, 3.6], [2, BT * 1.0, 0.42, 0.68, 2.4]]) {
+    for (const [layer, bw, par, dark, amp] of [[1, BT * 1.7, 0.18, 0.58, 3.6], [2, BT * 1.0, 0.42, 0.76, 2.4]]) {
       ctx.fillStyle = css(mix(pal.bottom, [0, 0, 0], dark));
       const off = camS * BT * par, i0 = Math.floor(off / bw), drop = camY * BT * par * 0.8;      // drop = 카메라가 올라간 만큼 내려앉는 양(가까운 겹일수록 많이)
       if (round < 1) {
@@ -949,8 +949,8 @@
     ctx.fillStyle = WALL;
     ctx.fillRect(sx(cA - WIDE) - 1, view.groundY - 0.5, sx(cB + 1 + WIDE) - sx(cA - WIDE) + 2, WALLD ?? h + FAR);
     ctx.beginPath(); ctx.moveTo(sx(cA), view.groundY); ctx.lineTo(sx(cB + 1), view.groundY);
-    ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5;
-    ctx.shadowColor = css(pal.accent); sb(8 + 10 * pulse);
+    ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.2;
+    ctx.shadowColor = css(pal.accent); sb(4 + 5 * pulse); // 지형 글로우 절제(전경 집중)
     gs(); sb(0);
     // 가시: 결정 날 세 개. 밑동은 어둡고 끝으로 갈수록 붉게 빛난다. (판정은 그림보다 작다)
     const BLADES = [[0.2, 0.15, 0.54], [0.8, 0.15, 0.54], [0.5, 0.2, 0.86]];
@@ -1028,6 +1028,49 @@
         ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(9 + 8 * pulse); gs();
         ctx.lineJoin = "round"; sb(0);
       }
+      // 높은 빨간 박스(이단 점프 강제, 높이 2.5칸 이상): 0.2초 만에 오른손(이단 점프)을 인지할 수 있는 전용 상단 톱니·수직 스트라이프·▲ 쉐브론 시그니처
+      if (L.talls && L.talls.length) {
+        for (const tq of L.talls) {
+          if (tq.x + tq.w / 2 < cA - 1 || tq.x - tq.w / 2 > cB + 1) continue;
+          const xa = sx(tq.x - tq.w / 2) + ins, xb = sx(tq.x + tq.w / 2) - ins;
+          const yt = PY(tq.h), yb = view.groundY, tw = xb - xa;
+          if (tw <= 2) continue;
+          // 내부 수직 경고 스트라이프
+          ctx.save();
+          ctx.fillStyle = "rgba(255,190,210,0.16)";
+          ctx.fillRect(xa + tw * 0.22, yt + T * 0.25, tw * 0.14, yb - yt - T * 0.35);
+          ctx.fillRect(xa + tw * 0.64, yt + T * 0.25, tw * 0.14, yb - yt - T * 0.35);
+          // 상단 3개 뾰족 톱니 크라운
+          const teeth = 3, toothH = T * 0.26;
+          ctx.beginPath();
+          ctx.moveTo(xa, yt);
+          for (let i = 0; i < teeth; i++) {
+            const x0 = xa + (tw * i) / teeth, x1 = xa + (tw * (i + 1)) / teeth;
+            ctx.lineTo((x0 + x1) / 2, yt - toothH);
+            ctx.lineTo(x1, yt);
+          }
+          ctx.closePath();
+          ctx.fillStyle = "#ff4d7d";
+          ctx.fill();
+          ctx.strokeStyle = "#ffd6e2";
+          ctx.lineWidth = 1.6;
+          ctx.stroke();
+          // 중앙 ▲ 이중 쉐브론 (이단 점프 시각 단서)
+          const mx = (xa + xb) / 2, my = yt + T * 0.72, cw = Math.min(tw * 0.28, T * 0.22);
+          ctx.strokeStyle = `rgba(255,225,235,${0.55 + 0.3 * pulse})`;
+          ctx.lineWidth = 2;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          for (const dy of [0, T * 0.28]) {
+            ctx.beginPath();
+            ctx.moveTo(mx - cw, my + dy + cw * 0.65);
+            ctx.lineTo(mx, my + dy);
+            ctx.lineTo(mx + cw, my + dy + cw * 0.65);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
     }
     // 파란 박스(땅 위의 블록): 닿아도 죽지 않는다. 위에 내려앉아 다시 튀고, 옆에서 부딪히면 올라탄다.
     // 높을수록 이른 박에 튄다(한 칸에 1/8박). 박스마다 자기가 튀는 박에 빛난다. 빨간 덩어리보다 나중에 그려서, 박스 위의 빨간 덩어리가 얹힌 것처럼 보인다.
@@ -1052,8 +1095,8 @@
         for (let y = view.groundY - T * 0.48; y > top; y -= T * 0.48) { ctx.moveTo(edge[0][0], y); ctx.lineTo(edge[edge.length - 1][0], y); }
         gs(); ctx.restore();
         trace();
-        ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff";
-        sb(10 + 8 * pulse + 16 * hit); gs(); sb(0);
+        ctx.strokeStyle = "#b5e6ff"; ctx.lineWidth = 2.4; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff";
+        sb(hit > 0.01 ? 14 * hit : 3 + 3 * pulse); gs(); sb(0);
         c = e;
       }
     }
@@ -1077,7 +1120,7 @@
         ctx.strokeStyle = "rgba(150,210,255,0.16)"; ctx.lineWidth = 2; ctx.beginPath();
         for (let y = yb - T * 0.48; y > ya; y -= T * 0.48) { ctx.moveTo(xa, y); ctx.lineTo(xb, y); }
         gs(); ctx.restore();
-        ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; sb(10 + 8 * pulse + 16 * on);
+        ctx.strokeStyle = "#b5e6ff"; ctx.lineWidth = 2.4; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; sb(on > 0.01 ? 14 * on : 3 + 3 * pulse);
         ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya); gs(); sb(0);
         c = e;
       }
@@ -1148,7 +1191,7 @@
         if (WALLD) { cpts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); for (let i = cpts.length - 1; i >= 0; i--) ctx.lineTo(cpts[i][0], cpts[i][1] - WALLD); }      // (굽은 통로: 벽 두께만큼)
         else { ctx.moveTo(sx(caW), -FAR); cpts.forEach((q) => ctx.lineTo(q[0], q[1])); ctx.lineTo(sx(cbW), -FAR); }
         ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.5; ctx.shadowColor = css(pal.accent); sb(8 + 10 * pulse);
+        ctx.strokeStyle = css(pal.accent); ctx.lineWidth = 2.2; ctx.shadowColor = css(pal.accent); sb(4 + 5 * pulse);
         ctx.beginPath();
         for (let c = Math.floor(ca / 16) * 16; c < cb; c += 16) { const y = sy(ROWS - 1 - ceilAt(L, c + 1)); ctx.lineTo(sx(Math.max(c, ca)), y); ctx.lineTo(sx(Math.min(c + 16, cb)), y); }
         gs(); sb(0);
@@ -1203,7 +1246,7 @@
           gs(); ctx.restore();
           ctx.beginPath(); ctx.moveTo(edge[0][0], edge[0][1]);
           for (const q of edge) ctx.lineTo(q[0], q[1]);
-          ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; sb(10 + 8 * pulse + 16 * hit); gs(); sb(0);
+          ctx.strokeStyle = "#b5e6ff"; ctx.lineWidth = 2.4; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; sb(hit > 0.01 ? 14 * hit : 3 + 3 * pulse); gs(); sb(0);
           i = e;
         }
       }
