@@ -83,8 +83,24 @@
   }
 
   // ================================================================ 공통 도구
+  // 빛무리: 큰 원을 매 장 그라데이션으로 칠하면 무겁다(피버에서 끊김의 큰 몫). 128픽셀 그림으로 한 번 그려 두고 늘려 붙인다(색·세기·안쪽 크기를 조금씩 묶어 기억)
+  const HALO = new Map();
+  function haloImg(c, a, k) {
+    if (typeof document === "undefined") return null;
+    const q = (v, st) => Math.round(v / st) * st, key = `${q(c[0], 6)},${q(c[1], 6)},${q(c[2], 6)},${q(a, 0.015).toFixed(3)},${q(k, 0.04).toFixed(2)}`;
+    let cv = HALO.get(key); if (cv) return cv;
+    if (HALO.size > 120) HALO.clear();
+    cv = document.createElement("canvas"); cv.width = cv.height = 128;
+    const x = cv.getContext("2d"), gr = x.createRadialGradient(64, 64, 64 * clamp(k, 0, 0.99), 64, 64, 64);
+    gr.addColorStop(0, rgba(c, a)); gr.addColorStop(1, rgba(c, 0)); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+    HALO.set(key, cv); return cv;
+  }
+  //   피버에 다 들어가면(e.fever > 0.5) 그리지 않는다: 피버에는 화면 가장자리의 빛과 피버 바탕이 따로 있고, 큰 반투명 원은 칠하는 데 오래 걸린다(피버에서 끊김의 큰 몫)
   function halo(e, x, y, r1, r2, c, a) {
-    const g = e.g, gr = g.createRadialGradient(x, y, r1, x, y, r2);
+    if (e.fever > 0.5) return;
+    const g = e.g, im = r2 > 0 && haloImg(c, a, r1 / r2);
+    if (im) { g.drawImage(im, x - r2, y - r2, 2 * r2, 2 * r2); return; }
+    const gr = g.createRadialGradient(x, y, r1, x, y, r2);
     gr.addColorStop(0, rgba(c, a)); gr.addColorStop(1, rgba(c, 0));
     g.fillStyle = gr; g.beginPath(); g.arc(x, y, r2, 0, TAU); g.fill();
   }
@@ -226,7 +242,7 @@
     },
     synth(e) {     // 네온: 아래쪽에 가로 틈이 있는 해. 틈은 박마다 한 줄씩 아래로 흘러내린다
       const g = e.g, r = e.r0 * 1.3 * (1 + 0.05 * e.pulse);
-      halo(e, e.cx, e.cy, r * 0.9, r * 2.3, e.pal.sun, 0.3 + 0.1 * e.pulse);
+      halo(e, e.cx, e.cy, r * 0.9, r * 1.85, e.pal.sun, 0.32 + 0.1 * e.pulse);
       beatRings(e, 0.35);
       const gr = g.createLinearGradient(0, e.cy - r, 0, e.cy + r);
       gr.addColorStop(0, rgba(mix(e.pal.sun, [255, 236, 160], 0.65))); gr.addColorStop(0.55, rgba(mix(e.pal.sun, [255, 236, 160], 0.2))); gr.addColorStop(1, rgba(e.pal.sun));
@@ -238,7 +254,7 @@
     },
     pixel(e) {     // 디지털: 픽셀로 찍은 해, 네모난 고리. 아래쪽 줄은 박마다 한 줄씩 꺼졌다 켜진다
       const g = e.g, q = Math.max(3, Math.round(e.r0 / 4.5)), R = e.r0 * 1.1 * (1 + 0.06 * e.pulse), cx = Math.round(e.cx / q) * q, cy = Math.round(e.cy / q) * q, n = Math.ceil(R / q) + 1;
-      halo(e, cx, cy, R * 0.8, R * 2.2, e.pal.sun, 0.22);
+      halo(e, cx, cy, R * 0.8, R * 1.8, e.pal.sun, 0.24);
       g.lineWidth = Math.max(2, q * 0.45);
       for (let i = 0; i < 3; i++) { const p = pm(e.beat + i * 0.5, 1.5) / 1.5, s = Math.round(R * (1.2 + p * 2.3) / q) * q; g.strokeStyle = rgba(e.pal.sun, (1 - p) * 0.45); g.strokeRect(cx - s, cy - s, 2 * s, 2 * s); }
       const off = Math.floor(e.beat * 2);
@@ -251,7 +267,7 @@
     },
     smog(e) {      // 공장: 매연에 가린 흐린 해
       const g = e.g, r = e.r0 * 1.15;
-      halo(e, e.cx, e.cy, r * 0.7, r * 2.6, e.pal.sun, 0.22 + 0.08 * e.pulse);
+      halo(e, e.cx, e.cy, r * 0.7, r * 2.0, e.pal.sun, 0.24 + 0.08 * e.pulse);
       beatRings(e, 0.22);
       g.fillStyle = rgba(mix(e.pal.sun, e.pal.bottom, 0.15), 0.85); g.beginPath(); g.arc(e.cx, e.cy, r * (1 + 0.04 * e.pulse), 0, TAU); g.fill();
       const c = mix(e.pal.bottom, e.pal.top, 0.4);
@@ -262,7 +278,7 @@
     },
     radiant(e) {   // 산·유적: 빛살이 천천히 도는 눈부신 해(박마다 빛살이 길어진다)
       const g = e.g, r = e.r0 * 1.05 * (1 + 0.06 * e.pulse);
-      halo(e, e.cx, e.cy, r * 0.6, r * 4.0, e.pal.sun, 0.24 + 0.1 * e.pulse);
+      halo(e, e.cx, e.cy, r * 0.6, r * 2.7, e.pal.sun, 0.28 + 0.1 * e.pulse);
       g.fillStyle = rgba(e.pal.sun, 0.1 + 0.08 * e.pulse); g.beginPath();
       for (let i = 0; i < 14; i++) {
         const th = (i / 14) * TAU + e.now * 0.05, L = r * (1.9 + 0.8 * H(i, 81) + 0.6 * e.pulse), wd = 0.075;
@@ -276,7 +292,7 @@
     },
     moon(e) {      // 축제: 초승달(구름 사이로), 은은한 달무리
       const g = e.g, r = e.r0 * 1.05, c = mix(e.pal.sun, WHITE, 0.45);
-      halo(e, e.cx, e.cy, r * 0.7, r * 3.4, c, 0.2 + 0.08 * e.pulse);
+      halo(e, e.cx, e.cy, r * 0.7, r * 2.4, c, 0.22 + 0.08 * e.pulse);
       beatRings(e, 0.25, c);
       g.save(); g.beginPath(); g.rect(e.cx - r * 2, e.cy - r * 2, r * 4, r * 4); g.arc(e.cx + r * 0.5, e.cy - r * 0.28, r * 0.88, 0, TAU, true); g.clip("evenodd");
       g.fillStyle = rgba(c, 0.97); g.beginPath(); g.arc(e.cx, e.cy, r, 0, TAU); g.fill();
@@ -286,7 +302,7 @@
     },
     planet(e) {    // 우주: 고리 행성. 박마다 기운 고리가 퍼진다
       const g = e.g, r = e.r0 * 1.15, tilt = -0.32, ring = mix(e.pal.sun, WHITE, 0.3);
-      halo(e, e.cx, e.cy, r * 0.9, r * 2.6, e.pal.accent, 0.16 + 0.06 * e.pulse);
+      halo(e, e.cx, e.cy, r * 0.9, r * 2.1, e.pal.accent, 0.18 + 0.06 * e.pulse);
       g.lineWidth = 2;
       for (let i = 0; i < 3; i++) { const p = pm(e.beat + i * 0.5, 1.5) / 1.5; g.strokeStyle = rgba(ring, (1 - p) * 0.35); g.beginPath(); g.ellipse(e.cx, e.cy, r * (2.1 + p * 2.6), r * (0.5 + p * 0.6), tilt, 0, TAU); g.stroke(); }
       const band = (a0, a1) => { g.strokeStyle = rgba(ring, 0.75); g.lineWidth = r * 0.14; g.beginPath(); g.ellipse(e.cx, e.cy, r * 1.85, r * 0.44, tilt, a0, a1); g.stroke(); g.strokeStyle = rgba(ring, 0.3); g.lineWidth = r * 0.06; g.beginPath(); g.ellipse(e.cx, e.cy, r * 2.12, r * 0.52, tilt, a0, a1); g.stroke(); };
@@ -301,7 +317,7 @@
     },
     surface(e) {   // 바다 밑: 해가 없다. 수면의 빛 덩어리, 아래로 넓어지며 흔들리는 빛줄기, 박마다 수면에 퍼지는 물결
       const g = e.g, x0 = e.cx, ys = e.h * 0.02, c = mix(e.pal.sun, WHITE, 0.4);
-      halo(e, x0, ys, e.r0 * 0.4, e.r0 * 3.4, c, 0.32 + 0.1 * e.pulse);
+      halo(e, x0, ys, e.r0 * 0.4, e.r0 * 2.6, c, 0.34 + 0.1 * e.pulse);
       for (let i = 0; i < 7; i++) {
         const x = x0 + (i - 3) * e.r0 * 0.95 + Math.sin(e.now * 0.45 + i * 1.3) * e.r0 * 0.4, sw = e.r0 * (0.22 + 0.22 * H(i, 101)), len = e.gy * 1.05, lean = (i - 3) * e.r0 * 0.55;
         const gr = g.createLinearGradient(0, 0, 0, len); gr.addColorStop(0, rgba(c, 0.16 + 0.07 * e.pulse)); gr.addColorStop(1, rgba(c, 0));

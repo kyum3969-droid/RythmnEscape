@@ -2430,6 +2430,7 @@ function emptyLevel(course) {
     else if (name !== "flat" && !PATTERNS[name]) throw new Error("없는 패턴: " + name);
   });
   for (const sq of squeezes) { const e = sq.pts[sq.pts.length - 1]; sq.pts.push({ step: Math.round(sq.x1 / TPB * SUB), x: sq.x1, g: e.g, top: !e.top }); }   // 끝에서 한 번 더 닿는다
+  for (const sq of squeezes) smoothSqueeze(sq);
   // 피버가 끝나는(시작하는) 자리에 걸친 이빨은 벽이 끝나는 선에서 자른다. 안 자르면 이빨의 절반이 벽 밖 허공에 튀어나와 보인다(피버가 끝나는 지점의 천장 이빨이 늘 그랬다).
   // cut = +1 오른쪽 절반을 잘랐다 / -1 왼쪽 절반을 잘랐다. 판정도 잘린 쪽에는 없다.
   for (const q of reds) for (const r of rides) if (q.xt >= r[0] && q.xt <= r[1]) {
@@ -2897,12 +2898,46 @@ const stairNode = (x) => { const b = Math.floor(x / 16), t = x - 16 * b; return 
 const stairFloor = (L, x) => (L.stairLo.get(stairNode(x)) || 0) * ZIG_STEP;
 const stairCeil = (L, x) => { const v = L.stairHi.get(stairNode(x)); return v === undefined ? ceilAt(L, x) : Math.min(ceilAt(L, x), v * ZIG_STEP + SIZE); };
 // 조여드는 통로에서 x 지점의 통로 폭(공이 오르내리는 거리). 통로 밖이면 null.
-function squeezeGap(L, x) {
-  for (const sq of L.squeezes) if (x >= sq.x0 && x <= sq.x1) {
-    const P = sq.pts;
-    for (let i = 0; i + 1 < P.length; i++) if (x <= P[i + 1].x) return P[i].g + (P[i + 1].g - P[i].g) * (x - P[i].x) / (P[i + 1].x - P[i].x);
-    return P[P.length - 1].g;
+// 닿는 지점(pts)의 폭은 그대로 지나고, 그 사이는 매끄러운 곡선으로 잇는다(의견: "좁아지는 것도 각지게 좁아지는데 자연스럽게"). 전에는 지점 사이를 직선으로 이어 지점마다 꺾였다.
+//   곡선은 넘치지 않게(monotone cubic, Fritsch–Butland): 좁아지는 동안 잠깐이라도 다시 넓어지는 일이 없다. 이 구간에서 공은 정해진 길로만 가므로(rushStep) 판정은 바뀌지 않는다 — 벽과 화면 배율만 매끄러워진다.
+function squeezeSlopes(P) {
+  const n = P.length, d = [], m = new Array(n).fill(0);
+  for (let i = 0; i + 1 < n; i++) d.push((P[i + 1].g - P[i].g) / (P[i + 1].x - P[i].x));
+  if (n < 2) return m;
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    if (d[i - 1] * d[i] <= 0) { m[i] = 0; continue; }
+    const h0 = P[i].x - P[i - 1].x, h1 = P[i + 1].x - P[i].x;
+    m[i] = (3 * (h0 + h1)) / ((2 * h1 + h0) / d[i - 1] + (h1 + 2 * h0) / d[i]);
   }
+  for (const i of [0, n - 1]) if (d.length && Math.sign(m[i]) !== Math.sign(d[i === 0 ? 0 : n - 2])) m[i] = 0;
+  return m;
+}
+function curveAt(A, m, x) {
+  for (let i = 0; i + 1 < A.length; i++) if (x <= A[i + 1].x) {
+    const h = A[i + 1].x - A[i].x, t = Math.max(0, (x - A[i].x) / h), t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * A[i].g + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * A[i + 1].g + (t3 - t2) * h * m[i + 1];
+  }
+  return A[A.length - 1].g;
+}
+// 폭은 공이 튀는 간격에 묶여 있어(1박 → 반 박 → 1/4박 …) 계단처럼 바뀐다. 그대로 그리면 "평평 → 좁아짐 → 평평"이 되풀이된다.
+// 그래서 같은 폭이 이어지는 구간마다 그 가운데를 기준점으로 잡고(처음과 끝 폭은 그대로), 기준점들을 매끄러운 곡선으로 이어 깔때기처럼 줄곧 좁아지게 한다.
+// 닿는 시각(박)은 그대로, 닿는 높이만 이 곡선 위로 옮긴다. 이 구간의 공은 정해진 길로만 가고(누르는 것과 무관) 장애물이 없어서 판정은 바뀌지 않는다.
+function smoothSqueeze(sq) {
+  const P = sq.pts, A = [{ x: P[0].x, g: P[0].g }];
+  for (let i = 0; i < P.length;) {
+    let j = i; while (j + 1 < P.length && Math.abs(P[j + 1].g - P[i].g) < 1e-9) j++;
+    const xm = (P[i].x + P[j].x) / 2;
+    if (xm > A[A.length - 1].x + 1e-6) A.push({ x: xm, g: P[i].g });
+    i = j + 1;
+  }
+  const last = P[P.length - 1];
+  if (last.x > A[A.length - 1].x + 1e-6) A.push({ x: last.x, g: last.g });
+  sq.curve = A; sq.slope = squeezeSlopes(A);
+  for (const p of P) p.g = curveAt(A, sq.slope, p.x);
+}
+function squeezeGap(L, x) {
+  for (const sq of L.squeezes) if (x >= sq.x0 && x <= sq.x1) return curveAt(sq.curve, sq.slope, x);
   return null;
 }
 // 원버튼: 화면 어디든 누르는 순간이 press, 누르고 있는 동안이 hold다.

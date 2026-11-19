@@ -243,7 +243,7 @@
   let devWorld = store.get("devWorld", null);
   let THEME = THEMES.themeFor(ROUND_NO, dev ? devWorld : null);
   const ART = THEMES.ART;
-  let wallPat = null, wallPatKind = null;          // 땅·천장·벽의 결(타일 무늬). 테마가 바뀌면 다시 만든다
+  let wallPat = null, wallPatKind = null, wallTile = null, wallPatPx = 0;          // 땅·천장·벽의 결(타일 무늬). 테마가 바뀌거나 칸의 크기가 바뀌면 다시 만든다
 
   // ---------------------------------------------------------------- 색 (구간마다 바뀜)
   const PAL = {
@@ -910,9 +910,15 @@
     const sx = (wx) => view.px + (sAt(wx) - camS) * T;
     const sy = (wy) => view.groundY + (wy - (ROWS - 1)) * T;
     // 땅·천장·벽의 결(월드마다): 미리 그린 타일(두 칸 × 두 칸)을 세상에 붙여 깐다. 화면과 함께 흐르고, 굽은 통로에서는 토막과 함께 기운다
-    if (wallPatKind !== THEME.ground) { wallPatKind = THEME.ground; const tc = ART.tile(THEME.ground); wallPat = tc ? ctx.createPattern(tc, "repeat") : null; }
-    if (wallPat && wallPat.setTransform) wallPat.setTransform(new DOMMatrix([T / 64, 0, 0, T / 64, sx(0), view.groundY]));
-    const WALLF = THEME.ground === "plain" ? SIL : wallPat || SIL;      // 기본 월드: 원래의 검정 그대로
+    //   타일은 지금의 칸 크기·화면 배율에 맞춰 미리 늘려 둔다(무늬를 늘이며 깔면 칠하는 데 오래 걸린다). 피버 구간의 바닥·천장은 무늬 없이 검정(피버의 벽 장식이 따로 있고, 피버가 가장 무겁다)
+    if (wallPatKind !== THEME.ground) { wallPatKind = THEME.ground; wallTile = ART.tile(THEME.ground); wallPat = null; wallPatPx = 0; }
+    const dpr = canvas.width / Math.max(1, view.w), patPx = Math.max(8, Math.round(2 * T * dpr));
+    if (wallTile && Math.abs(patPx - wallPatPx) > 1) {
+      const c2 = document.createElement("canvas"); c2.width = c2.height = patPx; c2.getContext("2d").drawImage(wallTile, 0, 0, patPx, patPx);
+      wallPat = ctx.createPattern(c2, "repeat"); wallPatPx = patPx;
+    }
+    if (wallPat && wallPat.setTransform) wallPat.setTransform(new DOMMatrix([2 * T / patPx, 0, 0, 2 * T / patPx, sx(0), view.groundY]));
+    const WALLF = THEME.ground === "plain" || round > 0.5 ? SIL : wallPat || SIL;      // 기본 월드: 원래의 검정 그대로
     // 오르내리는 카메라: 공이 딛는 높이(패턴대로 갈 때의 줄)를 서서히 따라간다. 내려가는 길은 한 박 남짓 미리 내려다본다(땅 밑으로는 화면이 한 칸 반밖에 안 보인다). 올라간 만큼 먼 풍경은 내려앉는다
     const camY = CLIMB.length ? camLine(camX + state.lead) : 0;
     view.camY = camY;
@@ -934,8 +940,8 @@
     const loud = loudAt(beat);
     let wpulse = pulse;
     if (THEME.tier >= 4 && (phase === "running" || phase === "won")) { const sp = spectrum(6, beat, pulse), en = (sp[0] + sp[1] + sp[2]) / 3; wpulse = Math.min(1, pulse * 0.65 + en * en * 0.7); }
-    const E = { g: ctx, w, h, BT, T, gy: view.groundY, beat, now, pulse: wpulse, pal, camS, camY, cx: cxs, cy: cys, r0, skyGrad: g, tier: THEME.tier, loud };
-    ctx.save(); ART.sky[THEME.sky](E); ctx.restore();          // 하늘의 장식(별, 구름, 주사선 …)
+    const E = { g: ctx, w, h, BT, T, gy: view.groundY, beat, now, pulse: wpulse, pal, camS, camY, cx: cxs, cy: cys, r0, skyGrad: g, tier: THEME.tier, loud, fever: round };
+    if (round < 0.99) { ctx.save(); ART.sky[THEME.sky](E); ctx.restore(); }          // 하늘의 장식(별, 구름, 주사선 …). 피버에 다 들어가면 피버의 바탕이 덮으니 그리지 않는다
     if (round > 0) feverBack(beat, now, pulse, round, pal, cxs, cys, r0, w, h, camX);
     ctx.save(); ART.sun[THEME.sun](E); ctx.restore();          // 해(박자 고리의 가운데): 월드마다 다르다
 
