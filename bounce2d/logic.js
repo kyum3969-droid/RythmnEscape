@@ -1295,6 +1295,7 @@ for (const p of Object.values(PATTERNS)) {
 // 곡의 구간(마디): 0~15 조용한 도입 / 16~27 첫 큰 구간 / 28~39 가장 밝고 센 구간 / 40~43 쉬어 감 / 44~51 다시 쌓음 / 52~63 마지막 절정
 const ROUND1 = {
   name: "ROUND 1 · Octane Horizon",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0285,                                 // 곡에서 잰 값(킥 256개를 직선에 맞춤). 구간별 어긋남은 ±12ms 안쪽
   track: { file: "music/octane_horizon.mp3", offset: 0.8689 },   // offset = 첫 박이 나오는 곡 속 시각(초)
   // 라운드 1: 어렵지 않게, 그래도 손맛은 있게.
@@ -1327,6 +1328,7 @@ const ROUND1 = {
 // 1라운드와 같은 동작에, 후반부터 "빨간 바닥과 파란 섬"이 더해진다. 쉬는 마디가 조금 줄고, 피버가 두 번 나오며, 피버 안에 장애물 없이 연출만 있는 마디(파란 발판·계단, 조여드는 통로)가 있다.
 const ROUND2 = {
   name: "ROUND 2 · Terminal Pursuit",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 151.9867,
   track: { file: "music/terminal_pursuit.mp3", offset: 0.2809 },
   climb: "stairs",                                 // 음이 올라가는 구간의 계단에서만 카메라가 공을 따라 올라간다(나머지는 전처럼 물러나기)
@@ -1365,6 +1367,7 @@ const ROUND2 = {
 // 함정 배분안의 버릇 묶음(2~6라운드) 둘째: "끝에서 손 바꿈"과 "하나 더"를 소개한다. 쉬는 마디는 거의 없다.
 const ROUND3 = {
   name: "ROUND 3 · Final Quarter Credit",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0183,
   track: { file: "music/final_quarter_credit.mp3", offset: 1.0518 },
   climb: "stairs",                                 // 음이 올라가는 구간의 계단에서만 카메라가 공을 따라 올라간다(나머지는 전처럼 물러나기)
@@ -1416,6 +1419,7 @@ const ROUND3 = {
 // 새 장치: 떠 있는 파란 박스, 파란 천장, 떠 있는 빨간 박스(높이로 속이는 함정). 앞 라운드의 손 함정(끝에서 뚝, 끝에서 손 바꿈, 하나 더)은 복습으로 섞는다.
 const ROUND4 = {
   name: "ROUND 4 · Miles Before Sunrise",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.005,
   track: { file: "music/miles_before_sunrise.mp3", offset: 0.474, measured: true },   // measured = 박을 손으로 쟀다(게임 안 분석기가 이 곡을 틀리게 읽는다)
   climb: "stairs",                                 // 음이 올라가는 구간의 계단에서만 카메라가 공을 따라 올라간다(나머지는 전처럼 물러나기)
@@ -1469,6 +1473,7 @@ const ROUND4 = {
 // 바운스의 새 함정은 "박스에서 내려서자마자 멈춰서 건너기"(fJ3G).
 const ROUND5 = {
   name: "ROUND 5 · Concrete Pulse",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/concrete_pulse.mp3", offset: 0.067, measured: true },
   climb: "stairs",                                 // 음이 올라가는 구간의 계단에서만 카메라가 공을 따라 올라간다(나머지는 전처럼 물러나기)
@@ -1537,6 +1542,7 @@ const ROUND5 = {
 // 조여드는 통로(연출)는 넣지 않았다: 이 곡은 절정이 끝까지 같은 세기로 가다가 뚝 끊긴다(점점 세지는 자리가 없다).
 const ROUND6 = {
   name: "ROUND 6 · Streetlight Velocity",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/streetlight_velocity.mp3", offset: 0.056, measured: true },
   climb: "stairs",                                 // 음이 올라가는 구간의 계단에서만 카메라가 공을 따라 올라간다(나머지는 전처럼 물러나기)
@@ -1595,6 +1601,7 @@ const ROUND6 = {
 // 장치는 새것이 없다(앞 라운드의 것을 되풀이할 마디에 섞는다). 피버는 절정 두 곳에만, 둘 다 넓은 통로이고 줄과 굽이는 앞 라운드와 겹치지 않는다.
 const ROUND7 = {
   name: "ROUND 7 · Sunday in the Playroom",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/sunday_in_the_playroom.mp3", offset: 0.064, measured: true },
   climb: "stairs",                                 // 음이 올라가는 구간의 계단에서만 카메라가 공을 따라 올라간다(나머지는 전처럼 물러나기)
@@ -1656,6 +1663,7 @@ const ROUND7 = {
 // 카메라는 공이 딛는 높이를 따라 오르내린다(climb). 여덟 칸 높이의 큰 산이 세 번 나온다. 피버는 가장 센 절정 한 곳뿐이다.
 const ROUND8 = {
   name: "ROUND 8 · Velocity of a Thousand Suns",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/velocity_of_a_thousand_suns.mp3", offset: 0.073, measured: true },
   floatReds: true, density: 0.9, climb: true,
@@ -1708,6 +1716,7 @@ const ROUND8 = {
 // 체크포인트 마디에도 패턴이 있다(개발하는 동안. cp: true).
 const ROUND9 = {
   name: "ROUND 9 · Midnight Asphalt Rush",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/midnight_asphalt_rush.mp3", offset: 0.078, measured: true },
   floatReds: true, vary: true, density: 0.95, climb: true,      // (높은 곳의 징검다리·박스 위에서 카메라가 따라 올라간다: 그 위의 프레스가 화면에 들어오게)
@@ -1763,6 +1772,7 @@ const ROUND9 = {
 // 공장의 라운드: 내려찍는 망치, 옆으로 튀어나오는 망치(수평 패턴), 분쇄 롤러. 짜임은 tools_gen_course.js의 TEMPLATES.R10
 const ROUND10 = {
   name: "ROUND 10 · Anvil and Piston",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/anvil_and_piston.mp3", offset: 0.078, measured: true },
   floatReds: true, vary: true, density: 0.95, climb: "stairs",      // (계단 마디에서만 카메라가 따라 올라간다)
@@ -1814,6 +1824,7 @@ const ROUND10 = {
 // 속임수의 라운드: "보이는 것과 정답이 다르다"(DESIGN.md). 짜임은 tools_gen_course.js의 TEMPLATES.R11
 const ROUND11 = {
   name: "ROUND 11 · Velocity of Silk",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/velocity_of_silk.mp3", offset: 0.078, measured: true },
   floatReds: true, vary: true, density: 0.95, climb: "stairs",
@@ -1864,6 +1875,7 @@ const ROUND11 = {
 // 봉우리의 라운드: 쇠 봉우리 — 계단을 딛고 오르면 방금 떠난 단을 프레스가 박에 맞춰 내리찍는다. 짜임은 tools_gen_course.js의 TEMPLATES.R12
 const ROUND12 = {
   name: "ROUND 12 · Across the Iron Peak",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/across_the_iron_peak.mp3", offset: 0.078, measured: true },
   floatReds: true, vary: true, density: 0.9, climb: "stairs",
@@ -1909,6 +1921,7 @@ const ROUND12 = {
 };
 const ROUND13 = {
   name: "ROUND 13 · Final Level Sprint",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/final_level_sprint.mp3", offset: 0.178, measured: true },
   floatReds: true, vary: true, density: 0.9, climb: "stairs",
@@ -1954,6 +1967,7 @@ const ROUND13 = {
 };
 const ROUND14 = {
   name: "ROUND 14 · Temple Canopy Pursuit",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/temple_canopy_pursuit.mp3", offset: 0.048, measured: true },
   floatReds: true, vary: true, density: 0.9, climb: "stairs",
@@ -1999,6 +2013,7 @@ const ROUND14 = {
 };
 const ROUND15 = {
   name: "ROUND 15 · Orbital Momentum",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 150.0,
   track: { file: "music/orbital_momentum.mp3", offset: 0.09, measured: true },
   floatReds: true, vary: true, density: 0.9, climb: "stairs",
@@ -2044,6 +2059,7 @@ const ROUND15 = {
 };
 const ROUND16 = {
   name: "ROUND 16 · Searing Horizon",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/searing_horizon.mp3", offset: 0.057, measured: true },
   floatReds: true, vary: true, density: 0.9, climb: "stairs",
@@ -2089,6 +2105,7 @@ const ROUND16 = {
 };
 const ROUND17 = {
   name: "ROUND 17 · Coral Cathedral",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/coral_cathedral.mp3", offset: 0.066, measured: true },
   feverWindow: 3,                                  // 피버 줄은 바로 앞 세 라운드와만 겹치지 않게(앞 여섯 라운드로는 줄이 바닥났다. 피버 연출이 라운드마다 달라 같은 줄이 다시 나와도 같아 보이지 않는다)
@@ -2135,6 +2152,7 @@ const ROUND17 = {
 };
 const ROUND18 = {
   name: "ROUND 18 · The Midnight Procession",
+  decor: 3,                                        // 꾸밈 박스: 마디당 3개까지(공중에 흩어 놓는 작은 빨간 박스, 공이 지나가는 통로에서 멀리)
   bpm: 152.0,
   track: { file: "music/the_midnight_procession.mp3", offset: 0.052, measured: true },
   feverWindow: 3,
@@ -2203,6 +2221,8 @@ const RED_MIN = 1, RED_PAD = 0.3;   // 떠 있는 빨간 박스: 최소 두께(�
 const LAVA_H = 0.375;       // 빨간 바닥의 두께(칸)
 const HAZ_MAX_H = 4;       // 바닥에서 솟는 장애물의 최대 높이(칸)
 const WRONG_SHIFT = [-0.3, 0.3];   // "크게 어긋난 입력"으로 치는 박자 차이
+const DECOR_GAP = 1;       // 꾸밈 박스와 공이 지나가는 통로 사이의 위아래 여유(칸)
+const DECOR_TOP = 6;       // 꾸밈 박스 윗면의 최고 높이(칸): 가로 화면에서 땅 위로 7칸쯤 보이고, 맨 위 한 칸에는 진행 막대와 일시정지 버튼이 있다
 const BLOCK_GROW = 1;      // 막는 칸에서 양옆으로 넓히는 칸 수
 const CEIL_MAX_H = 6;      // 이 높이보다 위에서 시작하는 천장은 화면 밖이라 놓지 않는다
 
@@ -2443,6 +2463,7 @@ function hazardAt(L, s) {
     if (c < 0 || c >= L.cols || !(s.x + half - grace > c + 0.1 && s.x - half + grace < c + 0.9)) continue;
     if (fh + 0.06 < L.floorH[c] && (!L.floorLo || fh + SIZE - 0.06 > L.floorLo[c])) return { c, kind: "floor" };
     if (fh + SIZE - 0.06 > L.ceilH[c] && (!L.ceilTop || fh + 0.06 < L.ceilTop[c])) return { c, kind: "ceil" };
+    if (L.decor) { const q = L.decor.get(c); if (q) for (const [lo, hi] of q) if (fh + SIZE - 0.06 > lo && fh + 0.06 < hi) return { c, kind: "decor" }; }      // 꾸밈 박스
     if (L.bands) { const q = L.bands.get(c); if (q) for (const [lo, hi] of q) if (fh + SIZE - 0.06 > lo && fh + 0.06 < hi) return { c, kind: "band" }; }      // 계단의 빨간 단과 그 위의 뚜껑(한 칸에 여러 개 놓일 수 있다)
   }
   return null;
@@ -2469,6 +2490,7 @@ function redOutlines(L) {
     if (L.ceilTop[c] < 90 && L.ceilTop[c] > L.ceilH[c]) R.push({ x0: c, x1: c + 1, y0: L.ceilH[c], y1: L.ceilTop[c], k: "c" });
   }
   if (L.bands) for (const [c, q] of L.bands) for (const [lo, hi] of q) if (hi > lo) R.push({ x0: c, x1: c + 1, y0: lo, y1: hi, k: "b" });
+  if (L.decor) for (const [c, q] of L.decor) for (const [lo, hi] of q) if (hi > lo) R.push({ x0: c, x1: c + 1, y0: lo, y1: hi, k: "b" });
   R.sort((a, b) => a.x0 - b.x0);
   const par = R.map((_, i) => i), find = (i) => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; };
   for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length && R[j].x0 <= R[i].x1 + eps; j++) {
@@ -2760,6 +2782,54 @@ function buildLevel(course) {
     const c0 = Math.floor(end.x);
     for (let c = c0 - 1; c <= c0 + 1; c++) { L.floorH[c] = 0; L.ceilH[c] = 99; }
     L.fixed.push(c0);
+  }
+  // 꾸밈 박스(course.decor: 마디당 개수(자리가 없으면 덜 놓인다). 라운드 코스에만 적는다 — 테스트용으로 짜 맞춘 작은 코스에는 없다): 쓰임새는 없지만 코스가 제멋대로이고 빽빽해 보이게, 공중 여기저기 떠 있는 작은 빨간 박스.
+  //   빨간 것은 모두 닿으면 죽는다는 약속은 그대로다(진짜 장애물). 대신 공이 지나가는 통로(패턴대로 + 입력마다 tol만큼 일찍·늦게 누른 길) 밖으로
+  //   위아래 DECOR_GAP칸, 양옆 한 칸 넘게 떨어진 곳에만 놓는다 — 패턴대로 치면 절대 닿지 않는다. 다른 장애물·파란 박스·고리와도 한 칸 넘게 띄운다(붙어서 한 덩어리로 보이지 않게).
+  //   피버·계단·세트(움직이는 장애물) 마디와 결승선 뒤에는 두지 않는다. 자리·크기는 코스 이름으로 정한 난수라 늘 같다.
+  L.decor = new Map();
+  if (course.decor) {
+    const per = typeof course.decor === "number" ? course.decor : 3, GAP = DECOR_GAP;
+    let h0 = 7; for (const ch of course.name) h0 = (Math.imul(h0, 31) + ch.charCodeAt(0)) | 0;
+    const rnd = rngOf(h0 ^ 0x5bd1e995), pick = (a) => a[Math.floor(rnd() * a.length)];
+    const goalBar = course.bars.indexOf("goal"), moverBars = new Set(L.movers.map((m) => m.bar));
+    const redX = (c) => L.reds.some((r) => c + 1 > r.x0 - 1 && c < r.x1 + 1);
+    const tallAt = (c) => L.talls.some((q) => c + 1 > q.x - q.w / 2 - 1 && c < q.x + q.w / 2 + 1);
+    const free = (c, lo, hi) => {                         // 이 칸의 [lo-1, hi+1]에 다른 것이 없다
+      if (c < 0 || c >= L.cols) return false;
+      const a = lo - 1, z = hi + 1;
+      if (L.floorH[c] > a && (L.floorLo[c] || 0) < z) return false;
+      if (L.ceilH[c] < z && (L.ceilTop[c] ?? 99) > a) return false;
+      for (const q of [L.bands.get(c), L.decor.get(c - 1), L.decor.get(c), L.decor.get(c + 1)]) if (q && q.some(([u, v]) => u < z && v > a)) return false;
+      for (let r = 0; r < ROWS - 1; r++) { const t = tile(L, c, r), y0 = ROWS - 2 - r; if (t !== "." && t !== undefined && y0 < z && y0 + 1 > a) return false; }
+      return !redX(c) && !tallAt(c);
+    };
+    const clear = (c, lo, hi) => { const k = env[c]; return !!k && k.lo < 90 && (hi + GAP <= k.lo || lo >= k.hi + SIZE + GAP); };
+    for (let b = 1; b < (goalBar < 0 ? L.bars : goalBar); b++) {
+      const p = PATTERNS[course.bars[b]];
+      if (!p || p.mode === "rush" || p.stair || p.set || p.boxes || p.free || moverBars.has(b) ||      // (파란 박스 마디는 아무렇게나 눌러도 죽지 않는 놀이터다)
+          inRide(L, b * 16 + 0.5) || inRide(L, b * 16 + 15.5)) continue;
+      const want = Math.max(0, Math.round(per - 0.5 + rnd()));
+      for (let n = 0, tries = 0; n < want && tries < 60; tries++) {
+        const w = pick([1, 2, 2, 2, 3, 3]), h = pick([0.5, 0.75, 0.75, 1]);
+        const c0 = b * 16 + Math.floor(rnd() * (17 - w)), lo = 0.75 + Math.floor(rnd() * 20) / 4, hi = lo + h;
+        if (hi > DECOR_TOP) continue;
+        let ok = true;
+        for (let c = c0 - 1; c <= c0 + w && ok; c++) if (!clear(c, lo, hi)) ok = false;
+        for (let c = c0 - 1; c <= c0 + w && ok; c++) if (!free(c, lo, hi)) ok = false;      // (양옆 한 칸도 비어 있어야: 붙으면 다른 덩어리와 한 덩어리로 그려진다)
+        if (!ok) continue;
+        for (let c = c0; c < c0 + w; c++) { if (!L.decor.has(c)) L.decor.set(c, []); L.decor.get(c).push([lo, hi]); }
+        n++;
+      }
+    }
+    // 그래도 패턴대로 달려 닿으면 그 둘레의 꾸밈 박스를 걷어 낸다
+    for (let guard = 0; guard < 40; guard++) {
+      const { end } = traceRun(L, plan);
+      if (!end.dead) break;
+      const c0 = Math.floor(end.x); let hit = false;
+      for (let c = c0 - 2; c <= c0 + 2; c++) if (L.decor.delete(c)) hit = true;
+      if (!hit) break;
+    }
   }
   // 길잡이: 패턴대로 달린 길 위에 수정을 놓고(입력이 있는 점프에만, 반의 반 박마다), 눌러야 하는 자리에는 표시를 둔다.
   // 판정에는 영향이 없다. 길이 보여서 쉬워지고, 뚫을 때마다 소리가 난다.
