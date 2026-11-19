@@ -1152,133 +1152,54 @@
       g.fillStyle = "rgba(255,255,255,0.05)"; for (let y = gy + T * 0.6; y < gy + T * 1.5; y += T * 0.18) g.fillRect(xs, y, xe - xs, 1.5);
     },
   };
-  // 피버의 물건 장애물(6라운드 지하철: logic.js subwayProps). 모양 = 판정(propSpan)과 같은 윤곽 안에서 그린다. 몸체는 붉게.
-  //   의견: "의자·고리·손잡이 디자인이 투박하다. 3D처럼 만들어도 되니까(필요하면 노멀맵)" →
-  //   물건마다 픽셀마다 면의 방향(노멀)을 구해 빛을 계산한 그림을 한 번 그려 두고(SPRITE), 그 그림을 장애물 자리에 붙인다.
-  //     빛: 왼쪽 위의 주광(가죽·쇠의 그늘), 반짝이는 하이라이트, 가장자리의 분홍 네온 반사, 아래쪽 바닥에서 오는 청록 반사광. 맞닿는 곳은 어둡게(가림).
-  //     의자 = 원기둥 다리·가로대 + 둥근 가죽 방석과 등받이(바느질 홈), 손잡이 = 천 끈(결) + 크롬 버클 + 도넛(토러스) 고리, 떠 있는 고리 = 토러스와 걸쇠
-  //   그 위에 박자에 맞춰 밝아지는 네온 줄(등받이, 고리의 테두리)만 매 장 그린다. 그림 밑에는 옅은 분홍 빛(위험 표시)을 깐다.
-  //   pt(x, hh) = 세계 좌표(장애물 가운데에서 가로 x칸, 높이 hh칸)를 화면 점으로, fr = 그 변환({ B, A, U, h0 }): 그림을 통째로 붙일 때 쓴다
-  const PINK = [255, 143, 171], DANGER_C = [255, 59, 107];      /* 위험색: 물건 장애물의 네온 */
-  const L3 = (() => { const v = [-0.42, 0.72, 0.56], m = Math.hypot(...v); return v.map((c) => c / m); })(), HV = (() => { const v = [L3[0], L3[1], L3[2] + 1], m = Math.hypot(...v); return v.map((c) => c / m); })();
-  // 한 점의 빛: n = 노멀(x 오른쪽, y 위, z 보는 쪽), m = 재질 { base: [0~1 rgb], spec, gloss, metal }
-  function shade3(n, m, ao = 1) {
-    const ndl = Math.max(0, n[0] * L3[0] + n[1] * L3[1] + n[2] * L3[2]), ndh = Math.max(0, n[0] * HV[0] + n[1] * HV[1] + n[2] * HV[2]);
-    const sp = Math.pow(ndh, m.gloss) * m.spec, fr = Math.pow(1 - Math.max(0, n[2]), 2.4), up = Math.max(0, -n[1]);
-    const out = [0, 0, 0];
-    for (let k = 0; k < 3; k++) {
-      const env = m.metal ? 0.55 * (0.35 + 0.65 * Math.max(0, n[1]) ) : 0;      // 쇠: 위쪽 하늘(천장 조명)을 비춘다
-      out[k] = m.base[k] * ((0.22 + 0.9 * ndl) * ao + env) + sp * (m.metal ? m.base[k] * 0.5 + 0.5 : 1) + fr * (PINK[k] / 255) * 0.55 + up * (NEON_C[k] / 255) * 0.22 * (1 - m.metal * 0.5);
-    }
-    return out;
+  // 피버의 물건 장애물(6라운드 지하철: logic.js subwayProps). 모양 = 판정(propSpan)과 같은 윤곽 안에서 그린다.
+  //   디자인(의견: 시안 셋 가운데 "A 네온 사인"): 어두운 유리 몸체를 붉은 네온관 한 줄로 그린다. 네온관 = 넓고 옅은 빛 두 겹 + 붉은 관 + 밝은 심(번짐(shadowBlur) 없이). 박마다 밝아진다.
+  //     의자 = 버킷 시트 한 획(앞 끝 → 방석 → 등받이 → 뒤로)과 가운데 기둥 다리·바닥 받침, 손잡이 = 천장에서 내려온 네온 줄과 둥근 삼각 고리, 떠 있는 고리 = 네온 원과 안쪽의 가는 원
+  //   (해 보고 뺀 것: 넓은 면에 테두리를 두른 그림 — 투박했다 / 노멀로 빛을 계산한 3D 그림 — 디자인 자체를 바꾸는 쪽이 낫다는 의견)
+  //   pt(x, hh) = 세계 좌표(장애물 가운데에서 가로 x칸, 높이 hh칸)를 화면 점으로
+  const DANGER_C = [255, 59, 107], NEON_CORE = [255, 214, 224], GLASS = "rgba(40,6,18,0.78)";      /* 위험색: 물건 장애물의 네온 */
+  function polyPts(g, pts) { g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); }
+  function ellPts(pt, cx, cy, rx, ry, n = 26) { const out = []; for (let k = 0; k < n; k++) { const t = (k / n) * TAU; out.push(pt(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry)); } return out; }
+  // 네온관: 지금 경로를 긋는다. lw = 관의 굵기(픽셀), k = 밝기(박마다 1 → 0.75)
+  function neonTube(g, lw, k) {
+    g.save(); g.lineJoin = "round"; g.lineCap = "round";
+    g.strokeStyle = rgba(DANGER_C, 0.16 * k); g.lineWidth = lw * 6; g.stroke();      /* 위험색 */
+    g.strokeStyle = rgba(DANGER_C, 0.32 * k); g.lineWidth = lw * 3; g.stroke();      /* 위험색 */
+    g.strokeStyle = rgba(DANGER_C, 1); g.lineWidth = lw * 1.4; g.stroke();      /* 위험색 */
+    g.strokeStyle = rgba(NEON_CORE, 0.6 + 0.4 * k); g.lineWidth = lw * 0.55; g.stroke();
+    g.restore();
   }
-  const PROP_W = 1 / 1.5;      // 세계 x 1칸 = 화면 1.5칸(피버의 가로 늘림 RUSH_STRETCH). 화면 칸 → 세계 x로 바꿀 때 곱한다
-  const SPRITE = new Map(), PPU = 96;      // 그림의 촘촘함: 화면 한 칸에 96픽셀(붙일 때 줄인다)
-  // 그림 하나 만들기: x0~x1, y0~y1(화면 칸, y 위로) 범위를 픽셀마다 layers(x, y)로 칠한다. layers는 뒤에서 앞 순서로 [알파 0~1, rgb 0~1]들을 돌려준다
-  function sprite(key, x0, x1, y0, y1, layers) {
-    if (typeof document === "undefined") return null;
-    let cv = SPRITE.get(key); if (cv) return cv;
-    if (SPRITE.size > 60) SPRITE.clear();
-    const W = Math.max(2, Math.ceil((x1 - x0) * PPU)), Hh = Math.max(2, Math.ceil((y1 - y0) * PPU));
-    cv = document.createElement("canvas"); cv.width = W; cv.height = Hh;
-    const c = cv.getContext("2d"), img = c.createImageData(W, Hh), d = img.data;
-    for (let py = 0; py < Hh; py++) for (let px = 0; px < W; px++) {
-      const x = x0 + (px + 0.5) / PPU, y = y1 - (py + 0.5) / PPU;
-      let r = 0, g2 = 0, b = 0, a = 0;
-      for (const L of layers(x, y)) { if (!L || L[0] <= 0) continue; const al = L[0]; r = L[1][0] * al + r * (1 - al); g2 = L[1][1] * al + g2 * (1 - al); b = L[1][2] * al + b * (1 - al); a = al + a * (1 - al); }
-      const o = (py * W + px) * 4;
-      if (a > 0) { d[o] = Math.min(255, (r / a) * 255); d[o + 1] = Math.min(255, (g2 / a) * 255); d[o + 2] = Math.min(255, (b / a) * 255); d[o + 3] = a * 255; }
-    }
-    c.putImageData(img, 0, 0); SPRITE.set(key, cv); return cv;
-  }
-  // 모양 도구: 거리(안쪽이 음수, 화면 칸)와 가장자리 덮임(안티에일리어싱)
-  const cover = (dist) => clamp(0.5 - dist * PPU, 0, 1);
-  function rrDist(x, y, ax, ay, bx, by, r) { const cx = (ax + bx) / 2, cy = (ay + by) / 2, hx = (bx - ax) / 2 - r, hy = (by - ay) / 2 - r, qx = Math.abs(x - cx) - hx, qy = Math.abs(y - cy) - hy; return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r; }
-  // 둥근 쿠션: 가장자리에서 bev만큼 안쪽까지 둥글게 솟는다. 노멀은 거리의 기울기에서
-  function cushion(x, y, box, r, bev, mat, extra) {
-    const D = (u, v) => rrDist(u, v, box[0], box[1], box[2], box[3], r), dd = D(x, y); if (dd > 1 / PPU) return null;
-    const e = 0.004, gx = (D(x + e, y) - D(x - e, y)) / (2 * e), gy = (D(x, y + e) - D(x, y - e)) / (2 * e), t = clamp(-dd / bev, 0, 1), sl = (1 - t) * 1.6;      // 가장자리일수록 많이 기운다
-    let n = [gx * sl, gy * sl, 1]; const m = Math.hypot(...n); n = n.map((c) => c / m);
-    let ao = 1; if (extra) { const ex = extra(x, y, n); if (ex) { n = ex.n || n; ao *= ex.ao ?? 1; } }
-    return [cover(dd), shade3(n, mat, ao)];
-  }
-  // 원기둥(세로 또는 가로)
-  function tube(x, y, a, b, r, vertical, mat, ao = 1) {
-    const u = vertical ? x - a[0] : y - a[1], along = vertical ? y : x, lo = Math.min(vertical ? a[1] : a[0], vertical ? b[1] : b[0]), hi = Math.max(vertical ? a[1] : a[0], vertical ? b[1] : b[0]);
-    const dist = Math.max(Math.abs(u) - r, lo - along, along - hi); if (dist > 1 / PPU) return null;
-    const t = clamp(u / r, -1, 1), nz = Math.sqrt(Math.max(0, 1 - t * t)), n = vertical ? [t, 0, nz] : [0, t, nz];
-    return [cover(dist), shade3(n, mat, ao)];
-  }
-  // 도넛(토러스) 고리: 바깥 반지름 R0, 굵기 a. 안쪽 구멍은 옅은 분홍 빛(위험한 자리)
-  function torus(x, y, cx, cy, R0, a, mat) {
-    const dx = x - cx, dy = y - cy, dist = Math.hypot(dx, dy), R = R0 - a, t = (dist - R) / a;
-    if (Math.abs(t) > 1 + 1 / (PPU * a)) return dist < R - a ? [0.22, [1, 0.25, 0.42]] : null;
-    const tc = clamp(t, -1, 1), nz = Math.sqrt(Math.max(0, 1 - tc * tc)), ux = dist ? dx / dist : 0, uy = dist ? dy / dist : 0;
-    return [cover((Math.abs(t) - 1) * a), shade3([tc * ux, tc * uy, nz], mat)];
-  }
-  const LEATHER = { base: [0.78, 0.08, 0.2], spec: 0.55, gloss: 26, metal: 0 }, LEATHER_D = { base: [0.6, 0.05, 0.15], spec: 0.5, gloss: 22, metal: 0 };
-  const RED_METAL = { base: [0.82, 0.16, 0.26], spec: 1.1, gloss: 60, metal: 1 }, CHROME = { base: [0.82, 0.84, 0.9], spec: 1.2, gloss: 80, metal: 1 };
-  const RED_GLOSS = { base: [0.86, 0.1, 0.24], spec: 1.0, gloss: 70, metal: 0 }, STRAP_FAB = { base: [0.72, 0.09, 0.2], spec: 0.35, gloss: 14, metal: 0 };
-  // 판정 모양의 옅은 분홍 빛(그림 밑에 깐다): 넓고 옅은 테두리만
-  function glowUnder(g, polys, e) { g.beginPath(); for (const P of polys) { P.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); } g.lineJoin = "round"; g.strokeStyle = rgba(DANGER_C, 0.07 + 0.08 * e.pulse); g.lineWidth = Math.max(4, e.T * 0.3); g.stroke(); }
-  function ellPts(pt, cx, cy, rx, ry, n = 22) { const out = []; for (let k = 0; k < n; k++) { const t = (k / n) * TAU; out.push(pt(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry)); } return out; }
-  // 그림 붙이기: 그림의 x는 화면 칸(= 세계 x / PROP_X), y는 높이(칸). fr = drawProp이 잡은 변환
-  function blit(g, fr, cv, x0, x1, y0, y1, px) {
-    if (!cv) return;
-    const s = px, A = fr.A, U = fr.U;
-    g.save(); g.transform(A[0] * s, A[1] * s, -U[0], -U[1], fr.B[0] - fr.h0 * U[0], fr.B[1] - fr.h0 * U[1]);
-    g.drawImage(cv, x0, -y1, x1 - x0, y1 - y0); g.restore();
+  // 둥근 삼각 고리(꼭짓점이 위): 가운데 (0, cy), 반 너비 0.92·rw, 아래 cy − rr ~ 위 cy + rr (logic.js propSpan의 strap과 같은 모양)
+  function roundTri(g, pt, q, cy, rad) {
+    const P = [pt(0, cy + q.rr), pt(q.rw * 0.92, cy - q.rr), pt(-q.rw * 0.92, cy - q.rr)];
+    g.beginPath(); g.moveTo((P[0][0] + P[1][0]) / 2, (P[0][1] + P[1][1]) / 2);
+    for (let k = 1; k <= 3; k++) { const a = P[k % 3], b = P[(k + 1) % 3]; g.arcTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, rad); }
+    g.closePath();
   }
   const PROPS = {
     subway: {
-      chair(g, pt, q, e, seed, fr) {      // 의자(옆모습): 붉은 쇠 다리·가로대, 뒷다리가 등받이 뒤로 이어지는 쇠 프레임, 둥근 가죽 방석과 얇은 등받이(위쪽 바느질), 방석 앞 가장자리의 분홍 네온
-        const X = 1 / PROP_W, W = q.w * X, h = q.h, sb = h * 0.5, th = Math.min(0.24, h * 0.2), r = 0.05;      // W = 화면 칸의 반 너비
-        const legX = [-0.73 * W, 0.72 * W];
-        glowUnder(g, [[pt(-0.92 * q.w, sb - th), pt(0.92 * q.w, sb - th), pt(0.92 * q.w, sb), pt(-0.92 * q.w, sb)], [pt(0.5 * q.w, sb), pt(0.86 * q.w, sb), pt(0.86 * q.w, h), pt(0.5 * q.w, h)]], e);
-        const key = `chair2:${W.toFixed(3)}:${h.toFixed(3)}`, x0 = -0.95 * W, x1 = 0.9 * W;
-        const cv = sprite(key, x0, x1, 0, h, (x, y) => [
-          tube(x, y, [0.8 * W, sb - th], [0.8 * W, h - 0.06], r, true, RED_METAL, 0.85),                       // 등받이 뒤의 쇠 프레임
-          tube(x, y, [legX[0], 0], [legX[0], sb - th * 0.5], r, true, RED_METAL, y > sb - th - 0.08 ? 0.6 : 1),
-          tube(x, y, [legX[1], 0], [legX[1], sb - th * 0.5], r, true, RED_METAL, y > sb - th - 0.08 ? 0.6 : 1),
-          tube(x, y, [legX[0], h * 0.12], [legX[1], h * 0.12], r * 0.7, false, RED_METAL),
-          cushion(x, y, [0.52 * W, sb - th * 0.3, 0.78 * W, h - 0.01], 0.07, 0.06, LEATHER_D, (u, v, n) => {      // 등받이: 위쪽 바느질 홈 한 줄, 방석과 맞닿는 곳은 어둡게
-            const ao = v < sb + 0.08 ? 0.55 + 0.45 * clamp((v - sb) / 0.08, 0, 1) : 1, gy = h - (h - sb) * 0.22, k = (v - gy) / 0.014;
-            return Math.abs(k) < 1 ? { n: [n[0], n[1] - k * 0.5, n[2]], ao: ao * (0.65 + 0.35 * Math.abs(k)) } : { ao };
-          }),
-          cushion(x, y, [-0.92 * W, sb - th, 0.92 * W, sb], th * 0.5, th * 0.45, LEATHER, (u, v) => { const k = (v - (sb - th * 0.5)) / 0.012; return Math.abs(k) < 1 && u < 0.45 * W ? { ao: 0.78 + 0.22 * Math.abs(k) } : null; }),
-        ]);
-        blit(g, fr, cv, x0, x1, 0, h, PROP_W);
-        const a = pt(-0.88 * q.w, sb - th * 0.15), b = pt(0.45 * q.w, sb - th * 0.15);      // 방석 앞 가장자리의 가는 네온(박마다 밝아진다)
-        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineCap = "round"; neon(g, [255, 205, 220], 0.25 + 0.45 * e.pulse, Math.max(1, e.T * 0.02)); g.lineCap = "butt";      /* 위험색 */
+      chair(g, pt, q, e) {      // 버킷 시트 한 획 + 가운데 기둥 다리와 바닥 받침
+        const w = q.w, h = q.h, sb = h * 0.5, th = Math.min(0.24, h * 0.2), lw = Math.max(1.6, e.T * 0.05), k = 0.75 + 0.25 * e.pulse;
+        polyPts(g, [pt(-0.9 * w, sb - th * 0.2), pt(-0.86 * w, sb), pt(0.5 * w, sb), pt(0.53 * w, h - 0.12), pt(0.63 * w, h), pt(0.84 * w, h), pt(0.86 * w, h - 0.06), pt(0.8 * w, sb - th), pt(-0.84 * w, sb - th)]);
+        g.fillStyle = GLASS; g.fill(); neonTube(g, lw, k);
+        const a = pt(0.05 * w, sb - th), b = pt(0.05 * w, 0.05), c = pt(-0.55 * w, 0.03), d = pt(0.65 * w, 0.03);
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.moveTo(c[0], c[1]); g.lineTo(d[0], d[1]); neonTube(g, lw * 0.85, k);
       },
-      strap(g, pt, q, e, seed, fr) {     // 손잡이: 결이 있는 붉은 천 끈, 크롬 버클, 광택 있는 붉은 도넛 고리(조금 흔들린다 — 판정의 여유 안에서)
-        const X = 1 / PROP_W, bot = q.far - q.len, cy = bot + q.rr, Ro = q.rr, bw = q.bw * X, top = q.far + 0.2;
-        glowUnder(g, [ellPts(pt, 0, cy, q.rw, q.rr)], e);
-        const kb = `belt:${bw.toFixed(3)}:${(top - cy).toFixed(3)}`, by0 = cy + Ro * 0.55;
-        const belt = sprite(kb, -0.16, 0.16, by0, top, (x, y) => [
-          cushion(x, y, [-bw, by0 + 0.02, bw, top], bw * 0.6, bw * 0.9, STRAP_FAB, (u, v, n) => { const w2 = Math.sin((v * 60 + u * 25)) * 0.12; return { n: [n[0] + w2, n[1], n[2]], ao: 0.9 + 0.1 * Math.sin(v * 120) }; }),
-          cushion(x, y, [-bw * 1.45, by0 + 0.02, bw * 1.45, by0 + 0.16], 0.03, 0.03, CHROME),
-        ]);
-        blit(g, fr, belt, -0.16, 0.16, by0, top, PROP_W);
-        const piv = pt(0, cy + Ro), sw = Math.sin(e.now * 3.2 + seed) * 0.05;
+      strap(g, pt, q, e, seed) {      // 천장에서 내려온 네온 줄과 둥근 삼각 고리(판정 여유 안에서 조금 흔들린다)
+        const cy = q.far - q.len + q.rr, lw = Math.max(1.6, e.T * 0.05), k = 0.75 + 0.25 * e.pulse, a = pt(0, q.far + 0.15), b = pt(0, cy + q.rr);
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); neonTube(g, lw * 0.75, k);
+        const piv = b, sw = Math.sin(e.now * 3.2 + seed) * 0.04;
         g.save(); g.translate(piv[0], piv[1]); g.rotate(sw); g.translate(-piv[0], -piv[1]);
-        const kr = `ring:${Ro.toFixed(3)}`, ring = sprite(kr, -Ro, Ro, -Ro, Ro, (x, y) => [torus(x, y, 0, 0, Ro, Ro * 0.24, RED_GLOSS)]);
-        blit(g, { ...fr, B: pt(0, cy), h0: 0 }, ring, -Ro, Ro, -Ro, Ro, PROP_W);
-        polyPts(g, ellPts(pt, 0, cy, q.rw * 0.97, q.rr * 0.97)); g.strokeStyle = rgba(DANGER_C, 0.25 + 0.45 * e.pulse); g.lineWidth = Math.max(1, e.T * 0.025); g.stroke();
+        roundTri(g, pt, q, cy, Math.max(3, e.T * q.rr * 0.32)); g.fillStyle = "rgba(40,6,18,0.6)"; g.fill(); neonTube(g, lw, k);      /* 위험색 */
         g.restore();
       },
-      ring(g, pt, q, e, seed, fr) {      // 떠 있는 고리: 광택 있는 붉은 도넛 고리와 위의 크롬 걸쇠
-        const Ro = q.rr;
-        glowUnder(g, [ellPts(pt, 0, q.cy, q.rw, q.rr)], e);
-        const ring = sprite(`ring:${Ro.toFixed(3)}`, -Ro, Ro, -Ro, Ro, (x, y) => [torus(x, y, 0, 0, Ro, Ro * 0.24, RED_GLOSS)]);
-        blit(g, { ...fr, B: pt(0, q.cy), h0: 0 }, ring, -Ro, Ro, -Ro, Ro, PROP_W);
-        const clip = sprite("clip", -0.1, 0.1, -0.05, 0.07, (x, y) => [cushion(x, y, [-0.09, -0.04, 0.09, 0.06], 0.035, 0.03, CHROME)]);
-        blit(g, { ...fr, B: pt(0, q.cy + Ro * 0.92), h0: 0 }, clip, -0.1, 0.1, -0.05, 0.07, PROP_W);
-        polyPts(g, ellPts(pt, 0, q.cy, q.rw * 0.97, q.rr * 0.97)); g.strokeStyle = rgba(DANGER_C, 0.25 + 0.45 * e.pulse); g.lineWidth = Math.max(1, e.T * 0.025); g.stroke();
+      ring(g, pt, q, e) {      // 떠 있는 네온 고리: 굵은 관 + 안쪽의 가는 원
+        const lw = Math.max(1.6, e.T * 0.055), k = 0.75 + 0.25 * e.pulse;
+        polyPts(g, ellPts(pt, 0, q.cy, q.rw * 0.94, q.rr * 0.94)); g.fillStyle = "rgba(40,6,18,0.6)"; g.fill(); neonTube(g, lw, k);      /* 위험색 */
+        polyPts(g, ellPts(pt, 0, q.cy, q.rw * 0.52, q.rr * 0.52)); neonTube(g, lw * 0.45, k);
       },
     },
   };
-  function polyPts(g, pts) { g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); }
 
   const ART = { sky: SKY, sun: SUN, far: FAR, edge: EDGE, grain: GRAIN, trail: TRAIL, ambient: AMBIENT, box: BOX, red: RED_SKIN, fever: FEVER_BG, feverWall: FEVER_WALL, props: PROPS, tile, particle };
   // 피버 연출 그림(index.html의 feverPrim)이 아는 이름: 평소의 날씨로 빌려 쓸 수 있다

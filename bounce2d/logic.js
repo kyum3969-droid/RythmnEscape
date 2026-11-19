@@ -2337,7 +2337,7 @@ function platUnder(L, x, row, beat) {
 // 지하철 피버(6라운드): 이빨·마름모를 물건으로 바꾼다. 판정 = 그 물건의 모양(의견: "장애물은 걷어내고 의자 색 자체를 붉게. 의자 크기도 크다").
 //   틀린 길로 간 공은 반 박 지점(xt)에서 바닥·천장(또는 그 높이)에 닿으므로, 물건은 그 자리만 덮으면 막는다. 이빨보다 작아서 조금 너그러워진다.
 //   - 바닥 이빨 → 의자(chair): 높이 min(1.5, 원래 끝 높이). 방석 아래는 막힌 것으로 친다(다리 사이 틈은 공보다 낮다), 한쪽에 등받이
-//   - 천장 이빨 → 손잡이(strap): 천장에서 내려온 끈과 둥근 고리. 길이 min(1.9, 원래 길이)
+//   - 천장 이빨 → 손잡이(strap): 천장에서 내려온 끈과 둥근 삼각 고리. 길이 min(1.9, 원래 길이)
 //   - 떠 있는 마름모 → 고리(ring): 틀린 길로 간 공이 올 자리에 둥근 고리
 //   너비는 화면에서 보이는 크기로 정하고 피버의 가로 늘림(RUSH_STRETCH)만큼 나눈다
 const PROP_X = 1 / RUSH_STRETCH, EMPTY_SPAN = [Infinity, -Infinity];
@@ -2353,7 +2353,11 @@ function subwayProps(reds, rides) {
 function propSpan(q, dx) {
   const ax = Math.abs(dx);
   if (q.shape === "chair") { const u = dx / q.w; if (u < -0.92 || u > 0.92) return EMPTY_SPAN; return u > 0.5 && u < 0.86 ? [0, q.h] : [0, q.h * 0.5]; }      // 등받이: 뒤쪽(0.5~0.86) 위로 끝까지, 나머지는 방석 높이까지
-  if (q.shape === "strap") { const bot = q.far - q.len, cy = bot + q.rr; if (ax <= q.bw) return [bot, q.far]; if (ax >= q.rw) return EMPTY_SPAN; const sp = q.rr * Math.sqrt(1 - (ax / q.rw) ** 2); return [cy - sp, cy + sp]; }
+  if (q.shape === "strap") {      // 끈(가운데 가는 줄) + 둥근 삼각 고리(꼭짓점이 위, 반 너비 0.92·rw, 아래 끝 = 원래 고리의 아래 끝)
+    const bot = q.far - q.len, cy = bot + q.rr; if (ax <= q.bw) return [bot, q.far];
+    const tw = q.rw * 0.92; if (ax >= tw) return EMPTY_SPAN;
+    return [bot, cy + q.rr * (1 - (2 * ax) / tw)];
+  }
   if (ax >= q.rw) return EMPTY_SPAN;
   const sp = q.rr * Math.sqrt(1 - (ax / q.rw) ** 2); return [q.cy - sp, q.cy + sp];
 }

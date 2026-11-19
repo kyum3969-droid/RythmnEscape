@@ -1024,7 +1024,7 @@
       const h0 = q.shape === "chair" ? q.h / 2 : q.shape === "strap" ? q.far - q.len / 2 : q.cy, B = P(q.xt, h0), A0 = P(q.xt - 0.25, h0), A1 = P(q.xt + 0.25, h0), U1 = P(q.xt, h0 + 0.5);
       const ax = (A1[0] - A0[0]) / 0.5, ay = (A1[1] - A0[1]) / 0.5, ux = (U1[0] - B[0]) / 0.5, uy = (U1[1] - B[1]) / 0.5;
       const pt = (x, hh) => [B[0] + x * ax + (hh - h0) * ux, B[1] + x * ay + (hh - h0) * uy];
-      ctx.save(); PR[q.shape](ctx, pt, q, E, Math.round(q.xt * 7), { B, A: [ax, ay], U: [ux, uy], h0 }); ctx.restore();
+      ctx.save(); PR[q.shape](ctx, pt, q, E, Math.round(q.xt * 7)); ctx.restore();
     }
     function bentHazard(q, baseT) {
       const hMid = q.kind === "float" ? (q.far > q.tip ? hazardSpan(q, q.w)[0] : hazardSpan(q, q.w)[1]) : q.far;
