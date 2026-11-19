@@ -2352,7 +2352,7 @@ function subwayProps(reds, rides) {
 }
 function propSpan(q, dx) {
   const ax = Math.abs(dx);
-  if (q.shape === "chair") { const u = dx / q.w; if (u < -0.92 || u > 0.92) return EMPTY_SPAN; return u > 0.3 && u < 0.85 ? [0, q.h] : [0, q.h * 0.5]; }
+  if (q.shape === "chair") { const u = dx / q.w; if (u < -0.92 || u > 0.92) return EMPTY_SPAN; return u > 0.5 && u < 0.86 ? [0, q.h] : [0, q.h * 0.5]; }      // 등받이: 뒤쪽(0.5~0.86) 위로 끝까지, 나머지는 방석 높이까지
   if (q.shape === "strap") { const bot = q.far - q.len, cy = bot + q.rr; if (ax <= q.bw) return [bot, q.far]; if (ax >= q.rw) return EMPTY_SPAN; const sp = q.rr * Math.sqrt(1 - (ax / q.rw) ** 2); return [cy - sp, cy + sp]; }
   if (ax >= q.rw) return EMPTY_SPAN;
   const sp = q.rr * Math.sqrt(1 - (ax / q.rw) ** 2); return [q.cy - sp, q.cy + sp];

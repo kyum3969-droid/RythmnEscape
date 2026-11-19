@@ -496,7 +496,7 @@ for (const C of Lg.COURSES) {
       ok(s2.won && inside && steps >= 8 && lv.stairLo.size > 0 && lv.stairHi.size > 0, `[${tag}] 파란 발판은 닿아도 죽지 않고 튕기기만 한다(${steps}번 닿음). 공이 발판 속으로 들어가는 일은 없다`);
       ok([...lv.stairLo.keys(), ...lv.stairHi.keys()].every(n => lv.freeBars.has(Math.floor(n / 8))), `[${tag}] 파란 발판은 장애물이 없는 연출 마디에만 있다`);
       if (lv.reds.some(q => q.shape)) {      // 물건 장애물(6라운드 지하철): 원래 이빨·마름모보다 크지 않고(판정이 커지지 않는다), 틀린 길로 간 공이 반 박 지점에서 닿는 자리를 덮는다
-        const fits = lv.reds.every(q => { const sps = [-1, -0.5, 0, 0.5, 1].map(f => Lg.hazardSpan(q, f * q.w)).filter(sp => sp[0] <= sp[1]);
+        const fits = lv.reds.every(q => { const sps = Array.from({ length: 41 }, (_, k) => -1 + k * 0.05).map(f => Lg.hazardSpan(q, f * q.w)).filter(sp => sp[0] <= sp[1]);
           const lo = Math.min(...sps.map(sp => sp[0])), hi = Math.max(...sps.map(sp => sp[1]));
           return q.shape === 'chair' ? lo === 0 && hi <= q.tip + 1e-9 && hi >= 0.85 : q.shape === 'strap' ? hi === q.far && lo >= q.tip - 1e-9 && q.far - lo >= 0.85 : hi - lo >= 0.85; });
         ok(fits, `[${tag}] 피버 장애물은 물건(의자·손잡이·고리): 원래 이빨보다 크지 않고, 바닥·천장의 공(0.8칸)을 덮는다`);
