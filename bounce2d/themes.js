@@ -89,23 +89,24 @@
   }
 
   // ================================================================ 공통 도구
-  // 빛무리: 큰 원을 매 장 그라데이션으로 칠하면 무겁다(피버에서 끊김의 큰 몫). 128픽셀 그림으로 한 번 그려 두고 늘려 붙인다(색·세기·안쪽 크기를 조금씩 묶어 기억)
+  // 빛무리: 큰 원을 매 장 그라데이션으로 칠하면 무겁다(피버에서 끊김의 큰 몫). 128픽셀 그림으로 한 번 그려 두고 늘려 붙인다.
+  //   그림은 색과 안쪽 크기로만 기억하고 세기(알파)는 붙일 때 곱한다: 전에는 세기까지 이름에 넣어서 박마다 새 그림을 만들고 저장소를 통째로 비우기를 되풀이했다(캔버스를 1분에 수백 개 만들어 폰에서 순간 멈춤의 원인)
   const HALO = new Map();
-  function haloImg(c, a, k) {
+  function haloImg(c, k) {
     if (typeof document === "undefined") return null;
-    const q = (v, st) => Math.round(v / st) * st, key = `${q(c[0], 6)},${q(c[1], 6)},${q(c[2], 6)},${q(a, 0.015).toFixed(3)},${q(k, 0.04).toFixed(2)}`;
+    const q = (v, st) => Math.round(v / st) * st, key = `${q(c[0], 24)},${q(c[1], 24)},${q(c[2], 24)},${q(k, 0.1).toFixed(1)}`;
     let cv = HALO.get(key); if (cv) return cv;
-    if (HALO.size > 120) HALO.clear();
+    if (HALO.size > 300) HALO.delete(HALO.keys().next().value);      // 가장 오래된 것 하나만
     cv = document.createElement("canvas"); cv.width = cv.height = 128;
-    const x = cv.getContext("2d"), gr = x.createRadialGradient(64, 64, 64 * clamp(k, 0, 0.99), 64, 64, 64);
-    gr.addColorStop(0, rgba(c, a)); gr.addColorStop(1, rgba(c, 0)); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+    const x = cv.getContext("2d"), gr = x.createRadialGradient(64, 64, 64 * clamp(q(k, 0.1), 0, 0.95), 64, 64, 64);
+    gr.addColorStop(0, rgba(c, 1)); gr.addColorStop(1, rgba(c, 0)); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
     HALO.set(key, cv); return cv;
   }
   //   피버에 다 들어가면(e.fever > 0.5) 그리지 않는다: 피버에는 화면 가장자리의 빛과 피버 바탕이 따로 있고, 큰 반투명 원은 칠하는 데 오래 걸린다(피버에서 끊김의 큰 몫)
   function halo(e, x, y, r1, r2, c, a) {
     if (e.fever > 0.5) return;
-    const g = e.g, im = r2 > 0 && haloImg(c, a, r1 / r2);
-    if (im) { g.drawImage(im, x - r2, y - r2, 2 * r2, 2 * r2); return; }
+    const g = e.g, im = r2 > 0 && a > 0 && haloImg(c, r1 / r2);
+    if (im) { const ga = g.globalAlpha; g.globalAlpha = ga * Math.min(1, a); g.drawImage(im, x - r2, y - r2, 2 * r2, 2 * r2); g.globalAlpha = ga; return; }
     const gr = g.createRadialGradient(x, y, r1, x, y, r2);
     gr.addColorStop(0, rgba(c, a)); gr.addColorStop(1, rgba(c, 0));
     g.fillStyle = gr; g.beginPath(); g.arc(x, y, r2, 0, TAU); g.fill();

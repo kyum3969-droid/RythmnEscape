@@ -724,15 +724,16 @@
   // 자동 화질(의견: "피버 구간 프레임 드랍이 아직 있는 것 같다"): 폰에서 끊기는 가장 흔한 까닭은 칠할 픽셀의 수다. 실제 기기에서 한 장 사이 간격을 재서,
   //   느리면(평균 22ms 넘게 0.8초) 캔버스의 해상도를 한 단계(×0.8) 낮추고, 여유가 생기면(평균 15ms 아래로 4초, 낮춘 뒤 10초 지나서) 다시 올린다.
   //   판정·화면 배치(CSS 픽셀)와는 상관없고 그림만 조금 덜 선명해진다. 화면 밀도 1 아래로는 내리지 않는다(밀도 1인 기기는 0.75까지). 테스트의 가짜 시계에서는 쉰다
-  const Q = { scale: 1, ema: 16.7, slow: 0, fast: 0, lastDown: -1e9 };
+  //   (해상도를 바꿀 때마다 캔버스를 새로 잡아 그 순간 한 번 멈칫한다. 오르내리기를 되풀이하지 않게: 다시 올리는 것은 8초 넉넉하고 낮춘 지 30초 지나서, 두 번 낮춘 뒤로는 올리지 않는다)
+  const Q = { scale: 1, ema: 16.7, slow: 0, fast: 0, lastDown: -1e9, downs: 0 };
   function qualityTick(dtMs, nowMs) {
     if (fake.on || phase !== "running" || dtMs > 100) { Q.slow = Q.fast = 0; return; }
     Q.ema += (dtMs - Q.ema) * 0.08;
     const base = Math.min(window.devicePixelRatio || 1, 2), minScale = Math.max(0.75 / base, 1 / base);
     if (Q.ema > 22) { Q.slow += dtMs; Q.fast = 0; } else if (Q.ema < 15) { Q.fast += dtMs; Q.slow = 0; } else { Q.slow = Q.fast = 0; }
     let changed = false;
-    if (Q.slow > 800 && Q.scale > minScale + 1e-3) { Q.scale = Math.max(minScale, Q.scale * 0.8); Q.slow = 0; Q.ema = 16.7; Q.lastDown = nowMs; changed = true; }
-    else if (Q.fast > 4000 && Q.scale < 1 && nowMs - Q.lastDown > 10000) { Q.scale = Math.min(1, Q.scale / 0.8); Q.fast = 0; changed = true; }
+    if (Q.slow > 800 && Q.scale > minScale + 1e-3) { Q.scale = Math.max(minScale, Q.scale * 0.8); Q.slow = 0; Q.ema = 16.7; Q.lastDown = nowMs; Q.downs++; changed = true; }
+    else if (Q.fast > 8000 && Q.scale < 1 && Q.downs < 2 && nowMs - Q.lastDown > 30000) { Q.scale = Math.min(1, Q.scale / 0.8); Q.fast = 0; changed = true; }
     if (changed) { resize(); $("devTag").textContent = Q.scale < 0.999 ? `DEV · 화질 ${Math.round(Q.scale * 100)}%` : "DEV"; }      // (개발자 모드에서 지금 화질이 보인다)
   }
   function resize() {
@@ -930,12 +931,13 @@
     // 땅·천장·벽의 결(월드마다): 미리 그린 타일(두 칸 × 두 칸)을 세상에 붙여 깐다. 화면과 함께 흐르고, 굽은 통로에서는 토막과 함께 기운다
     //   타일은 지금의 칸 크기·화면 배율에 맞춰 미리 늘려 둔다(무늬를 늘이며 깔면 칠하는 데 오래 걸린다). 피버 구간의 바닥·천장은 무늬 없이 검정(피버의 벽 장식이 따로 있고, 피버가 가장 무겁다)
     if (wallPatKind !== THEME.ground) { wallPatKind = THEME.ground; wallTile = ART.tile(THEME.ground); wallPat = null; wallPatPx = 0; }
-    const dpr = canvas.width / Math.max(1, view.w), patPx = Math.max(8, Math.round(2 * T * dpr));
-    if (wallTile && Math.abs(patPx - wallPatPx) > 1) {
+    //   (타일의 크기는 확대 전의 칸(BT) 기준: 화면이 당겨지고 물러날 때마다(T가 바뀔 때마다) 새로 만들던 것이 끊김의 원인이었다. 배율은 무늬의 변환으로 맞춘다)
+    const dpr = canvas.width / Math.max(1, view.w), patPx = Math.max(8, Math.round(2 * BT * dpr));
+    if (wallTile && patPx !== wallPatPx) {
       const c2 = document.createElement("canvas"); c2.width = c2.height = patPx; c2.getContext("2d").drawImage(wallTile, 0, 0, patPx, patPx);
       wallPat = ctx.createPattern(c2, "repeat"); wallPatPx = patPx;
     }
-    if (wallPat && wallPat.setTransform) wallPat.setTransform(new DOMMatrix([2 * T / patPx, 0, 0, 2 * T / patPx, sx(0), view.groundY]));
+    if (wallPat && wallPat.setTransform) wallPat.setTransform(new DOMMatrix([2 * T / wallPatPx, 0, 0, 2 * T / wallPatPx, sx(0), view.groundY]));
     const WALLF = THEME.ground === "plain" || round > 0.5 ? SIL : wallPat || SIL;      // 기본 월드: 원래의 검정 그대로
     // 오르내리는 카메라: 공이 딛는 높이(패턴대로 갈 때의 줄)를 서서히 따라간다. 내려가는 길은 한 박 남짓 미리 내려다본다(땅 밑으로는 화면이 한 칸 반밖에 안 보인다). 올라간 만큼 먼 풍경은 내려앉는다
     const camY = CLIMB.length ? camLine(camX + state.lead) : 0;
