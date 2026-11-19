@@ -1996,7 +1996,10 @@
       ctx.save();
       ctx.translate(cx, cy + (1 - stretchY) * HALF * T);
       const sqg = zig ? squeezeGap(L, state.x) : null;                                                       // 아주 좁은 통로에서는 기울지 않는다(너무 빨리 뒤집혀 깜빡인다)
-      if (zig) ctx.rotate(Math.atan2(-state.zdir * state.zv * 0.5 * T, sx(state.x + 2) - sx(state.x)) * (sqg === null ? 1 : Math.min(1, sqg / 1.2)));   // 가는 방향으로 기운다
+      // 가는 방향으로 기운다. 튈 때 한 장 만에 반대로 휙 뒤집히던 것을(의견: "방향 전환 때 공의 움직임이 이상하다") 0.05초쯤에 걸쳐 돌아가게 한다
+      const tiltT = zig ? Math.atan2(-state.zdir * state.zv * 0.5 * T, sx(state.x + 2) - sx(state.x)) * (sqg === null ? 1 : Math.min(1, sqg / 1.2)) : 0;
+      { const dtt = Math.min(0.1, Math.max(0, now - (view.tiltAt ?? now))); view.tiltAt = now; view.tilt = (view.tilt ?? tiltT) + (tiltT - (view.tilt ?? tiltT)) * (1 - Math.exp(-dtt * 40)); }
+      if (zig) ctx.rotate(view.tilt);
       ctx.scale(stretchX, stretchY);
       const R = T * HALF;
       if (state.frozen) {
@@ -2254,14 +2257,22 @@
     if (!any) return { passes: [one], bent: false, th: 0, k: kThin, ax: view.px, ay: view.groundY - (ZIG_TOP / 2) * T, back: view.px / T + 1, fwd: (w - view.px) / T + 1 };
     // 공이 있는 자리의 "통로 한가운데"를 화면 어디에 둘까: 곧게 갈 때는 늘 그 자리, 기울수록 가는 쪽 반대편으로 옮긴다(위로 갈 때는 아래쪽, 왼쪽 위로 갈 때는 오른쪽 아래).
     // (통로의 바닥 선을 기준으로 잡았더니, 넓은 통로가 비스듬할 때 통로가 한쪽으로 쏠려 화면 밖으로 나갔다. 그래서 통로의 가운데를 기준으로 잡는다)
-    const th = dirAt(camX), u = Math.min(1, Math.abs(th) / (Math.PI / 6)), dx = Math.cos(th), dy = -Math.sin(th);
+    // (의견: "굽은 통로에서 공의 움직임이, 특히 방향 전환 때 되게 이상하다") 이 자리를 지금 자리의 기울기로 정했더니, 굽이에 들어서는 1~2박 사이에
+    //   화면 폭의 1/4~1/2만큼 몰아서 옮겨 갔다. 그 움직임이 공의 움직임에 더해져서, 위로 튈 때는 공이 거의 멈춘 듯(장마다 2픽셀), 아래로 튈 때는
+    //   세 배 빠르게(7~8픽셀) 보였고, 튈 때마다 빨라졌다 느려졌다 했다. 이제 뒤 3박 ~ 앞 10박의 기울기를 고르게 섞은 것(앞쪽에 무게)으로 정해서,
+    //   옮겨 가는 것을 굽이가 오기 전부터 길게 나눠 한다. 통로를 그리는 기울기(th)와 바닥 선의 자리는 그대로 지금 자리의 것이다.
+    const th = dirAt(camX);
+    let cS = 0, sS = 0;
+    for (let o = -14; o <= 42; o += 2) { const wt = 1 - Math.abs(o - 14) / 30, t = dirAt(camX + o); cS += Math.cos(t) * wt; sS += Math.sin(t) * wt; }
+    const thA = Math.atan2(sS, cS), u = Math.min(1, Math.abs(thA) / (Math.PI / 6)), dx = Math.cos(thA), dy = -Math.sin(thA);
     const hcT = ceilAt(L, camX) * T, dtc = Math.min(0.1, Math.max(0, now - (view.hcAt ?? now))); view.hcAt = now;
     view.hc = (view.hc ?? hcT) + (hcT - (view.hc ?? hcT)) * (1 - Math.exp(-dtc * 8));        // 통로의 폭(좁은 통로 ↔ 넓은 통로가 바뀔 때 서서히 따라간다)
     const half = view.hc / 2, m0x = view.px, m0y = view.groundY - half;
     const mx = m0x + (w / 2 - dx * 0.26 * w - m0x) * u, my = m0y + (h / 2 - dy * 0.26 * h - m0y) * u;
     const ax = mx + Math.sin(th) * half, ay = my + Math.cos(th) * half;                         // 바닥 선 위의 점 = 가운데에서 통로 폭의 절반만큼 바닥 쪽으로
     // 가는 쪽으로 화면 끝까지 7칸(1.75박)이 안 보이면 그만큼 물러난다
-    const tx = dx > 1e-6 ? (w - mx) / dx : dx < -1e-6 ? -mx / dx : 1e9, ty = dy > 1e-6 ? (h - my) / dy : dy < -1e-6 ? -my / dy : 1e9;
+    const ex = Math.cos(th), ey = -Math.sin(th);      // (보이는 앞쪽은 지금 가는 쪽으로 잰다)
+    const tx = ex > 1e-6 ? (w - mx) / ex : ex < -1e-6 ? -mx / ex : 1e9, ty = ey > 1e-6 ? (h - my) / ey : ey < -1e-6 ? -my / ey : 1e9;
     // (기운 만큼만 적용한다. 곧게 갈 때는 물러나지 않는다 — 안 그러면 세로로 든 화면에서, 굽이가 화면 밖 멀리서 다가오기 시작하는 순간 화면이 뚝 줄어든다)
     const k = (1 + (Math.max(0.45, Math.min(1, Math.min(tx, ty) / (10.5 * T))) - 1) * u) * kThin;
     const jb = segAt(camX), gb = SEGS[jb], along = sAt(camX) - sAt(Math.max(gb.x0, 0));
