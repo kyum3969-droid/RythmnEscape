@@ -279,6 +279,25 @@
     return a;
   }
 
+  // 마디마다의 소리 크기(0 조용함 ~ 1 가장 셈): 곡 파일에서 한 번 재 둔다. 연출 3단계부터 날씨의 짙기, 4단계의 "가장 센 마디" 연출에 쓴다(그림뿐, 판정과 상관없다)
+  function barLoud() {
+    const tr = track; if (!tr || !tr.buffer) return null; if (tr._loud) return tr._loud;
+    const d = tr.buffer.getChannelData(0), sr = tr.buffer.sampleRate, per = tr.period || 60 / L.bpm, off = tr.offset || 0, n = Math.ceil(L.cols / TPB / 4) + 1, out = new Float32Array(n);
+    for (let b = 0; b < n; b++) {
+      const a = Math.max(0, Math.floor((off + b * 4 * per) * sr)), z = Math.min(d.length, Math.floor((off + (b + 1) * 4 * per) * sr));
+      let sum = 0, c = 0; for (let i = a; i < z; i += 16) { sum += d[i] * d[i]; c++; }
+      out[b] = c ? Math.sqrt(sum / c) : 0;
+    }
+    const sorted = Array.from(out).filter((v) => v > 0).sort((x, y) => x - y), lo = sorted[Math.floor(sorted.length * 0.1)] || 0, hi = sorted[Math.floor(sorted.length * 0.95)] || 1;
+    for (let b = 0; b < n; b++) out[b] = Math.max(0, Math.min(1, (out[b] - lo) / Math.max(1e-6, hi - lo)));
+    return (tr._loud = out);
+  }
+  function loudAt(beat) {
+    const Lb = barLoud(); if (!Lb) return 0.5;       // 곡이 없으면(테스트의 가짜 시계 등) 중간
+    const x = beat / 4 - 0.5, i = Math.floor(x), f = x - i, at = (k) => Lb[Math.max(0, Math.min(Lb.length - 1, k))];
+    return at(i) + (at(i + 1) - at(i)) * f;
+  }
+
   // ---------------------------------------------------------------- 오디오 (임시 곡: Web Audio 합성)
   const A = { ctx: null, master: null, bus: null, noise: null };
   function ensureAudio() {
@@ -911,7 +930,11 @@
     // ---- 피버 연출(그림뿐, 판정과 상관없다): 피버마다 바탕이 바뀐다 — 빛의 굴 / 소리 고리 / 빛줄기. 해(박자 고리의 가운데)가 소실점이다.
     //   곡의 박에 맞춰 움직이고, 실제 곡의 주파수(분석기)를 쓴다. 통로와 장애물은 그대로 그 위에 그려진다(읽기에 방해되지 않게 바탕만)
     // 월드의 그림(themes.js)에 넘기는 것: 화면, 박자, 색, 카메라, 해의 자리
-    const E = { g: ctx, w, h, BT, T, gy: view.groundY, beat, now, pulse, pal, camS, camY, cx: cxs, cy: cys, r0, skyGrad: g };
+    //   연출 4단계: 박동(pulse)이 박자만이 아니라 실제 곡 소리(낮은 소리의 세기)에도 반응한다 → 풍경의 깜빡임·빛살·창문이 곡을 따라 뛴다
+    const loud = loudAt(beat);
+    let wpulse = pulse;
+    if (THEME.tier >= 4 && (phase === "running" || phase === "won")) { const sp = spectrum(6, beat, pulse), en = (sp[0] + sp[1] + sp[2]) / 3; wpulse = Math.min(1, pulse * 0.65 + en * en * 0.7); }
+    const E = { g: ctx, w, h, BT, T, gy: view.groundY, beat, now, pulse: wpulse, pal, camS, camY, cx: cxs, cy: cys, r0, skyGrad: g, tier: THEME.tier, loud };
     ctx.save(); ART.sky[THEME.sky](E); ctx.restore();          // 하늘의 장식(별, 구름, 주사선 …)
     if (round > 0) feverBack(beat, now, pulse, round, pal, cxs, cys, r0, w, h, camX);
     ctx.save(); ART.sun[THEME.sun](E); ctx.restore();          // 해(박자 고리의 가운데): 월드마다 다르다
@@ -940,11 +963,36 @@
     }
     // 평소의 날씨(비, 눈, 나뭇잎, 먼지 …): 풍경 앞, 땅과 장애물 뒤. 피버에서는 피버 연출로 바뀐다
     if (THEME.ambient && round < 1) {
-      const aa = (1 - round) * THEME.ambientA;
+      const aa = (1 - round) * THEME.ambientA * (THEME.tier >= 3 ? 0.55 + 0.9 * loud : 1);      // 3단계부터: 곡이 셀수록 짙게
       ctx.save();
       if (ART.ambient[THEME.ambient]) ART.ambient[THEME.ambient](E, aa);
       else feverPrim(THEME.ambient, beat, now, pulse, aa, pal.accent, pal.sun, cxs, cys, r0, w, h, Math.hypot(w, h));
       ctx.restore();
+    }
+
+    // 연출 3단계부터: 곡의 구간이 바뀌는 순간 하늘이 한 번 번쩍이고 해에서 고리가 퍼진다(피버로 드나들 때는 피버의 연출이 있으니 뺀다). 다시 시작해 뒤로 돌아갈 때는 터지지 않는다
+    {
+      const si = L.sections.indexOf(sectionAt(Math.floor(beat / 4)));
+      if (fx.secIdx == null || beat < (fx.secBeat ?? 0) - 0.5) fx.secIdx = si;
+      else if (si !== fx.secIdx) {
+        const a = L.sections[fx.secIdx], b = L.sections[si];
+        if (THEME.tier >= 3 && phase === "running" && a && b && a.id !== "rush" && b.id !== "rush") fx.secAt = now;
+        fx.secIdx = si;
+      }
+      fx.secBeat = beat;
+      const st = now - (fx.secAt ?? -9);
+      if (st >= 0 && st < 1.1 && round < 1) {
+        const p = st / 1.1, R = Math.hypot(w, h);
+        ctx.fillStyle = css(mix(pal.accent, [255, 255, 255], 0.4), 0.2 * (1 - p) * (1 - p)); ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = css(pal.accent, 0.6 * (1 - p)); ctx.lineWidth = 3 + 18 * (1 - p);
+        ctx.beginPath(); ctx.arc(cxs, cys, r0 + p * R * 0.9, 0, Math.PI * 2); ctx.stroke();
+      }
+      // 연출 4단계: 곡의 가장 센 마디(소리 크기 상위)에서 화면 가장자리가 박마다 강조색으로 숨 쉰다(배경에만, 통로와 장애물은 그 위에 그려진다)
+      if (THEME.tier >= 4 && round < 1 && loud > 0.7) {
+        const k = Math.min(1, (loud - 0.7) / 0.25), vg = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.hypot(w, h) * 0.62);
+        vg.addColorStop(0, css(pal.accent, 0)); vg.addColorStop(1, css(pal.accent, k * (0.08 + 0.2 * wpulse)));
+        ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
+      }
     }
 
     // 굽은 통로(코스의 cam 표): 통로 자체가 굽어 있고 공이 그 굽이로 들어간다. 화면은 돌지 않는다 — 길을 "곧은 토막"들의 줄로 보고, 토막마다 제 자리·제 기울기로 그린다.
@@ -1109,8 +1157,10 @@
         sb(0); ctx.fillStyle = bg; ctx.fill("evenodd");
         ctx.save(); ctx.clip("evenodd");                                    // 안쪽의 결: 빗금(원래의 것) 또는 월드의 결(themes.js grain: 주사선, 픽셀, 금, 구멍, 마름모)
         const grain = ART.grain[THEME.grain];
-        if (grain) grain(E, { x0: xMin, x1: xMax, y0: yTop, y1: yBot }, sx(0), Math.round(K.x0 * 8) + Math.round(K.x1 * 3));
-        else {
+        const rseed = Math.round(K.x0 * 8) + Math.round(K.x1 * 3);
+        if (grain) grain(E, { x0: xMin, x1: xMax, y0: yTop, y1: yBot }, sx(0), rseed);
+        if (RS.deco) RS.deco(E, { x0: xMin, x1: xMax, y0: yTop, y1: yBot }, rseed, () => { ctx.beginPath(); for (const lp of P) trace(lp, false); });      // 월드의 안쪽 장식(네온관, 금테, 리벳, 룬 …)
+        if (!grain) {
           ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 2;
           ctx.beginPath();
           const span = yBot - yTop, gap = T * 0.36;
@@ -1357,6 +1407,7 @@
           head(); ctx.fillStyle = hg; sb(0); ctx.fill();
           ctx.save(); ctx.clip();
           if (pgrain && !ham) pgrain(E, { x0: xa, x1: xb, y0: yt, y1: yb }, sx(0), Math.round(m.bar * 5 + q.x0));
+          if (THEME.red !== "plain" && !ham && RS.deco) RS.deco(E, { x0: xa, x1: xb, y0: yt, y1: yb }, Math.round(m.bar * 5 + q.x0), head);
           else { ctx.strokeStyle = "rgba(255,107,144,0.22)"; ctx.lineWidth = 3; ctx.beginPath(); for (let x = xa - T * 1.2; x < xb; x += T * 0.42) { ctx.moveTo(x, yb); ctx.lineTo(x + T * 1.2, yt); } ctx.stroke(); }
           ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(xa, yt, w, T * 0.16); ctx.restore();      // 윗면의 반사광
           head(); ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2.5; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(10 + 8 * pulse + 18 * warn + 20 * impact); gs(); sb(0); ctx.lineJoin = "round";

@@ -28,13 +28,13 @@
   const WORLDS = {
     // 기본: 처음의 그림 그대로(둥근 해와 고리, 이퀄라이저 막대 풍경, 검은 땅, 빗금). 1~5라운드(의견: "5라운드까지는 원래 기본 디자인으로, 6라운드부터 개별 테마로")
     classic:  { name: "기본",          color: "#a9a9c9", sky: "none",  sun: "disc",    far: ["eq", "eq"],             ground: "plain",   edge: "none",   grain: "stripes", ambient: null,     trail: null,    box: "plain", red: "plain" },
-    neon:     { name: "네온 하이웨이", color: "#7df9ff", sky: "neon",  sun: "synth",   far: ["neonPeaks", "skyline"],  ground: "asphalt", edge: "lane",   grain: "scan",    ambient: null,     trail: "spark", box: "plain", red: "plain" },
-    digital:  { name: "디지털 그리드", color: "#5cf2ff", sky: "scan",  sun: "pixel",   far: ["eq", "circuitCity"],     ground: "circuit", edge: "bits",   grain: "pixel",   ambient: null,     trail: "pixel", box: "plain", red: "plain" },
-    works:    { name: "강철 공장",     color: "#ffd23f", sky: "smog",  sun: "smog",    far: ["chimneys", "works"],     ground: "plate",   edge: "hazard", grain: "stripes", ambient: "dust",   trail: "ember", box: "plain", red: "plain" },
+    neon:     { name: "네온 하이웨이", color: "#7df9ff", sky: "neon",  sun: "synth",   far: ["neonPeaks", "skyline"],  ground: "asphalt", edge: "lane",   grain: "scan",    ambient: null,     trail: "spark", box: "neon",  red: "neon" },
+    digital:  { name: "디지털 그리드", color: "#5cf2ff", sky: "scan",  sun: "pixel",   far: ["eq", "circuitCity"],     ground: "circuit", edge: "bits",   grain: "pixel",   ambient: "code",     trail: "pixel", box: "holo",  red: "glitch" },
+    works:    { name: "강철 공장",     color: "#ffd23f", sky: "smog",  sun: "smog",    far: ["chimneys", "works"],     ground: "plate",   edge: "hazard", grain: "stripes", ambient: "dust",   trail: "ember", box: "crate", red: "hotsteel" },
     peaks:    { name: "새벽 산맥",     color: "#cfe6ff", sky: "dawn",  sun: "radiant", far: ["peaks", "pines"],        ground: "rockface", edge: "snowcap", grain: "magma", ambient: "motes",  trail: "mote", box: "ice", red: "magma" },
-    ruins:    { name: "잃어버린 유적", color: "#d6f07a", sky: "birds", sun: "radiant", far: ["ziggurat", "canopy"],    ground: "stone",   edge: "moss",   grain: "cracks",  ambient: "leaves", trail: "leaf", box: "plain", red: "plain" },
-    abyss:    { name: "깊은 곳",       color: "#8fd8ff", sky: "space", sun: "planet",  far: ["asteroids", "moonscape"], ground: "pores",  edge: "glow",   grain: "cells",   ambient: "motes",  trail: "stardust", box: "plain", red: "plain" },
-    festival: { name: "꿈의 축제",     color: "#ffd27a", sky: "dream", sun: "moon",    far: ["pagoda", "roofs"],       ground: "tiles",   edge: "stitch", grain: "diamond", ambient: null,     trail: "glitter", box: "plain", red: "plain" },
+    ruins:    { name: "잃어버린 유적", color: "#d6f07a", sky: "birds", sun: "radiant", far: ["ziggurat", "canopy"],    ground: "stone",   edge: "moss",   grain: "cracks",  ambient: "leaves", trail: "leaf", box: "glyph", red: "cursed" },
+    abyss:    { name: "깊은 곳",       color: "#8fd8ff", sky: "space", sun: "planet",  far: ["asteroids", "moonscape"], ground: "pores",  edge: "glow",   grain: "cells",   ambient: "motes",  trail: "stardust", box: "crystal", red: "coral" },
+    festival: { name: "꿈의 축제",     color: "#ffd27a", sky: "dream", sun: "moon",    far: ["pagoda", "roofs"],       ground: "tiles",   edge: "stitch", grain: "diamond", ambient: "lanterns",     trail: "glitter", box: "gift", red: "lacquer" },
   };
 
   // ================================================================ 라운드 → 월드 (+ 라운드마다 바꾸는 것)
@@ -53,7 +53,7 @@
     { world: "peaks",    fever: { back: ["rays", "embers"], wall: "wave" } },                                      // 8 Velocity of a Thousand Suns: 천 개의 해
     { world: "neon",     ambient: "rain", fever: { back: ["rain", "road"], wall: "eq" } },                         // 9 Midnight Asphalt Rush: 한밤의 젖은 도로
     { world: "works",    ambient: "embers", fever: { back: ["gears", "embers"], wall: "dots" } },                  // 10 Anvil and Piston: 공장의 불꽃
-    { world: "festival", far: ["pagoda", "silkHills"], fever: { back: ["ribbons", "tunnel"], wall: "wave" } },     // 11 Velocity of Silk: 비단
+    { world: "festival", far: ["pagoda", "silkHills"], ambient: "motes", fever: { back: ["ribbons", "tunnel"], wall: "wave" } },     // 11 Velocity of Silk: 비단
     { world: "peaks",    ambient: "snow", fever: { back: ["snow", "rays"], wall: "wave" } },                       // 12 Across the Iron Peak: 눈 덮인 봉우리
     { world: "digital",  fever: { back: ["stars", "tunnel"], wall: "eq" } },                                       // 13 Final Level Sprint: 결승선을 향해
     { world: "ruins",    fever: { back: ["leaves", "rays"], wall: "wave" } },                                      // 14 Temple Canopy Pursuit: 정글 신전
@@ -65,11 +65,19 @@
   const KEYS = ["sky", "sun", "far", "ground", "edge", "grain", "ambient", "trail", "box", "red"];
   // 평소의 날씨의 세기(피버 연출 그림을 빌려 쓰는 것은 피버보다 훨씬 옅게). 여기 없으면 0.42
   const AMBIENT_A = { code: 0.15, leaves: 0.26, lanterns: 0.3, rain: 0.55, snow: 0.5, haze: 0.55, embers: 0.45 };
-  // 라운드의 테마. world를 주면(개발자 모드의 월드 미리 보기) 그 월드의 기본 그림으로 바꾼다(피버 연출은 라운드 것 그대로).
+  // 연출 단계(의견: "라운드가 갈수록 연출이 점점 발전되었으면", "2단계부터는 변경된 게 보여야", "박스 재질도 2단계로"). VISUAL_RESEARCH.md 3장.
+  //   1 기본(1~5): 처음의 그림
+  //   2 무대(6~9): 월드의 하늘·해·먼 풍경 + 눈이 가는 곳: 길(땅의 결·윗선 장식), 공 꼬리, 파란 박스·빨간 덩어리의 재질
+  //   3 질감(10~13): + 평소의 날씨(곡이 셀수록 짙게), 곡 구간이 바뀌는 순간의 연출
+  //   4 완성(14~18): + 실제 곡 소리에 반응하는 박동, 곡의 가장 센 마디에서 화면 가장자리가 숨 쉰다
+  const ROUND_TIER = [1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4];
+  // 라운드의 테마. world를 주면(개발자 모드의 월드 미리 보기) 그 월드의 그림을 가장 높은 단계로 입힌다(피버 연출은 라운드 것 그대로).
   function themeFor(roundNo, world) {
     const r = ROUND_THEME[roundNo] || ROUND_THEME[0], id = world && WORLDS[world] ? world : r.world, base = WORLDS[id], t = { world: id, name: base.name, color: base.color };
     for (const k of KEYS) t[k] = !world && k in r ? r[k] : base[k];
     t.fever = r.fever;
+    t.tier = id === "classic" ? 1 : world ? 4 : ROUND_TIER[roundNo] ?? 4;
+    if (t.tier < 3) t.ambient = null;      // 날씨는 3단계부터
     t.ambientA = AMBIENT_A[t.ambient] ?? 0.42;
     return t;
   }
@@ -812,6 +820,9 @@
   // ================================================================ 파란 박스의 재질. 색은 파랑 계열 그대로(= 딛는 곳), 윤곽(= 판정)은 index.html이 그대로 긋는다.
   //   lo·hi 땅 위 박스의 아래·윗면 쪽 색, lit 떠 있는 박스의 밑면(밝은 쪽), deep·deepSky 떠 있는 박스·파란 천장의 어두운 쪽,
   //   flash(h) 공이 딛는 순간의 밝은 색(h 1 → 0), line·glow 테두리와 번짐 색, inner(e, b, tops, seed, hit) 안쪽(클립 안): b 범위, tops 윗면 토막들 [[xa, xb, y], …]
+  const blueFlash = (h) => `rgb(${40 + 60 * h | 0},${110 + 80 * h | 0},255)`;
+  // 박스 안쪽을 나누는 판: 윗면 토막마다 그 밑(땅 위의 계단 박스), 윗면이 없으면(파란 천장) 화면 안쪽 전체
+  function panels(b, tops, T) { if (tops.length) return tops.map(([xa, xb, y]) => ({ x: xa, y, w: xb - xa, h: b.y1 - y })); const y0 = Math.max(b.y0, -T); return [{ x: b.x0, y: y0, w: b.x1 - b.x0, h: b.y1 - y0 }]; }
   const BOX = {
     plain: {       // 원래의 것: 파란 유리판, 가로 줄
       lo: "#081a3d", hi: "#1f6ee0", lit: "#1f6ee0", deep: "#0b2a5e", deepSky: "#0a1f47", line: "#9fdcff", glow: "#3aa0ff",
@@ -843,11 +854,108 @@
         }
       },
     },
+    neon: {        // 네온 하이웨이: 속에 네온관이 든 유리 간판 상자(관이 박마다 밝아진다)
+      lo: "#050f2a", hi: "#173f95", lit: "#1d4fb0", deep: "#0a2258", deepSky: "#081a45", line: "#b8ecff", glow: "#3aa0ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, ins = T * 0.2;
+        g.fillStyle = rgba(WHITE, 0.07); g.fillRect(b.x0, Math.max(b.y0, -T), b.x1 - b.x0, T * 0.08);
+        for (const r of panels(b, tops, T)) {
+          const w = r.w - 2 * ins, hh = r.h - 2 * ins; if (w < 3 || hh < 3) continue;
+          g.beginPath(); g.roundRect(r.x + ins, r.y + ins, w, hh, Math.min(T * 0.14, w / 2, hh / 2));
+          g.strokeStyle = rgba([150, 220, 255], 0.16 + 0.2 * hit); g.lineWidth = T * 0.14; g.stroke();
+          g.strokeStyle = rgba([215, 246, 255], 0.5 + 0.35 * e.pulse + 0.15 * hit); g.lineWidth = Math.max(1.5, T * 0.045); g.stroke();
+        }
+      },
+    },
+    holo: {        // 디지털 그리드: 홀로그램 블록 — 주사선, 박마다 위에서 아래로 훑는 빛, 모서리의 픽셀 계단
+      lo: "#061a3a", hi: "#1a5fd0", lit: "#2266d6", deep: "#0b2a5e", deepSky: "#0a1f47", line: "#9fe8ff", glow: "#3ab8ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), ph = pm(e.beat, 1);
+        g.fillStyle = rgba(WHITE, 0.07); for (let y = y0; y < b.y1; y += 3) g.fillRect(b.x0, y, b.x1 - b.x0, 1);
+        g.fillStyle = rgba([170, 235, 255], 0.22 * (1 - ph) + 0.25 * hit); g.fillRect(b.x0, y0 + ph * (b.y1 - y0), b.x1 - b.x0, T * 0.12);
+        const q = Math.max(2, T * 0.13); g.fillStyle = rgba([205, 245, 255], 0.38);
+        for (const r of panels(b, tops, T)) for (const [x, d] of [[r.x + 2, 1], [r.x + r.w - 2 - q, -1]]) { g.fillRect(x, r.y + 2, q, q); g.fillRect(x + d * q, r.y + 2, q, q); g.fillRect(x, r.y + 2 + q, q, q); }
+      },
+    },
+    crate: {       // 강철 공장: 늑골 있는 파란 철제 컨테이너(위·아래 테두리, 모서리 쇠붙이)
+      lo: "#0a1a33", hi: "#2b5d9c", lit: "#2f66a8", deep: "#123462", deepSky: "#0c2246", line: "#a8d4ff", glow: "#3a8cff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T);
+        for (let x = b.x0 + T * 0.14; x < b.x1; x += T * 0.24) { g.fillStyle = "rgba(0,10,30,0.32)"; g.fillRect(x, y0, T * 0.06, b.y1 - y0); g.fillStyle = rgba([180, 220, 255], 0.12 + 0.12 * hit); g.fillRect(x + T * 0.06, y0, T * 0.03, b.y1 - y0); }
+        for (const r of panels(b, tops, T)) {
+          g.fillStyle = "rgba(8,22,48,0.55)"; g.fillRect(r.x, r.y, r.w, T * 0.12); g.fillRect(r.x, r.y + r.h - T * 0.12, r.w, T * 0.12);
+          const c = T * 0.16; for (const x of [r.x, r.x + r.w - c]) for (const y of [r.y, r.y + r.h - c]) { g.fillStyle = "rgba(6,16,36,0.8)"; g.fillRect(x, y, c, c); g.fillStyle = rgba([170, 210, 255], 0.35); g.fillRect(x + c * 0.35, y + c * 0.35, c * 0.3, c * 0.3); }
+        }
+      },
+    },
+    glyph: {       // 잃어버린 유적: 푸른 유약을 바른 돌판 — 돌의 이음매, 새겨진 문양(박마다, 딛는 순간 빛난다)
+      lo: "#0a2240", hi: "#2a6ab8", lit: "#2e72c2", deep: "#123a6e", deepSky: "#0c2650", line: "#aee0ff", glow: "#4ab0ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T);
+        g.strokeStyle = "rgba(5,15,35,0.38)"; g.lineWidth = 1.5; g.beginPath();
+        for (let k = 0, y = b.y1 - T * 0.5; y > y0; k++, y -= T * 0.5) { g.moveTo(b.x0, y); g.lineTo(b.x1, y); for (let x = b.x0 + (k % 2 ? T * 0.5 : 0); x < b.x1; x += T) { g.moveTo(x, y); g.lineTo(x, y + T * 0.5); } }
+        g.stroke();
+        for (const r of panels(b, tops, T)) {
+          const s = Math.min(T * 0.3, r.w * 0.3, r.h * 0.4), cx = r.x + r.w / 2, cy = r.y + Math.min(r.h, T * 1.2) / 2;
+          if (s < 3) continue;
+          g.strokeStyle = rgba([150, 235, 255], 0.28 + 0.3 * e.pulse + 0.4 * hit); g.lineWidth = Math.max(1.2, T * 0.04); g.beginPath();
+          g.arc(cx, cy, s, 0, TAU); g.moveTo(cx, cy - s * 0.65); g.lineTo(cx + s * 0.56, cy + s * 0.35); g.lineTo(cx - s * 0.56, cy + s * 0.35); g.closePath(); g.stroke();
+          g.fillStyle = rgba([180, 245, 255], 0.4 + 0.5 * hit); g.beginPath(); g.arc(cx, cy, s * 0.12, 0, TAU); g.fill();
+        }
+      },
+    },
+    crystal: {     // 깊은 곳: 푸른 수정 — 깎인 면, 속에서 오르는 작은 방울, 딛는 순간 물결
+      lo: "#071f45", hi: "#2f7fe0", lit: "#3585e6", deep: "#0f3470", deepSky: "#0a2552", line: "#bfefff", glow: "#5ac8ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), w = b.x1 - b.x0, hh = b.y1 - y0;
+        g.strokeStyle = rgba(WHITE, 0.16); g.lineWidth = 1.2; g.beginPath();
+        const n = clamp(Math.round(w / T) + 2, 3, 8); let px = b.x0, py = y0 + hh * H(seed, 541);
+        g.moveTo(px, py); for (let k = 1; k <= n; k++) { px = b.x0 + (w * k) / n; py = y0 + hh * H(seed + k, 541); g.lineTo(px, py); g.lineTo(b.x0 + w * (k - 0.5) / n, k % 2 ? y0 : b.y1); g.moveTo(px, py); }
+        g.stroke();
+        g.fillStyle = rgba(WHITE, 0.1); g.beginPath(); g.moveTo(b.x0, y0); g.lineTo(b.x0 + Math.min(w, T * 1.4), y0); g.lineTo(b.x0, y0 + Math.min(hh, T * 0.9)); g.fill();
+        g.strokeStyle = rgba([210, 245, 255], 0.3); g.lineWidth = 1;
+        for (let k = 0; k < Math.max(1, Math.round(w / T)); k++) { const bx = b.x0 + w * H(seed * 3 + k, 542), by = b.y1 - pm(e.now * 0.4 + H(seed + k, 543), 1) * hh; g.beginPath(); g.arc(bx, by, T * 0.04 + T * 0.03 * H(k, 544), 0, TAU); g.stroke(); }
+        if (hit > 0) { const cx = (b.x0 + b.x1) / 2, cy = tops.length ? tops[0][2] : y0; g.strokeStyle = rgba([220, 250, 255], hit * 0.6); g.lineWidth = 2; for (let k = 0; k < 2; k++) { g.beginPath(); g.ellipse(cx, cy, w * (0.2 + (1 - hit) * 0.5) * (1 + k * 0.4), T * (0.12 + (1 - hit) * 0.3) * (1 + k * 0.4), 0, 0, TAU); g.stroke(); } }
+      },
+    },
+    gift: {        // 꿈의 축제: 선물 상자 — 옅은 물방울무늬, 리본 띠(세로·가로), 위의 나비 매듭(박스 안쪽에만)
+      lo: "#0c1f4a", hi: "#3a72d8", lit: "#3d78dc", deep: "#163e80", deepSky: "#0e2a5a", line: "#c8e4ff", glow: "#5aa8ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), q = T * 0.42;
+        g.fillStyle = rgba(WHITE, 0.1);
+        for (let k = 0, y = b.y1 - q / 2; y > y0; k++, y -= q) for (let x = b.x0 + (k % 2 ? q : q / 2); x < b.x1; x += q) { g.beginPath(); g.arc(x, y, T * 0.045, 0, TAU); g.fill(); }
+        const rib = rgba([225, 242, 255], 0.42 + 0.25 * hit + 0.1 * e.pulse);
+        for (const r of panels(b, tops, T)) {
+          const cx = r.x + r.w / 2, bw = Math.min(T * 0.2, r.w * 0.25), by = r.y + Math.min(r.h, T * 1.2) * 0.45;
+          g.fillStyle = rib; g.fillRect(cx - bw / 2, r.y, bw, r.h); g.fillRect(r.x, by - bw / 2, r.w, bw);
+          if (r.w > T * 0.8 && r.h > T * 0.5) { g.beginPath(); g.ellipse(cx - T * 0.15, r.y + T * 0.13, T * 0.13, T * 0.08, -0.4, 0, TAU); g.ellipse(cx + T * 0.15, r.y + T * 0.13, T * 0.13, T * 0.08, 0.4, 0, TAU); g.fill(); }
+        }
+      },
+    },
   };
   // 빨간 덩어리의 바탕색(어두운 쪽 → 밝은 쪽). head = 프레스 머리
   const RED_SKIN = {
     plain: { lo: "#12050d", hi: "#6d1236", headLo: "#2a0816", headHi: "#86173f" },      /* 위험색 */
     magma: { lo: "#120506", hi: "#5c1419", headLo: "#140607", headHi: "#681a1e" },      /* 위험색: 용암석(검붉은 돌, 금에서 빛이 샌다) */
+    // 아래는 deco(e, b, seed, trace)로 안쪽 장식을 더 얹는다(클립 안, 결 다음). trace()는 덩어리의 윤곽 경로를 만든다: 굵게 긋고 바탕색으로 덜 굵게 덮으면 윤곽 안쪽에 띠가 남는다      /* 위험색 */
+    neon: { lo: "#14040c", hi: "#560e2a", headLo: "#1a0510", headHi: "#62112f",      /* 위험색: 네온 하이웨이 — 빨간 네온 경고등(안쪽에 관) */
+      deco(e, b, seed, trace) { const g = e.g, T = e.T; g.lineJoin = "round"; trace(); g.strokeStyle = rgba(RED, 0.5 + 0.35 * e.pulse); g.lineWidth = T * 0.34; g.stroke(); trace(); g.strokeStyle = "#14040c"; g.lineWidth = T * 0.2; g.stroke(); } },      /* 위험색 */
+    glitch: { lo: "#12030a", hi: "#62112f", headLo: "#16040c", headHi: "#6a1434",      /* 위험색: 디지털 그리드 — 박마다 가로로 어긋나는 글리치 줄 */
+      deco(e, b, seed) { const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), k0 = Math.floor(e.beat * 2); if (pm(e.beat * 2, 1) > 0.35) return;      /* 위험색 */
+        for (let k = 0; k < 2; k++) { const y = y0 + (b.y1 - y0) * H(seed + k, k0), off = (H(seed * 3 + k, k0) - 0.5) * T * 0.3; g.fillStyle = rgba(RED, 0.45); g.fillRect(b.x0 + off, y, b.x1 - b.x0, T * 0.07); g.fillStyle = "rgba(10,2,6,0.6)"; g.fillRect(b.x0 - off, y + T * 0.07, b.x1 - b.x0, T * 0.05); } } },      /* 위험색 */
+    hotsteel: { lo: "#100607", hi: "#4e1215", headLo: "#120607", headHi: "#58161a",    /* 위험색: 강철 공장 — 달군 쇠(리벳, 아래가 달아오른다) */
+      deco(e, b) { const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), gr = g.createLinearGradient(0, b.y1, 0, b.y1 - T * 0.7);      /* 위험색 */
+        gr.addColorStop(0, rgba(HOT, 0.28 + 0.15 * e.pulse)); gr.addColorStop(1, rgba(HOT, 0)); g.fillStyle = gr; g.fillRect(b.x0, b.y1 - T * 0.7, b.x1 - b.x0, T * 0.7);
+        for (let x = b.x0 + T * 0.25; x < b.x1; x += T * 0.5) for (const y of [y0 + T * 0.18, b.y1 - T * 0.18]) { g.fillStyle = "rgba(0,0,0,0.5)"; g.beginPath(); g.arc(x, y, T * 0.055, 0, TAU); g.fill(); g.fillStyle = rgba(HOTCORE, 0.28); g.beginPath(); g.arc(x - T * 0.015, y - T * 0.015, T * 0.022, 0, TAU); g.fill(); } } },
+    cursed: { lo: "#120507", hi: "#561419", headLo: "#140607", headHi: "#601a1d",      /* 위험색: 잃어버린 유적 — 저주받은 돌판(새긴 룬이 박마다 빛난다) */
+      deco(e, b, seed) { const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), c = T * 1.1; g.strokeStyle = rgba(RED, 0.3 + 0.4 * e.pulse); g.lineWidth = Math.max(1.2, T * 0.045); g.lineCap = "round"; g.beginPath();      /* 위험색 */
+        for (let kx = 0, x = b.x0 + c / 2; x < b.x1; kx++, x += c) for (let ky = 0, y = b.y1 - c / 2; y > y0; ky++, y -= c) { const sd = seed * 13 + kx * 5 + ky * 7; if (H(sd, 551) < 0.45) continue; const s = T * 0.22, f = Math.floor(H(sd, 552) * 3);
+          g.moveTo(x, y - s); g.lineTo(x, y + s); if (f === 0) { g.moveTo(x, y - s * 0.4); g.lineTo(x + s * 0.6, y - s); g.moveTo(x, y); g.lineTo(x - s * 0.6, y - s * 0.5); } else if (f === 1) { g.moveTo(x, y - s); g.lineTo(x + s * 0.6, y - s * 0.4); g.lineTo(x, y + s * 0.2); } else { g.moveTo(x - s * 0.6, y - s * 0.6); g.lineTo(x + s * 0.6, y + s * 0.2); g.moveTo(x + s * 0.6, y - s * 0.6); g.lineTo(x - s * 0.6, y + s * 0.2); } }
+        g.stroke(); g.lineCap = "butt"; } },
+    coral: { lo: "#12040c", hi: "#5c1230", headLo: "#16050e", headHi: "#661636",      /* 위험색: 깊은 곳 — 성게·말미잘(윤곽을 따라 짧은 가시) */
+      deco(e, b, seed, trace) { const g = e.g, T = e.T; trace(); g.setLineDash([T * 0.05, T * 0.11]); g.lineDashOffset = -e.beat * T * 0.08; g.strokeStyle = rgba(RED, 0.4 + 0.25 * e.pulse); g.lineWidth = T * 0.26; g.stroke(); g.setLineDash([]); } },      /* 위험색 */
+    lacquer: { lo: "#160406", hi: "#6a1218", headLo: "#180507", headHi: "#72161c",     /* 위험색: 꿈의 축제 — 금테 두른 붉은 옻칠 나무 */
+      deco(e, b, seed, trace) { const g = e.g, T = e.T; g.lineJoin = "miter"; trace(); g.strokeStyle = rgba([255, 205, 110], 0.55 + 0.25 * e.pulse); g.lineWidth = T * 0.26; g.stroke(); trace(); g.strokeStyle = "#2a070b"; g.lineWidth = T * 0.17; g.stroke(); g.lineJoin = "round"; } },      /* 위험색 */
   };
 
   // ================================================================ 빨간 덩어리 안쪽의 결(클립 안에서 그린다. 색은 빨강 계열 그대로). b = { x0, x1, y0, y1 } 덩어리의 화면 범위, ox = 세계 x 0칸의 화면 x, seed = 덩어리마다 다른 수

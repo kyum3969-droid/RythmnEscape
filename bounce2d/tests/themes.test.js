@@ -15,6 +15,16 @@ ok(Object.keys(byWorld).every((w) => WORLDS[w]), '라운드가 가리키는 월�
 ok(Object.keys(WORLDS).every((w) => byWorld[w]), '쓰지 않는 월드가 없다');
 for (const [w, rs] of Object.entries(byWorld)) console.log(`        ${WORLDS[w].name} (${w}): ${rs.join(', ')}라운드`);
 
+console.log('== 연출 단계: 라운드가 갈수록 한 겹씩 더해진다 ==');
+{
+  const ts = ROUND_THEME.map((_, i) => themeFor(i));
+  ok(ts.every((t, i) => i === 0 || t.tier >= ts[i - 1].tier), `단계는 뒤로 갈수록 내려가지 않는다 (${ts.map((t) => t.tier).join('')})`);
+  ok(ts.every((t) => (t.tier === 1) === (t.world === 'classic')), '1단계 = 기본 그림, 2단계부터 월드');
+  ok(ts.filter((t) => t.tier >= 2).every((t) => t.box !== 'plain' && t.red !== 'plain' && t.ground !== 'plain' && t.trail), '2단계부터: 눈이 가는 곳(길의 결, 박스·장애물 재질, 공 꼬리)이 바뀐다');
+  ok(ts.every((t) => (t.tier >= 3) === !!t.ambient), '3단계부터: 평소의 날씨가 있다(그 전에는 없다)');
+  ok([1, 2, 3, 4].every((k) => ts.some((t) => t.tier === k)), '네 단계가 모두 쓰인다');
+}
+
 console.log('== 쓰는 그림이 다 있다 ==');
 const WALLS = ['eq', 'wave', 'dots'];
 const themes = [...ROUND_THEME.map((_, i) => themeFor(i)), ...Object.keys(WORLDS).map((w) => themeFor(0, w))];
@@ -66,6 +76,7 @@ for (const [w, h] of [[844, 390], [390, 844]]) for (const beat of [-0.5, 0, 3.7,
   for (const k in ART.edge) run('edge ' + k, () => ART.edge[k](e, -30, w + 30, -e.camS * e.T + 100));
   for (const k in ART.grain) if (ART.grain[k]) run('grain ' + k, () => ART.grain[k](e, { x0: 100, x1: 100 + e.T * 3, y0: -40, y1: gy }, -e.camS * e.T + 100, 17));
   for (const k in ART.box) run('box ' + k, () => { const B = ART.box[k]; for (const f of ['lo', 'hi', 'lit', 'deep', 'deepSky', 'line', 'glow']) if (typeof B[f] !== 'string') throw new Error(f + ' 색이 없다'); for (const hit of [0, 0.5, 1]) { if (!/^rgb/.test(B.flash(hit))) throw new Error('flash'); B.inner(e, { x0: 100, x1: 100 + e.T * 4, y0: gy - e.T * 2, y1: gy }, [[100, 100 + e.T * 2, gy - e.T], [100 + e.T * 2, 100 + e.T * 4, gy - e.T * 2]], 5, hit); B.inner(e, { x0: 100, x1: 300, y0: -40, y1: 80 }, [], 6, hit); } });
+  for (const k in ART.red) run('red ' + k, () => { const R = ART.red[k]; for (const f of ['lo', 'hi', 'headLo', 'headHi']) if (typeof R[f] !== 'string') throw new Error(f + ' 색이 없다'); if (R.deco) { R.deco(e, { x0: 100, x1: 100 + e.T * 3, y0: -40, y1: gy }, 9, () => e.g.beginPath()); R.deco(e, { x0: 100, x1: 100 + e.T * 0.5, y0: gy - e.T, y1: gy }, 2, () => e.g.beginPath()); } });
   for (const k in ART.ambient) run('ambient ' + k, () => ART.ambient[k](e, 0.4));
   for (const k in ART.trail) run('trail ' + k, () => { const p = ART.trail[k].make(10, 5); if (!(p.life > 0 && p.max > 0 && p.size > 0 && p.kind)) throw new Error('입자 모양이 이상하다'); for (const a of [1, 0.5, 0.01]) ART.particle(e.g, p, 100, 100, p.size * e.T, a, pal); });
 }
