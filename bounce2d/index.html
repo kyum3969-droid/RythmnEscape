@@ -1185,15 +1185,45 @@
       }
     }
     // 충전 고리: 지나가면 이단 점프가 다시 찬다. 같은 칸에 쌓인 칸들이 세로로 긴 고리 하나.
-    for (let c = cA; c <= cB; c++) for (let r = 0; r < ROWS - 1; r++) {
-      if (tile(L, c, r) !== "O" || tile(L, c, r - 1) === "O") continue;
-      let r2 = r; while (tile(L, c, r2 + 1) === "O") r2++;
-      const used = usedRings.has(c), cx = sx(c + 0.5), cy = (sy(r) + sy(r2 + 1)) / 2, ry = (sy(r2 + 1) - sy(r)) / 2 - T * 0.08, rx = T * 0.3;
-      ctx.save(); ctx.globalAlpha = used ? 0.25 : 1;
-      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.shadowColor = css(pal.accent); sb(used ? 0 : 14 + 12 * pulse);
-      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); gs();
-      ctx.strokeStyle = css(pal.accent, 0.9); ctx.lineWidth = 2; sb(0);
-      ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.55, ry * 0.8, 0, 0, Math.PI * 2); gs();
+    //   그림: 에너지 고리 — 강조색으로 번지는 바깥 빛, 흰 심, 안쪽의 옅은 막과 도는 점선 소용돌이, 박에 맞춰 고리를 따라 도는 불꽃 둘.
+    //   공이 다가올수록 밝아지고 커진다(언제 누를지 읽게). 지나간 고리는 옅은 점선만 남는다.
+    //   고리 사슬(1~3칸 간격으로 이어진 고리): 고리 사이를 앞으로 흐르는 점선 줄로 잇는다 — 간격이 곧 누르는 리듬이다
+    {
+      const stacks = [];
+      for (let c = cA - 3; c <= cB + 3; c++) for (let r = 0; r < ROWS - 1; r++) {
+        if (tile(L, c, r) !== "O" || tile(L, c, r - 1) === "O") continue;
+        let r2 = r; while (tile(L, c, r2 + 1) === "O") r2++;
+        stacks.push({ c, r, r2, cx: sx(c + 0.5), cy: (sy(r) + sy(r2 + 1)) / 2, ry: (sy(r2 + 1) - sy(r)) / 2 - T * 0.08, used: usedRings.has(c) });
+      }
+      ctx.save();
+      for (const A of stacks) {                                              // 사슬의 줄
+        const B = stacks.find((q) => q.c > A.c && q.c - A.c <= 3 && Math.abs((q.r + q.r2) - (A.r + A.r2)) <= 4);
+        if (!B || (A.used && B.used)) continue;
+        ctx.strokeStyle = css(pal.accent, A.used ? 0.2 : 0.55); ctx.lineWidth = 2.5; ctx.setLineDash([T * 0.14, T * 0.1]); ctx.lineDashOffset = -now * T * 3;
+        ctx.shadowColor = css(pal.accent); sb(A.used ? 0 : 8);
+        ctx.beginPath(); ctx.moveTo(A.cx + T * 0.3, A.cy); ctx.lineTo(B.cx - T * 0.3, B.cy); gs(); sb(0);
+      }
+      ctx.setLineDash([]);
+      for (const q of stacks) {
+        const { cx, cy, ry } = q, near = Math.max(0, Math.min(1, 1 - (q.c + 0.5 - state.x) / 6)), grow = 1 + (q.used ? 0 : 0.08 * near + 0.05 * pulse), rx = T * 0.32 * grow, ryy = ry * grow;
+        if (q.used) {
+          ctx.strokeStyle = css(pal.accent, 0.3); ctx.lineWidth = 2; ctx.setLineDash([T * 0.1, T * 0.1]);
+          ctx.beginPath(); ctx.ellipse(cx, cy, rx, ryy, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); continue;
+        }
+        const glow = 0.45 + 0.55 * near;
+        const mg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ryy));      // 안쪽의 옅은 막
+        mg.addColorStop(0, css(pal.accent, 0.05)); mg.addColorStop(1, css(pal.accent, 0.22 * glow));
+        ctx.fillStyle = mg; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ryy, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = css(pal.accent, 0.85); ctx.lineWidth = 7; ctx.shadowColor = css(pal.accent); sb(10 + 14 * glow + 8 * pulse);      // 바깥 빛
+        ctx.beginPath(); ctx.ellipse(cx, cy, rx, ryy, 0, 0, Math.PI * 2); gs(); sb(0);
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ryy, 0, 0, Math.PI * 2); ctx.stroke();      // 흰 심
+        ctx.strokeStyle = css([255, 255, 255], 0.45 * glow); ctx.lineWidth = 1.5; ctx.setLineDash([T * 0.08, T * 0.12]); ctx.lineDashOffset = now * T * 1.5;      // 도는 소용돌이
+        ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.55, ryy * 0.7, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        for (let k = 0; k < 2; k++) {                                          // 고리를 따라 도는 불꽃 둘(한 박에 반 바퀴)
+          const th = beat * Math.PI + k * Math.PI + q.c, px = cx + Math.cos(th) * rx, py = cy + Math.sin(th) * ryy;
+          ctx.fillStyle = "#ffffff"; ctx.shadowColor = css(pal.accent); sb(10); ctx.beginPath(); ctx.arc(px, py, T * 0.07 * (1 + 0.4 * glow), 0, Math.PI * 2); ctx.fill(); sb(0);
+        }
+      }
       ctx.restore();
     }
     // ---- 피버 구간

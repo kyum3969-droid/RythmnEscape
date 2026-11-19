@@ -531,12 +531,12 @@ console.log('== 멈춤의 철학(2라운드부터): 땅에서 그냥 튀는 시�
   const share = [], lenTraps = [];
   for (const C of Lg.COURSES) {
     const L = Lg.buildLevel(C), inp = Lg.planInput(L.ref), s = Lg.spawnState(L, -1); let all = 0, fr = 0;
-    while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.mode !== 'bounce') continue; const n = C.bars[Math.floor(s.x / 16)], p = Lg.PATTERNS[n]; if (!p || p.mode === 'rush' || n === 'flat' || n === 'goal') continue; all++; if (s.frozen) fr++; }
+    while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (s.mode !== 'bounce') continue; const n = C.bars[Math.floor(s.x / 16)], p = Lg.PATTERNS[n]; if (!p || p.mode === 'rush' || n === 'flat' || n === 'goal' || n.startsWith('chain')) continue; all++; if (s.frozen) fr++; }
     share.push(fr / all);
     lenTraps.push(C.bars.filter((n) => { const p = Lg.PATTERNS[n]; return p && p.mode !== 'rush' && (p.traps || []).some((t) => { const hs = t.full ? t.full.holds : p.stair && !t.presses ? t.holds : null; return hs && hs.length === p.holds.length && (!t.full || JSON.stringify(t.full.presses) === JSON.stringify(p.presses)) && hs.some((h, i) => h[0] === p.holds[i][0] && h[1] !== p.holds[i][1]); }); }).length);      // (계단의 멈춤 길이 함정도 센다)
   }
   const pct = share.map((v) => Math.round(v * 100));
-  ok(pct[0] <= 15 && pct.slice(1).every((v) => v >= 18) && pct.slice(2).every((v) => v >= 20) && Math.max(...pct.slice(4)) >= 25, `멈춰 있는 시간(바운스 구간): ${pct.map((v, i) => `${i + 1}라운드 ${v}%`).join(', ')} — 1라운드는 그대로, 2라운드부터 늘어난다`);
+  ok(pct[0] <= 15 && pct.slice(1).every((v) => v >= 18) && pct.slice(2).every((v) => v >= 20) && Math.max(...pct.slice(4)) >= 25, `멈춰 있는 시간(바운스 구간): ${pct.map((v, i) => `${i + 1}라운드 ${v}%`).join(', ')} — 1라운드는 그대로, 2라운드부터 늘어난다(고리 사슬 마디는 멈추지 않고 달리는 마디라 셈하지 않는다)`);
   ok(lenTraps.slice(1, 7).every((v) => v >= 2) && lenTraps.slice(1).reduce((u, v) => u + v, 0) >= 20, `멈춤 길이의 함정(앞 마디와 똑같이 가다가 놓는 순간만 다르다. 계단의 것 포함): ${lenTraps.map((v, i) => `${i + 1}라운드 ${v}`).join(', ')}`);
   // 음이 올라가는 구간의 계단(곡에서 잰 자리): 오르는 계단(4칸 넘게 올라간다), 곡에서 같은 오르막이 다시 나오는 자리에는 멈춤 길이가 다른 계단. 카메라가 따라 올라간다
   const RISE = { 2: [37, 57], 3: [4, 55], 4: [12, 67], 5: [29, 61], 6: [8, 56], 7: [21, 69], 9: [19, 66], 10: [36, 69], 11: [11, 59], 13: [17, 68], 14: [50, 61], 15: [29, 69], 16: [12, 37], 17: [12, 52], 18: [44, 53], 19: [24, 64] }, riseBad = [];
@@ -686,6 +686,25 @@ console.log('== 19라운드: 용암 덩이 — 언제 솟는지 읽고 짧은 �
   const shapeOk = !down.up && up.up && Math.abs(up.y - m0.H) < 1e-9 && !Lg.moverKills(m0, m0.at - 0.1, m0.x, 0) && Lg.moverKills(m0, m0.at + m0.fly / 2, m0.x, m0.H - 0.4);
   ok(flips >= 6 && ok2 === flips && bombs.length >= 16 && shapeOk && L.cps.length === 9 && B.indexOf('goal') === 79,
     `19라운드: 용암 덩이 ${bombs.length}개(솟아 있을 때만 죽인다). 뒤집기 ${flips}곳(${where.join(', ')}) 모두, 앞 마디의 손 그대로 하면 그 마디에서 죽는다(${ok2}곳). 체크포인트 ${L.cps.length}개, 결승선은 마디 79`);
+}
+console.log('== 고리 사슬: 1~3칸 간격의 고리마다 탁탁 쳐서 용암 위를 거의 직선으로 달린다 ==');
+{
+  const C = Lg.COURSES.find((c) => c.name.startsWith('ROUND 19')), B = C.bars, L = Lg.buildLevel(C);
+  const P = L.ref.presses, H = L.ref.holds, inb = (b) => (v) => v >= b * 384 && v < (b + 1) * 384;
+  const run = (pr, onStep) => { const inp = Lg.planInput({ presses: pr, holds: H }), s = Lg.spawnState(L, -1); while (!s.dead && !s.won) { Lg.stepState(L, s, inp.press.has(s.step + 1), null, inp.hold.has(s.step + 1)); if (onStep) onStep(s); } return s; };
+  const bars = B.map((n, b) => (n.startsWith('chain') ? b : -1)).filter((b) => b >= 0);
+  let miss = 0, total = 0, flat = true; const span = [];
+  for (const b of bars) {
+    const mine = P.filter(inb(b));
+    mine.forEach((v) => { total++; const s = run(P.filter((q) => q !== v)); if (s.dead && Math.floor(s.x / 16) === b) miss++; });
+    if (B[b] === 'chainA') { let lo = 99, hi = -99; run(P, (s) => { if (s.x >= b * 16 + 3 && s.x <= b * 16 + 12) { const h = 9 - s.y; lo = Math.min(lo, h); hi = Math.max(hi, h); } }); span.push((hi - lo).toFixed(2)); if (hi - lo > 0.8) flat = false; }
+  }
+  // 고리 간격이 4칸 넘는 고리(앞 라운드의 것)는 전처럼 보통 이단 점프다
+  const old = Lg.buildLevel({ name: 't', bpm: 152, bars: ['flat', 'ringWave', 'flat', 'flat', 'goal', 'flat'], sections: [{ bar: 0, id: 'a' }] });
+  const so = Lg.spawnState(old, -1), ip = Lg.planInput(old.ref); let vmax = 0;
+  while (!so.dead && !so.won) { const ev = []; Lg.stepState(old, so, ip.press.has(so.step + 1), ev, ip.hold.has(so.step + 1)); if (ev.some((e) => e.type === 'double')) vmax = Math.max(vmax, -so.vy); }
+  ok(bars.length >= 6 && miss === total && flat && so.won && Math.abs(vmax - 9) < 0.3,
+    `고리 사슬 마디 ${bars.length}개(${bars.join(', ')}): 고리마다 누르는 것 ${total}번 가운데 어느 하나를 빼먹어도 그 마디에서 용암에 떨어진다(${miss}번). 반 박마다 치는 사슬에서 공의 높이는 ${span.join('·')}칸 안에서만 오르내린다(거의 직선). 4칸 간격의 고리는 전처럼 보통 이단 점프(세기 ${vmax.toFixed(1)})`);
 }
 console.log('== 꾸밈 박스: 공중에 떠 있는 작은 빨간 박스(쓰임새 없이 빽빽해 보이게). 패턴대로 치면 닿지 않는다 ==');
 {

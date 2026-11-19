@@ -551,7 +551,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? '  ok  ' : '  FAIL ') +
     st = await G(() => { const g = window.__game, t = g.track; return { round: g.round, name: t.name, bpm: t.bpm, off: t.offset, cps: g.L.cps.length, bomb: g.L.movers.filter((m) => m.kind === 'bomb').length }; });
     ok(st.round === 18 && st.name.includes('Inside the Caldera') && Math.abs(st.bpm - 152) < 0.01 && st.off === 0.054 && st.cps === 9 && st.bomb >= 16, `19라운드를 누르면 그 코스와 곡으로 다시 열린다 (${st.name}, ${st.bpm.toFixed(2)} BPM, 첫 박 ${st.off}초, 용암 덩이 ${st.bomb}개)`);
     await G(() => { const g = window.__game; g.fake.on = true; g.setBot(g.L.ref); g.startFresh(); });
-    const shots19 = { 9.75: 'r19_bomb_leap', 37.5: 'r19_bomb_vent', 130.0: 'r19_fever', 165.0: 'r19_wall', 296.0: 'r19_fever2' };
+    const shots19 = { 9.75: 'r19_bomb_leap', 37.5: 'r19_bomb_vent', 65.0: 'r19_chain', 68.5: 'r19_chain_b', 225.5: 'r19_chain_hi', 130.0: 'r19_fever', 165.0: 'r19_wall', 296.0: 'r19_fever2' };
     for (let beat = 0; beat <= 330; beat += 0.25) {
       await tick(beat);
       if (shots19[beat]) { await p.waitForTimeout(60); await p.screenshot({ path: out + shots19[beat] + '.png' }); }

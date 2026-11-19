@@ -1037,18 +1037,16 @@ const PATTERNS = {
   g19_13: { holds: [[0.5, 1.125]], presses: [2.5], tol: 0.18, tall: [2.5], traps: [{full: {presses: [], holds: [[0.5, 1.125], [2.5, 3.5]]}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
   g19_14: { holds: [[0.5, 0.875]], presses: [1], tol: 0.18 },
   g19_15: { holds: [[0.5, 1]], presses: [1.125], tol: 0.18, cp: true },   // 체크포인트 마디
-  g19_16: { holds: [[0.5, 1]], presses: [], tol: 0.18, bands: [[2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], stair: true, floats: [[3, 7, 2], [9, 11, 3]], lava: [[1, 13]] },   // 계단: 빨간 단을 건너뛰어 2 → 3 → 0
-  g19_18: { holds: [[0.5, 1.5], [2.25, 3.25]], presses: [], tol: 0.18, bands: [[3, 5, 1, 2], [2, 4, 3.6, 5.4], [10, 12, 5.6, 7.4]], redBox: [[2, 4, 1], [10, 12, 1]], stair: true, floats: [[5, 7, 2]], lava: [[1, 13]], traps: [{holds: [[0.5, 1], [2.25, 3.25]]}] },   // 함정(멈춤이 길다: 멈춰서 건너뛰던 단에서 이번엔 더 오래 멈춘다. 버릇대로 일찍 놓으면 내려설 단 앞의 빨간 단에 내려앉는다)
-  g19_19: { holds: [[0.5, 1]], presses: [1.125], tol: 0.18 },
-  g19_20: { holds: [[0.625, 1.375], [2.625, 3.375]], presses: [], tol: 0.18 },
-  g19_21: { holds: [[0.5, 1], [2.625, 3.5]], presses: [], tol: 0.18 },
-  g19_22: { holds: [[2.5, 3]], presses: [0.5], tol: 0.18, tall: [0.5] },
-  g19_23: { holds: [[0.25, 1.25], [2.625, 3.5]], presses: [], tol: 0.15, cp: true, caps: [[1, 6, 2]], lava: [[2, 4]] },   // 체크포인트 마디
-  g19_24: { holds: [[0.5, 1.5], [2.25, 2.75]], presses: [], tol: 0.18, bands: [[9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g19_25"], stair: true, floats: [[5, 7, 2], [10, 14, 4]], lava: [[1, 15]] },   // 음이 올라가는 구간 — 오르는 계단: 계단: 빨간 단을 건너뛰어 2 → 빨간 단을 건너뛰어 4 → 빨간 단을 건너뛰어 6 → 3 → 0
-  g19_25: { holds: [[0, 0.5]], presses: [], tol: 0.18, bands: [[0, 2, 4, 5], [0, 2, 7.6, 9.4]], lead: ["g19_24"], stair: true, floats: [[1, 5, 6], [9, 11, 3]], lava: [[0, 13]] },
-  g19_28: { holds: [[0.625, 1.125], [2.5, 3.125]], presses: [], tol: 0.18 },
-  g19_29: { holds: [[0.625, 1.125]], presses: [2.5], tol: 0.18, tall: [2.5], traps: [{full: {presses: [], holds: [[0.625, 1.125], [2.5, 3.125]]}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
-  g19_30: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18 },
+  g19_19: { holds: [[0.5, 1]], presses: [], tol: 0.18, bands: [[2, 4, 3.6, 5.4]], redBox: [[2, 4, 1]], stair: true, floats: [[3, 7, 2], [9, 11, 3]], lava: [[1, 13]] },   // 계단: 빨간 단을 건너뛰어 2 → 3 → 0
+  g19_20: { holds: [[0.5, 1.5], [2.25, 3.25]], presses: [], tol: 0.18, bands: [[3, 5, 1, 2], [2, 4, 3.6, 5.4], [10, 12, 5.6, 7.4]], redBox: [[2, 4, 1], [10, 12, 1]], stair: true, floats: [[5, 7, 2]], lava: [[1, 13]], traps: [{holds: [[0.5, 1], [2.25, 3.25]]}] },   // 함정(멈춤이 길다: 멈춰서 건너뛰던 단에서 이번엔 더 오래 멈춘다. 버릇대로 일찍 놓으면 내려설 단 앞의 빨간 단에 내려앉는다)
+  g19_21: { holds: [[0.5, 1]], presses: [1.125], tol: 0.18 },
+  g19_22: { holds: [[0.625, 1.375], [2.625, 3.375]], presses: [], tol: 0.18 },
+  g19_23: { holds: [[0.5, 1], [2.625, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g19_24: { holds: [], presses: [0.5, 2], tol: 0.18, tail: ["g19_25"], stair: true, floats: [[4, 6, 4], [11, 13, 7]], lava: [[1, 15]] },   // 음이 올라가는 구간 — 오르는 계단: 계단: 이단 점프로 4 → 이단 점프로 7 → 5 → 빨간 단을 건너뛰어 3 → 0
+  g19_25: { holds: [[0.875, 1.875]], presses: [], tol: 0.18, bands: [[5, 6, 3, 4], [5, 6, 8.6, 10.4]], lead: ["g19_24"], stair: true, floats: [[0, 2, 5], [8, 11, 3]], lava: [[0, 13]] },
+  g19_28: { holds: [[0.5, 0.875], [1.625, 2.5]], presses: [1.125], tol: 0.18, rings: [[4, 0], [4, 1], [4, 2]], chain: 1 },
+  g19_29: { holds: [[0.5, 0.875]], presses: [1.125], tol: 0.18, rings: [[4, 0], [4, 1], [4, 2]], chain: 1, traps: [{full: {presses: [1.125], holds: [[0.5, 0.875], [1.625, 2.5]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
+  g19_30: { holds: [[0.5, 1.25], [2.5, 3.125]], presses: [], tol: 0.18, caps: [[1, 7, 3]], traps: [{presses: [0.5], holds: [[2.5, 3.125]]}] },
   g19_31: { holds: [[0.625, 1.125], [2.25, 3.25]], presses: [], tol: 0.15, cp: true, caps: [[9, 14, 2]], lava: [[10, 12]] },   // 체크포인트 마디
   g19z32: { mode: "rush", nodes: "F.B.F.B." },
   g19z34: { mode: "rush", nodes: "F.B.F.F." },   // 함정(판이 없다): 앞 마디(F.B.F.B.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
@@ -1066,25 +1064,22 @@ const PATTERNS = {
   g19_47: { holds: [[0.625, 1.625], [2.625, 3.375]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
   g19_52: { holds: [[0.5, 1], [2.375, 3.125]], presses: [], tol: 0.18 },
   g19_53: { holds: [[0.5, 1]], presses: [], tol: 0.18, traps: [{full: {presses: [], holds: [[0.5, 1], [2.375, 3.125]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
-  g19_54: { holds: [[0.375, 1], [2.5, 3.375]], presses: [], tol: 0.18 },
+  g19_54: { holds: [[2.5, 3]], presses: [0.5], tol: 0.18, tall: [0.5] },
   g19_55: { holds: [[0.375, 0.875], [2.375, 2.875]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
-  g19_56: { holds: [[3.625, 4.125]], presses: [0.5, 2.125], tol: 0.18, loose: [3.625], tail: ["g19_57"], stair: true, floats: [[5, 7, 3], [10, 13, 7]], lava: [[1, 15]] },   // 계단: 이단 점프로 3 → 이단 점프로 7 → 빨간 단을 건너뛰어 5 → 3 → 0
-  g19_57: { holds: [], presses: [], tol: 0.18, bands: [[0, 1, 5, 6], [0, 1, 10.6, 12.4]], lead: ["g19_56"], stair: true, floats: [[1, 6, 5], [9, 11, 3]], lava: [[0, 13]] },
-  g19_58: { holds: [[3.125, 4.125]], presses: [1.375], tol: 0.18, boxes: [[2, 4, 1]], bands: [[14, 15, 1, 2], [2, 2, 3.6, 5.4], [14, 15, 6.6, 8.4]], loose: [3.125], tail: ["g19_59"], stair: true, floats: [[9, 11, 3]], lava: [[1, 15]], traps: [{presses: [0.5]}] },   // 함정(낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다)
-  g19_59: { holds: [], presses: [1.375], tol: 0.18, boxes: [[1, 4, 1]], lead: ["g19_58"], stair: true, floats: [[9, 11, 3]], lava: [[0, 13]] },
-  g19_60: { holds: [[0.375, 1.125], [2.25, 3.25]], presses: [], tol: 0.15, caps: [[9, 14, 2]], lava: [[10, 12]] },
-  g19_61: { holds: [[0.5, 1.125], [1.75, 2.375]], presses: [1.25], tol: 0.18, rings: [[4, 0], [4, 1], [4, 2]], chain: 1 },
-  g19_62: { holds: [[0.625, 1.125], [2.625, 3.5]], presses: [], tol: 0.18 },
-  g19_63: { holds: [[0.625, 1.375], [2.625, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
-  g19_64: { holds: [[0.5, 1.5], [2.25, 3.25]], presses: [], tol: 0.18, bands: [[10, 12, 3, 4], [9, 11, 2, 3], [2, 4, 3.6, 5.4], [9, 11, 5.6, 7.4]], redBox: [[2, 4, 1]], tail: ["g19_65"], stair: true, floats: [[5, 7, 2], [12, 14, 4]], lava: [[1, 15]], traps: [{holds: [[0.5, 1.5], [2.25, 2.75]]}] },   // 같은 오르막이 다시(멈춤 길이가 다르다): 함정(멈춤이 길다: 멈춰서 건너뛰던 단에서 이번엔 더 오래 멈춘다. 버릇대로 일찍 놓으면 내려설 단 앞의 빨간 단에 내려앉는다)
-  g19_65: { holds: [[0, 1]], presses: [], tol: 0.18, boxes: [[10, 12, 1]], bands: [[1, 3, 2, 3], [1, 3, 7.6, 9.4]], lead: ["g19_64"], stair: true, floats: [[5, 7, 2]], lava: [[0, 13]] },
-  g19_69: { holds: [[0.625, 1.5]], presses: [2.5], tol: 0.18 },
-  g19_70: { holds: [[0.625, 1.5], [2.5, 3.25]], presses: [], tol: 0.18, traps: [{full: {presses: [2.5], holds: [[0.625, 1.5]]}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
-  g19_71: { holds: [[0.375, 1.375], [2.5, 3]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g19_59: { holds: [[3.625, 4.125]], presses: [0.5, 2.125], tol: 0.18, loose: [3.625], tail: ["g19_60"], stair: true, floats: [[5, 7, 3], [10, 13, 7]], lava: [[1, 15]] },   // 계단: 이단 점프로 3 → 이단 점프로 7 → 빨간 단을 건너뛰어 5 → 3 → 0
+  g19_60: { holds: [], presses: [], tol: 0.18, bands: [[0, 1, 5, 6], [0, 1, 10.6, 12.4]], lead: ["g19_59"], stair: true, floats: [[1, 6, 5], [9, 11, 3]], lava: [[0, 13]] },
+  g19_61: { holds: [[3.125, 4.125]], presses: [1.375], tol: 0.18, boxes: [[2, 4, 1]], bands: [[14, 15, 1, 2], [2, 2, 3.6, 5.4], [14, 15, 6.6, 8.4]], loose: [3.125], tail: ["g19_62"], stair: true, floats: [[9, 11, 3]], lava: [[1, 15]], traps: [{presses: [0.5]}] },   // 함정(낮아진 단: 이단 점프로 오르던 단이 한 칸 위에 있다. 버릇대로 뛰면 뚜껑에 걸린다)
+  g19_62: { holds: [], presses: [1.375], tol: 0.18, boxes: [[1, 4, 1]], lead: ["g19_61"], stair: true, floats: [[9, 11, 3]], lava: [[0, 13]] },
+  g19_63: { holds: [[0.375, 1.125], [2.25, 3.25]], presses: [], tol: 0.15, cp: true, caps: [[9, 14, 2]], lava: [[10, 12]] },   // 체크포인트 마디
+  g19_64: { holds: [], presses: [0.5, 2], tol: 0.18, tail: ["g19_65"], stair: true, floats: [[4, 6, 4], [11, 13, 7]], lava: [[1, 15]] },   // 같은 오르막이 다시(멈춤 길이가 다르다): 
+  g19_65: { holds: [[0.875, 1.375]], presses: [], tol: 0.18, bands: [[5, 6, 3, 4], [8, 8, 7.3, 8.05], [5, 6, 8.6, 10.4]], lead: ["g19_64"], stair: true, floats: [[0, 2, 5], [6, 11, 3]], lava: [[0, 13]], traps: [{holds: [[0.875, 1.875]]}] },   // 함정(멈춤이 짧다: 이번엔 일찍 놓아 내려간다. 버릇대로 계속 멈추면 멈춘 높이의 빨간 덩어리에 부딪힌다)
+  g19_69: { holds: [[0.5, 1], [2.5, 3.375]], presses: [], tol: 0.18 },
+  g19_70: { holds: [[0.5, 1]], presses: [2.5], tol: 0.18, tall: [2.5], traps: [{full: {presses: [], holds: [[0.5, 1], [2.5, 3.375]]}}] },   // 함정(끝에서 손 바꿈): 앞 마디와 같이 가다가 한 군데가 다르다
+  g19_71: { holds: [[0.625, 1.125], [2.625, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
   g19w73: { mode: "rush", wide: true, gap: 1.5, nodes: ".BFFS.B." },
   g19w75: { mode: "rush", wide: true, gap: 1.5, nodes: ".BFFS.F." },   // 함정(판이 없다): 앞 마디(.BFFS.B.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
-  g19w76: { mode: "rush", wide: true, gap: 1.5, nodes: ".FBBFFS." },
-  g19w77: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBFFS." },   // 함정(판이 없다): 앞 마디(.FBBFFS.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
+  g19w76: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBFBS." },
+  g19w77: { mode: "rush", wide: true, gap: 1.5, nodes: ".FFBFFS." },   // 함정(판이 없다): 앞 마디(.FFBFBS.)에서는 튕김판에 닿아 저절로 꺾이던 자리를, 이번엔 눌러야 한다
   // </gen:patterns:R19>
   // ---- 고리 연타(3라운드): 고리 셋을 이어서 탁탁탁탁. 마디 끝에서도 공중에 떠 있으므로, 바로 다음 마디는 ringStop이나 ringGlide여야 한다.
   ringRun:   { holds: [], presses: [0.5, 1.375, 2.375, 3.375], tol: 0.18, rings: [[6, 1], [6, 2], [10, 1], [10, 2], [14, 1], [14, 2]], lava: [[2, 15]] },
@@ -1228,6 +1223,13 @@ const PATTERNS = {
   //             버릇대로 멈추면 매달린 덩어리에 부딪히고, 한 번 더 뛰면 위의 층에 걸린다
   //   liftSwap  (grindPit의 뒤집기) 같은 두 구덩이와 엇갈려 오르내리는 롤러인데 박이 반대다: 첫째 구덩이는 롤러가 위에 있어 멈춰서 밑으로, 둘째는 롤러가 내려와 있어 이단 점프로
   djHold: { holds: [[1.0, 1.75]], presses: [0.5], tol: 0.18, set: true, redBox: [[4, 4, 2.3], [5, 7, 2.0]] },
+  // ---- 고리 사슬(19라운드부터): 충전 고리를 1~3칸 간격으로 한 줄로 놓으면, 고리마다 누르는 이단 점프가 다음 고리까지 낮게 건너가는 작은 뜀이 된다(stepState의 ringHop).
+  //   고리에 닿을 때마다 탁탁 눌러 용암 위를 거의 직선으로 달린다 — 고리 간격이 곧 누르는 리듬(2칸 = 반 박, 3칸 = 3/8박). 하나라도 놓치면 용암으로 떨어진다.
+  //   사슬의 마지막 고리는 다음 박에 땅에 닿게 튕겨 준다. 일찍 누른 것은 고리에 닿는 순간까지 기억해 준다(늦게 누르면 조금 낮아질 뿐, 고리가 두 칸 높이라 이어진다).
+  //   (1칸 간격 = 1/4박은 뜀이 너무 낮아 하나를 빼먹어도 다음 고리에 닿아서 쓰지 않는다)
+  chainA: { holds: [], presses: [0.5, 1, 1.5, 2, 2.5, 3], tol: 0.18, set: true, rings: [[2, 1], [2, 2], [4, 1], [4, 2], [6, 1], [6, 2], [8, 1], [8, 2], [10, 1], [10, 2], [12, 1], [12, 2]], lava: [[1, 14]] },      // 반 박마다 여섯 번(탁탁탁탁탁탁)
+  chainD: { holds: [], presses: [0.5, 1.25, 2, 2.5, 3.25], tol: 0.18, set: true, rings: [[2, 1], [2, 2], [5, 1], [5, 2], [8, 1], [8, 2], [10, 1], [10, 2], [13, 1], [13, 2]], lava: [[1, 14]] },      // 3·3·2 리듬(탁 · · 탁 · · 탁 · 탁)
+  chainHi: { holds: [], presses: [0.5, 1, 1.75, 2.5, 3], tol: 0.18, set: true, rings: [[4, 3], [4, 4], [7, 3], [7, 4], [10, 3], [10, 4], [12, 3], [12, 4]], lava: [[1, 14]] },      // 이단 점프로 높이 올라가서 높은 사슬(점 붙은 리듬)
   // ---- 19라운드(Inside the Caldera): 용암 덩이. 바닥의 분화구에서 두 박마다 솟구쳐 포물선으로 올라갔다 떨어진다(솟아 있는 동안만 닿으면 죽는다). 반 마디마다 덩이 하나 — 언제 솟는가가 손을 정한다.
   //   높은 덩이(4칸, 가장 높이 3.4칸, 한 박 동안 난다): 0.25~0.375박에 솟으면 막 솟구치는 덩이를 짧은 이단 점프(그 박)로 넘는다 / 0.625박에 솟으면 그냥 지나간다(공이 지나간 뒤에 솟는다)
   //   낮은 덩이(7칸, 가장 높이 1.6칸): 1.25박에 솟으면 내려설 자리 앞에서 반 박 멈춰(2.625~3.125박) 덩이가 떨어지길 기다린다 / 0.875박에 솟으면 그냥 내려선다(멈추면 떨어지는 길에 걸린다)
@@ -2287,8 +2289,8 @@ const ROUND19 = {
     "flat", "flat", "bLeap", "bLeap",   "bLeapT", "g19_5", "g19_6", "g19_7",
     // 벌스 — 낮은 덩이: 짧은 이단 점프 뒤, 내려설 자리 앞에서 반 박 멈춰 덩이가 떨어지길 기다리기 ×2 → 뒤의 덩이가 일찍 솟는다(이번엔 멈추지 않는다). 멈춤 길이 함정(짧다)
     "bVent", "bVent", "bVentT", "g19_11",   "g19_11", "g19_13", "g19_14", "g19_15",
-    // 벌스 둘(하이햇이 들어온다): 한 마디짜리 계단 ×2 → 같은 계단의 함정, 새 마디 넷
-    "g19_16", "g19_16", "g19_18", "g19_19",   "g19_20", "g19_21", "g19_22", "g19_23",
+    // 벌스 둘(하이햇이 반 박마다 들어온다) — 고리 사슬을 소개한다: 용암 위 고리마다 탁탁 쳐서 직선으로 달리기(반 박마다) ×2 → 3·3·2 리듬의 사슬. 한 마디짜리 계단 → 그 함정, 새 마디 둘
+    "chainA", "chainA", "chainD", "g19_19",   "g19_20", "g19_21", "g19_22", "g19_23",
     // 브레이크다운과 빌드업: 음이 올라가는 24~25마디는 오르는 계단, 덩이 → 뒤집기, 한 번 보여 주고 멈춤이 길다, 새 마디
     "g19_24", "g19_25", "bLeap", "bLeapT",   "g19_28", "g19_29", "g19_30", "g19_31",
     // 첫 드롭(쾅 · · 쾅 하고 밟는 리듬) — 피버 하나(좁은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 되풀이 → 뚝
@@ -2297,8 +2299,8 @@ const ROUND19 = {
     "g19_40", "g19_41", "g19_42", "g19_43",   "g19_44", "g19_45", "g19_46", "g19_47",
     // 벌스 셋 — 한 번만 보여 주고 뒤집기: 낮은 덩이 → 일찍 솟는다, 높은 덩이 → 앞의 덩이도 일찍. 한 번 보여 주고 끝에서 뚝, 새 마디
     "bVent", "bVentT", "bLeap", "bLeapT",   "g19_52", "g19_53", "g19_54", "g19_55",
-    // 벌스 넷: 두 마디짜리 계단(다섯 칸) → 같은 계단의 함정, 새 마디 셋
-    "g19_56", "g19_57", "g19_58", "g19_59",   "g19_60", "g19_61", "g19_62", "g19_63",
+    // 벌스 넷(하이햇) — 높은 고리 사슬: 이단 점프로 올라가 점 붙은 리듬으로 ×2 → 3·3·2 사슬. 두 마디짜리 계단(다섯 칸) → 같은 계단의 함정
+    "chainHi", "chainHi", "chainD", "g19_59",   "g19_60", "g19_61", "g19_62", "g19_63",
     // 브레이크다운 둘과 빌드업: 같은 멜로디의 오르막(64~65)은 이번엔 멈춤 길이가 다르다, 낮은 덩이 ×2 → 일찍 솟는다, 한 번 보여 주고 손 바꿈
     "g19_64", "g19_65", "bVent", "bVent",   "bVentT", "g19_69", "g19_70", "g19_71",
     // 마지막 드롭 — 피버 둘(넓은 통로, 튕김판): 판이 있는 마디 ×2 → 판이 없다, 하나 더. 드롭이 끝나는 마디 79에 결승선
@@ -3121,18 +3123,25 @@ function spawnState(L, cp = -1) {
   return {
     mode: "bounce", step, x, lead: 0, dashing: 0, y: groundY(L, Math.floor(x)), vy: 0, onGround: true,
     zh: 0, zdir: 1, zv: 0, zk: 0, zlk: 0, zin: -1, ztog: 0, zpend: 0,
-    djAvail: false, jbuf: 0, ring: -1, djq: 0, since: 0, ringed: 0,      // djq = 맡아 둔 이단 점프(2 = 다음에 튀면, 1 = 이번 꼭대기에서), since = 튄 뒤 지난 스텝
+    djAvail: false, jbuf: 0, ring: -1, djq: 0, since: 0, ringed: 0, ringK: 0,      // djq = 맡아 둔 이단 점프(2 = 다음에 튀면, 1 = 이번 꼭대기에서), since = 튄 뒤 지난 스텝
     freeze: 0, frozen: false,
     cp, dead: false, cause: "", won: false,
   };
 }
 
 // 땅에서 뛰어오른다. kind: "bounce"(박자에 맞춰 저절로) | "jump"(눌러서) | "pad"(점프대)
+// 충전 고리로 얻은 이단 점프의 세기(위로의 속도). ringK > 0: 다음 고리(k칸 앞)까지 같은 높이로 건너가는 작은 뜀(k/4박 뒤 같은 높이로 돌아온다)
+//   ringK = -1: 사슬의 마지막 고리 — 다음 박(반 박 넘게 남은 첫 박)에 땅에 닿게. 0: 보통 이단 점프
+function ringHop(s) {
+  if (s.ringK > 0) return G * (s.ringK / TPB) / 2;
+  if (s.ringK < 0) { const now = s.step / SUB, h = (ROWS - 1) - s.y; let T = Math.ceil(now + 1e-6) - now; if (T < 0.5) T += 1; return Math.max(0, (G * T * T / 2 - h) / T); }
+  return V0;
+}
 function launch(s, kind, ev, late = 0) {
   // 저절로 튈 때 박자보다 조금 늦었으면 그만큼 낮게 튀어 다음 박자에 맞춰 착지한다(계단을 내려갈 때 박자가 밀리지 않게)
   s.vy = kind === "pad" ? -V_PAD : kind === "jump" ? -V0 : -G * (1 - late / SUB) / 2;
   s.onGround = false; s.djAvail = true; s.jbuf = 0; s.freeze = FREEZE_STEPS;
-  s.since = 0; s.djq = s.djq === 2 ? 1 : 0; s.ringed = 0;
+  s.since = 0; s.djq = s.djq === 2 ? 1 : 0; s.ringed = 0; s.ringK = 0;
   if (ev) ev.push({ type: kind });
 }
 
@@ -3180,7 +3189,7 @@ function stepState(L, s, press, ev, hold) {
     } else tryBounce(L, s, ev);
   } else if (s.jbuf > 0 && s.djAvail) {              // 공중: 이단 점프
     const hh = (ROWS - 1) - s.y, tl = s.vy > 0 ? (-s.vy + Math.sqrt(s.vy * s.vy + 2 * G * hh)) / G : 99;      // 맨땅에 닿기까지 남은 박
-    if (s.ringed) { s.vy = -V0; s.djAvail = false; s.jbuf = 0; s.djq = 0; if (ev) ev.push({ type: "double" }); }      // 충전 고리로 얻은 이단 점프는 누른 자리에서 바로(보정하지 않는다)
+    if (s.ringed) { s.vy = -ringHop(s); s.djAvail = false; s.jbuf = 0; s.djq = 0; if (ev) ev.push({ type: "double", chain: s.ringK || 0 }); }      // 충전 고리로 얻은 이단 점프는 누른 자리에서 바로(보정하지 않는다)
     else if (s.vy < 0 && s.since < DJ_EARLY) { s.djq = 1; s.jbuf = 0; if (ev) ev.push({ type: "queue" }); }              // 튀자마자 누름 → 꼭대기에서
     // (이번에 멈춤을 쓴 뒤라면 일부러 낮게 뛰는 것이므로 그대로 둔다)
     else if (tl <= DJ_PRE && s.freeze === FREEZE_STEPS && !isSolid(L, Math.floor(s.x + TPB * tl), ROWS - 2)) { s.djq = 2; s.jbuf = 0; if (ev) ev.push({ type: "queue" }); }   // 닿기 직전에 누름 → 다음에 튀면 꼭대기에서
@@ -3258,7 +3267,14 @@ function stepState(L, s, press, ev, hold) {
     } else if (t === "J") {
       if (s.onGround && r === s.y - 1) launch(s, "pad", ev);
     } else if (t === "O") {
-      if (s.ring !== c) { s.ring = c; s.djAvail = true; s.ringed = 1; s.freeze = FREEZE_STEPS; if (ev) ev.push({ type: "ring", c, r }); }      // 충전 고리: 이단 점프와 멈춤(1박)을 다시 채운다
+      if (s.ring !== c) {      // 충전 고리: 이단 점프와 멈춤(1박)을 다시 채운다
+        // 고리 사슬(20라운드부터 쓴다): 바로 앞(1~3칸)에 다음 고리가 있으면, 이 고리로 얻은 이단 점프는 그 고리까지 낮게 건너가는 작은 뜀이 된다 → 고리마다 탁탁 쳐서 직선으로 달린다.
+        //   사슬의 마지막 고리는 다음 박에 땅에 닿게 튕겨 준다(그대로 박자에 맞춰 다시 튄다). 앞뒤에 고리가 없는 고리(4칸 넘게 떨어진 것)는 전처럼 보통 이단 점프다
+        let k = 0; for (let d = 1; d <= 3 && !k; d++) for (let rr = r - 2; rr <= r + 2; rr++) if (tile(L, c + d, rr) === "O") { k = d; break; }
+        const prev = s.ring >= 0 && c - s.ring >= 1 && c - s.ring <= 3 && s.ringK !== 0;
+        s.ringK = k ? k : prev ? -1 : 0;
+        s.ring = c; s.djAvail = true; s.ringed = 1; s.freeze = FREEZE_STEPS; if (ev) ev.push({ type: "ring", c, r, chain: s.ringK });
+      }
     } else if (t === "^" || t === "v") {
       const hx0 = c + 0.22, hx1 = c + 0.78;
       const hy0 = t === "^" ? r + 0.4 : r, hy1 = t === "^" ? r + 1 : r + 0.6;
@@ -3274,7 +3290,7 @@ function stepState(L, s, press, ev, hold) {
       if (Math.abs(m.bar * 16 + 8 - s.x) > 24) continue;
       if (m.kind === "oring") {                        // 궤도 고리: 공의 가운데가 고리 안(반지름 + 공의 반)에 들어오면 충전 고리처럼 채운다. 같은 고리는 한 번만
         const q = moverShape(m, bt), key = "o" + m.id;
-        if (s.ring !== key && Math.hypot(s.x - q.x, (fh + HALF) - q.y) < q.r + HALF * 0.9) { s.ring = key; s.djAvail = true; s.ringed = 1; s.freeze = FREEZE_STEPS; if (ev) ev.push({ type: "ring", c: key, r: ROWS - 1 - q.y, x: q.x, y: ROWS - 1 - q.y }); }
+        if (s.ring !== key && Math.hypot(s.x - q.x, (fh + HALF) - q.y) < q.r + HALF * 0.9) { s.ring = key; s.ringK = 0; s.djAvail = true; s.ringed = 1; s.freeze = FREEZE_STEPS; if (ev) ev.push({ type: "ring", c: key, r: ROWS - 1 - q.y, x: q.x, y: ROWS - 1 - q.y }); }
         continue;
       }
       if (m.kind === "plat") {                         // 파란 발판의 몸통: 위에서가 아니라 옆·밑에서 겹치면 밑으로 밀려난다(죽지 않는다)
@@ -3345,7 +3361,7 @@ function solve(L, start, opts = {}) {
   for (let i = 0; i < (opts.offset || 0); i++) stepState(L, s0, false, null, false);
   if (s0.dead) return { plan: null, best: s0.x };
   const seen = new Set();
-  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}${s.djq || 0}|${Math.ceil(s.freeze / 8)}|${s.zk}|${s.zlk}${s.zin}${s.ztog}${s.zpend || 0}`;
+  const key = (s) => `${s.step}|${Math.round(s.y * 16)}|${Math.round(s.vy * 2)}|${s.onGround ? 1 : 0}${s.djAvail ? 1 : 0}${s.djq || 0}${s.ringK || 0}|${Math.ceil(s.freeze / 8)}|${s.zk}|${s.zlk}${s.zin}${s.ztog}${s.zpend || 0}`;
   const stack = [{ s: s0, node: null }];
   let best = s0.x;
   while (stack.length) {
