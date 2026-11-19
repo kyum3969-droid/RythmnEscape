@@ -191,6 +191,7 @@
           <button class="btn small" id="devZones">아래쪽 버튼 안내: 켜짐</button>
           <button class="btn small" id="devGems">수정: 켜짐</button>
           <button class="btn small" id="devLabels">플레이 중 번호표: 꺼짐</button>
+          <button class="btn small" id="devLight">공 빛(실험): 켜짐</button>
           <button class="btn small" id="devInspect">코스 둘러보기</button>
         </div>
         <div id="devJumps" hidden></div>
@@ -236,7 +237,10 @@
   // 개발자 기능: 안내 없이 해 보기. 길 위의 누르는 표시(II, ▲, 피버의 화살표)와 화면 아래쪽의 버튼 안내를 따로 끌 수 있다(개발자 모드일 때만 적용된다)
   let devMarks = store.get("devMarks", true), devZones = store.get("devZones", true), devGems = store.get("devGems", true), devLabels = store.get("devLabels", false);
   const showMarks = () => !dev || devMarks;
-  const showGems = () => !dev || devGems;            // 길 위에 줄지어 있는 수정(공이 갈 길을 보여 준다)
+  const showGems = () => !dev || devGems;
+  let devLight = store.get("devLight", true);
+  const ballLight = () => dev && devLight;
+  let litN = 0;                                       // 이번 장에서 공 빛을 받은 변의 수(테스트용)           // 공 빛(실험): 공이 움직이는 광원이 되어 가까운 덩어리의 공 쪽 모서리를 밝힌다. 개발자 모드에서만            // 길 위에 줄지어 있는 수정(공이 갈 길을 보여 준다)
 
   // ---------------------------------------------------------------- 색 (구간마다 바뀜)
   const PAL = {
@@ -573,6 +577,7 @@
     $("devZones").textContent = "아래쪽 버튼 안내: " + (devZones ? "켜짐" : "꺼짐");
     $("devGems").textContent = "수정: " + (devGems ? "켜짐" : "꺼짐");
     $("devLabels").textContent = "플레이 중 번호표: " + (devLabels ? "켜짐" : "꺼짐");
+    $("devLight").textContent = "공 빛(실험): " + (devLight ? "켜짐" : "꺼짐");
     $("app").classList.toggle("nozones", dev && !devZones);
     const box = $("devJumps");
     box.hidden = !dev;
@@ -1002,6 +1007,7 @@
     ctx.restore();
     // 두 번에 나눠 그린다: 먼저 모든 토막의 바탕(땅, 천장, 벽, 발판 — 테두리로 잘라서), 그다음 모든 토막의 낱개(장애물, 수정, 공 — 자르지 않고 제 토막에서만).
     // 한꺼번에 그리면 굽이의 이음매에서 앞 토막의 장애물이 뒤 토막의 바탕에 가려진다.
+    litN = 0;
     if (camY) ctx.translate(0, camY * T);      // 오르내리는 카메라: 올라간 만큼 세상을 내려 그린다(이 아래의 당김·물러남과 함께 풀린다)
     for (const layer of [0, 1]) for (const pass of bend.passes) {
     if (pass.cull) continue;                 // 화면 밖의 토막
@@ -1039,6 +1045,59 @@
     // 화면 끝까지(3000픽셀) 칠했더니, 길이 크게 돌아 나가는 곳(5라운드 48~53: 90° → 135° → 90° → 0°)에서 뒤쪽 토막의 바깥 칠이 앞쪽 통로를 덮어
     // 맵이 새까맣게 보였고, 덮인 벽에 붙은 이빨은 벽 없이 떠 보였다. 벽 너머로는 하늘과 풍경이 보인다
     const WALL = SIL, WALLD = pass.bent ? BENT_WALL * T : null;
+    // 공 빛(실험, 노멀맵 흉내): 공을 움직이는 광원으로 보고, 가까운 덩어리의 모서리 가운데 공 쪽을 향한 것만 밝힌다.
+    // 덩어리가 반듯한 다각형이라 변마다 바깥 방향(법선)을 바로 안다. 밝기 = 법선과 공 쪽 방향이 맞는 정도 × 거리에 따른 감쇠(방사 그라디언트).
+    // 굽은 토막에서는 공이 따로 놓이므로(아래 플레이어 그림), 그 변환을 토막의 좌표로 옮겨 온다.
+    let LT = null;
+    if (ballLight() && phase !== "dead" && phase !== "inspect") {
+      let lx = sx(camX + state.lead), ly = sy(state.y) - HALF * T;
+      if (pass.bent) {
+        const m = new DOMMatrix().translate(sx(pass.rx), view.groundY).rotate(pass.th * 180 / Math.PI).translate(-pass.qx, -pass.qy)
+          .translate(bend.ax, bend.ay).rotate(-bend.th * 180 / Math.PI).translate(-sx(camX), -view.groundY);
+        const q = m.transformPoint({ x: lx, y: ly }); lx = q.x; ly = q.y;
+      }
+      const a = pal.accent, c = [0, 1, 2].map((i) => Math.round(a[i] * 0.55 + 255 * 0.45));      // 공의 빛깔에 흰빛을 섞는다
+      LT = { x: lx, y: ly, r: T * 4.5, k: (state.frozen ? 0.75 : 1) * (0.8 + 0.2 * pulse), c };
+    }
+    // loops: 고리들([x, y, open] — open이면 그 꼭짓점에서 다음 꼭짓점까지의 변은 밝히지 않는다), path: 덩어리의 모양을 따라 그리는 함수(빛을 안쪽으로 자른다)
+    const rim = (loops, path) => {
+      if (!LT) return;
+      const inside = (x, y) => {                       // 짝홀 규칙(덩어리를 칠하는 규칙과 같다)
+        let c = false;
+        for (const lp of loops) for (let i = 0, j = lp.length - 1; i < lp.length; j = i++) {
+          const a = lp[i], b = lp[j];
+          if ((a[1] > y) !== (b[1] > y) && x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0]) c = !c;
+        }
+        return c;
+      };
+      const segs = [];
+      for (const lp of loops) for (let k = 0; k < lp.length; k++) {
+        const a = lp[k], b = lp[(k + 1) % lp.length];
+        if (a[2]) continue;
+        const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+        if (L2 < 1) continue;
+        const t = Math.max(0, Math.min(1, ((LT.x - a[0]) * dx + (LT.y - a[1]) * dy) / L2));
+        const ex = LT.x - (a[0] + dx * t), ey = LT.y - (a[1] + dy * t), d = Math.hypot(ex, ey);
+        if (d > LT.r) continue;
+        const len = Math.sqrt(L2); let nx = dy / len, ny = -dx / len;
+        if (inside((a[0] + b[0]) / 2 + nx * 2, (a[1] + b[1]) / 2 + ny * 2)) { nx = -nx; ny = -ny; }
+        const f = d < 1 ? 1 : (nx * ex + ny * ey) / d;      // 변의 가장 가까운 점에서 공을 보는 방향과 법선이 맞는 정도
+        if (f > 0.05) segs.push([a, b, f]);
+      }
+      if (!segs.length) return;
+      litN += segs.length;
+      const g = ctx.createRadialGradient(LT.x, LT.y, 0, LT.x, LT.y, LT.r);
+      g.addColorStop(0, css(LT.c, 1)); g.addColorStop(0.35, css(LT.c, 0.55)); g.addColorStop(1, css(LT.c, 0));
+      ctx.save(); ctx.beginPath(); path(); ctx.clip("evenodd");
+      ctx.shadowBlur = 0; ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "butt";
+      ctx.globalAlpha = 0.13 * LT.k; ctx.fillStyle = g; ctx.fillRect(LT.x - LT.r, LT.y - LT.r, LT.r * 2, LT.r * 2);      // 면에 번지는 옅은 빛
+      ctx.strokeStyle = g;
+      for (const [w, al] of [[T * 0.6, 0.4], [T * 0.2, 0.95]]) {      // 넓고 옅은 띠 + 좁고 밝은 띠(바깥 절반은 잘려 안쪽으로만 보인다)
+        ctx.lineWidth = w;
+        for (const [a, b, f] of segs) { ctx.globalAlpha = al * f * LT.k; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
+      }
+      ctx.restore();
+    };
     if (layer === 0) {
     ctx.fillStyle = WALL;
     ctx.fillRect(sx(cA - WIDE) - 1, view.groundY - 0.5, sx(cB + 1 + WIDE) - sx(cA - WIDE) + 2, WALLD ?? h + FAR);
@@ -1121,6 +1180,7 @@
         ctx.beginPath(); for (const lp of P) trace(lp, true);
         ctx.strokeStyle = "#ff8fab"; ctx.lineWidth = 2; ctx.lineJoin = "miter"; ctx.shadowColor = DANGER; sb(9 + 8 * pulse); gs();
         ctx.lineJoin = "round"; sb(0);
+        rim(P, () => { for (const lp of P) trace(lp, false); });
       }
     }
     // 파란 박스(땅 위의 블록): 닿아도 죽지 않는다. 위에 내려앉아 다시 튀고, 옆에서 부딪히면 올라탄다.
@@ -1148,6 +1208,7 @@
         trace();
         ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff";
         sb(10 + 8 * pulse + 16 * hit); gs(); sb(0);
+        rim([edge.map((q, i) => [q[0], q[1], i === edge.length - 1])], () => { trace(); ctx.closePath(); });      // 땅에 닿은 밑변은 빼고
         c = e;
       }
     }
@@ -1173,6 +1234,7 @@
         gs(); ctx.restore();
         ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; sb(10 + 8 * pulse + 16 * on);
         ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb - ya); gs(); sb(0);
+        rim([[[xa, ya, sky], [xb, ya], [xb, yb], [xa, yb]]], () => ctx.rect(xa, ya, xb - xa, yb - ya));      // 천장이면 화면 밖 윗변은 빼고
         c = e;
       }
     }
@@ -1569,6 +1631,7 @@
           const g3 = ctx.createLinearGradient(0, ya, 0, yb2); g3.addColorStop(0, on > 0 ? `rgb(${40 + 60 * on},${110 + 80 * on},255)` : "#1f6ee0"); g3.addColorStop(1, "#0b2a5e");
           ctx.fillStyle = g3; sb(0); ctx.fillRect(xa, ya, xb - xa, yb2 - ya);
           ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.shadowColor = "#3aa0ff"; sb(10 + 8 * pulse + 16 * on); ctx.beginPath(); ctx.rect(xa, ya, xb - xa, yb2 - ya); gs(); sb(0);
+          rim([[[xa, ya], [xb, ya], [xb, yb2], [xa, yb2]]], () => ctx.rect(xa, ya, xb - xa, yb2 - ya));
           if (Math.abs(v) > 0.01) {      // 움직이는 쪽을 가리키는 화살표
             ctx.fillStyle = `rgba(220,245,255,${Math.min(0.9, Math.abs(v) * 6)})`; const d = Math.sign(v), cy2 = (ya + yb2) / 2;
             for (let i = 0; i < 3; i++) { const cx2 = (xa + xb) / 2 + (i - 1) * T * 0.45; ctx.beginPath(); ctx.moveTo(cx2 + d * T * 0.14, cy2); ctx.lineTo(cx2 - d * T * 0.1, cy2 - T * 0.18); ctx.lineTo(cx2 - d * T * 0.1, cy2 + T * 0.18); ctx.closePath(); ctx.fill(); }
@@ -1586,6 +1649,7 @@
       ctx.shadowBlur = 0; ctx.fillStyle = bg; ctx.fillRect(xa, y0, xb - xa, th);
       ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; ctx.shadowBlur = 10 + 8 * pulse + 16 * hit;
       ctx.strokeRect(xa, y0, xb - xa, th); ctx.shadowBlur = 0;
+      rim([[[xa, y0], [xb, y0], [xb, y0 + th], [xa, y0 + th]]], () => ctx.rect(xa, y0, xb - xa, th));
     }
     // 수정: 맞는 길 위에 줄지어 있다. 지나가며 뚫는다. 눌러야 하는 자리에는 바뀔 방향을 가리키는 화살표가 있다.
     if (L.gems.length) {
@@ -2222,6 +2286,7 @@
   $("devZones").addEventListener("click", () => { devZones = !devZones; store.set("devZones", devZones); renderDev(); });
   $("devGems").addEventListener("click", () => { devGems = !devGems; store.set("devGems", devGems); renderDev(); });
   $("devLabels").addEventListener("click", () => { devLabels = !devLabels; store.set("devLabels", devLabels); renderDev(); });
+  $("devLight").addEventListener("click", () => { devLight = !devLight; store.set("devLight", devLight); renderDev(); });
   $("devInspect").addEventListener("click", openInspect);
   $("insRange").addEventListener("input", (e) => inspectAt(+e.target.value / 100 * L.goalX));
   $("insPct").addEventListener("change", (e) => inspectAt(+e.target.value / 100 * L.goalX));
@@ -2259,7 +2324,7 @@
     L, fake, get state() { return state; }, get phase() { return phase; }, get tries() { return tries; }, get broken() { return broken; },
     press, startFresh, respawn, pause, view, fx, devJump, cam: (x) => camAt(x), climb: (x) => ({ at: climbAt(x), cam: view.camY || 0, line: camLine(x), any: CLIMB.length > 0 }), bandRuns: BAND_RUNS, ballAt: (x, hgt, now, smooth = true) => ballScreen(x, hgt, now, smooth), openInspect, closeInspect, inspectAt, get labels() { return LABELS; }, get inspectX() { return inspectX; }, get bpm() { return L.bpm; }, get spb() { return SPB; }, get dev() { return dev; }, get best() { return best; },
     setBot(plan) { bot = plan ? planInput(plan) : null; }, holding,
-    get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; }, round,
+    get gems() { return { got: gotGems.size, passed: gemPtr, total: L.gems.length }; }, get songLoading() { return songLoading; }, round, get litN() { return litN; },
     get track() { return track; }, get trackZero() { return track ? trackZero() : null; },
     loadTrackPCM(samples, sr, name) { const b = new AudioBuffer({ length: samples.length, sampleRate: sr, numberOfChannels: 1 }); b.copyToChannel(samples, 0); return setTrackBuffer(b, name, null).ok; },
     tickTo(beat) { fake.beat = beat; advanceTo(Math.floor(beat * SUB)); refreshHud(); },
