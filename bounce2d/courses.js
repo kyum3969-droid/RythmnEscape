@@ -158,12 +158,12 @@ const ROUND4 = {
   vary: true,                                    // 같은 패턴이 다시 나오면 빨간 덩어리의 자리·높이를 달리한다(누르는 것은 같다)
   density: 0.95,                                 // 밀도 기준: 바운스 구간에서 공이 떠 있는 시간의 95% 이상이 눌러야 하는 토막(테스트가 본다)
   pal: {                                         // 이 라운드의 색: 유리 같은 푸른빛과 새벽빛
-    intro: { top: "#060d1f", bottom: "#17456b", accent: "#9fe8ff", sun: "#d8f4ff" },
-    a:     { top: "#0a1230", bottom: "#2a5fa8", accent: "#b8f1ff", sun: "#ffffff" },
-    b:     { top: "#0d0820", bottom: "#4a2a80", accent: "#ff9be0", sun: "#ffc9f0" },
-    c:     { top: "#101a2a", bottom: "#3d7f8f", accent: "#ffe9a8", sun: "#ffd98a" },
-    d:     { top: "#1a0f2e", bottom: "#b0508a", accent: "#fff3c4", sun: "#ffb37a" },
-    rush:  { top: "#06121a", bottom: "#1f8fa8", accent: "#ffffff", sun: "#c9fbff" },
+    intro: { top: "#050c1e", bottom: "#164068", accent: "#9fe8ff", sun: "#d8f4ff" },
+    a:     { top: "#081432", bottom: "#245ea8", accent: "#b8f1ff", sun: "#eef9ff" },
+    b:     { top: "#0b0e2a", bottom: "#353c88", accent: "#a8d4ff", sun: "#ffe0a8" },
+    c:     { top: "#0d1b2c", bottom: "#2f7a8e", accent: "#ffe9a8", sun: "#ffd480" },
+    d:     { top: "#141638", bottom: "#3e4e8c", accent: "#fff3c4", sun: "#ffc266" },
+    rush:  { top: "#061422", bottom: "#1b84a4", accent: "#ffffff", sun: "#d6fbff" },
   },
   // 4라운드의 마디도 도구(tools_gen_course.js R4)가 뽑는다. 떠 있는 박스와 파란 천장 마디는 틀(TEMPLATES.R4)에 자리를 정해 두었고, 그 사이를 뽑은 마디가 채운다.
   bars: [
