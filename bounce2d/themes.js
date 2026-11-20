@@ -45,9 +45,9 @@
   // fever: 피버 연출(라운드의 곡과 주제에 맞춘 바탕 둘을 피버마다 번갈아, 벽 속 장식).
   //   바탕: tunnel 빛의 굴 / ring 소리 고리 / stars 빛줄기 / road 달리는 길 / code 디지털 비 / confetti 꽃종이 / rays 햇살 / grid 지평선 격자 / lamps 가로등 / bubbles 방울 / embers 불티
   //         rain 빗줄기 / gears 톱니바퀴 / ribbons 비단 띠 / snow 눈 / leaves 나뭇잎 / planets 행성 / haze 아지랑이 / lanterns 등불 / eruption 용암 분출
-  //   벽: eq 막대 / wave 물결 / dots 점 격자
+  //   벽: eq 막대 / wave 물결 / dots 점 격자 / none 없음. back이 빈 배열이면 피버 바탕 그림(과 가장자리 숨쉬기·들어설 때의 충격파)을 그리지 않는다
   const ROUND_THEME = [
-    { world: "classic",  fever: { back: ["road", "stars"], wall: "eq" } },                                         // 1 Octane Horizon: 달리는 길
+    { world: "classic",  fever: { back: [], wall: "none" } },                                                     // 1 Octane Horizon: 피버에 그림을 넣지 않는다(의견: "1라운드 피버 모드 때 아트 테마 빼 줘") — 통로·장애물·속도선만
     { world: "classic",  fever: { back: ["code", "grid"], wall: "dots" } },                                        // 2 Terminal Pursuit: 화면 속 추격
     { world: "classic",  fever: { back: ["confetti", "ring"], wall: "eq" } },                                      // 3 Final Quarter Credit: 오락실
     { world: "classic", sky: "dawnroad", sun: "sunrise", far: ["dawnridge", "dawnroad"], ground: "dawnglass", edge: "dawnline", box: "dawnglass", red: "dawnprism", trail: "stardust", fever: { back: ["dawntunnel"], wall: "dawnglass", interior: true } }, // 4 Miles Before Sunrise: 해 뜨기 전

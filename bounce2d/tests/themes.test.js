@@ -26,7 +26,7 @@ console.log('== 연출 단계: 라운드가 갈수록 한 겹씩 더해진다 ==
 }
 
 console.log('== 쓰는 그림이 다 있다 ==');
-const WALLS = ['eq', 'wave', 'dots'];
+const WALLS = ['eq', 'wave', 'dots', 'none'];
 const themes = [...ROUND_THEME.map((_, i) => themeFor(i)), ...Object.keys(WORLDS).map((w) => themeFor(0, w))];
 const miss = [];
 for (const t of themes) {
