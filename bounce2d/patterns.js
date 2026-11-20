@@ -226,46 +226,45 @@ const PATTERNS = {
   // </gen:patterns:R3>
   // <gen:patterns:R4>
   // 도구(tools_gen_course.js R4 8)가 무작위로 뽑아, 실제로 달려 보고 통과한 패턴들. 손으로 고치지 말고 도구를 다시 돌린다.
-  g4_4: { holds: [[0.5, 1.125]], presses: [2.5], tol: 0.18, tall: [2.5] },
+  g4_4: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18, tall: [2.5] },
   g4_11: { holds: [[0.5, 1.25]], presses: [2.5], tol: 0.18, tall: [2.5] },
   g4_12: { holds: [], presses: [0.5, 2], tol: 0.18, tail: ["g4_13"], stair: true, floats: [[4, 6, 4], [10, 12, 8]], lava: [[1, 15]] },   // 음이 올라가는 구간 — 오르는 계단: 계단: 이단 점프로 4 → 이단 점프로 8 → 5 → 빨간 단을 건너뛰어 3 → 0
   g4_13: { holds: [[0.875, 1.875]], presses: [], tol: 0.18, bands: [[5, 6, 3, 4], [5, 6, 8.6, 10.4]], lead: ["g4_12"], stair: true, floats: [[0, 2, 5], [8, 11, 3]], lava: [[0, 13]] },
-  g4_14: { holds: [[1, 1.5]], presses: [0.5], tol: 0.18 },
-  g4_21: { holds: [[0.5, 1.25], [2.5, 3.5]], presses: [], tol: 0.18 },
-  g4_29: { holds: [[0.5, 1.5], [2.5, 3.25]], presses: [], tol: 0.18, caps: [[9, 15, 3]], traps: [{presses: [2.5], holds: [[0.5, 1.5]]}] },
+  g4_14: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18 },
+  g4_21: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18 },
+  g4_29: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, caps: [[9, 15, 3]], traps: [{ presses: [2.5], holds: [[0.5, 1.5]] }] },
   g4_30: { holds: [[0.5, 1.125], [1.875, 2.875]], presses: [1.375], tol: 0.18, rings: [[5, 0], [5, 1], [5, 2]], chain: 1 },
   g4z32: { mode: "rush", nodes: "F.S.F..." },
   g4z33: { mode: "rush", nodes: "F.S.S.F." },   // 뚝: 앞 마디(F.S.F...)와 같이 가다가 끊긴다
   g4w35: { mode: "rush", wide: true, gap: 1.5, nodes: "SFF.FSS." },
   g4z38: { mode: "rush", nodes: "S.F.S.F." },
-  g4_44: { holds: [[0.5, 1.375]], presses: [2.375], tol: 0.18 },
-  g4_46: { holds: [[0.5, 1.375]], presses: [], tol: 0.18, traps: [{full: {presses: [2.375], holds: [[0.5, 1.375]]}}] },   // 함정(끝에서 뚝): 앞 마디와 같이 가다가 한 군데가 다르다
-  g4_48: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18 },
-  g4_50: { holds: [[0.5, 0.875], [2.5, 3.25]], presses: [], tol: 0.18, traps: [{full: {presses: [], holds: [[0.5, 1.25], [2.5, 3.25]]}}] },   // 함정(끝의 멈춤이 짧다 0.375박): 앞 마디와 같이 가다가 한 군데가 다르다
-  g4_51: { holds: [[0.5, 1.25], [2.5, 3.375]], presses: [], tol: 0.18, caps: [[1, 7, 3]], traps: [{presses: [0.5], holds: [[2.5, 3.375]]}] },
-  g4_52: { holds: [[0.5, 1.375], [2.5, 3.25]], presses: [], tol: 0.18 },
-  g4_54: { holds: [[0.5, 1], [2.5, 3.25]], presses: [], tol: 0.18, traps: [{full: {presses: [], holds: [[0.5, 1.375], [2.5, 3.25]]}}] },   // 함정(끝의 멈춤이 짧다 0.375박): 앞 마디와 같이 가다가 한 군데가 다르다
+  g4_44: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18 },
+  g4_46: { holds: [[0.5, 1.5]], presses: [], tol: 0.18, traps: [{ full: { presses: [2.5], holds: [[0.5, 1.5]] } }] },   // 함정(끝에서 뚝): 앞의 두 마디처럼 2.5박에 이단 점프하면 위의 빨간 덩어리에 걸린다
+  g4_48: { holds: [[0.5, 1], [2.5, 3.5]], presses: [], tol: 0.18 },
+  g4_50: { holds: [[0.5, 1], [2.5, 3]], presses: [], tol: 0.18, traps: [{ full: { presses: [], holds: [[0.5, 1], [2.5, 3.5]] } }] },   // 함정(끝의 멈춤이 짧다): 3박의 킥에서 놓아야 한다 — 앞의 두 마디처럼 한 박 떠 있으면 걸린다
+  g4_51: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, caps: [[1, 7, 3]], traps: [{ presses: [0.5], holds: [[2.5, 3.5]] }] },
+  g4_52: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18 },
+  g4_54: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18, traps: [{ full: { presses: [0.5], holds: [[2.5, 3.5]] } }] },   // 함정(거울 손 바꿈): 앞의 두 마디(이단 점프 → 멈춤)를 뒤집어 멈춤 → 이단 점프. 뒤의 이단 점프는 스네어가 굴러가는 자리
   g4w57: { mode: "rush", wide: true, gap: 1.5, nodes: "F.F.SF.." },
   g4w59: { mode: "rush", wide: true, gap: 1.5, nodes: "F.S.FS.." },   // 뚝: 앞 마디(F.F.SF..)와 같이 가다가 끊긴다
-  g4z61: { mode: "rush", nodes: "S.F.F.S." },
-  g4z62: { mode: "rush", nodes: "F.F.S..." },
-  g4z63: { mode: "rush", nodes: "F.S.S.F." },   // 뚝: 앞 마디(F.F.S...)와 같이 가다가 끊긴다
+  g4z61: { mode: "rush", nodes: "..F.F.S." },   // 드럼이 센 1.5·2.5박에서 꺾는다(61·62 두 번)
+  g4z63: { mode: "rush", nodes: "..F.S.F." },   // 뚝: 앞의 두 마디(..F.F.S.)와 같이 가다가 2.5박에서 끊기고, 드럼이 센 3.5박에서 꺾는다
   g4_67: { holds: [], presses: [0.5, 2], tol: 0.18, tail: ["g4_68"], stair: true, floats: [[4, 6, 4], [10, 12, 8]], lava: [[1, 15]] },   // 같은 오르막이 다시(멈춤 길이가 다르다): 
   g4_68: { holds: [[0.875, 1.375]], presses: [], tol: 0.18, bands: [[5, 6, 3, 4], [8, 8, 7.3, 8.05], [5, 6, 8.6, 10.4]], lead: ["g4_67"], stair: true, floats: [[0, 2, 5], [6, 11, 3]], lava: [[0, 13]], traps: [{holds: [[0.875, 1.875]]}] },   // 함정(멈춤이 짧다: 이번엔 일찍 놓아 내려간다. 버릇대로 계속 멈추면 멈춘 높이의 빨간 덩어리에 부딪힌다)
   g4_69: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18 },
   g4_70: { holds: [[0.5, 1.375], [2.5, 3.375]], presses: [], tol: 0.18 },
-  g4_74: { holds: [[0.5, 1.375], [2.5, 3.5]], presses: [], tol: 0.18 },
-  g4_76: { holds: [[0.5, 1], [2.5, 3.5]], presses: [], tol: 0.18, traps: [{full: {presses: [], holds: [[0.5, 1.375], [2.5, 3.5]]}}] },   // 함정(끝의 멈춤이 짧다 0.375박): 앞 마디와 같이 가다가 한 군데가 다르다
-  g4_77: { holds: [[0.5, 1.5], [2.5, 3.375]], presses: [], tol: 0.18 },
+  g4_74: { holds: [[2.5, 3]], presses: [0.5], tol: 0.18 },
+  g4_76: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18, traps: [{ full: { presses: [0.5], holds: [[2.5, 3]] } }] },   // 함정(끝의 멈춤이 길다): 앞의 두 마디처럼 3박의 킥에서 놓으면 걸린다 — 한 박 떠 있어야 한다
+  g4_77: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18 },
   // 체크포인트 마디(tools_gen_course.js R4 fillcp 1): 개발하는 동안 체크포인트로 쓰는 마디에도 패턴을 넣었다. cp: true를 빼면 그냥 마디다
-  g4_7: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
-  g4_15: { holds: [[1, 1.875]], presses: [0.5], tol: 0.18, cp: true },   // 체크포인트 마디
-  g4_23: { holds: [[0.5, 1.25], [2.5, 3.25]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
-  g4_31: { holds: [[1, 1.875]], presses: [0.5], tol: 0.18, cp: true },   // 체크포인트 마디
-  g4_40: { holds: [[1, 1.75]], presses: [0.5], tol: 0.18, cp: true },   // 체크포인트 마디
-  g4_47: { holds: [[0.5, 1.25], [2.5, 3.375]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
-  g4_55: { holds: [[0.5, 1.25], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
-  g4_64: { holds: [[0.5, 1.375], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g4_7: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g4_15: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18, cp: true },   // 체크포인트 마디
+  g4_23: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g4_31: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18, cp: true },   // 체크포인트 마디
+  g4_40: { holds: [[2.5, 3.5]], presses: [0.5], tol: 0.18, cp: true },   // 체크포인트 마디
+  g4_47: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
+  g4_55: { holds: [[0.5, 1.5]], presses: [2.5], tol: 0.18, cp: true },   // 체크포인트 마디
+  g4_64: { holds: [[0.5, 1.5], [2.5, 3.5]], presses: [], tol: 0.18, cp: true },   // 체크포인트 마디
   g4_71: { holds: [[0.5, 1.25], [1.875, 2.375]], presses: [1.375], tol: 0.18, rings: [[5, 0], [5, 1], [5, 2]], chain: 1, cp: true },   // 체크포인트 마디
   // </gen:patterns:R4>
   // <gen:patterns:R5>
