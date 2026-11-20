@@ -50,8 +50,8 @@
     { world: "classic",  fever: { back: [], wall: "none" } },                                                     // 1 Octane Horizon: 피버에 그림을 넣지 않는다(의견: "1라운드 피버 모드 때 아트 테마 빼 줘") — 통로·장애물·속도선만
     { world: "classic",  fever: { back: ["code", "grid"], wall: "dots" } },                                        // 2 Terminal Pursuit: 화면 속 추격
     { world: "classic",  fever: { back: ["confetti", "ring"], wall: "eq" } },                                      // 3 Final Quarter Credit: 오락실
-    { world: "classic",  fever: { back: ["rays", "haze"], wall: "wave" } },                                        // 4 Miles Before Sunrise: 해 뜨기 전
-    { world: "classic",  fever: { back: ["grid", "ring"], wall: "dots" } },                                        // 5 Concrete Pulse: 도시의 맥박
+    { world: "classic", sky: "dawnroad", sun: "sunrise", far: ["dawnridge", "dawnroad"], ground: "dawnglass", edge: "dawnline", box: "dawnglass", red: "dawnprism", trail: "stardust", fever: { back: ["dawntunnel"], wall: "dawnglass", interior: true } }, // 4 Miles Before Sunrise: 해 뜨기 전
+    { world: "classic", sky: "pulsegrid", sun: "pulsedisc", far: ["brutalist", "viaduct"], ground: "concrete", edge: "curb", box: "concrete", red: "rebar", trail: "spark", fever: { back: ["pulsetunnel"], wall: "concretewall", interior: true } }, // 5 Concrete Pulse: 도시의 맥박
     // 6 Streetlight Velocity: 피버는 지하철 객차 안(의견: "6라운드 피버 모드는 지하철 안으로. 장애물은 흔들리는 손잡이랑 의자들로").
     //   interior = 피버에 들어서면 객차 안이 화면을 덮는다(해와 먼 능선을 숨긴다). props = 피버 장애물을 물건으로 그린다(모양과 판정은 logic.js 코스의 rushProps)
     { world: "neon",     fever: { back: ["subway"], wall: "subway", props: "subway", interior: true } },
@@ -177,6 +177,8 @@
   }
   const GOLD = [255, 196, 92], SOL_W = [255, 244, 210], SOL_O = [255, 150, 60];      // 태양 궤도의 빛(금·흰·주황. 주황은 색상 25° 안팎으로 빨강과 떨어져 있다)
   const TOY_C = [[255, 214, 110], [150, 230, 200], [160, 200, 255], [200, 170, 255], [240, 240, 250]];      // 장난감 색(레몬·민트·하늘·연보라·흰색. 빨강·분홍은 위험한 것의 색이라 쓰지 않는다)
+  const CONC_A = [255, 179, 71], CONC_S = [168, 178, 194], CONC_L = [200, 255, 90];   // 5라운드 도시의 맥박: 호박빛·강철 회색·라임 펄스
+  const DAWN_B = [130, 224, 255], DAWN_G = [255, 224, 150], DAWN_W = [235, 248, 255];   // 해 뜨기 전: 유리빛 하늘·새벽 금빛·차가운 흰빛
   const SKY = {
     none() {},
     neon(e) { stars(e, 70, 0.7); horizonGlow(e, e.pal.accent, 0.16 + 0.08 * e.pulse); },
@@ -204,7 +206,29 @@
       }
       horizonGlow(e, e.pal.sun, 0.12);
     },
+    pulsegrid(e) {       // 5라운드 하늘: 밤도시 서치라이트와 은은한 도시 맥박 글로우
+      stars(e, 22, 0.28); horizonGlow(e, e.pal.sun, 0.16);
+      const g = e.g, R = Math.hypot(e.w, e.h);
+      g.save();
+      for (let i = 0; i < 4; i++) {
+        const bx = e.w * (0.18 + i * 0.22), sway = Math.sin(e.now * 0.45 + i * 1.7) * 0.24;
+        const th = -Math.PI * 0.5 + sway, wd = 0.04 + 0.015 * e.pulse;
+        g.fillStyle = rgba(i % 2 ? CONC_A : CONC_S, 0.035 + 0.03 * e.pulse);
+        g.beginPath(); g.moveTo(bx, e.gy); g.lineTo(bx + Math.cos(th - wd) * R, e.gy + Math.sin(th - wd) * R); g.lineTo(bx + Math.cos(th + wd) * R, e.gy + Math.sin(th + wd) * R); g.closePath(); g.fill();
+      }
+      g.restore();
+    },
     dawn(e) { stars(e, 30, 0.35); clouds(e, 7, 0.9); horizonGlow(e, e.pal.sun, 0.14); },
+    dawnroad(e) {
+      stars(e, 36, 0.38); clouds(e, 8, 0.85); horizonGlow(e, e.pal.sun, 0.2);
+      const g = e.g, R = Math.hypot(e.w, e.h) * 0.9;
+      g.save(); g.fillStyle = rgba(mix(e.pal.sun, DAWN_G, 0.4), 0.045 + 0.04 * e.pulse);
+      for (let i = 0; i < 6; i++) {
+        const th = -Math.PI * (0.12 + i * 0.15) + Math.sin(e.now * 0.18 + i) * 0.025, wd = 0.032 + 0.015 * H(i, 411);
+        g.beginPath(); g.moveTo(e.cx, e.cy); g.lineTo(e.cx + Math.cos(th - wd) * R, e.cy + Math.sin(th - wd) * R); g.lineTo(e.cx + Math.cos(th + wd) * R, e.cy + Math.sin(th + wd) * R); g.closePath(); g.fill();
+      }
+      g.restore();
+    },
     birds(e) {     // 유적: 구름, 멀리 나는 새 떼(날갯짓)
       const g = e.g; clouds(e, 5, 0.6); horizonGlow(e, e.pal.sun, 0.12);
       g.strokeStyle = rgba(mix(e.pal.top, BLACK, 0.35), 0.7); g.lineWidth = 1.6; g.lineCap = "round"; g.beginPath();
@@ -324,6 +348,33 @@
         const x = e.cx + Math.sin(e.now * 0.25 + j * 2.1) * r * 0.6, y = e.cy - r * 0.45 + j * r * 0.48;
         g.fillStyle = rgba(c, 0.38); g.beginPath(); g.ellipse(x, y, r * 1.7, r * 0.12 + j * r * 0.03, 0, 0, TAU); g.fill();
       }
+    },
+    sunrise(e) {   // 4라운드: 해 뜨기 전의 수평선 태양(부드러운 빛무리, 가로 렌즈 플레어, 박자 고리)
+      const g = e.g, r = Math.max(4, e.r0 * 1.08 * (1 + 0.055 * e.pulse));
+      halo(e, e.cx, e.cy, r * 0.55, r * 2.9, e.pal.sun, 0.28 + 0.1 * e.pulse);
+      const fl = g.createLinearGradient(e.cx - r * 3.4, e.cy, e.cx + r * 3.4, e.cy);
+      fl.addColorStop(0, rgba(DAWN_B, 0)); fl.addColorStop(0.35, rgba(mix(e.pal.sun, DAWN_B, 0.4), 0.12 + 0.08 * e.pulse)); fl.addColorStop(0.5, rgba(DAWN_W, 0.32 + 0.15 * e.pulse)); fl.addColorStop(0.65, rgba(mix(e.pal.sun, DAWN_B, 0.4), 0.12 + 0.08 * e.pulse)); fl.addColorStop(1, rgba(DAWN_B, 0));
+      g.fillStyle = fl; g.fillRect(e.cx - r * 3.4, e.cy - r * 0.11, r * 6.8, r * 0.22);
+      beatRings(e, 0.3);
+      const gr = g.createRadialGradient(e.cx, e.cy, 0, e.cx, e.cy, r);
+      gr.addColorStop(0, rgba(DAWN_W)); gr.addColorStop(0.58, rgba(mix(e.pal.sun, DAWN_G, 0.35))); gr.addColorStop(1, rgba(mix(e.pal.sun, DAWN_B, 0.35)));
+      g.fillStyle = gr; g.beginPath(); g.arc(e.cx, e.cy, r, 0, TAU); g.fill();
+    },
+    pulsedisc(e) {       // 5라운드 해: 도시의 맥박 계기판 링과 박자마다 뛰는 호박빛 코어
+      const g = e.g, r = Math.max(4, e.r0 * (1 + 0.07 * e.pulse));
+      halo(e, e.cx, e.cy, r * 0.5, r * 2.5, e.pal.sun, 0.24 + 0.12 * e.pulse);
+      beatRings(e, 0.34);
+      g.strokeStyle = rgba(CONC_S, 0.26 + 0.14 * e.pulse); g.lineWidth = Math.max(1.5, r * 0.045);
+      g.beginPath(); g.arc(e.cx, e.cy, r * 1.28, 0, TAU); g.stroke();
+      g.strokeStyle = rgba(e.pal.accent, 0.35 + 0.25 * e.pulse); g.lineWidth = Math.max(1.5, r * 0.04); g.beginPath();
+      for (let i = 0; i < 12; i++) {
+        const th = (i / 12) * TAU + e.now * 0.12, r1 = r * 1.12, r2 = r * (1.28 + (i % 3 === 0 ? 0.14 : 0.05) + 0.08 * e.pulse);
+        g.moveTo(e.cx + Math.cos(th) * r1, e.cy + Math.sin(th) * r1); g.lineTo(e.cx + Math.cos(th) * r2, e.cy + Math.sin(th) * r2);
+      }
+      g.stroke();
+      const gr = g.createRadialGradient(e.cx, e.cy, 0, e.cx, e.cy, r);
+      gr.addColorStop(0, rgba(mix(e.pal.sun, WHITE, 0.45))); gr.addColorStop(0.65, rgba(e.pal.sun)); gr.addColorStop(1, rgba(mix(e.pal.sun, CONC_S, 0.35)));
+      g.fillStyle = gr; g.beginPath(); g.arc(e.cx, e.cy, r, 0, TAU); g.fill();
     },
     radiant(e) {   // 산·유적: 빛살이 천천히 도는 눈부신 해(박마다 빛살이 길어진다)
       const g = e.g, r = e.r0 * 1.05 * (1 + 0.06 * e.pulse);
@@ -525,6 +576,56 @@
           g.fillStyle = rgba(e.pal.accent, 0.3 + 0.7 * e.pulse); g.fillRect(mx - 2, yb - mh - BT * 0.56, 4, 4);
         }
       });
+    },
+    dawnridge(e, sp) {    // 4라운드 먼 능선: 부드러운 새벽 산등성이와 빛나는 능선 테두리·아침 안개
+      const g = e.g, yb = base(e, sp), s = sp.layer * 2.9, BT = e.BT;
+      const f = (u) => (0.55 + sp.amp * 0.52 * (0.6 * tri(u / 7.2 + s) + 0.28 * tri(u / 3.1 + s * 2) + 0.12 * tri(u / 1.4 + s * 3))) * BT;
+      ridgePath(e, sp, f, 8); g.fillStyle = rgba(sp.col); g.fill();
+      ridgeLine(e, sp, f, 8); g.strokeStyle = rgba(mix(e.pal.sun, DAWN_B, 0.35), 0.18 + 0.14 * e.pulse); g.lineWidth = 1.4; g.stroke();
+      const mist = g.createLinearGradient(0, yb - BT * 1.1, 0, yb + BT * 0.2);
+      mist.addColorStop(0, rgba(DAWN_B, 0)); mist.addColorStop(1, rgba(mix(e.pal.sun, DAWN_B, 0.5), 0.11));
+      g.fillStyle = mist; g.fillRect(0, yb - BT * 1.1, e.w, BT * 1.3);
+    },
+    dawnroad(e, sp) {     // 4라운드 가까운 풍경: 새벽 고가도로 교각과 일정 간격으로 지나가는 가로등 불빛
+      const g = e.g, yb = base(e, sp), BT = e.BT, deckY = yb - BT * 0.72, step = Math.max(24, BT * 2.6);
+      g.fillStyle = rgba(sp.col); g.fillRect(0, deckY, e.w, BT * 0.18);
+      const start = -((sp.off % step) + step) % step;
+      for (let x = start - step; x < e.w + step; x += step) {
+        g.fillStyle = rgba(sp.col); g.fillRect(x - BT * 0.07, deckY + BT * 0.16, BT * 0.14, Math.max(4, e.h - deckY));
+        g.fillRect(x - BT * 0.025, deckY - BT * 0.75, BT * 0.05, BT * 0.75);
+        const lx = x + BT * 0.14, ly = deckY - BT * 0.75;
+        g.strokeStyle = rgba(sp.col); g.lineWidth = Math.max(1.5, BT * 0.04); g.beginPath(); g.moveTo(x, ly + BT * 0.06); g.lineTo(lx, ly); g.stroke();
+        g.fillStyle = rgba(DAWN_G, 0.55 + 0.35 * e.pulse); g.beginPath(); g.arc(lx, ly, Math.max(1.8, BT * 0.055), 0, TAU); g.fill();
+        g.fillStyle = rgba(DAWN_G, 0.12 + 0.08 * e.pulse); g.beginPath(); g.arc(lx, ly, Math.max(4, BT * 0.22), 0, TAU); g.fill();
+      }
+    },
+    brutalist(e, sp) {   // 5라운드 먼 풍경: 브루탈리즘 콘크리트 고층 블록과 박자에 맞춰 점등되는 수평 창문 띠
+      const g = e.g, yb = base(e, sp), BT = e.BT, bw = Math.max(20, sp.bw * 1.15);
+      const start = -((sp.off % bw) + bw) % bw, k0 = Math.floor(sp.off / bw);
+      for (let x = start - bw, k = k0 - 1; x < e.w + bw; x += bw, k++) {
+        const hh = (0.9 + sp.amp * (0.35 + 0.65 * H(k, 511))) * BT, y0 = yb - hh, w0 = bw * (0.76 + 0.2 * H(k, 517));
+        g.fillStyle = rgba(sp.col); g.fillRect(x, y0, w0, Math.max(4, e.h - y0));
+        g.fillStyle = rgba(CONC_S, 0.14); g.fillRect(x, y0, w0, Math.max(1.5, BT * 0.05));
+        const rows = Math.min(7, Math.max(2, Math.floor(hh / (BT * 0.45))));
+        for (let r = 0; r < rows; r++) {
+          if (H(k * 13 + r, 523) < 0.45) continue;
+          const lit = ((k + r) & 3) === 0 ? (0.28 + 0.32 * e.pulse) : 0.14;
+          g.fillStyle = rgba(H(k + r, 529) > 0.78 ? CONC_L : CONC_A, lit);
+          g.fillRect(x + w0 * 0.14, y0 + BT * (0.22 + r * 0.42), w0 * 0.72, Math.max(1.5, BT * 0.09));
+        }
+      }
+    },
+    viaduct(e, sp) {     // 5라운드 가까운 풍경: 거대한 콘크리트 교각 아치와 도시 맥박 가이드 라인
+      const g = e.g, yb = base(e, sp), BT = e.BT, step = Math.max(32, BT * 3.1), deckY = yb - BT * 1.15;
+      g.fillStyle = rgba(sp.col); g.fillRect(0, deckY, e.w, BT * 0.24);
+      g.fillStyle = rgba(CONC_A, 0.22 + 0.18 * e.pulse); g.fillRect(0, deckY + BT * 0.08, e.w, Math.max(1.5, BT * 0.04));
+      const start = -((sp.off % step) + step) % step;
+      for (let x = start - step; x < e.w + step; x += step) {
+        g.fillStyle = rgba(sp.col);
+        g.fillRect(x - BT * 0.22, deckY + BT * 0.22, BT * 0.44, Math.max(4, e.h - deckY));
+        g.beginPath(); g.moveTo(x + BT * 0.22, deckY + BT * 0.22); g.lineTo(x + step * 0.32, deckY + BT * 0.22); g.lineTo(x + BT * 0.22, deckY + BT * 0.78); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(x - BT * 0.22, deckY + BT * 0.22); g.lineTo(x - step * 0.32, deckY + BT * 0.22); g.lineTo(x - BT * 0.22, deckY + BT * 0.78); g.closePath(); g.fill();
+      }
     },
     peaks(e, sp) {          // 산맥: 뾰족한 봉우리, 눈 덮인 꼭대기(눈 선 아래는 들쭉날쭉)
       const g = e.g, yb = base(e, sp), s = sp.layer * 3.7, BT = e.BT;
@@ -934,6 +1035,18 @@
       for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { c.fillStyle = cols[(i + j + 1) % 2]; c.beginPath(); c.arc(i * q + q / 2, j * q + 1, q * 0.11, 0, Math.PI); c.arc(i * q + 1, j * q + q / 2, q * 0.11, -Math.PI / 2, Math.PI / 2); c.fill(); }
       c.strokeStyle = "rgba(255,255,255,0.05)"; c.lineWidth = 2; c.beginPath(); c.moveTo(0, q); c.lineTo(S, q); c.moveTo(q, 0); c.lineTo(q, S); c.stroke();
     },
+    dawnglass(c, S) {           // 4라운드 지면: 어두운 유리 아스팔트 위 사선 빛결
+      const q = S / 4; c.strokeStyle = "rgba(150,225,255,0.065)"; c.lineWidth = 1.2;
+      for (let k = -4; k <= 8; k++) { c.beginPath(); c.moveTo(k * q, 0); c.lineTo(k * q + S * 0.5, S); c.stroke(); }
+      c.fillStyle = "rgba(255,224,150,0.08)"; for (let i = 0; i < 4; i++) c.fillRect(i * q + q * 0.45, ((i * 2 + 1) % 4) * q, 2.5, 2.5);
+    },
+    concrete(c, S) {            // 5라운드 지면: 노출 콘크리트 거푸집 패널 격자와 타이홀 도트
+      const q = S / 2; c.strokeStyle = "rgba(180,192,210,0.075)"; c.lineWidth = 1.5;
+      c.strokeRect(1, 1, S - 2, q - 2); c.strokeRect(1, q + 1, S - 2, q - 2);
+      c.beginPath(); c.moveTo(q, 0); c.lineTo(q, q); c.moveTo(q * 0.5, q); c.lineTo(q * 0.5, S); c.stroke();
+      c.fillStyle = "rgba(255,190,100,0.09)";
+      for (const [px, py] of [[q * 0.2, q * 0.5], [q * 0.8, q * 0.5], [q * 1.2, q * 0.5], [q * 1.8, q * 0.5], [q * 0.25, q * 1.5], [q * 1.25, q * 1.5]]) c.fillRect(px - 1.5, py - 1.5, 3, 3);
+    },
     solarcell(c, S) {         // 태양 궤도: 태양 전지판 — 칸마다 가는 금빛 선과 모서리의 작은 점
       const q = S / 4; c.strokeStyle = "rgba(255,196,92,0.07)"; c.lineWidth = 1.5;
       for (let k = 0; k <= 4; k++) { c.beginPath(); c.moveTo(0, k * q); c.lineTo(S, k * q); c.moveTo(k * q, 0); c.lineTo(k * q, S); c.stroke(); }
@@ -1003,6 +1116,16 @@
       g.fillStyle = rgba([214, 170, 110], 0.22); g.fillRect(x0, y1 - T * 0.08, x1 - x0, y2 - y1 + T * 0.16);
       g.fillStyle = rgba([60, 40, 20], 0.35); g.fillRect(x0, y1 - 1.5, x1 - x0, 3); g.fillRect(x0, y2 - 1.5, x1 - x0, 3);
       g.fillStyle = rgba([235, 205, 150], 0.3); each(e, x0 - T * 2, x1, ox, T * 2, (k, x) => g.fillRect(x, y1 - T * 0.08, 2, y2 - y1 + T * 0.16));
+    },
+    dawnline(e, x0, x1, ox) {  // 4라운드 지면 가장자리: 유리빛 상단선과 흐르는 새벽 도로 차선
+      const g = e.g, T = e.T, y = e.gy + T * 0.26;
+      g.fillStyle = rgba(DAWN_B, 0.18 + 0.12 * e.pulse); g.fillRect(x0, e.gy, x1 - x0, Math.max(1.5, T * 0.05));
+      each(e, x0, x1, ox, T * 1.4, (k, x) => { g.fillStyle = rgba(k % 2 ? DAWN_G : DAWN_B, 0.26 + 0.18 * e.pulse); g.fillRect(x, y, T * 0.65, Math.max(1.5, T * 0.07)); });
+    },
+    curb(e, x0, x1, ox) {      // 5라운드 지면 가장자리: 콘크리트 연석 상단선과 호박빛 펄스 블록
+      const g = e.g, T = e.T, y = e.gy + T * 0.24;
+      g.fillStyle = rgba(CONC_S, 0.22 + 0.1 * e.pulse); g.fillRect(x0, e.gy, x1 - x0, Math.max(1.5, T * 0.055));
+      each(e, x0, x1, ox, T * 1.2, (k, x) => { g.fillStyle = rgba(k % 3 === 0 ? CONC_L : CONC_A, 0.22 + 0.22 * e.pulse); g.fillRect(x, y, T * 0.45, Math.max(1.5, T * 0.09)); });
     },
     sunline(e, x0, x1, ox) {   // 태양 궤도: 윗선 밑의 금빛 띠, 박마다 빛이 오른쪽으로 흘러간다
       const g = e.g, T = e.T, y = e.gy + T * 0.3;
@@ -1139,6 +1262,33 @@
         g.textAlign = "start"; g.textBaseline = "alphabetic";
       },
     },
+    dawnglass: {   // 4라운드 파란 유리 박스: 선명한 사선 유리 반사 + 윗면 서리 광택(떠 있는 박스·천장 시인성 강화)
+      lo: "#082048", hi: "#3290f0", lit: "#48a6ff", deep: "#0f3874", deepSky: "#0a2554", line: "#dff4ff", glow: "#68c4ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T), hh = Math.max(1, b.y1 - y0);
+        g.fillStyle = rgba(DAWN_W, 0.08 + 0.18 * hit);
+        for (let x = b.x0 + T * (0.15 + 0.35 * H(seed, 421)); x < b.x1; x += T * 1.9) {
+          const d = Math.min(hh, T * 1.8);
+          g.beginPath(); g.moveTo(x, b.y1); g.lineTo(x + T * 0.18, b.y1); g.lineTo(x + T * 0.18 + d * 0.55, b.y1 - d); g.lineTo(x + d * 0.55, b.y1 - d); g.closePath(); g.fill();
+        }
+        g.fillStyle = rgba(DAWN_G, 0.16 + 0.25 * hit);
+        for (const [tx0, tx1, ty] of tops) g.fillRect(tx0 + 2, ty + 2, Math.max(0, tx1 - tx0 - 4), Math.max(1.5, T * 0.08));
+      },
+    },
+    concrete: {    // 5라운드 파란 강철-콘크리트 발판: 징검다리·공중 사슬 시인성 강화 + 모서리 볼트·호박빛 착지 맥박
+      lo: "#0a2244", hi: "#2e84e0", lit: "#4aa4ff", deep: "#103468", deepSky: "#0c244c", line: "#dceeff", glow: "#6cc0ff", flash: blueFlash,
+      inner(e, b, tops, seed, hit) {
+        const g = e.g, T = e.T, y0 = Math.max(b.y0, -T);
+        g.strokeStyle = rgba(CONC_S, 0.18 + 0.15 * hit); g.lineWidth = 1; g.beginPath();
+        for (let x = b.x0 + T; x < b.x1; x += T) { g.moveTo(x, y0); g.lineTo(x, b.y1); }
+        g.stroke();
+        g.fillStyle = rgba(CONC_A, 0.18 + 0.35 * hit);
+        for (const [tx0, tx1, ty] of tops) {
+          g.fillRect(tx0 + 2, ty + 2, Math.max(0, tx1 - tx0 - 4), Math.max(1.5, T * 0.075));
+          if (tx1 - tx0 > T * 0.4) { g.fillRect(tx0 + 4, ty + T * 0.22, 3, 3); g.fillRect(tx1 - 7, ty + T * 0.22, 3, 3); }
+        }
+      },
+    },
     glasspanel: {  // 태양 궤도: 빛나는 파란 유리 패널 — 가는 격자, 비스듬한 금빛 반사(딛는 순간 밝아진다)
       lo: "#0a2350", hi: "#3a86e8", lit: "#4290ec", deep: "#123c7c", deepSky: "#0c2858", line: "#d4ecff", glow: "#5ab0ff", flash: blueFlash,
       inner(e, b, tops, seed, hit) {
@@ -1174,6 +1324,8 @@
     lacquer: { lo: "#160406", hi: "#6a1218", headLo: "#180507", headHi: "#72161c",     /* 위험색: 꿈의 축제 — 금테 두른 붉은 옻칠 나무 */
       deco(e, b, seed, trace) { const g = e.g, T = e.T; g.lineJoin = "miter"; trace(); g.strokeStyle = rgba([255, 205, 110], 0.55 + 0.25 * e.pulse); g.lineWidth = T * 0.26; g.stroke(); trace(); g.strokeStyle = "#2a070b"; g.lineWidth = T * 0.17; g.stroke(); g.lineJoin = "round"; } },      /* 위험색 */
     toyblock: { lo: "#5a0c1e", hi: "#d02a52", headLo: "#5a0c1e", headHi: "#d02a52" },      /* 위험색: 놀이방 — 빨간 장난감 블록 */
+    dawnprism: { lo: "#180410", hi: "#8c1028", headLo: "#1e0514", headHi: "#a81834" },     /* 위험색: 4라운드 새벽 유리 장애물 */
+    rebar: { lo: "#1a040a", hi: "#961224", headLo: "#20060c", headHi: "#b41a2e" },     /* 위험색: 5라운드 철근-적열 장애물 */
     sunspot: { lo: "#14030a", hi: "#7a1420", headLo: "#14030a", headHi: "#7a1420" },      /* 위험색: 태양 궤도 — 흑점(어둡고 붉게 달아오른 덩어리) */
   };
 
@@ -1409,6 +1561,51 @@
       }
       g.restore();
     },
+    dawntunnel(e, a) {     // 4라운드 피버: 새벽 고속도로 터널을 뚫고 일출 소실점으로 질주(유리빛·새벽 금빛, 빨강 미사용)
+      const g = e.g, { w, h, cx, cy } = e, R = Math.hypot(w, h);
+      g.save(); g.globalAlpha *= a;
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, R * 0.78);
+      gr.addColorStop(0, rgba(DAWN_W)); gr.addColorStop(0.14, rgba(DAWN_G)); gr.addColorStop(0.42, rgba([28, 76, 128])); gr.addColorStop(1, rgba([6, 14, 34]));
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      g.strokeStyle = rgba(DAWN_B, 0.16 + 0.1 * e.pulse); g.lineWidth = 1.6; g.beginPath();
+      for (let i = 0; i < 24; i++) {
+        const th = (i / 24) * TAU, r1 = R * (0.07 + 0.05 * H(i, 461));
+        g.moveTo(cx + Math.cos(th) * r1, cy + Math.sin(th) * r1); g.lineTo(cx + Math.cos(th) * R, cy + Math.sin(th) * R);
+      }
+      g.stroke();
+      for (let i = 0; i < 8; i++) {
+        const p = pm(e.beat * 0.5 + i / 8, 1), rr = Math.pow(p, 2.1) * R * 0.85; if (rr < 8) continue;
+        const rw = rr * 1.25, rh = rr * 0.72;
+        g.strokeStyle = rgba(i % 2 ? DAWN_G : DAWN_B, (0.2 + 0.28 * e.pulse) * Math.sin(Math.PI * p));
+        g.lineWidth = 1.5 + 6 * p;
+        g.strokeRect(cx - rw, cy - rh, rw * 2, rh * 2);
+      }
+      g.restore();
+    },
+    pulsetunnel(e, a) {    // 5라운드 피버: 콘크리트 지하 터널 속을 회전하며 질주(강철·호박·라임 맥박, 빨강 미사용)
+      const g = e.g, { w, h, cx, cy } = e, R = Math.hypot(w, h);
+      g.save(); g.globalAlpha *= a;
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, R * 0.78);
+      gr.addColorStop(0, rgba(mix(CONC_A, WHITE, 0.5))); gr.addColorStop(0.16, rgba(CONC_A)); gr.addColorStop(0.45, rgba([48, 54, 66])); gr.addColorStop(1, rgba([10, 12, 16]));
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      g.strokeStyle = rgba(CONC_S, 0.16 + 0.1 * e.pulse); g.lineWidth = 1.6; g.beginPath();
+      for (let i = 0; i < 16; i++) {
+        const th = (i / 16) * TAU, r1 = R * 0.08;
+        g.moveTo(cx + Math.cos(th) * r1, cy + Math.sin(th) * r1); g.lineTo(cx + Math.cos(th) * R, cy + Math.sin(th) * R);
+      }
+      g.stroke();
+      for (let i = 0; i < 8; i++) {
+        const p = pm(e.beat * 0.5 + i / 8, 1), rr = Math.pow(p, 2.0) * R * 0.88; if (rr < 8) continue;
+        const rw = rr * 1.18, rh = rr * 0.78, ch = rr * 0.22;
+        g.strokeStyle = rgba(i % 3 === 0 ? CONC_L : CONC_A, (0.2 + 0.3 * e.pulse) * Math.sin(Math.PI * p));
+        g.lineWidth = 1.8 + 7 * p;
+        g.beginPath();
+        g.moveTo(cx - rw + ch, cy - rh); g.lineTo(cx + rw - ch, cy - rh); g.lineTo(cx + rw, cy - rh + ch); g.lineTo(cx + rw, cy + rh - ch);
+        g.lineTo(cx + rw - ch, cy + rh); g.lineTo(cx - rw + ch, cy + rh); g.lineTo(cx - rw, cy + rh - ch); g.lineTo(cx - rw, cy - rh + ch);
+        g.closePath(); g.stroke();
+      }
+      g.restore();
+    },
     suntunnel(e, a) {      // 해 속으로 돌진: 소실점(해)이 눈부신 빛, 바깥은 짙은 주황·밤색. 불꽃 고리가 반 박마다 다가오고, 플라스마 줄기가 소실점에서 뻗는다. 빨강은 장애물 몫이라 쓰지 않는다
       const g = e.g, { w, h, cx, cy } = e, R = Math.hypot(w, h);
       g.save(); g.globalAlpha *= a;
@@ -1449,6 +1646,22 @@
       const balls = tile("balls", BT * 2.1, BT * 1.5, (c) => { for (let row = 0; row < 4; row++) for (let k = -1; k <= 5; k++) { const x = k * BT * 0.42 + (row % 2) * BT * 0.21, y = BT * (0.24 + row * 0.34), r = BT * 0.2, col = mix(TOY_C[pm(k * 3 + row, 5)], [20, 16, 40], 0.45 + row * 0.1); c.fillStyle = rgba(col); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.fillStyle = "rgba(255,255,255,0.2)"; c.beginPath(); c.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, TAU); c.fill(); } });
       if (pads && pads.setTransform) { pads.setTransform(new DOMMatrix([S / 2, 0, 0, S / 2, ox, yc - T * 1.05])); g.fillStyle = pads; g.fillRect(xs, yc - T * 1.05, xe - xs, T * 0.9); }
       if (balls && balls.setTransform) { balls.setTransform(new DOMMatrix([S / 2, 0, 0, S / 2, ox, gy + 3])); g.fillStyle = balls; g.fillRect(xs, gy + 3, xe - xs, T * 1.5); }
+    },
+    dawnglass(e, xs, xe, yc, gy, ox) {  // 4라운드 피버 벽: 깊은 새벽빛 유리 벽면과 흐르는 하늘·금빛 가이드 레일
+      const g = e.g, T = e.T;
+      g.fillStyle = "rgba(8,18,38,0.95)"; g.fillRect(xs, yc - T * 1.7, xe - xs, T * 1.7 - 3); g.fillRect(xs, gy + 3, xe - xs, T * 1.6);
+      for (const [y0, d] of [[yc - T * 0.35, -1], [gy + T * 0.35, 1]]) {
+        g.fillStyle = rgba(DAWN_B, 0.28 + 0.25 * e.pulse); g.fillRect(xs, y0, xe - xs, Math.max(1.5, T * 0.06));
+        each(e, xs, xe, ox + pm(e.beat, 1) * T * 1.5, T * 1.5, (k, x) => { g.fillStyle = rgba(DAWN_G, 0.32 + 0.28 * e.pulse); g.fillRect(x, y0 + d * T * 0.24, T * 0.55, Math.max(1.5, T * 0.06)); });
+      }
+    },
+    concretewall(e, xs, xe, yc, gy, ox) { // 5라운드 피버 벽: 어두운 콘크리트 거푸집 벽면과 호박빛 펄스 가이드
+      const g = e.g, T = e.T;
+      g.fillStyle = "rgba(14,16,22,0.96)"; g.fillRect(xs, yc - T * 1.7, xe - xs, T * 1.7 - 3); g.fillRect(xs, gy + 3, xe - xs, T * 1.6);
+      for (const [y0, d] of [[yc - T * 0.38, -1], [gy + T * 0.38, 1]]) {
+        g.fillStyle = rgba(CONC_S, 0.24); g.fillRect(xs, y0, xe - xs, Math.max(1.5, T * 0.05));
+        each(e, xs, xe, ox + pm(e.beat, 1) * T * 1.4, T * 1.4, (k, x) => { g.fillStyle = rgba(k % 3 === 0 ? CONC_L : CONC_A, 0.32 + 0.32 * e.pulse); g.fillRect(x, y0 + d * T * 0.22, T * 0.48, Math.max(1.5, T * 0.08)); });
+      }
     },
     plasma(e, xs, xe, yc, gy, ox) {      // 천장 위·바닥 밑: 어두운 벽 속을 흐르는 플라스마 물결(주황·금, 박마다 밝아진다)
       const g = e.g, T = e.T;

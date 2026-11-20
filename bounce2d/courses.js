@@ -158,12 +158,12 @@ const ROUND4 = {
   vary: true,                                    // 같은 패턴이 다시 나오면 빨간 덩어리의 자리·높이를 달리한다(누르는 것은 같다)
   density: 0.95,                                 // 밀도 기준: 바운스 구간에서 공이 떠 있는 시간의 95% 이상이 눌러야 하는 토막(테스트가 본다)
   pal: {                                         // 이 라운드의 색: 유리 같은 푸른빛과 새벽빛
-    intro: { top: "#060d1f", bottom: "#17456b", accent: "#9fe8ff", sun: "#d8f4ff" },
-    a:     { top: "#0a1230", bottom: "#2a5fa8", accent: "#b8f1ff", sun: "#ffffff" },
-    b:     { top: "#0d0820", bottom: "#4a2a80", accent: "#ff9be0", sun: "#ffc9f0" },
-    c:     { top: "#101a2a", bottom: "#3d7f8f", accent: "#ffe9a8", sun: "#ffd98a" },
-    d:     { top: "#1a0f2e", bottom: "#b0508a", accent: "#fff3c4", sun: "#ffb37a" },
-    rush:  { top: "#06121a", bottom: "#1f8fa8", accent: "#ffffff", sun: "#c9fbff" },
+    intro: { top: "#050c1e", bottom: "#164068", accent: "#9fe8ff", sun: "#d8f4ff" },
+    a:     { top: "#081432", bottom: "#245ea8", accent: "#b8f1ff", sun: "#eef9ff" },
+    b:     { top: "#0b0e2a", bottom: "#353c88", accent: "#a8d4ff", sun: "#ffe0a8" },
+    c:     { top: "#0d1b2c", bottom: "#2f7a8e", accent: "#ffe9a8", sun: "#ffd480" },
+    d:     { top: "#141638", bottom: "#3e4e8c", accent: "#fff3c4", sun: "#ffc266" },
+    rush:  { top: "#061422", bottom: "#1b84a4", accent: "#ffffff", sun: "#d6fbff" },
   },
   // 4라운드의 마디도 도구(tools_gen_course.js R4)가 뽑는다. 떠 있는 박스와 파란 천장 마디는 틀(TEMPLATES.R4)에 자리를 정해 두었고, 그 사이를 뽑은 마디가 채운다.
   bars: [
@@ -171,23 +171,23 @@ const ROUND4 = {
     // 도입(조용함): 떠 있는 파란 박스를 함정 없이 보여 준다. 올라타서 그냥 떨어지기 두 번 → 올라타서 다시 뛰기 두 번
     "flat", "flat", "fDropH", "fDropH",   "g4_4", "fJump", "fJump", "g4_7",
     // 잔잔한 리듬: 높이 함정 하나. 다시 뛰기를 두 번 한 뒤 같은 박스에서 그냥 떨어져야 한다(위에 빨간 박스가 떠 있다)
-    "fJump", "fJump", "fDropH", "ch4_11",   "g4_12", "g4_13", "g4_14", "g4_15",
+    "fJump", "fJump", "fTwice", "ch4_11",   "g4_12", "g4_13", "g4_14", "g4_15",
     // 첫 후렴: 파란 천장을 소개한다. 이단 점프로 기둥을 두 번 넘은 뒤, 같은 기둥 위에 천장이 생긴다(멈춤으로 건넌다). 이어서 낮은 천장
-    "djT", "djT", "cHoldT", "cLowD",   "cLowD", "g4_21", "g4_21", "g4_23",
+    "djT", "cHoldT", "cHoldT", "cHoldLDx",   "cLowD", "g4_21", "g4_21", "g4_23",
     // 거의 무음 → 조용히 쌓아 올림: 떨어지며 멈추기를 함정 없이 보여 준다
-    "fGlide", "fGlide", "fLateH", "fTwice",   "cLowH", "g4_29", "g4_30", "g4_31",
+    "fGlide", "fGlide", "fLateHx", "fJump3",   "cLowH", "g4_29", "g4_30", "g4_31",
     // 둘째 후렴: 첫 피버. 좁은 통로 → 계단으로 올라가 넓은 통로 → 계단으로 내려와 다시 좁은 통로
     "g4z32", "g4z33", "wUp", "g4w35",   "g4w35", "wDn", "g4z38", "g4z38",
     // 낮게 깔린 베이스: 올라타기를 두 번 한 뒤, 올라가면 안 되는 박스(앞을 빨간 박스가 막고 있다)
-    "g4_40", "fDropH", "fDropH", "fLow3",   "g4_44", "g4_44", "g4_46", "g4_47",
+    "g4_40", "fDropH", "fDropH", "fLateHx",   "g4_44", "g4_44", "g4_46", "g4_47",
     // 쌓아 올림: 손 함정을 촘촘하게
     "g4_48", "g4_48", "g4_50", "g4_51",   "g4_52", "g4_52", "g4_54", "g4_55",
     // 절정: 둘째 피버. 들어서자마자 넓은 통로 → 계단으로 내려와 좁은 통로
-    "wUp", "g4w57", "g4w57", "g4w59",   "wDn", "g4z61", "g4z62", "g4z63",
+    "wUp", "g4w57", "g4w57", "g4w59",   "wDn", "g4z61", "g4z61", "g4z63",
     // 여운과 무음 → 조용히 쌓아 올림: 박스 셋을 건너뛰기, 높이 장치와 손 함정을 섞는다
-    "g4_64", "fJump3", "cHoldLD", "g4_67",   "g4_68", "ch4_69", "ch4_70", "g4_71",
+    "g4_64", "fJump3", "cHoldLDx", "g4_67",   "g4_68", "ch4_69", "ch4_70", "g4_71",
     // 마지막 후렴: 배운 것을 다 섞는다. 곡이 끝맺는 박에 결승선
-    "fJump3", "fDropH", "g4_74", "g4_74",   "g4_76", "g4_77", "cHoldT", "cLowD",
+    "fJump3", "fTwice", "g4_74", "g4_74",   "g4_76", "g4_77", "cHoldLDx", "cLowD",
     "goal", "flat", "flat",
     // </gen:bars:R4>
   ],
@@ -219,13 +219,13 @@ const ROUND5 = {
     { bar: 48, rot: 90 }, { bar: 51, rot: 135 }, { bar: 52, rot: 90 }, { bar: 53, rot: 0 },
     { bar: 72, rot: 45 }, { bar: 74, rot: -45 }, { bar: 76, rot: 0 },
   ],
-  pal: {                                         // 이 라운드의 색: 콘크리트 잿빛에 주황·형광 연두
+  pal: {                                         // 이 라운드의 색: 콘크리트 잿빛·강철에 호박빛·형광 연두(붉은 갈색 배경은 빨간 장애물과 섞여서 뺐다)
     intro: { top: "#0c0d10", bottom: "#3a3d45", accent: "#ffb347", sun: "#ffd9a0" },
     a:     { top: "#101216", bottom: "#4a4f5a", accent: "#ffa62b", sun: "#ffe0b0" },
     b:     { top: "#0a0f0c", bottom: "#35503f", accent: "#c8ff5a", sun: "#eaffb0" },
-    c:     { top: "#14100c", bottom: "#6a4a30", accent: "#ffd27a", sun: "#ffb37a" },
-    d:     { top: "#150c0c", bottom: "#7a3a2a", accent: "#ffe08a", sun: "#ff9a5a" },
-    rush:  { top: "#08090c", bottom: "#5a5f6a", accent: "#ffffff", sun: "#ffb347" },
+    c:     { top: "#121316", bottom: "#4e4a3a", accent: "#ffd27a", sun: "#ffe0a0" },
+    d:     { top: "#10141c", bottom: "#3b475a", accent: "#ffe08a", sun: "#ffc266" },
+    rush:  { top: "#08090c", bottom: "#525864", accent: "#ffffff", sun: "#ffb347" },
   },
   // 5라운드의 마디도 도구(tools_gen_course.js R5)가 뽑는다. 피버의 짜임(되풀이 → 함정)과 연출 마디의 자리는 틀(TEMPLATES.R5)에 정해 두었다.
   bars: [
@@ -237,8 +237,8 @@ const ROUND5 = {
     "g5_16",
     // 둘째 피버(굽은 통로): 장애물 없는 마디에서 통로가 비스듬히 위로 굽는다. 중간에 아래로 굽고, 마지막 함정 마디에서 다시 곧게 펴진다
     "zF", "g5z18", "g5z18", "g5z20",   "g5z21", "g5z21", "g5z23",
-    // 가라앉음: 징검다리. 이단 점프로 첫 돌에 올라타면 돌에서 돌로 저절로 튄다(두 마디). 그다음에는 빨간 돌이 섞인다 — 그 앞에서 멈추면 한 박 떠서 그다음 돌에 내린다
-    "g5_24", "stIn", "stOut", "stIn",   "stOutR", "g5_29", "g5_30", "g5_31",
+    // 가라앉음: 징검다리 네 마디를 끊지 않고. 첫 돌에 올라타 저절로 튀다가, 셋째 돌이 빨간 돌(멈춰서 넘는다) → 같은 자리가 파란 돌인데 머리 위에 빨간 덩어리(멈춤 버릇이면 걸린다) → 둘째 돌이 빨간 돌(멈춤이 앞당겨진다)
+    "g5_24", "stIn", "stMidR", "stMidL",   "stOutR", "g5_29", "g5_30", "g5_31",
     // 셋째 피버(솟는 통로): 계단을 오르며 통로가 곧장 위로 굽는다. 넓은 통로를 위로 달리고, 계단을 내려오며 다시 가로로. 끝의 두 마디는 조여드는 통로(곡이 점점 세지는 자리. 가늘어질수록 화면이 다가간다)
     "wUp", "g5w33", "g5w33", "g5w35",   "wDn", "zS1", "zS2",
     "g5_39",
@@ -249,8 +249,8 @@ const ROUND5 = {
     "wUp", "g5w49", "g5w49", "g5w51",   "g5w52", "wDn", "g5z54", "g5z54",
     // 더 꽉 찬 리듬: 바운스. 공중 사슬을 한 번 더, 이어서 멈춤 길이의 함정과 손 함정
     "g5_56", "airStep", "airRing", "g5_59",   "g5_60", "g5_61", "g5_62", "g5_63",   "g5_64",
-    // 가라앉음: 징검다리 세 마디. 가운데에 빨간 돌, 마지막 돌에서 내려올 땅이 빨간 박스(마지막으로 튄 뒤 멈춰서 건넌다)
-    "stIn", "stMidR", "stOutG", "gAfter",   "g5_69", "g5_69", "g5_71",
+    // 가라앉음: 징검다리 세 마디. 들어가자마자 빨간 돌(멈춘다) → 같은 박에 머리 위 빨간 덩어리(멈추면 걸린다) → 마지막 돌에서 내려올 땅이 빨간 박스(마지막으로 튄 뒤 멈춰서 건넌다)
+    "stInR", "stMidL", "stOutG", "gAfter",   "g5_69", "g5_69", "g5_71",
     // 마지막 피버: 위로, 아래로 굽이친다. 끝의 두 마디는 조여드는 통로, 곡의 끝맺는 한 방에 터져 나온다
     "g5z72", "g5z72", "g5z74", "g5z75",   "g5z76", "zS1", "zS2",
     "goal", "flat", "flat",

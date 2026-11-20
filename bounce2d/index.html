@@ -1241,11 +1241,13 @@
       }
     }
     // 충전 고리: 지나가면 이단 점프가 다시 찬다. 같은 칸에 쌓인 칸들이 세로로 긴 고리 하나.
-    //   그림: 에너지 고리 — 강조색으로 번지는 바깥 빛, 흰 심, 안쪽의 옅은 막, 박에 맞춰 고리를 따라 도는 불꽃 둘.
+    //   그림: 차원 포탈 — 바깥 2중 에너지 림, 안쪽의 깊은 심연과 안으로 빨려 드는 파동 2겹, 도는 소용돌이 호 3줄, 위·아래의 게이트 표시, 꼬리 달린 불꽃 셋.
     //   공이 다가올수록 밝아지고 커진다(언제 누를지 읽게). 지나간 고리는 옅은 점선만 남는다.
     //   모양이 채워 주는 것을 말한다(아래 버튼의 그림과 같다):
     //     둥근 금빛 고리 + 안에 ▲와 큰 II = 점프와 멈춤을 다 채운다(보통 충전 고리). 지나가는 순간 공 둘레에 금빛 II 고리가 퍼진다(멈춤이 다시 찼다)
     //     마름모 고리 + 안에 ▲ 하나 = 점프만 채운다(사슬 고리: 1~3칸 간격으로 이어진 고리. 고리 사이를 앞으로 흐르는 점선 줄로 잇는다 — 간격이 곧 누르는 리듬)
+    // [portal-rings] 사용자가 준 Apply_Portal_Rings.js의 그림(뜻과 색은 그대로)
+    //   단독 포탈(점프+멈춤) = 금빛 타원 + ▲ II / 사슬 포탈(점프만) = 강조색 마름모 + ▲ + 에너지 연결 빔
     {
       const stacks = [];
       for (let c = cA - 3; c <= cB + 3; c++) for (let r = 0; r < ROWS - 1; r++) {
@@ -1255,41 +1257,111 @@
       }
       const hoop = (q, rx, ry) => { ctx.beginPath(); if (q.chain) { ctx.moveTo(q.cx, q.cy - ry); ctx.lineTo(q.cx + rx, q.cy); ctx.lineTo(q.cx, q.cy + ry); ctx.lineTo(q.cx - rx, q.cy); ctx.closePath(); } else ctx.ellipse(q.cx, q.cy, rx, ry, 0, 0, Math.PI * 2); };
       const tri = (x, y, k) => { ctx.beginPath(); ctx.moveTo(x, y - k); ctx.lineTo(x + k * 0.95, y + k * 0.7); ctx.lineTo(x - k * 0.95, y + k * 0.7); ctx.closePath(); ctx.fill(); };
+      const orbitPt = (q, th, rx, ryy) => {
+        if (q.chain) {
+          const u = ((th / (Math.PI * 2)) % 1 + 1) % 1 * 4, i = Math.floor(u), f = u - i;
+          const P = [[0, -ryy], [rx, 0], [0, ryy], [-rx, 0]], a0 = P[i], a1 = P[(i + 1) % 4];
+          return [q.cx + a0[0] + (a1[0] - a0[0]) * f, q.cy + a0[1] + (a1[1] - a0[1]) * f];
+        }
+        return [q.cx + Math.cos(th) * rx, q.cy + Math.sin(th) * ryy];
+      };
       ctx.save();
-      for (const A of stacks) {                                              // 사슬의 줄
+      for (const A of stacks) {                      // 사슬 포탈 연결 웜홀 빔
         if (!A.chain) continue;
         const B = stacks.find((q) => q.c > A.c && (q.c - A.c <= 3 || (q.c - A.c === 4 && q.chain)) && Math.abs((q.r + q.r2) - (A.r + A.r2)) <= 4);
         if (!B || (A.used && B.used)) continue;
-        ctx.strokeStyle = css(pal.accent, A.used ? 0.2 : 0.55); ctx.lineWidth = 2.5; ctx.setLineDash([T * 0.14, T * 0.1]); ctx.lineDashOffset = -now * T * 3;
-        ctx.shadowColor = css(pal.accent); sb(A.used ? 0 : 8);
-        ctx.beginPath(); ctx.moveTo(A.cx + T * 0.3, A.cy); ctx.lineTo(B.cx - T * 0.3, B.cy); gs(); sb(0);
+        ctx.setLineDash([]);
+        ctx.strokeStyle = css(pal.accent, A.used ? 0.08 : 0.22); ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(A.cx + T * 0.28, A.cy); ctx.lineTo(B.cx - T * 0.28, B.cy); ctx.stroke();
+        ctx.strokeStyle = css(pal.accent, A.used ? 0.2 : 0.72); ctx.lineWidth = 2.4; ctx.setLineDash([T * 0.16, T * 0.1]); ctx.lineDashOffset = -now * T * 3.4;
+        ctx.shadowColor = css(pal.accent); sb(A.used ? 0 : 9);
+        ctx.beginPath(); ctx.moveTo(A.cx + T * 0.28, A.cy); ctx.lineTo(B.cx - T * 0.28, B.cy); gs(); sb(0);
       }
       ctx.setLineDash([]);
       for (const q of stacks) {
-        const RC = q.chain ? pal.accent : RING_GOLD(pal);      // 색으로도 가른다: 단독 고리(점프 + 멈춤) = 금빛, 사슬 고리(점프만) = 강조색
-        const { cx, cy, ry } = q, near = Math.max(0, Math.min(1, 1 - (q.c + 0.5 - state.x) / 6)), grow = 1 + (q.used ? 0 : 0.08 * near + 0.05 * pulse), rx = T * (q.chain ? 0.36 : 0.32) * grow, ryy = ry * grow;
-        if (q.used) {
-          ctx.strokeStyle = css(RC, 0.3); ctx.lineWidth = 2; ctx.setLineDash([T * 0.1, T * 0.1]);
+        const RC = q.chain ? pal.accent : RING_GOLD(pal);     // 단독 포탈(점프+멈춤)=금빛, 사슬 포탈(점프만)=강조색
+        const { cx, cy, ry } = q, near = Math.max(0, Math.min(1, 1 - (q.c + 0.5 - state.x) / 6));
+        const grow = 1 + (q.used ? 0 : 0.09 * near + 0.055 * pulse);
+        const rx = T * (q.chain ? 0.40 : 0.36) * grow, ryy = ry * grow;
+        if (q.used) {                                         // 닫힌 포탈 잔상
+          ctx.fillStyle = css(RC, 0.06); hoop(q, rx * 0.75, ryy * 0.75); ctx.fill();
+          ctx.strokeStyle = css(RC, 0.28); ctx.lineWidth = 2; ctx.setLineDash([T * 0.1, T * 0.1]);
           hoop(q, rx, ryy); ctx.stroke(); ctx.setLineDash([]); continue;
         }
         const glow = 0.45 + 0.55 * near;
-        const mg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ryy));      // 안쪽의 옅은 막
-        mg.addColorStop(0, css(RC, 0.05)); mg.addColorStop(1, css(RC, 0.22 * glow));
-        ctx.fillStyle = mg; hoop(q, rx, ryy); ctx.fill();
+
+        // 1) 포탈 외곽 후광 오라
+        ctx.strokeStyle = css(RC, 0.22 + 0.16 * glow); ctx.lineWidth = 3;
+        hoop(q, rx * 1.18, ryy * 1.06); ctx.stroke();
+
+        // 2) 포탈 내부 차원 심연 + 회전 소용돌이(vortex) + 안쪽으로 수축하는 에너지 파동
+        ctx.save();
+        hoop(q, rx * 0.96, ryy * 0.96); ctx.clip();
+        const mg = ctx.createRadialGradient(cx, cy, Math.min(rx, ryy) * 0.08, cx, cy, Math.max(rx, ryy));
+        mg.addColorStop(0, "rgba(6, 10, 24, 0.62)");
+        mg.addColorStop(0.62, css(RC, 0.18 + 0.12 * glow));
+        mg.addColorStop(1, css(RC, 0.52 * glow));
+        ctx.fillStyle = mg; ctx.fillRect(cx - rx - 4, cy - ryy - 4, rx * 2 + 8, ryy * 2 + 8);
+
+        // 안쪽으로 빨려 들어가는 수축 포탈 파동 2겹
+        for (let w = 0; w < 2; w++) {
+          const p = 1 - ((now * 1.35 + w * 0.5 + q.c * 0.17) % 1);
+          ctx.strokeStyle = css(RC, (0.12 + 0.34 * glow) * Math.sin(Math.PI * p));
+          ctx.lineWidth = 1.6 + 1.4 * p;
+          hoop(q, rx * (0.22 + 0.72 * p), ryy * (0.22 + 0.72 * p)); ctx.stroke();
+        }
+
+        // 회전하는 차원 소용돌이 아크 3줄
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(rx / Math.max(1, ryy), 1);
+        for (let s = 0; s < 3; s++) {
+          const a0 = now * 2.6 + s * (Math.PI * 2 / 3) + q.c;
+          ctx.strokeStyle = s === 0 ? css([255, 255, 255], 0.32 + 0.2 * glow) : css(RC, 0.42 + 0.25 * glow);
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.arc(0, 0, ryy * (0.42 + 0.16 * s), a0, a0 + 1.15);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.restore();
+
+        // 3) 포탈 본체 테두리(외곽 글로우 림 + 흰 에너지 코어)
         ctx.lineJoin = "round";
-        ctx.strokeStyle = css(RC, 0.85); ctx.lineWidth = 7; ctx.shadowColor = css(RC); sb(10 + 14 * glow + 8 * pulse);      // 바깥 빛
+        ctx.strokeStyle = css(RC, 0.9); ctx.lineWidth = 6.5; ctx.shadowColor = css(RC); sb(12 + 16 * glow + 8 * pulse);
         hoop(q, rx, ryy); gs(); sb(0);
-        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5; hoop(q, rx, ryy); ctx.stroke();      // 흰 심
-        const k = T * 0.13;                                                    // 안의 표시: ▲(점프) / ▲ II(점프와 멈춤)
-        ctx.fillStyle = css([255, 255, 255], 0.55 + 0.4 * glow);
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.2; hoop(q, rx, ryy); ctx.stroke();
+
+        // 4) 포탈 상·하단 게이트 앵커(입구 프레임 포인트)
+        const ak = T * 0.085;
+        ctx.fillStyle = "#ffffff"; ctx.shadowColor = css(RC); sb(8);
+        for (const sySign of [-1, 1]) {
+          const ay = cy + sySign * ryy;
+          ctx.beginPath();
+          ctx.moveTo(cx, ay - ak); ctx.lineTo(cx + ak * 1.1, ay); ctx.lineTo(cx, ay + ak); ctx.lineTo(cx - ak * 1.1, ay);
+          ctx.closePath(); ctx.fill();
+        }
+        sb(0);
+
+        // 5) 포탈 중앙 아이콘: ▲(점프만) / ▲ II(점프와 멈춤)
+        const k = T * 0.13;
+        ctx.fillStyle = css([255, 255, 255], 0.72 + 0.28 * glow);
+        ctx.shadowColor = css(RC); sb(6);
         if (q.chain) tri(cx, cy, k * 1.15);
-        else { tri(cx, cy - k * 1.45, k); ctx.fillRect(cx - k * 0.95, cy + k * 0.2, k * 0.58, k * 1.75); ctx.fillRect(cx + k * 0.37, cy + k * 0.2, k * 0.58, k * 1.75); }      // II를 크게(멈춤도 채운다)
-        for (let j = 0; j < 2; j++) {                                          // 고리를 따라 도는 불꽃 둘(한 박에 반 바퀴)
-          const th = beat * Math.PI + j * Math.PI + q.c;
-          let px, py;
-          if (q.chain) { const u = ((th / (Math.PI * 2)) % 1 + 1) % 1 * 4, i = Math.floor(u), f = u - i, P = [[0, -ryy], [rx, 0], [0, ryy], [-rx, 0]], a0 = P[i], a1 = P[(i + 1) % 4]; px = cx + a0[0] + (a1[0] - a0[0]) * f; py = cy + a0[1] + (a1[1] - a0[1]) * f; }
-          else { px = cx + Math.cos(th) * rx; py = cy + Math.sin(th) * ryy; }
-          ctx.fillStyle = "#ffffff"; ctx.shadowColor = css(RC); sb(10); ctx.beginPath(); ctx.arc(px, py, T * 0.07 * (1 + 0.4 * glow), 0, Math.PI * 2); ctx.fill(); sb(0);
+        else { tri(cx, cy - k * 1.45, k); ctx.fillRect(cx - k * 0.95, cy + k * 0.2, k * 0.58, k * 1.75); ctx.fillRect(cx + k * 0.37, cy + k * 0.2, k * 0.58, k * 1.75); }
+        sb(0);
+
+        // 6) 포탈 림을 따라 도는 꼬리 스파크 3개
+        for (let j = 0; j < 3; j++) {
+          const th = beat * Math.PI * 1.15 + j * (Math.PI * 2 / 3) + q.c;
+          for (let tr = 2; tr >= 1; tr--) {
+            const [tx, ty] = orbitPt(q, th - tr * 0.14, rx, ryy);
+            ctx.fillStyle = css(RC, (0.45 - tr * 0.14) * glow);
+            ctx.beginPath(); ctx.arc(tx, ty, T * (0.055 - tr * 0.012) * (1 + 0.3 * glow), 0, Math.PI * 2); ctx.fill();
+          }
+          const [px, py] = orbitPt(q, th, rx, ryy);
+          ctx.fillStyle = "#ffffff"; ctx.shadowColor = css(RC); sb(10);
+          ctx.beginPath(); ctx.arc(px, py, T * 0.068 * (1 + 0.35 * glow), 0, Math.PI * 2); ctx.fill(); sb(0);
         }
       }
       ctx.restore();
