@@ -728,11 +728,18 @@ function buildLevel(course) {
   }
   // 길잡이: 패턴대로 달린 길 위에 수정을 놓고(입력이 있는 점프에만, 반의 반 박마다), 눌러야 하는 자리에는 표시를 둔다.
   // 판정에는 영향이 없다. 길이 보여서 쉬워지고, 뚫을 때마다 소리가 난다.
+  // course.holdLen: 멈춰 있는 구간(누르기 시작 → 손을 떼는 자리)도 적어 둔다(L.holdSpans: { x0, x1, h 공 가운데 높이 }) — 화면이 멈춤의 길이를 띠로 보여 준다
+  L.holdSpans = [];
   { const s = spawnState(L, -1), recs = [], active = new Set();
-    let air = 0, wasGround = true;
+    let air = 0, wasGround = true, span = null;
     while (!s.dead && !s.won) {
       const ev = [];
       stepState(L, s, base.press.has(s.step + 1), ev, base.hold.has(s.step + 1));
+      if (course.holdLen && s.mode !== "rush") {
+        if (!span && s.frozen) span = { x0: s.x, x1: s.x, h: (ROWS - 1) - s.y + HALF };
+        else if (span && s.frozen) span.x1 = s.x;
+        else if (span) { L.holdSpans.push(span); span = null; }
+      }
       if (!s.onGround && wasGround) air++;
       wasGround = s.onGround;
       if (s.mode === "rush" || s.onGround) continue;
@@ -741,7 +748,8 @@ function buildLevel(course) {
       if (mark || s.step % (SUB / 4) === 0) recs.push({ air, x: s.x, h: (ROWS - 1) - s.y + HALF, mark });
     }
     // blind: true인 마디에는 길잡이를 두지 않는다(같은 마디를 되풀이한 뒤, 안내 없이 기억으로 한 번 더 하게 하는 마디)
-    const blindAt = (x) => { const p = PATTERNS[course.bars[Math.floor(x / 16)]]; return !!(p && p.blind); };
+    // (course.guideAll: 이 라운드는 안내 없는 마디에도 길잡이를 둔다 — 1·2라운드)
+    const blindAt = (x) => { const p = PATTERNS[course.bars[Math.floor(x / 16)]]; return !course.guideAll && !!(p && p.blind); };
     for (const r of recs) if (active.has(r.air) && !blindAt(r.x)) L.gems.push(r.mark === "jump" ? { x: r.x, h: r.h, flip: 1 } : r.mark === "hold" ? { x: r.x, h: r.h, hold: true } : { x: r.x, h: r.h });
     L.gems.sort((u, v) => u.x - v.x);
   }

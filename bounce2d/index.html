@@ -357,6 +357,7 @@
   let keyHold = false, rushKey = null;
   const holding = () => holdPointers.size > 0 || keyHold;
   const broken = new Set();       // 화면에서 지울 깨진 대시벽
+  const RING_GOLD = (pal) => mix(pal.sun, [255, 214, 92], 0.55);      // 단독 충전 고리(점프와 멈춤을 다 채운다)의 색
   const usedRings = new Set();    // 이미 지나간 충전 고리(칸 번호)
   const gotGems = new Set();      // 이번 판에 뚫고 지나간 수정(번호)
   let gemPtr = 0;
@@ -365,7 +366,7 @@
   const WIDE_RUNS = [], WIDE_IN = 5;
   for (const b of [...L.wideBars, ...L.tallBars].sort((u, v) => u - v)) { const last = WIDE_RUNS[WIDE_RUNS.length - 1]; if (last && last[1] === b * 16) last[1] += 16; else WIDE_RUNS.push([b * 16, b * 16 + 16]); }   // 높은 계단 구간(바운스)도 같은 식으로 물러난다
   const wideZone = (x) => WIDE_RUNS.some(([xs, xe]) => x >= xs && x < xe - WIDE_IN);
-  const fx = { freezeAt: -9, releaseAt: -9, djAt: -9, djX: 0, djY: 0, djSmall: false, ballSX: 0, ballSY: 0, particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, punchAt: -9, punchDir: 1, stepAt: -9, wideOn: false, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9 };
+  const fx = { refillAt: -9, freezeAt: -9, releaseAt: -9, djAt: -9, djX: 0, djY: 0, djSmall: false, ballSX: 0, ballSY: 0, particles: [], tail: [], shake: 0, flash: 0, jumpAt: -9, landAt: -9, dashAt: -9, cpFlash: -9, punchAt: -9, punchDir: 1, stepAt: -9, wideOn: false, ringChain: 0, chain: 0, smashAt: -9, whiffAt: -9 };
 
   function begin(cp) {
     if (songLoading && !fake.on) { ensureAudio(); pendingStart = cp; $("ovStat").textContent = "곡을 불러오는 중…"; return; }   // 누른 순간에 소리 권한은 받아 두고, 곡이 준비되면 시작
@@ -530,7 +531,8 @@
     for (const e of ev) {
       if (e.type === "jump") { fx.jumpAt = now; puff(state.x, state.y, 5, 0.6); }
       else if (e.type === "pad") { fx.jumpAt = now; fx.shake = 0.1; sfx("pad"); puff(state.x, state.y, 10, 1.1); }
-      else if (e.type === "ring") { usedRings.add(e.c); fx.ringChain++; burst(e.x ?? e.c + 0.5, e.y ?? e.r + 0.5, 10, "white", 8); }     // 소리는 내지 않는다(동작 소리는 곡과 안 어울려서 전부 뺐다)
+      else if (e.type === "ring") { usedRings.add(e.c); fx.ringChain++; burst(e.x ?? e.c + 0.5, e.y ?? e.r + 0.5, 10, "white", 8);
+        if (!(L.chainCols && L.chainCols.has(e.c))) { fx.refillAt = now; burst(state.x, state.y - HALF, 12, "sun", 9); } }      // 단독 고리: 멈춤도 다시 찼다 — 금빛 불꽃     // 소리는 내지 않는다(동작 소리는 곡과 안 어울려서 전부 뺐다)
       else if (e.type === "bounce") {
         fx.jumpAt = now; puff(state.x, state.y, 6, 0.7);
       }
@@ -1241,7 +1243,7 @@
     //   그림: 에너지 고리 — 강조색으로 번지는 바깥 빛, 흰 심, 안쪽의 옅은 막, 박에 맞춰 고리를 따라 도는 불꽃 둘.
     //   공이 다가올수록 밝아지고 커진다(언제 누를지 읽게). 지나간 고리는 옅은 점선만 남는다.
     //   모양이 채워 주는 것을 말한다(아래 버튼의 그림과 같다):
-    //     둥근 고리 + 안에 ▲와 II = 점프와 멈춤을 다 채운다(보통 충전 고리)
+    //     둥근 금빛 고리 + 안에 ▲와 큰 II = 점프와 멈춤을 다 채운다(보통 충전 고리). 지나가는 순간 공 둘레에 금빛 II 고리가 퍼진다(멈춤이 다시 찼다)
     //     마름모 고리 + 안에 ▲ 하나 = 점프만 채운다(사슬 고리: 1~3칸 간격으로 이어진 고리. 고리 사이를 앞으로 흐르는 점선 줄로 잇는다 — 간격이 곧 누르는 리듬)
     {
       const stacks = [];
@@ -1263,29 +1265,30 @@
       }
       ctx.setLineDash([]);
       for (const q of stacks) {
+        const RC = q.chain ? pal.accent : RING_GOLD(pal);      // 색으로도 가른다: 단독 고리(점프 + 멈춤) = 금빛, 사슬 고리(점프만) = 강조색
         const { cx, cy, ry } = q, near = Math.max(0, Math.min(1, 1 - (q.c + 0.5 - state.x) / 6)), grow = 1 + (q.used ? 0 : 0.08 * near + 0.05 * pulse), rx = T * (q.chain ? 0.36 : 0.32) * grow, ryy = ry * grow;
         if (q.used) {
-          ctx.strokeStyle = css(pal.accent, 0.3); ctx.lineWidth = 2; ctx.setLineDash([T * 0.1, T * 0.1]);
+          ctx.strokeStyle = css(RC, 0.3); ctx.lineWidth = 2; ctx.setLineDash([T * 0.1, T * 0.1]);
           hoop(q, rx, ryy); ctx.stroke(); ctx.setLineDash([]); continue;
         }
         const glow = 0.45 + 0.55 * near;
         const mg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ryy));      // 안쪽의 옅은 막
-        mg.addColorStop(0, css(pal.accent, 0.05)); mg.addColorStop(1, css(pal.accent, 0.22 * glow));
+        mg.addColorStop(0, css(RC, 0.05)); mg.addColorStop(1, css(RC, 0.22 * glow));
         ctx.fillStyle = mg; hoop(q, rx, ryy); ctx.fill();
         ctx.lineJoin = "round";
-        ctx.strokeStyle = css(pal.accent, 0.85); ctx.lineWidth = 7; ctx.shadowColor = css(pal.accent); sb(10 + 14 * glow + 8 * pulse);      // 바깥 빛
+        ctx.strokeStyle = css(RC, 0.85); ctx.lineWidth = 7; ctx.shadowColor = css(RC); sb(10 + 14 * glow + 8 * pulse);      // 바깥 빛
         hoop(q, rx, ryy); gs(); sb(0);
         ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5; hoop(q, rx, ryy); ctx.stroke();      // 흰 심
         const k = T * 0.13;                                                    // 안의 표시: ▲(점프) / ▲ II(점프와 멈춤)
         ctx.fillStyle = css([255, 255, 255], 0.55 + 0.4 * glow);
         if (q.chain) tri(cx, cy, k * 1.15);
-        else { tri(cx, cy - k * 1.3, k); ctx.fillRect(cx - k * 0.75, cy + k * 0.35, k * 0.42, k * 1.3); ctx.fillRect(cx + k * 0.33, cy + k * 0.35, k * 0.42, k * 1.3); }
+        else { tri(cx, cy - k * 1.45, k); ctx.fillRect(cx - k * 0.95, cy + k * 0.2, k * 0.58, k * 1.75); ctx.fillRect(cx + k * 0.37, cy + k * 0.2, k * 0.58, k * 1.75); }      // II를 크게(멈춤도 채운다)
         for (let j = 0; j < 2; j++) {                                          // 고리를 따라 도는 불꽃 둘(한 박에 반 바퀴)
           const th = beat * Math.PI + j * Math.PI + q.c;
           let px, py;
           if (q.chain) { const u = ((th / (Math.PI * 2)) % 1 + 1) % 1 * 4, i = Math.floor(u), f = u - i, P = [[0, -ryy], [rx, 0], [0, ryy], [-rx, 0]], a0 = P[i], a1 = P[(i + 1) % 4]; px = cx + a0[0] + (a1[0] - a0[0]) * f; py = cy + a0[1] + (a1[1] - a0[1]) * f; }
           else { px = cx + Math.cos(th) * rx; py = cy + Math.sin(th) * ryy; }
-          ctx.fillStyle = "#ffffff"; ctx.shadowColor = css(pal.accent); sb(10); ctx.beginPath(); ctx.arc(px, py, T * 0.07 * (1 + 0.4 * glow), 0, Math.PI * 2); ctx.fill(); sb(0);
+          ctx.fillStyle = "#ffffff"; ctx.shadowColor = css(RC); sb(10); ctx.beginPath(); ctx.arc(px, py, T * 0.07 * (1 + 0.4 * glow), 0, Math.PI * 2); ctx.fill(); sb(0);
         }
       }
       ctx.restore();
@@ -1742,6 +1745,23 @@
       ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.shadowColor = "#3aa0ff"; ctx.shadowBlur = 10 + 8 * pulse + 16 * hit;
       ctx.strokeRect(xa, y0, xb - xa, th); ctx.shadowBlur = 0;
     }
+    // 멈춤의 길이(course.holdLen, 1라운드): II 자리에서 손을 떼는 자리까지 공이 떠 가는 높이에 띠를 긋고, 끝에 "놓기" 표시(세로 막대 + 빈 고리).
+    //   공이 지나간 부분은 사라진다(남은 길이가 줄어드는 게 보인다)
+    if (L.holdSpans && L.holdSpans.length && showMarks()) {
+      const bx = camX + state.lead;
+      for (const q of L.holdSpans) {
+        if (q.x1 < cA - 1 || q.x0 > cB + 1 || q.x1 < bx - 0.2 || !inPass(q.x0)) continue;
+        const a = Math.max(q.x0, Math.min(q.x1, bx)), y = sy(ROWS - 1 - q.h), xa = sx(a), xb = sx(q.x1), wv = T * 0.3;
+        ctx.save();
+        ctx.lineCap = "round"; ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.35), 0.3); ctx.lineWidth = wv;
+        ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke();
+        ctx.strokeStyle = css(mix(pal.accent, [255, 255, 255], 0.6), 0.85); ctx.lineWidth = 2; ctx.setLineDash([T * 0.12, T * 0.1]); ctx.lineDashOffset = -beat * T * 0.5;
+        ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(xb, y - T * 0.42); ctx.lineTo(xb, y + T * 0.42); ctx.stroke();      // 놓기: 세로 막대
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(xb + T * 0.3, y, T * 0.16, 0, Math.PI * 2); ctx.stroke();                                          //        + 빈 고리
+        ctx.restore();
+      }
+    }
     // 수정: 맞는 길 위에 줄지어 있다. 지나가며 뚫는다. 눌러야 하는 자리에는 바뀔 방향을 가리키는 화살표가 있다.
     if (L.gems.length) {
       for (let i = 0; i < L.gems.length; i++) {
@@ -1930,6 +1950,10 @@
         ctx.translate(bend.ax, bend.ay); ctx.rotate(-bend.th); ctx.translate(-sx(camX), -view.groundY);        // 공이 있는 자리의 매끄러운 기울기로 놓는다
       }
       const cx = sx(camX + state.lead), cy = sy(state.y) - HALF * T;
+      { const u = (now - (fx.refillAt ?? -9)) / 0.4;      // 단독 고리를 지난 순간: 공 둘레로 금빛 고리가 퍼지고 공 위에 II가 떠오른다(멈춤 1박이 다시 찼다)
+        if (u >= 0 && u < 1) { const gc = RING_GOLD(pal), R0 = T * (0.5 + 0.9 * u), k = T * 0.14;
+          ctx.save(); ctx.strokeStyle = css(gc, 0.9 * (1 - u)); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, R0, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = css(gc, 1 - u); const yy = cy - T * (0.95 + 0.5 * u); ctx.fillRect(cx - k * 0.95, yy, k * 0.6, k * 1.8); ctx.fillRect(cx + k * 0.35, yy, k * 0.6, k * 1.8); ctx.restore(); } }
       const zig = state.mode === "rush";
       const dashing = state.dashing > 0 || zig;
       if (fx.tail.length > 1) {
