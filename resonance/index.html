@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>RESONANCE // PULSE PROTOCOL DX</title>
+  <style>
+    :root {
+      --bg: #060812;
+      --panel: rgba(10, 13, 26, 0.94);
+      --pink: #ff1f6e;
+      --pink-hi: #ff6aa3;
+      --cyan: #00f0ff;
+      --gold: #ffd479;
+      --mint: #4dff9e;
+      --white: #ffffff;
+      --muted: #8a99ba;
+      --border: rgba(255, 255, 255, 0.14);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100dvh; overflow: hidden;
+      background: var(--bg); color: var(--white);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif;
+      touch-action: none;
+    }
+    #app { position: relative; width: 100%; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+    header {
+      position: relative; z-index: 20; display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; padding: 8px 14px; background: var(--panel);
+      border-bottom: 2px solid var(--pink); flex-wrap: wrap;
+    }
+    .brand {
+      font-weight: 900; font-size: 12.5px; color: var(--white); letter-spacing: 0.13em;
+      white-space: nowrap; display: flex; align-items: center; gap: 8px;
+    }
+    .brand-gem {
+      width: 10px; height: 10px; background: linear-gradient(135deg, var(--pink), var(--cyan));
+      transform: rotate(45deg); box-shadow: 0 0 12px var(--pink);
+    }
+    .hud-actions { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+    .btn {
+      border: 1.5px solid var(--border); background: rgba(255,255,255,0.05); color: var(--white);
+      font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 6px;
+      cursor: pointer; white-space: nowrap; letter-spacing: 0.02em;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .btn.on {
+      border-color: var(--cyan); color: #04131a; background: var(--cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+    }
+    #stageWrap { position: relative; flex: 1; width: 100%; min-height: 0; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+    /* Top Arcade HUD */
+    .hud-top {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      pointer-events: none; width: min(94%, 580px);
+    }
+    .hud-pill {
+      display: flex; align-items: center; gap: 11px; padding: 5px 14px; border-radius: 999px;
+      background: rgba(6, 8, 18, 0.86); border: 1.5px solid rgba(0, 240, 255, 0.35);
+      font-size: 11px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, monospace;
+      white-space: nowrap; letter-spacing: 0.04em;
+    }
+    .hud-pill b { color: var(--cyan); margin-left: 3px; }
+    .shield-bar { display: flex; align-items: center; gap: 4px; }
+    .shield-pip {
+      width: 9px; height: 9px; border-radius: 2px; transform: rotate(45deg);
+      background: var(--cyan); box-shadow: 0 0 8px rgba(0,240,255,0.6);
+      transition: transform 0.2s, background 0.2s;
+    }
+    .shield-pip.lost { background: rgba(255,255,255,0.12); box-shadow: none; transform: rotate(45deg) scale(0.7); }
+    .fever-tag {
+      display: none; padding: 2px 7px; border-radius: 4px;
+      background: linear-gradient(90deg, var(--gold), var(--cyan)); color: #04131a; font-weight: 900; font-size: 9.5px;
+    }
+    .fever-tag.on { display: inline-block; }
+
+    /* Dual Bars: Stage Timeline + Overdrive Gauge */
+    .bars-row { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 460px; }
+    .timeline-wrap {
+      flex: 1.4; height: 5px; border-radius: 999px;
+      background: rgba(255,255,255,0.1); position: relative;
+    }
+    .timeline-fill {
+      height: 100%; width: 0%; border-radius: 999px;
+      background: linear-gradient(90deg, var(--cyan), var(--pink));
+      transition: width 0.08s linear;
+    }
+    .timeline-boss-mark {
+      position: absolute; top: -4px; width: 13px; height: 13px; border-radius: 3px;
+      transform: translateX(-50%) rotate(45deg);
+      background: var(--pink); border: 1.5px solid #fff; box-shadow: 0 0 10px var(--pink);
+    }
+    .od-wrap {
+      flex: 1; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.1);
+      overflow: hidden; border: 1px solid rgba(255,212,121,0.3);
+    }
+    .od-fill {
+      height: 100%; width: 0%; background: linear-gradient(90deg, var(--cyan), var(--gold));
+      transition: width 0.1s ease-out;
+    }
+    .od-fill.active { background: linear-gradient(90deg, var(--gold), #ffffff, var(--cyan)); }
+
+    /* Interactive Overdrive Burst Floating Button (Mobile + PC) */
+    #burstBtn {
+      position: absolute; right: 16px; bottom: 52px; z-index: 12; display: none;
+      border: 2px solid var(--gold); border-radius: 999px; padding: 10px 16px;
+      background: linear-gradient(135deg, rgba(255,212,121,0.95), rgba(0,240,255,0.95));
+      color: #060812; font-size: 12px; font-weight: 900; letter-spacing: 0.06em;
+      cursor: pointer; box-shadow: 0 0 24px rgba(255,212,121,0.7);
+      animation: pulseBurst 0.7s infinite alternate;
+    }
+    #burstBtn.ready { display: block; }
+    @keyframes pulseBurst { from { transform: scale(1); } to { transform: scale(1.07); } }
+
+    /* Live In-Stage Radio Comm Bar */
+    .comm-toast {
+      position: absolute; top: 62px; left: 50%; transform: translateX(-50%); z-index: 11;
+      padding: 6px 14px; border-radius: 8px; max-width: 90%;
+      background: rgba(9, 13, 28, 0.92); border-left: 3px solid var(--pink);
+      border-top: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 12px; font-weight: 700; color: #eef4ff; pointer-events: none;
+      opacity: 0; transition: opacity 0.25s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .comm-toast.show { opacity: 1; }
+    .comm-toast b { color: var(--pink-hi); margin-right: 6px; font-family: ui-monospace, monospace; }
+    .comm-toast.ally { border-left-color: var(--cyan); }
+    .comm-toast.ally b { color: var(--cyan); }
+
+    /* Overlay Screens */
+    #overlay {
+      position: absolute; inset: 0; z-index: 15; display: flex; align-items: center; justify-content: center;
+      padding: 14px; background: rgba(6, 8, 18, 0.84); backdrop-filter: blur(8px);
+      overflow-y: auto;
+    }
+    #overlay.hidden { display: none; }
+    .panel {
+      width: 100%; max-width: 650px; background: linear-gradient(180deg, #10152b, #090d1c);
+      border: 2px solid var(--pink); border-radius: 18px; padding: 22px 24px;
+      box-shadow: 0 0 48px rgba(255, 31, 110, 0.25); text-align: center;
+    }
+    .eyebrow {
+      font-size: 10.5px; font-weight: 900; color: var(--cyan);
+      letter-spacing: 0.2em; margin-bottom: 5px;
+    }
+    .panel h1, .panel h2 { margin: 0 0 6px; font-size: 23px; font-weight: 900; letter-spacing: -0.02em; }
+    .panel p.sub { margin: 0 0 14px; font-size: 12.5px; line-height: 1.55; color: #b2bfd9; }
+
+    .diff-switch {
+      display: inline-flex; gap: 5px; padding: 4px; border-radius: 10px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); margin-bottom: 14px;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .diff-opt {
+      border: none; background: transparent; color: var(--muted);
+      font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+    }
+    .diff-opt.active { background: var(--cyan); color: #04131a; }
+    .diff-opt.active.hard { background: var(--pink); color: #fff; }
+
+    .stage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; text-align: left; }
+    @media (max-width: 620px) { .stage-grid { grid-template-columns: repeat(2, 1fr); } }
+    .stage-card {
+      padding: 10px; border-radius: 11px; cursor: pointer;
+      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.12);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .stage-card:hover { background: rgba(255,255,255,0.08); }
+    .stage-card.selected {
+      border-color: var(--pink); background: rgba(255, 31, 110, 0.16);
+      box-shadow: 0 0 16px rgba(255, 31, 110, 0.28);
+    }
+    .st-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
+    .st-num { font-size: 9.5px; font-weight: 900; color: var(--pink-hi); letter-spacing: 0.06em; }
+    .st-rank {
+      min-width: 20px; height: 19px; padding: 0 4px; border-radius: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 900; background: rgba(255,255,255,0.08); color: var(--muted);
+    }
+    .st-rank.S { background: var(--cyan); color: #04131a; }
+    .st-rank.A { background: var(--pink); color: #fff; }
+    .st-rank.B { background: var(--gold); color: #191205; }
+    .st-rank.C { background: #5a6a8a; color: #fff; }
+    .st-title { font-size: 12px; font-weight: 900; color: #fff; margin-bottom: 2px; line-height: 1.25; }
+    .st-boss { font-size: 10px; font-weight: 700; color: var(--cyan); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .st-meta { font-size: 9.5px; color: var(--muted); font-family: ui-monospace, monospace; }
+
+    .story-box {
+      text-align: left; padding: 13px 16px; border-radius: 12px; margin-bottom: 14px;
+      background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.24);
+    }
+    .story-speaker {
+      font-size: 10.5px; font-weight: 900; color: var(--cyan); letter-spacing: 0.12em; margin-bottom: 4px;
+    }
+    .story-speaker.boss { color: var(--pink-hi); }
+    .story-text { font-size: 12.5px; line-height: 1.6; color: #e2ebff; margin: 0; }
+    .story-quote { font-size: 11.5px; color: #ffb3cf; margin: 6px 0 0; font-style: italic; }
+
+    .sys-badges { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .sys-badge {
+      font-size: 10.5px; font-weight: 800; padding: 4px 9px; border-radius: 999px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #d5e2ff;
+    }
+    .sys-badge b { color: var(--gold); }
+
+    .result-rank {
+      width: 78px; height: 78px; margin: 4px auto 12px; border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px; font-weight: 900; border: 2px solid var(--cyan);
+      background: rgba(0, 240, 255, 0.14); color: var(--cyan);
+      box-shadow: 0 0 28px rgba(0, 240, 255, 0.3);
+    }
+    .result-rank.fail { border-color: var(--pink); background: rgba(255, 31, 110, 0.16); color: var(--pink); box-shadow: 0 0 28px rgba(255, 31, 110, 0.3); }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .stat-box { padding: 9px 8px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); }
+    .stat-box span { display: block; font-size: 10px; font-weight: 800; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 2px; }
+    .stat-box strong { font-size: 16px; font-weight: 900; font-family: ui-monospace, monospace; color: #fff; }
+    .btn-row { display: flex; gap: 8px; }
+    .primary-btn {
+      flex: 1; border: none; border-radius: 10px; padding: 13px 16px;
+      font-size: 14px; font-weight: 900; cursor: pointer; color: #ffffff;
+      background: linear-gradient(135deg, #ff1f6e 0%, #ff4d8d 100%);
+      box-shadow: 0 10px 26px rgba(255, 31, 110, 0.4); letter-spacing: 0.04em;
+    }
+    .secondary-btn {
+      border: 1.5px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 12px 15px;
+      font-size: 13px; font-weight: 800; cursor: pointer; color: #fff;
+      background: rgba(255,255,255,0.06);
+    }
+    .primary-btn:active, .secondary-btn:active { transform: scale(0.985); }
+    .tip-line { margin-top: 10px; font-size: 11px; color: var(--muted); }
+    @media (max-width: 640px) { .brand { display: none; } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="brand"><span class="brand-gem"></span>RESONANCE // PULSE PROTOCOL DX</div>
+      <div class="hud-actions">
+        <button class="btn" id="menuBtn">챕터 선택</button>
+        <button class="btn on" id="diffBtn" title="난이도 모드 전환 (CASUAL / ARCADE)">모드: CASUAL</button>
+        <button class="btn on" id="styleBtn" title="타이밍 그래픽 스타일 전환">그래픽: osu! 수축링</button>
+        <button class="btn" id="syncBtn" title="오디오-화면 싱크 보정">싱크 0ms</button>
+        <button class="btn" id="autoBtn">오토 보기</button>
+        <button class="btn" id="muteBtn">소리 켜짐</button>
+        <button class="btn" id="resetBtn" title="현재 챕터 재시작">↺</button>
+      </div>
+    </header>
+    <div id="stageWrap">
+      <canvas id="c"></canvas>
+      <div class="hud-top">
+        <div class="hud-pill">
+          <div class="shield-bar" id="shieldBar" title="실드"></div>
+          <span>SCORE<b id="scoreVal">0</b></span>
+          <span>COMBO<b id="comboVal">0</b></span>
+          <span>ACC<b id="accVal">100%</b></span>
+          <span class="fever-tag" id="feverTag">OVERDRIVE ×3</span>
+        </div>
+        <div class="bars-row">
+          <div class="timeline-wrap" id="timelineWrap">
+            <div class="timeline-fill" id="timelineFill"></div>
+            <div class="timeline-boss-mark" id="timelineBossMark" style="left: 44%;"></div>
+          </div>
+          <div class="od-wrap" title="오버드라이브 게이지">
+            <div class="od-fill" id="odFill"></div>
+          </div>
+        </div>
+      </div>
+      <div class="comm-toast" id="commToast"></div>
+      <button id="burstBtn">⚡ OVERDRIVE BURST (E)</button>
+      <div id="overlay">
+        <div class="panel" id="panelContent"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const STORAGE_KEY = 'resonance_pulse_protocol_dx_v1';
+      function loadRecords() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } }
+      function saveRecord(idx, rank, score) {
+        const rec = loadRecords(), order = { S: 4, A: 3, B: 2, C: 1 };
+        const prev = rec[idx];
+        if (!prev || score > prev.score || (order[rank] || 0) > (order[prev.rank] || 0)) {
+          rec[idx] = { rank: prev && (order[prev.rank] || 0) > (order[rank] || 0) ? prev.rank : rank, score: Math.max(score, prev ? prev.score : 0) };
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rec)); } catch {}
+        }
+      }
+      function m2f(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+      // ---------- 5 BESPOKE CHAPTERS: UNIQUE WORLD + UNIQUE BOSS + HOLD NODES + STRICT 1.0/0.5 GRID ----------
+      const STAGES = [
+        {
+          id: 0, ch: 'CH 01', title: 'NEON HIGHWAY', world: 'highway', bossName: 'CROWN SENTINEL', diff: 'EASY', bossType: 'crown',
+          bpm: 90, lead: 2.0, warnBeat: 24, bossBeat: 28, totalBeats: 62,
+          story: {
+            brief: '침묵 프로토콜이 도시의 모든 소리를 집어삼킨 밤. 레트로 선셋 고속도로 위에서 마지막 공명 신호 [ECHO-01]이 깨어난다.',
+            bossQuote: 'CROWN SENTINEL: "미승인 주파수 감지. 고속도로 봉쇄선에서 소거한다."',
+            warnComm: 'CROWN SENTINEL 강하 — 지평선 선셋 코어에서 보스 출현!',
+            phase2Comm: 'ECHO-01: "외장 아머 파괴! 오버드라이브로 단숨에 밀어붙이자!"',
+            clearLog: '외곽 고속도로의 봉쇄가 풀렸다. 빛이 굴절되는 거울 회랑으로 진입한다.'
+          },
+          chords: [[57,60,64],[53,57,60],[60,64,67],[55,59,62]],
+          bass: [45, 41, 48, 43],
+          verseLead: [69,0,72,0, 76,0,72,74, 69,0,67,0, 64,0,67,0, 69,0,72,0, 76,79,76,74, 72,0,71,0, 69,0,0,0],
+          bossLead:  [81,0,76,79, 81,0,84,83, 79,0,76,74, 76,0,72,0, 77,0,72,76, 77,0,81,79, 76,0,74,72, 76,0,79,0],
+          nodes: [
+            { b: 4, x: 0.24, y: 0.50 }, { b: 6, x: 0.40, y: 0.34 },
+            { b: 8, x: 0.60, y: 0.34 }, { b: 10, x: 0.76, y: 0.50 },
+            { b: 12, x: 0.64, y: 0.68 }, { b: 14, x: 0.36, y: 0.68 },
+            { b: 15, x: 0.24, y: 0.50 }, { b: 16, x: 0.38, y: 0.32 },
+            { b: 18, x: 0.62, y: 0.32 }, { b: 19, x: 0.76, y: 0.50 },
+            { b: 20, x: 0.50, y: 0.68, hold: 1.5 },
+            // ACT 3: Boss (introduces 0.5 off-beat + finale HOLD laser!)
+            { b: 28, x: 0.50, y: 0.72 }, { b: 30, x: 0.26, y: 0.56 },
+            { b: 31.5, x: 0.42, y: 0.72 }, { b: 32, x: 0.74, y: 0.56 },
+            { b: 34, x: 0.74, y: 0.34 }, { b: 36, x: 0.50, y: 0.26 },
+            { b: 37, x: 0.26, y: 0.34 }, { b: 38.5, x: 0.38, y: 0.68 },
+            { b: 39, x: 0.62, y: 0.68 }, { b: 41, x: 0.76, y: 0.50, hold: 1.5 },
+            // Phase 2
+            { b: 45, x: 0.24, y: 0.50 }, { b: 46, x: 0.38, y: 0.70 },
+            { b: 46.5, x: 0.62, y: 0.70 }, { b: 48, x: 0.76, y: 0.48 },
+            { b: 49.5, x: 0.62, y: 0.28 }, { b: 50, x: 0.38, y: 0.28 },
+            { b: 52, x: 0.24, y: 0.50 }, { b: 53.5, x: 0.40, y: 0.70 },
+            { b: 54, x: 0.60, y: 0.70 }, { b: 56, x: 0.50, y: 0.72, hold: 2.0 },
+          ],
+        },
+        {
+          id: 1, ch: 'CH 02', title: 'PRISM CORRIDOR', world: 'prism', bossName: 'BARRACUDA TRIAD', diff: 'NORMAL', bossType: 'prism',
+          bpm: 100, lead: 2.0, warnBeat: 24, bossBeat: 28, totalBeats: 62,
+          story: {
+            brief: '만화경처럼 기하학 거울이 회전하는 프리즘 회랑. 3개의 분신으로 도약하는 [BARRACUDA TRIAD]가 앞을 가로막는다.',
+            bossQuote: 'BARRACUDA TRIAD: "거울 속 잔상에 현혹되지 마라. 공명 빔으로 본체를 꿰뚫어 봐."',
+            warnComm: 'BARRACUDA TRIAD 출현 — 만화경 3분신 도약 패턴 개시!',
+            phase2Comm: 'ECHO-01: "홀드 빔으로 프리즘 분신을 통째로 녹여버려!"',
+            clearLog: '프리즘 회랑이 맑은 빛으로 열렸다. 지하 발전소의 웅장한 피스톤 박동이 울린다.'
+          },
+          chords: [[54,57,61],[50,54,57],[57,61,64],[52,56,59]],
+          bass: [42, 38, 45, 40],
+          verseLead: [66,0,69,0, 73,0,71,69, 66,0,64,0, 61,0,64,0, 66,0,69,73, 76,0,73,71, 69,0,68,0, 66,0,0,0],
+          bossLead:  [78,0,73,76, 78,81,78,76, 73,0,71,69, 73,0,69,0, 74,0,69,73, 74,78,76,74, 73,0,71,68, 73,0,76,0],
+          nodes: [
+            { b: 4, x: 0.22, y: 0.48 }, { b: 5.5, x: 0.38, y: 0.30 },
+            { b: 6, x: 0.62, y: 0.30 }, { b: 8, x: 0.78, y: 0.48, hold: 1.5 },
+            { b: 11, x: 0.62, y: 0.70 }, { b: 12, x: 0.38, y: 0.70 },
+            { b: 13.5, x: 0.24, y: 0.48 }, { b: 14, x: 0.38, y: 0.30 },
+            { b: 16, x: 0.62, y: 0.30 }, { b: 17.5, x: 0.76, y: 0.50 },
+            { b: 18, x: 0.62, y: 0.70 }, { b: 20, x: 0.38, y: 0.70, hold: 1.5 },
+            // ACT 3
+            { b: 28, x: 0.50, y: 0.74 }, { b: 29.5, x: 0.26, y: 0.60 },
+            { b: 30, x: 0.26, y: 0.36 }, { b: 32, x: 0.50, y: 0.26, hold: 1.5 },
+            { b: 35, x: 0.74, y: 0.36 }, { b: 35.5, x: 0.74, y: 0.60 },
+            { b: 37, x: 0.56, y: 0.74 }, { b: 38, x: 0.36, y: 0.72 },
+            { b: 38.5, x: 0.24, y: 0.50 }, { b: 40, x: 0.36, y: 0.28 },
+            { b: 41, x: 0.64, y: 0.28 }, { b: 41.5, x: 0.76, y: 0.50 },
+            // Phase 2
+            { b: 44, x: 0.64, y: 0.72 }, { b: 45, x: 0.36, y: 0.72 },
+            { b: 45.5, x: 0.24, y: 0.46 }, { b: 47, x: 0.40, y: 0.28, hold: 1.5 },
+            { b: 50, x: 0.76, y: 0.50 }, { b: 50.5, x: 0.62, y: 0.72 },
+            { b: 51, x: 0.38, y: 0.72 }, { b: 53, x: 0.24, y: 0.50 },
+            { b: 54.5, x: 0.40, y: 0.30 }, { b: 55, x: 0.60, y: 0.30 },
+            { b: 57, x: 0.50, y: 0.74, hold: 2.0 },
+          ],
+        },
+        {
+          id: 2, ch: 'CH 03', title: 'PULSE FOUNDRY', world: 'foundry', bossName: 'TWIN PENDULUM', diff: 'HARD', bossType: 'pendulum',
+          bpm: 108, lead: 2.0, warnBeat: 24, bossBeat: 28, totalBeats: 62,
+          story: {
+            brief: '거대 이퀄라이저 기둥과 피스톤이 박자에 맞춰 쿵쾅거리는 공명 발전소. 진자 보스 [TWIN PENDULUM]이 폭주 중이다.',
+            bossQuote: 'TWIN PENDULUM: "좌, 우, 그리고 파쇄... 이 발전소의 리듬을 버텨보라!"',
+            warnComm: 'TWIN PENDULUM 가동 — 플라즈마 체인 진자 스윙 경보!',
+            phase2Comm: 'ECHO-01: "피스톤 출력 임계 돌파! 오버드라이브로 진동을 역전시켜!"',
+            clearLog: '발전소의 심장이 푸른 공명으로 되살아났다. 최상층 원자로로 상승한다.'
+          },
+          chords: [[60,63,67],[56,60,63],[58,62,65],[55,58,62]],
+          bass: [48, 44, 46, 43],
+          verseLead: [72,0,75,0, 79,0,77,75, 74,0,70,0, 67,0,70,74, 72,0,75,79, 82,0,79,77, 75,0,74,0, 72,0,0,0],
+          bossLead:  [84,0,79,82, 84,0,87,86, 82,0,79,77, 79,0,75,0, 80,0,75,79, 80,0,84,82, 79,0,77,75, 79,0,82,0],
+          nodes: [
+            { b: 4, x: 0.22, y: 0.50 }, { b: 5, x: 0.78, y: 0.50 },
+            { b: 6.5, x: 0.60, y: 0.30 }, { b: 7, x: 0.40, y: 0.30 },
+            { b: 8, x: 0.22, y: 0.50, hold: 1.5 }, { b: 11, x: 0.78, y: 0.50 },
+            { b: 12, x: 0.66, y: 0.30 }, { b: 12.5, x: 0.50, y: 0.26 },
+            { b: 13, x: 0.34, y: 0.30 }, { b: 15, x: 0.22, y: 0.54 },
+            { b: 16, x: 0.38, y: 0.72 }, { b: 16.5, x: 0.62, y: 0.72 },
+            { b: 18, x: 0.78, y: 0.50 }, { b: 19.5, x: 0.50, y: 0.30, hold: 1.5 },
+            // ACT 3
+            { b: 28, x: 0.24, y: 0.68 }, { b: 29, x: 0.76, y: 0.68 },
+            { b: 30, x: 0.66, y: 0.32 }, { b: 30.5, x: 0.34, y: 0.32 },
+            { b: 32, x: 0.22, y: 0.52 }, { b: 33, x: 0.38, y: 0.74 },
+            { b: 33.5, x: 0.62, y: 0.74 }, { b: 35, x: 0.78, y: 0.52, hold: 1.5 },
+            { b: 38, x: 0.36, y: 0.28 }, { b: 38.5, x: 0.24, y: 0.52 },
+            { b: 40, x: 0.50, y: 0.74 }, { b: 41.5, x: 0.76, y: 0.52 },
+            { b: 42, x: 0.62, y: 0.28 },
+            // Phase 2
+            { b: 44, x: 0.22, y: 0.50 }, { b: 44.5, x: 0.38, y: 0.72 },
+            { b: 45, x: 0.62, y: 0.72 }, { b: 47, x: 0.78, y: 0.50, hold: 1.5 },
+            { b: 50, x: 0.24, y: 0.54 }, { b: 51, x: 0.50, y: 0.74 },
+            { b: 51.5, x: 0.76, y: 0.54 }, { b: 53, x: 0.64, y: 0.28 },
+            { b: 54, x: 0.36, y: 0.28 }, { b: 54.5, x: 0.24, y: 0.52 },
+            { b: 56.5, x: 0.50, y: 0.74, hold: 2.0 },
+          ],
+        },
+        {
+          id: 3, ch: 'CH 04', title: 'VOID REACTOR', world: 'reactor', bossName: 'OVERDRIVE GEAR', diff: 'EXPERT', bossType: 'gear',
+          bpm: 114, lead: 2.0, warnBeat: 24, bossBeat: 28, totalBeats: 62,
+          story: {
+            brief: '중력 워프 터널이 고속으로 쏟아지는 무음 원자로. 3중 톱니 기어 [OVERDRIVE GEAR]가 진입로를 봉쇄하고 있다.',
+            bossQuote: 'OVERDRIVE GEAR: "터빈이 도는 한, 그 어떤 신호도 시타델에 닿지 못한다."',
+            warnComm: 'OVERDRIVE GEAR 기동 — 3중 기어 워프 터빈 가속!',
+            phase2Comm: 'ECHO-01: "원자로 아머 파괴! 터빈 레이저 사이로 풀 파워 공명!"',
+            clearLog: '원자로의 거대한 톱니가 멈춰 섰다. 마침내 최상층 침묵의 성채가 열린다.'
+          },
+          chords: [[62,65,69],[58,62,65],[55,58,62],[57,61,64]],
+          bass: [38, 34, 43, 45],
+          verseLead: [74,0,77,0, 81,0,79,77, 74,0,72,0, 69,0,72,74, 77,0,74,77, 82,0,81,79, 77,0,76,0, 73,0,76,0],
+          bossLead:  [86,81,84,81, 86,0,89,88, 86,82,81,79, 81,0,77,0, 82,77,81,77, 82,0,86,84, 81,79,77,76, 81,0,85,0],
+          nodes: [
+            { b: 4, x: 0.22, y: 0.50 }, { b: 4.5, x: 0.36, y: 0.30 },
+            { b: 6, x: 0.64, y: 0.30 }, { b: 6.5, x: 0.78, y: 0.50 },
+            { b: 8, x: 0.64, y: 0.72, hold: 1.5 }, { b: 11, x: 0.22, y: 0.50 },
+            { b: 11.5, x: 0.36, y: 0.30 }, { b: 12, x: 0.64, y: 0.30 },
+            { b: 14, x: 0.78, y: 0.52 }, { b: 14.5, x: 0.64, y: 0.72 },
+            { b: 16, x: 0.36, y: 0.72 }, { b: 17, x: 0.24, y: 0.50 },
+            { b: 17.5, x: 0.38, y: 0.28 }, { b: 19, x: 0.62, y: 0.28, hold: 1.5 },
+            // ACT 3
+            { b: 28, x: 0.50, y: 0.74 }, { b: 28.5, x: 0.28, y: 0.64 },
+            { b: 30, x: 0.24, y: 0.38 }, { b: 31, x: 0.42, y: 0.26 },
+            { b: 31.5, x: 0.62, y: 0.26 }, { b: 32, x: 0.78, y: 0.44 },
+            { b: 34, x: 0.70, y: 0.70, hold: 1.5 }, { b: 37, x: 0.26, y: 0.62 },
+            { b: 37.5, x: 0.26, y: 0.36 }, { b: 39, x: 0.46, y: 0.24 },
+            { b: 40, x: 0.78, y: 0.54 }, { b: 41, x: 0.62, y: 0.74 },
+            { b: 41.5, x: 0.38, y: 0.74 },
+            // Phase 2
+            { b: 44, x: 0.36, y: 0.28 }, { b: 44.5, x: 0.50, y: 0.24 },
+            { b: 45, x: 0.64, y: 0.28 }, { b: 47, x: 0.78, y: 0.52 },
+            { b: 47.5, x: 0.62, y: 0.74 }, { b: 48, x: 0.38, y: 0.74 },
+            { b: 50, x: 0.22, y: 0.50, hold: 1.5 }, { b: 53, x: 0.66, y: 0.72 },
+            { b: 54.5, x: 0.34, y: 0.72 }, { b: 55, x: 0.24, y: 0.48 },
+            { b: 57, x: 0.50, y: 0.26, hold: 2.0 },
+          ],
+        },
+        {
+          id: 4, ch: 'FINAL', title: 'SILENCE CITADEL', world: 'citadel', bossName: 'THE SILENCE CORE', diff: 'MASTER', bossType: 'citadel',
+          bpm: 120, lead: 2.0, warnBeat: 24, bossBeat: 28, totalBeats: 66,
+          story: {
+            brief: '부서진 스테인드글라스 파편과 개기일식이 떠 있는 성채 최상층. 침묵의 심장 [THE SILENCE CORE]와의 최종 결전.',
+            bossQuote: 'THE SILENCE CORE: "모든 음표는 사라진다. 영원한 일식 속에서 잠들어라."',
+            warnComm: '최종 보스 THE SILENCE CORE 각성 — 일식 오라 전면 개방!',
+            phase2Comm: 'ECHO-01: "성채의 유리가 깨지고 있어! 도시의 모든 소리를 담아 마지막 공명을!"',
+            clearLog: '일식이 걷히고 찬란한 시안 오로라가 도시를 뒤덮었다. 멈춰 있던 모든 음악이 다시 울려 퍼진다.'
+          },
+          chords: [[64,67,71],[60,64,67],[62,66,69],[59,63,66]],
+          bass: [40, 36, 38, 35],
+          verseLead: [76,0,79,0, 83,0,81,79, 76,0,74,0, 71,0,74,76, 79,0,76,79, 84,0,83,81, 79,0,78,0, 76,0,79,0],
+          bossLead:  [88,0,83,86, 88,0,91,90, 88,86,83,81, 83,0,79,0, 84,0,79,83, 84,0,88,86, 83,81,79,78, 83,0,88,0],
+          nodes: [
+            { b: 4, x: 0.24, y: 0.50 }, { b: 5, x: 0.38, y: 0.30 },
+            { b: 5.5, x: 0.62, y: 0.30 }, { b: 7, x: 0.76, y: 0.50, hold: 1.5 },
+            { b: 10, x: 0.22, y: 0.50 }, { b: 10.5, x: 0.38, y: 0.28 },
+            { b: 11, x: 0.62, y: 0.28 }, { b: 13, x: 0.78, y: 0.50 },
+            { b: 13.5, x: 0.62, y: 0.74 }, { b: 14, x: 0.38, y: 0.74 },
+            { b: 16, x: 0.24, y: 0.48 }, { b: 17, x: 0.50, y: 0.24 },
+            { b: 17.5, x: 0.76, y: 0.48 }, { b: 19, x: 0.50, y: 0.76, hold: 2.0 },
+            // ACT 3: FINAL BOSS
+            { b: 28, x: 0.50, y: 0.76 }, { b: 29, x: 0.26, y: 0.64 },
+            { b: 29.5, x: 0.24, y: 0.38 }, { b: 31, x: 0.42, y: 0.24 },
+            { b: 31.5, x: 0.62, y: 0.24 }, { b: 32, x: 0.78, y: 0.42 },
+            { b: 34, x: 0.72, y: 0.68, hold: 1.5 }, { b: 37, x: 0.24, y: 0.42 },
+            { b: 37.5, x: 0.42, y: 0.24 }, { b: 38, x: 0.62, y: 0.24 },
+            { b: 40, x: 0.78, y: 0.50 }, { b: 41, x: 0.64, y: 0.74 },
+            { b: 41.5, x: 0.36, y: 0.74 },
+            // Phase 2 Final Climax
+            { b: 44, x: 0.34, y: 0.28 }, { b: 44.5, x: 0.50, y: 0.22 },
+            { b: 45, x: 0.66, y: 0.28 }, { b: 47, x: 0.78, y: 0.50, hold: 1.5 },
+            { b: 50, x: 0.22, y: 0.50 }, { b: 50.5, x: 0.36, y: 0.28 },
+            { b: 51, x: 0.64, y: 0.28 }, { b: 53, x: 0.78, y: 0.52 },
+            { b: 53.5, x: 0.58, y: 0.76 }, { b: 54, x: 0.34, y: 0.72 },
+            { b: 56, x: 0.24, y: 0.46 }, { b: 56.5, x: 0.42, y: 0.26 },
+            { b: 57, x: 0.64, y: 0.26 }, { b: 59.5, x: 0.50, y: 0.74, hold: 2.5 },
+          ],
+        },
+      ];
+
+      // ---------- FULL MULTI-SECTION ARCADE EDM SYNTHESIZER ----------
+      let audioCtx = null, masterComp = null, muted = false, nextStepTime = 0, nextStepIdx = 0;
+      const SYNC_STEPS = [0, 20, 40, 60, -40, -20];
+      let syncIdx = 0;
+      function syncMs() { return SYNC_STEPS[syncIdx]; }
+      function ensureAudio() {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) {
+            audioCtx = new AC();
+            masterComp = audioCtx.createDynamicsCompressor();
+            masterComp.threshold.value = -14; masterComp.ratio.value = 6;
+            masterComp.connect(audioCtx.destination);
+          }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+      }
+      function outNode() { return masterComp || audioCtx.destination; }
+      function playMetro(t, hi) { if (muted || !audioCtx) return; const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = 'square'; o.frequency.setValueAtTime(hi ? 1320 : 880, t); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.045); o.connect(g).connect(outNode()); o.start(t); o.stop(t + 0.05); }
+      function playKick(t, heavy) { if (muted || !audioCtx) return; const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.setValueAtTime(heavy ? 210 : 175, t); o.frequency.exponentialRampToValueAtTime(34, t + 0.11); g.gain.setValueAtTime(heavy ? 0.72 : 0.58, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.19); o.connect(g).connect(outNode()); o.start(t); o.stop(t + 0.2); }
+      function playSnare(t, vol = 0.28) { if (muted || !audioCtx) return; const len = Math.floor(audioCtx.sampleRate * 0.1), b = audioCtx.createBuffer(1, len, audioCtx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.65); const s = audioCtx.createBufferSource(); s.buffer = b; const f = audioCtx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2100; const g = audioCtx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1); s.connect(f).connect(g).connect(outNode()); s.start(t); const o = audioCtx.createOscillator(), og = audioCtx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(210, t); o.frequency.exponentialRampToValueAtTime(110, t + 0.05); og.gain.setValueAtTime(vol * 0.5, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.06); o.connect(og).connect(outNode()); o.start(t); o.stop(t + 0.065); }
+      function playHat(t, acc) { if (muted || !audioCtx) return; const d = acc ? 0.08 : 0.025, len = Math.floor(audioCtx.sampleRate * d), b = audioCtx.createBuffer(1, len, audioCtx.sampleRate), ch = b.getChannelData(0); for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, acc ? 1.45 : 2.8); const s = audioCtx.createBufferSource(); s.buffer = b; const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = acc ? 6800 : 9400; const g = audioCtx.createGain(); g.gain.setValueAtTime(acc ? 0.17 : 0.055, t); g.gain.exponentialRampToValueAtTime(0.001, t + d); s.connect(f).connect(g).connect(outNode()); s.start(t); }
+      function playOctaveBass(t, midi, hi) { if (muted || !audioCtx) return; const o = audioCtx.createOscillator(), f = audioCtx.createBiquadFilter(), g = audioCtx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(m2f(midi + (hi ? 12 : 0)), t); f.type = 'lowpass'; f.frequency.setValueAtTime(hi ? 1100 : 620, t); f.frequency.exponentialRampToValueAtTime(140, t + 0.14); g.gain.setValueAtTime(0.22, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16); o.connect(f).connect(g).connect(outNode()); o.start(t); o.stop(t + 0.17); }
+      function playSupersawChord(t, midis, dur, vol = 0.075) { if (muted || !audioCtx) return; const f = audioCtx.createBiquadFilter(), g = audioCtx.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(2400, t); f.frequency.exponentialRampToValueAtTime(600, t + dur); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); f.connect(g).connect(outNode()); for (const m of midis) { for (const det of [-7, 7]) { const o = audioCtx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(m2f(m), t); o.detune.value = det; o.connect(f); o.start(t); o.stop(t + dur + 0.02); } } }
+      function playLeadNote(t, midi, dur, bossMode) { if (muted || !audioCtx || !midi) return; const o = audioCtx.createOscillator(), f = audioCtx.createBiquadFilter(), g = audioCtx.createGain(); o.type = bossMode ? 'square' : 'sawtooth'; o.frequency.setValueAtTime(m2f(midi), t); f.type = 'lowpass'; f.frequency.setValueAtTime(bossMode ? 3600 : 2400, t); f.frequency.exponentialRampToValueAtTime(900, t + dur); g.gain.setValueAtTime(bossMode ? 0.11 : 0.09, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(f).connect(g).connect(outNode()); o.start(t); o.stop(t + dur + 0.02); }
+      function playWarningSiren(t, stepInWarn, stepSec) { if (muted || !audioCtx) return; const frac = stepInWarn / 16, o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = 'sawtooth'; const f0 = 260 + frac * 620; o.frequency.setValueAtTime(f0, t); o.frequency.linearRampToValueAtTime(f0 + 48, t + stepSec); g.gain.setValueAtTime(0.09 + frac * 0.07, t); g.gain.exponentialRampToValueAtTime(0.001, t + stepSec * 0.95); o.connect(g).connect(outNode()); o.start(t); o.stop(t + stepSec); if (stepInWarn < 8 && stepInWarn % 4 === 0) playSnare(t, 0.22 + frac * 0.14); else if (stepInWarn >= 8 && stepInWarn < 12 && stepInWarn % 2 === 0) playSnare(t, 0.26 + frac * 0.14); else if (stepInWarn >= 12) playSnare(t, 0.34); }
+      function playNodeSpawn(atTime, chordMidis, isHold) {
+        if (muted || !audioCtx) return;
+        const t = Math.max(audioCtx.currentTime, atTime), o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        const root = chordMidis ? chordMidis[2] + (isHold ? 15 : 12) : 76, f = m2f(root);
+        o.type = isHold ? 'triangle' : 'sine';
+        o.frequency.setValueAtTime(f * 0.85, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.05);
+        g.gain.setValueAtTime(0.001, t); g.gain.linearRampToValueAtTime(0.095, t + 0.006); g.gain.exponentialRampToValueAtTime(0.001, t + (isHold ? 0.11 : 0.075));
+        o.connect(g).connect(outNode()); o.start(t); o.stop(t + (isHold ? 0.12 : 0.08));
+      }
+      function playCyanHit(combo, perfect) { if (muted || !audioCtx) return; const t = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain(); const f = perfect ? 880 : 659.25; o.type = 'triangle'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.25, t + 0.075); g.gain.setValueAtTime(perfect ? 0.22 : 0.13, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.095); o.connect(g).connect(outNode()); o.start(t); o.stop(t + 0.1); }
+      function playBurstActivate() { if (muted || !audioCtx) return; const t = audioCtx.currentTime; [440, 659.25, 880, 1318.5].forEach((f, i) => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t + i * 0.03); g.gain.setValueAtTime(0.14, t + i * 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.03 + 0.35); o.connect(g).connect(outNode()); o.start(t + i * 0.03); o.stop(t + i * 0.03 + 0.36); }); }
+      function playDamage() { if (muted || !audioCtx) return; const t = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(155, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.2); g.gain.setValueAtTime(0.26, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.22); o.connect(g).connect(outNode()); o.start(t); o.stop(t + 0.23); }
+      function playBossShatter() { if (muted || !audioCtx) return; const t = audioCtx.currentTime; [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, idx) => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t + idx * 0.055); g.gain.setValueAtTime(0.2, t + idx * 0.055); g.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.055 + 0.38); o.connect(g).connect(outNode()); o.start(t + idx * 0.055); o.stop(t + idx * 0.055 + 0.4); }); }
+
+      // ---------- DOM & STATE ----------
+      const canvas = document.getElementById('c'), ctx = canvas.getContext('2d'), stageWrap = document.getElementById('stageWrap');
+      const overlay = document.getElementById('overlay'), panelContent = document.getElementById('panelContent');
+      const scoreVal = document.getElementById('scoreVal'), comboVal = document.getElementById('comboVal'), accVal = document.getElementById('accVal'), feverTag = document.getElementById('feverTag');
+      const shieldBar = document.getElementById('shieldBar'), timelineFill = document.getElementById('timelineFill'), timelineBossMark = document.getElementById('timelineBossMark'), odFill = document.getElementById('odFill'), commToast = document.getElementById('commToast'), burstBtn = document.getElementById('burstBtn');
+      const menuBtn = document.getElementById('menuBtn'), diffBtn = document.getElementById('diffBtn'), autoBtn = document.getElementById('autoBtn'), muteBtn = document.getElementById('muteBtn'), resetBtn = document.getElementById('resetBtn'), syncBtn = document.getElementById('syncBtn'), styleBtn = document.getElementById('styleBtn');
+      let W = 800, H = 450, DPR = 1, rafId = null, commTimer = null;
+
+      const DIFFS = {
+        casual: { label: 'CASUAL', maxShield: 8, tempoScale: 0.90, perfSec: 0.150, hitSec: 0.280, healEvery: 5 },
+        arcade: { label: 'ARCADE', maxShield: 5, tempoScale: 1.00, perfSec: 0.110, hitSec: 0.220, healEvery: 8 },
+      };
+      const stars = Array.from({ length: 65 }, () => ({ x: Math.random(), y: Math.random(), z: 0.2 + Math.random() * 0.8 }));
+      const glassShards = Array.from({ length: 18 }, (_, i) => ({ ang: (Math.PI * 2 * i) / 18, dist: 0.22 + (i % 3) * 0.11, sz: 14 + (i % 4) * 8, sp: 0.18 + (i % 3) * 0.08 }));
+      const foundryEq = new Array(20).fill(0);
+
+      const state = {
+        mode: 'menu', difficulty: 'casual', stageIdx: 0, autoPlay: false, startTime: 0, beat: 0, lastBeatInt: -1,
+        score: 0, combo: 0, maxCombo: 0, perfects: 0, goods: 0, misses: 0,
+        shield: 8, maxShield: 8, phase2: false, phaseBanner: 0, warnShown: false,
+        // NEW SYSTEMS: Hold Beam + Overdrive Burst + Hit-Stop!
+        holding: false, activeHoldNode: null, holdTickAcc: 0,
+        odGauge: 0, odActive: 0, odBarrier: false, hitStop: 0, chromaFlash: 0,
+        gfxStyle: 'osu', nodes: [], ripples: [], popups: [], sparks: [], beams: [], hazards: [],
+        boss: { active: false, x: 0.5, y: -0.25, tx: 0.5, ty: 0.44, afterimages: [], hitFlash: 0, recoil: 0, shattered: false, hp: 1, maxHp: 1, clawPunch: 0 },
+        timingTicks: [], victoryTimer: 0, damageFlash: 0, shake: 0, camZoom: 1,
+      };
+
+      function curDiff() { return DIFFS[state.difficulty]; }
+      function effBpm(st) { return Math.round(st.bpm * curDiff().tempoScale); }
+      function effHitBeats(st) { return curDiff().hitSec / (60 / effBpm(st)); }
+      function effPerfBeats(st) { return curDiff().perfSec / (60 / effBpm(st)); }
+      function nodeRadius() { return Math.max(16, Math.min(25, Math.min(W, H) * 0.046)); }
+
+      function showComm(speaker, text, isAlly = false) {
+        commToast.className = 'comm-toast show' + (isAlly ? ' ally' : '');
+        commToast.innerHTML = `<b>${speaker}</b>${text}`;
+        if (commTimer) clearTimeout(commTimer);
+        commTimer = setTimeout(() => { commToast.classList.remove('show'); }, 3200);
+      }
+
+      function triggerOverdriveBurst() {
+        if (state.mode !== 'playing' || state.odGauge < 100 || state.odActive > 0) return;
+        state.odGauge = 0;
+        state.odActive = 6.0;
+        state.odBarrier = true;
+        state.chromaFlash = 1.0;
+        state.shake = 9;
+        state.camZoom = 1.05;
+        burstBtn.classList.remove('ready');
+        const cx = W * 0.5, cy = H * 0.5;
+        state.ripples.push({ x: cx, y: cy, r: 24, col: '#ffd479', alpha: 1, w: 6, spd: 14, square: false });
+        state.ripples.push({ x: cx, y: cy, r: 16, col: '#00f0ff', alpha: 1, w: 4, spd: 18, square: true });
+        showComm('OVERDRIVE', '⚡ 공명 브레이커 발동! 6초간 SCORE ×3 + 배리어 활성화!', true);
+        playBurstActivate();
+        updateHud();
+      }
+
+      function scheduleAudio() {
+        if (!audioCtx || state.mode !== 'playing') return;
+        const st = STAGES[state.stageIdx], beatSec = 60 / effBpm(st), stepSec = beatSec / 4;
+        const lookAhead = audioCtx.currentTime + 0.13;
+        for (const n of state.nodes) {
+          if (n.audioSpawned || n.done) continue;
+          const spawnTime = state.startTime + (n.b - st.lead) * beatSec;
+          if (spawnTime <= lookAhead) {
+            n.audioSpawned = true;
+            const bar = Math.max(0, Math.floor((n.b - st.lead - 4) / 4));
+            playNodeSpawn(spawnTime, st.chords[bar % st.chords.length], Boolean(n.hold));
+          }
+        }
+        while (nextStepTime < lookAhead) {
+          const beatAtStep = nextStepIdx / 4;
+          if (nextStepIdx < 16) {
+            if (nextStepIdx % 4 === 0) playMetro(nextStepTime, nextStepIdx === 12);
+          } else if (beatAtStep >= st.warnBeat && beatAtStep < st.bossBeat) {
+            playWarningSiren(nextStepTime, nextStepIdx - st.warnBeat * 4, stepSec);
+          } else {
+            const inBoss = beatAtStep >= st.bossBeat;
+            const m = nextStepIdx % 16, bar = Math.floor((nextStepIdx - 16) / 16);
+            const chordIdx = ((bar % 4) + 4) % 4;
+            if (m % 4 === 0) playKick(nextStepTime, inBoss);
+            if (m === 4 || m === 12) playSnare(nextStepTime, inBoss ? 0.3 : 0.22);
+            if (m % 4 === 2) playHat(nextStepTime, true);
+            else if (inBoss || m % 2 === 1) playHat(nextStepTime, false);
+            if (m % 2 === 0) playOctaveBass(nextStepTime, st.bass[chordIdx], m % 4 === 2);
+            if (m === 0 || (inBoss && m === 8)) playSupersawChord(nextStepTime, st.chords[chordIdx], beatSec * (inBoss ? 1.8 : 3.2), inBoss ? 0.085 : 0.065);
+            if (m % 2 === 0) {
+              const melIdx = Math.floor(nextStepIdx / 2) % 32;
+              const note = inBoss ? st.bossLead[melIdx] : st.verseLead[melIdx];
+              if (note) playLeadNote(nextStepTime, note, stepSec * 1.9, inBoss || state.phase2);
+            }
+          }
+          nextStepTime += stepSec; nextStepIdx++;
+        }
+      }
+
+      function resize() {
+        const r = stageWrap.getBoundingClientRect(); DPR = Math.min(window.devicePixelRatio || 1, 2);
+        W = Math.max(320, r.width); H = Math.max(240, r.height);
+        canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); draw();
+      }
+      function updateHud() {
+        const judged = state.perfects + state.goods + state.misses;
+        const acc = judged ? Math.round(((state.perfects + state.goods * 0.7) / judged) * 100) : 100;
+        scoreVal.textContent = String(state.score);
+        comboVal.textContent = String(state.combo);
+        accVal.textContent = `${acc}%`;
+        feverTag.classList.toggle('on', state.odActive > 0 || state.combo >= 8);
+        feverTag.textContent = state.odActive > 0 ? 'BURST ×3' : 'COMBO ×2';
+        odFill.style.width = `${state.odActive > 0 ? (state.odActive / 6.0) * 100 : state.odGauge}%`;
+        odFill.classList.toggle('active', state.odActive > 0);
+        burstBtn.classList.toggle('ready', state.mode === 'playing' && state.odGauge >= 100 && state.odActive <= 0);
+        if (shieldBar.children.length !== state.maxShield) {
+          shieldBar.innerHTML = Array.from({ length: state.maxShield }, () => '<span class="shield-pip"></span>').join('');
+        }
+        const pips = shieldBar.children;
+        for (let i = 0; i < pips.length; i++) pips[i].classList.toggle('lost', i >= state.shield);
+      }
+      function computeRank() {
+        const judged = state.perfects + state.goods + state.misses;
+        const acc = judged ? ((state.perfects + state.goods * 0.7) / judged) * 100 : 100;
+        if (state.misses === 0 && acc >= 92) return 'S';
+        if (acc >= 84) return 'A';
+        if (acc >= 70) return 'B';
+        return 'C';
+      }
+
+      function showMenu() {
+        state.mode = 'menu';
+        commToast.classList.remove('show');
+        burstBtn.classList.remove('ready');
+        const rec = loadRecords(), stCur = STAGES[state.stageIdx];
+        const cardsHtml = STAGES.map((st) => {
+          const r = rec[st.id];
+          const badge = r ? `<span class="st-rank ${r.rank}">${r.rank}</span>` : `<span class="st-rank">-</span>`;
+          return `
+            <div class="stage-card ${st.id === state.stageIdx ? 'selected' : ''}" data-pick="${st.id}">
+              <div class="st-top"><span class="st-num">${st.ch}</span>${badge}</div>
+              <div class="st-title">${st.title}</div>
+              <div class="st-boss">${st.bossName}</div>
+              <div class="st-meta">${effBpm(st)} BPM · ${st.diff}</div>
+            </div>
+          `;
+        }).join('');
+
+        panelContent.innerHTML = `
+          <div class="eyebrow">ARCADE STORY CAMPAIGN // DX EDITION</div>
+          <h1>RESONANCE: PULSE PROTOCOL</h1>
+          <p class="sub">5개 고유 시그니처 무대 연출과 움직이는 보스전! <b>홀드 공명 빔</b>, <b>오버드라이브 버스트(×3)</b>, <b>아머 브레이크 히트스톱</b>을 활용해 침묵 코어를 정화하세요.</p>
+          <div class="diff-switch" id="diffSwitch">
+            <button class="diff-opt ${state.difficulty === 'casual' ? 'active' : ''}" data-diff="casual">CASUAL (실드 8 · ±150ms · 5콤보 회복)</button>
+            <button class="diff-opt ${state.difficulty === 'arcade' ? 'active hard' : ''}" data-diff="arcade">ARCADE (실드 5 · ±110ms · 8콤보 회복)</button>
+          </div>
+          <div class="stage-grid" id="stageGrid">${cardsHtml}</div>
+          <div class="story-box">
+            <div class="story-speaker">◈ ${stCur.ch} BRIEFING · ${stCur.title}</div>
+            <p class="story-text">${stCur.story.brief}</p>
+            <p class="story-quote">${stCur.story.bossQuote}</p>
+          </div>
+          <div class="sys-badges">
+            <span class="sys-badge"><b>HOLD</b> 링은 꾹 눌러 연속 빔</span>
+            <span class="sys-badge"><b>⚡ BURST</b> 게이지 100% 시 E/버튼 발동</span>
+            <span class="sys-badge"><b>FIFO</b> 모바일 고정 판정</span>
+          </div>
+          <div class="btn-row">
+            <button class="primary-btn" id="playBtn">▶ ${stCur.ch} 출격 (${curDiff().label})</button>
+          </div>
+        `;
+        overlay.classList.remove('hidden');
+
+        document.getElementById('diffSwitch').addEventListener('click', (e) => { const b = e.target.closest('.diff-opt'); if (!b) return; setDifficulty(b.dataset.diff); showMenu(); });
+        document.getElementById('stageGrid').addEventListener('click', (e) => { const c = e.target.closest('.stage-card'); if (!c) return; state.stageIdx = Number(c.dataset.pick); showMenu(); });
+        document.getElementById('playBtn').addEventListener('click', () => startStage(state.stageIdx));
+      }
+
+      function showResult(cleared) {
+        state.mode = 'result';
+        commToast.classList.remove('show');
+        burstBtn.classList.remove('ready');
+        const st = STAGES[state.stageIdx];
+        const judged = state.perfects + state.goods + state.misses;
+        const acc = judged ? Math.round(((state.perfects + state.goods * 0.7) / judged) * 100) : 100;
+        const rank = cleared ? computeRank() : 'F';
+        if (cleared && !state.autoPlay) saveRecord(state.stageIdx, rank, state.score);
+        const isEnding = cleared && state.stageIdx === STAGES.length - 1;
+        const hasNext = cleared && state.stageIdx < STAGES.length - 1;
+
+        panelContent.innerHTML = `
+          <div class="eyebrow">${isEnding ? 'CAMPAIGN COMPLETE // EPILOGUE' : (cleared ? `${st.ch} CLEARED` : 'SHIELD BROKEN')}</div>
+          <h2>${st.title} · ${st.bossName}</h2>
+          <div class="result-rank ${cleared ? '' : 'fail'}">${cleared ? rank : '✕'}</div>
+          <div class="story-box">
+            <div class="story-speaker ${cleared ? '' : 'boss'}">${cleared ? '◈ ECHO-01 LOG' : '⚠ SIGNAL INTERRUPTED'}</div>
+            <p class="story-text">${cleared ? st.story.clearLog : '공명 실드가 파괴되었다. 다시 주파수를 맞추고 돌파하자.'}</p>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-box"><span>SCORE</span><strong>${state.score}</strong></div>
+            <div class="stat-box"><span>ACCURACY</span><strong>${acc}%</strong></div>
+            <div class="stat-box"><span>MAX COMBO</span><strong>${state.maxCombo}</strong></div>
+            <div class="stat-box"><span>PERFECT</span><strong style="color:#00f0ff;">${state.perfects}</strong></div>
+            <div class="stat-box"><span>GOOD</span><strong style="color:#ffd479;">${state.goods}</strong></div>
+            <div class="stat-box"><span>MISS</span><strong style="color:#ff1f6e;">${state.misses}</strong></div>
+          </div>
+          <div class="btn-row">
+            <button class="secondary-btn" id="resMenuBtn">챕터 선택</button>
+            <button class="secondary-btn" id="resRetryBtn">↺ 재도전</button>
+            ${hasNext ? `<button class="primary-btn" id="resNextBtn">다음 챕터 (${STAGES[state.stageIdx + 1].ch}) ▶</button>` : `<button class="primary-btn" id="resReplayBtn">▶ 다시 출격</button>`}
+          </div>
+        `;
+        overlay.classList.remove('hidden');
+
+        document.getElementById('resMenuBtn').addEventListener('click', showMenu);
+        document.getElementById('resRetryBtn').addEventListener('click', () => startStage(state.stageIdx));
+        const nextBtn = document.getElementById('resNextBtn'); if (nextBtn) nextBtn.addEventListener('click', () => startStage(state.stageIdx + 1));
+        const replayBtn = document.getElementById('resReplayBtn'); if (replayBtn) replayBtn.addEventListener('click', () => startStage(state.stageIdx));
+      }
+
+      function startStage(idx) {
+        state.stageIdx = idx;
+        const st = STAGES[idx];
+        const bossNotes = st.nodes.filter((n) => n.b >= st.bossBeat).length;
+        state.mode = 'playing'; state.beat = 0; state.lastBeatInt = -1;
+        state.score = 0; state.combo = 0; state.maxCombo = 0;
+        state.perfects = 0; state.goods = 0; state.misses = 0;
+        state.maxShield = curDiff().maxShield; state.shield = state.maxShield;
+        state.phase2 = false; state.phaseBanner = 0; state.warnShown = false;
+        state.holding = false; state.activeHoldNode = null; state.holdTickAcc = 0;
+        state.odGauge = 0; state.odActive = 0; state.odBarrier = false; state.hitStop = 0; state.chromaFlash = 0;
+        state.damageFlash = 0; state.shake = 0; state.camZoom = 1;
+        state.nodes = st.nodes.map((n, i) => ({ ...n, idx: i + 1, done: false, holding: false, spawned: false, audioSpawned: false }));
+        state.ripples = []; state.popups = []; state.sparks = []; state.beams = []; state.hazards = []; state.timingTicks = [];
+        state.boss = { active: false, x: 0.5, y: -0.25, tx: 0.5, ty: 0.44, afterimages: [], hitFlash: 0, recoil: 0, shattered: false, hp: bossNotes, maxHp: Math.max(1, bossNotes), clawPunch: 0 };
+        timelineBossMark.style.left = `${(st.bossBeat / st.totalBeats) * 100}%`;
+        timelineFill.style.width = '0%';
+        updateHud();
+        ensureAudio();
+        const baseT = audioCtx ? audioCtx.currentTime + 0.05 : performance.now() / 1000;
+        state.startTime = baseT;
+        if (audioCtx) { nextStepTime = baseT; nextStepIdx = 0; }
+        overlay.classList.add('hidden');
+        showComm('ECHO-01', `${st.ch} · ${st.title} 진입! 2박 공명 주파수 동기화 완료.`, true);
+      }
+
+      function triggerBossShatter() {
+        state.mode = 'victory_anim';
+        state.boss.shattered = true;
+        state.victoryTimer = 1.5;
+        state.hitStop = 0.08;
+        state.chromaFlash = 1.0;
+        state.shake = 16;
+        const bx = state.boss.x * W, by = state.boss.y * H;
+        state.ripples.push({ x: bx, y: by, r: 24, col: '#ffffff', alpha: 1, w: 8, spd: 12, square: false });
+        state.ripples.push({ x: bx, y: by, r: 18, col: '#00f0ff', alpha: 1, w: 5, spd: 16, square: true });
+        for (let i = 0; i < 56; i++) {
+          const th = (Math.PI * 2 * i) / 56 + Math.random() * 0.2, sp = 140 + Math.random() * 380;
+          state.sparks.push({ x: bx, y: by, vx: Math.cos(th) * sp, vy: Math.sin(th) * sp, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 18, life: 1.15, max: 1.15, col: i % 3 === 0 ? '#00f0ff' : (i % 3 === 1 ? '#ff1f6e' : '#ffd479'), sz: 7 + Math.random() * 10, tri: i % 2 === 0 });
+        }
+        playBossShatter();
+      }
+
+      function triggerArmorBreak(bx, by, st) {
+        state.phase2 = true;
+        state.phaseBanner = 1.7;
+        state.hitStop = 0.055; // Crisp AAA Armor-Break Hit-Stop!
+        state.chromaFlash = 0.9;
+        state.shake = 11;
+        state.camZoom = 1.055;
+        state.ripples.push({ x: bx, y: by, r: 28, col: '#ffffff', alpha: 1, w: 7, spd: 13, square: false });
+        state.ripples.push({ x: bx, y: by, r: 22, col: '#ff1f6e', alpha: 0.95, w: 5, spd: 16, square: true });
+        for (let i = 0; i < 24; i++) {
+          const th = (Math.PI * 2 * i) / 24, sp = 130 + Math.random() * 200;
+          state.sparks.push({ x: bx, y: by, vx: Math.cos(th) * sp, vy: Math.sin(th) * sp, rot: Math.random() * 6, vr: 12, life: 0.55, max: 0.55, col: '#ff6aa3', sz: 6 + Math.random() * 5, tri: true });
+        }
+        showComm('ARMOR BREAK', st.story.phase2Comm, true);
+      }
+
+      function hitNode(n, errSec) {
+        const st = STAGES[state.stageIdx], d = curDiff();
+        const absSec = Math.abs(errSec), perf = absSec <= d.perfSec;
+        if (n.hold && !n.holding) {
+          // Start continuous HOLD BEAM!
+          n.holding = true;
+          state.activeHoldNode = n;
+          state.holdTickAcc = 0;
+        } else {
+          n.done = true;
+        }
+        if (perf) state.perfects++; else state.goods++;
+        state.combo++;
+        state.maxCombo = Math.max(state.maxCombo, state.combo);
+        if (state.odActive <= 0) state.odGauge = Math.min(100, state.odGauge + (perf ? 11 : 6));
+        if (state.combo > 0 && state.combo % d.healEvery === 0 && state.shield < state.maxShield) {
+          state.shield = Math.min(state.maxShield, state.shield + 1);
+          state.popups.push({ x: n.x * W, y: n.y * H - nodeRadius() * 2.2, text: '+1 SHIELD', col: '#4dff9e', life: 0.72, max: 0.72 });
+        }
+        const mul = state.odActive > 0 ? 3 : (state.combo >= 8 ? 2 : 1);
+        state.score += (perf ? 150 : 90) * mul;
+        const nx = n.x * W, ny = n.y * H;
+
+        state.timingTicks.push({ norm: Math.max(-1, Math.min(1, errSec / d.hitSec)), col: perf ? '#00f0ff' : '#ffd479', life: 1.2, max: 1.2 });
+        if (state.timingTicks.length > 12) state.timingTicks.shift();
+
+        const beamCol = state.odActive > 0 ? '#ffd479' : (perf ? '#00f0ff' : '#9cf8ff');
+        if (state.boss.active && !state.boss.shattered) {
+          const bx = state.boss.x * W, by = state.boss.y * H;
+          state.beams.push({ x1: nx, y1: ny, x2: bx, y2: by, life: 0.24, max: 0.24, col: beamCol, w: state.odActive > 0 ? 10 : (perf ? 7.5 : 4.2) });
+          state.boss.hitFlash = perf ? 1.0 : 0.6;
+          state.boss.recoil = perf ? 1.0 : 0.5;
+          state.boss.hp = Math.max(0, state.boss.hp - 1);
+          if (!state.phase2 && state.boss.hp / state.boss.maxHp <= 0.5) triggerArmorBreak(bx, by, st);
+        } else {
+          state.ripples.push({ x: nx, y: ny, r: nodeRadius() * 1.1, col: beamCol, alpha: 0.78, w: 2.5, spd: 10.5, square: false });
+        }
+
+        state.shake = perf ? 4.2 : 1.8;
+        state.camZoom = perf ? 1.022 : 1.01;
+        state.ripples.push({ x: nx, y: ny, r: nodeRadius(), col: '#ffffff', alpha: 1, w: 3.5, spd: 5.2, square: true });
+        for (let i = 0; i < 14; i++) {
+          const th = (Math.PI * 2 * i) / 14 + Math.random() * 0.25, sp = 100 + Math.random() * 170;
+          state.sparks.push({ x: nx, y: ny, vx: Math.cos(th) * sp, vy: Math.sin(th) * sp, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, life: 0.34, max: 0.34, col: i % 3 === 0 ? '#ffffff' : beamCol, sz: 4 + Math.random() * 3.5, tri: i % 2 === 0 });
+        }
+        const label = n.hold ? 'HOLD LOCK!' : (perf ? 'PERFECT!' : (errSec < 0 ? 'FAST' : 'LATE'));
+        state.popups.push({ x: nx, y: ny - nodeRadius() * 1.45, text: label, col: n.hold ? '#ffd479' : (perf ? '#00f0ff' : '#ffd479'), life: 0.5, max: 0.5 });
+        playCyanHit(state.combo, perf);
+        updateHud();
+      }
+
+      function handleTapAt(clientX, clientY, isKeyboard = false) {
+        if (state.mode !== 'playing') return;
+        state.holding = true;
+        const st = STAGES[state.stageIdx], beatSec = 60 / effBpm(st), hitSec = curDiff().hitSec;
+        const rect = stageWrap.getBoundingClientRect();
+        const tx = clientX - rect.left, ty = clientY - rect.top;
+        if (!isKeyboard) state.ripples.push({ x: tx, y: ty, r: 6, col: 'rgba(0,240,255,0.48)', alpha: 0.48, w: 1.8, spd: 4.2, square: true });
+
+        for (const n of state.nodes) {
+          if (n.done || n.holding) continue;
+          const errSec = (state.beat - n.b) * beatSec;
+          if (Math.abs(errSec) <= hitSec) { hitNode(n, errSec); return; }
+          if (errSec < -hitSec) return;
+        }
+      }
+
+      function releaseHold() {
+        state.holding = false;
+        if (state.activeHoldNode && !state.activeHoldNode.done) {
+          const n = state.activeHoldNode;
+          const endBeat = n.b + n.hold;
+          if (state.beat >= endBeat - 0.45) {
+            // Clean Hold Finish Bonus!
+            n.done = true; n.holding = false; state.activeHoldNode = null;
+            state.score += 120 * (state.odActive > 0 ? 3 : 1);
+            state.popups.push({ x: n.x * W, y: n.y * H - nodeRadius() * 1.6, text: 'BEAM CLEAR!', col: '#4dff9e', life: 0.55, max: 0.55 });
+            playCyanHit(state.combo + 2, true);
+            updateHud();
+          } else {
+            // Released too early — still ends safely without harsh kill
+            n.done = true; n.holding = false; state.activeHoldNode = null;
+          }
+        }
+      }
+
+      function updateBossChoreography(st, bInt, isNewBeat) {
+        const b = state.boss;
+        if (state.beat < st.warnBeat) return;
+        if (!state.warnShown) { state.warnShown = true; showComm('WARNING', st.story.warnComm, false); }
+        if (state.beat >= st.warnBeat + 2.5 && !b.active) { b.active = true; b.x = 0.5; b.y = -0.22; b.tx = 0.5; b.ty = 0.46; }
+        if (!b.active || b.shattered) return;
+
+        const bossElapsed = Math.max(0, state.beat - st.bossBeat);
+        if (state.beat >= st.bossBeat) {
+          if (st.bossType === 'crown') { b.tx = 0.5 + Math.sin(bossElapsed * 0.45) * 0.24; b.ty = 0.45 + Math.sin(bossElapsed * 0.9) * 0.10; }
+          else if (st.bossType === 'prism') {
+            const anchors = [[0.5, 0.42], [0.28, 0.44], [0.72, 0.44], [0.5, 0.52]];
+            const idx = Math.floor(bossElapsed / 4) % anchors.length;
+            if (isNewBeat && Math.floor(bossElapsed) % 4 === 0) b.afterimages.push({ x: b.x, y: b.y, life: 0.35, max: 0.35 });
+            b.tx = anchors[idx][0]; b.ty = anchors[idx][1] + Math.sin(bossElapsed * 1.2) * 0.05;
+          } else if (st.bossType === 'pendulum') {
+            const swing = Math.sin(bossElapsed * Math.PI * 0.25);
+            b.tx = 0.5 + swing * 0.30; b.ty = 0.38 + (1 - Math.abs(swing)) * 0.16;
+          } else if (st.bossType === 'gear') {
+            const rOrb = state.phase2 ? 0.22 : 0.16;
+            b.tx = 0.5 + Math.cos(bossElapsed * 0.65) * rOrb; b.ty = 0.48 + Math.sin(bossElapsed * 1.3) * 0.11;
+          } else {
+            b.tx = 0.5 + Math.sin(bossElapsed * 0.35) * (state.phase2 ? 0.22 : 0.12); b.ty = 0.46 + Math.cos(bossElapsed * 0.7) * 0.09;
+          }
+          if (isNewBeat) {
+            b.clawPunch = 1.0;
+            const bx = b.x * W, by = b.y * H;
+            state.hazards.push({ type: 'boss_laser', x: bx, y: by, ang: (bInt * 0.785) % Math.PI, life: 0.32, max: 0.32 });
+            if (state.phase2 || st.bossType === 'citadel') state.hazards.push({ type: 'boss_laser', x: bx, y: by, ang: ((bInt * 0.785) + Math.PI * 0.5) % Math.PI, life: 0.28, max: 0.28 });
+          }
+        }
+        const lerpSpd = st.bossType === 'prism' ? 0.16 : 0.09;
+        b.x += (b.tx - b.x) * lerpSpd; b.y += (b.ty - b.y) * lerpSpd;
+        b.hitFlash = Math.max(0, b.hitFlash - 0.085); b.recoil = Math.max(0, b.recoil - 0.09); b.clawPunch = Math.max(0, b.clawPunch - 0.08);
+        for (let i = b.afterimages.length - 1; i >= 0; i--) { b.afterimages[i].life -= 0.016; if (b.afterimages[i].life <= 0) b.afterimages.splice(i, 1); }
+      }
+
+      function step() {
+        // Hit-Stop cinematic freeze (visuals freeze for 3 frames while audio keeps tight sync!)
+        if (state.hitStop > 0) { state.hitStop -= 0.016; return; }
+
+        state.damageFlash = Math.max(0, state.damageFlash - 0.06);
+        state.chromaFlash = Math.max(0, state.chromaFlash - 0.055);
+        state.phaseBanner = Math.max(0, state.phaseBanner - 0.016);
+        if (state.odActive > 0) { state.odActive = Math.max(0, state.odActive - 0.016); updateHud(); }
+        state.shake *= 0.78; if (state.shake < 0.18) state.shake = 0;
+        state.camZoom += (1 - state.camZoom) * 0.14;
+
+        const starSpd = state.mode === 'playing' ? (state.phase2 ? 0.017 : (state.boss.active ? 0.010 : 0.014)) : 0.004;
+        for (const s of stars) { s.x -= starSpd * s.z; if (s.x < 0) { s.x = 1; s.y = Math.random(); } }
+
+        for (let i = state.beams.length - 1; i >= 0; i--) { state.beams[i].life -= 0.016; if (state.beams[i].life <= 0) state.beams.splice(i, 1); }
+        for (let i = state.hazards.length - 1; i >= 0; i--) { const h = state.hazards[i]; h.life -= 0.016; if (h.type === 'wave_bar') h.x -= h.vx * 0.016; if (h.life <= 0) state.hazards.splice(i, 1); }
+        for (let i = state.ripples.length - 1; i >= 0; i--) { state.ripples[i].r += state.ripples[i].spd; state.ripples[i].alpha -= 0.044; if (state.ripples[i].alpha <= 0) state.ripples.splice(i, 1); }
+        for (let i = state.popups.length - 1; i >= 0; i--) { state.popups[i].y -= 1.0; state.popups[i].life -= 0.016; if (state.popups[i].life <= 0) state.popups.splice(i, 1); }
+        for (let i = state.sparks.length - 1; i >= 0; i--) { const p = state.sparks[i]; p.x += p.vx * 0.016; p.y += p.vy * 0.016; p.vx *= 0.93; p.vy *= 0.93; p.rot += p.vr * 0.016; p.life -= 0.016; if (p.life <= 0) state.sparks.splice(i, 1); }
+        for (let i = state.timingTicks.length - 1; i >= 0; i--) { state.timingTicks[i].life -= 0.016; if (state.timingTicks[i].life <= 0) state.timingTicks.splice(i, 1); }
+
+        if (state.mode === 'victory_anim') { state.victoryTimer -= 0.016; if (state.victoryTimer <= 0) showResult(true); return; }
+        if (state.mode !== 'playing') return;
+
+        scheduleAudio();
+        const st = STAGES[state.stageIdx], beatSec = 60 / effBpm(st), hitBeats = effHitBeats(st);
+        const nowSec = audioCtx ? audioCtx.currentTime : performance.now() / 1000;
+        state.beat = (nowSec - state.startTime - syncMs() / 1000) / beatSec;
+
+        timelineFill.style.width = `${Math.max(0, Math.min(100, (state.beat / st.totalBeats) * 100))}%`;
+
+        // Active HOLD BEAM tick processing!
+        if (state.activeHoldNode && !state.activeHoldNode.done) {
+          const hn = state.activeHoldNode;
+          const endB = hn.b + hn.hold;
+          if (state.autoPlay || state.holding) {
+            state.holdTickAcc += 0.016;
+            if (state.holdTickAcc >= 0.09) {
+              state.holdTickAcc = 0;
+              state.score += 35 * (state.odActive > 0 ? 3 : 1);
+              if (state.odActive <= 0) state.odGauge = Math.min(100, state.odGauge + 3);
+              if (state.boss.active) state.boss.hitFlash = 0.55;
+              state.sparks.push({ x: hn.x * W, y: hn.y * H, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, rot: 0, vr: 10, life: 0.24, max: 0.24, col: '#ffd479', sz: 4, tri: false });
+              updateHud();
+            }
+            if (state.beat >= endB) {
+              hn.done = true; hn.holding = false; state.activeHoldNode = null;
+              state.score += 150 * (state.odActive > 0 ? 3 : 1);
+              state.popups.push({ x: hn.x * W, y: hn.y * H - nodeRadius() * 1.6, text: 'BEAM CLEAR!', col: '#4dff9e', life: 0.55, max: 0.55 });
+              playCyanHit(state.combo + 2, true);
+              updateHud();
+            }
+          }
+        }
+
+        const bInt = Math.floor(state.beat);
+        const isNewBeat = bInt >= 4 && bInt !== state.lastBeatInt;
+        if (isNewBeat) {
+          state.lastBeatInt = bInt;
+          if (state.beat < st.warnBeat) {
+            state.hazards.push({ type: 'wave_bar', x: W + 40, y: (bInt % 2 === 0 ? 0.16 : 0.84) * H, w: 28, h: H * 0.22, vx: W * 0.68, life: 1.8, max: 1.8 });
+          }
+        }
+
+        updateBossChoreography(st, bInt, isNewBeat);
+
+        for (const n of state.nodes) {
+          if (n.done || n.holding) continue;
+          if (!n.spawned && (n.b - state.beat) <= st.lead) {
+            n.spawned = true;
+            state.ripples.push({ x: n.x * W, y: n.y * H, r: nodeRadius() * 0.45, col: n.hold ? 'rgba(255,212,121,0.65)' : 'rgba(255,106,163,0.52)', alpha: 0.48, w: 1.8, spd: 2.5, square: false });
+          }
+          if (state.autoPlay && Math.abs(n.b - state.beat) <= 0.03) {
+            if (state.odGauge >= 100 && state.odActive <= 0) triggerOverdriveBurst();
+            hitNode(n, 0); continue;
+          }
+          if (state.beat > n.b + hitBeats) {
+            n.done = true;
+            if (state.odBarrier && state.odActive > 0) {
+              // Overdrive Barrier absorbs 1 miss!
+              state.odBarrier = false;
+              state.popups.push({ x: n.x * W, y: n.y * H, text: 'BARRIER!', col: '#ffd479', life: 0.6, max: 0.6 });
+              continue;
+            }
+            state.misses++; state.combo = 0; state.damageFlash = 0.8; state.shake = 5.5;
+            if (!state.autoPlay) state.shield = Math.max(0, state.shield - 1);
+            state.popups.push({ x: n.x * W, y: n.y * H, text: 'MISS', col: '#ff1f6e', life: 0.55, max: 0.55 });
+            playDamage(); updateHud();
+            if (!state.autoPlay && state.shield <= 0) { showResult(false); return; }
+          }
+        }
+
+        const allDone = state.nodes.every((n) => n.done);
+        const lastN = st.nodes[st.nodes.length - 1];
+        const lastEnd = lastN.b + (lastN.hold || 0);
+        if ((allDone && state.beat >= lastEnd + 0.9) || state.beat >= st.totalBeats) { triggerBossShatter(); }
+      }
+
+      // ---------- 5 BESPOKE SIGNATURE WORLD BACKDROPS ----------
+      function drawSignatureWorld(world, cx, cy, pulse, isWarn) {
+        ctx.save();
+        if (world === 'highway') {
+          // CH 01: Synthwave Outrun Sunset Horizon + 3D Scrolling Grid!
+          const horY = H * 0.52;
+          const sunR = Math.min(W, H) * (0.19 + 0.012 * pulse);
+          const sunG = ctx.createLinearGradient(cx, horY - sunR, cx, horY + sunR * 0.4);
+          sunG.addColorStop(0, isWarn ? 'rgba(255,31,110,0.45)' : 'rgba(255,140,90,0.34)');
+          sunG.addColorStop(1, 'rgba(255,31,110,0.06)');
+          ctx.fillStyle = sunG;
+          ctx.beginPath(); ctx.arc(cx, horY, sunR, Math.PI, 0); ctx.fill();
+          // Retro sun horizontal cutouts
+          ctx.fillStyle = isWarn ? '#180612' : '#060812';
+          for (let sl = 0; sl < 5; sl++) { ctx.fillRect(cx - sunR, horY - sl * (sunR * 0.17) - 4, sunR * 2, 2 + sl * 1.2); }
+          // Scrolling 3D perspective floor grid
+          ctx.strokeStyle = state.phase2 ? 'rgba(255,31,110,0.22)' : 'rgba(0,240,255,0.14)';
+          ctx.lineWidth = 1;
+          for (let i = -8; i <= 8; i++) { ctx.beginPath(); ctx.moveTo(cx, horY); ctx.lineTo(cx + i * W * 0.16, H); ctx.stroke(); }
+          const scroll = (state.beat * 0.5) % 1;
+          for (let k = 0; k < 6; k++) {
+            const d = Math.pow((k + scroll) / 6, 2.2);
+            const y = horY + d * (H - horY);
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+          }
+        } else if (world === 'prism') {
+          // CH 02: Rotating Kaleidoscope Mirror Tunnel!
+          const scroll = (state.beat * 0.35) % 1;
+          for (let k = 0; k < 6; k++) {
+            const t = (k + scroll) / 6;
+            const rad = Math.pow(t, 1.7) * Math.max(W, H) * 0.65;
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(state.beat * 0.15 + k * 0.25);
+            ctx.strokeStyle = k % 2 === 0 ? `rgba(0,240,255,${0.18 * (1 - t * 0.5)})` : `rgba(255,31,110,${0.16 * (1 - t * 0.5)})`;
+            ctx.lineWidth = 1.6;
+            ctx.strokeRect(-rad * 0.7, -rad * 0.7, rad * 1.4, rad * 1.4);
+            ctx.restore();
+          }
+        } else if (world === 'foundry') {
+          // CH 03: Towering Industrial Equalizer Columns + Pumping Pistons!
+          const nCols = foundryEq.length, cw = W / nCols;
+          for (let i = 0; i < nCols; i++) {
+            const target = 18 + (55 + 50 * pulse) * (0.4 + 0.6 * Math.abs(Math.sin(state.beat * 1.2 + i * 0.6)));
+            foundryEq[i] += (target - foundryEq[i]) * 0.22;
+            const bh = foundryEq[i];
+            ctx.fillStyle = state.phase2 ? 'rgba(255,31,110,0.13)' : 'rgba(0,240,255,0.10)';
+            ctx.fillRect(i * cw + 4, H - bh, cw - 8, bh);
+            ctx.fillRect(i * cw + 4, 0, cw - 8, bh * 0.45);
+          }
+        } else if (world === 'reactor') {
+          // CH 04: 3D Circular Warp Tunnel Rings!
+          const scroll = (state.beat * 0.6) % 1;
+          for (let k = 0; k < 7; k++) {
+            const t = (k + scroll) / 7;
+            const rad = 24 + Math.pow(t, 2.0) * Math.max(W, H) * 0.62;
+            ctx.strokeStyle = state.phase2 ? `rgba(255,31,110,${0.22 * t})` : `rgba(0,240,255,${0.16 * t})`;
+            ctx.lineWidth = 1 + t * 2.5;
+            ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.stroke();
+          }
+        } else {
+          // CH 05: SILENCE CITADEL — Dark Solar Eclipse + Orbiting Stained-Glass Shards!
+          const ecR = Math.min(W, H) * (0.26 + 0.015 * pulse);
+          const halo = ctx.createRadialGradient(cx, cy, ecR * 0.85, cx, cy, ecR * 1.55);
+          halo.addColorStop(0, state.phase2 ? 'rgba(0,240,255,0.28)' : 'rgba(255,31,110,0.25)');
+          halo.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, ecR * 1.55, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(cx, cy, ecR, 0, Math.PI * 2); ctx.stroke();
+          for (const g of glassShards) {
+            const a = g.ang + state.beat * g.sp * 0.25;
+            const gx = cx + Math.cos(a) * Math.min(W, H) * g.dist * (state.phase2 ? 1.25 : 1);
+            const gy = cy + Math.sin(a) * Math.min(W, H) * g.dist * (state.phase2 ? 1.25 : 1);
+            ctx.save(); ctx.translate(gx, gy); ctx.rotate(a);
+            ctx.fillStyle = state.phase2 ? 'rgba(0,240,255,0.12)' : 'rgba(255,31,110,0.10)';
+            ctx.beginPath(); ctx.moveTo(0, -g.sz); ctx.lineTo(g.sz * 0.6, 0); ctx.lineTo(0, g.sz); ctx.lineTo(-g.sz * 0.6, 0); ctx.closePath(); ctx.fill();
+            ctx.restore();
+          }
+        }
+        ctx.restore();
+      }
+
+      function drawMovingBoss(pulse, bossType) {
+        const b = state.boss;
+        if (!b.active || b.shattered) return;
+        const bx = b.x * W, by = b.y * H;
+        const baseR = Math.min(W, H) * 0.12;
+        const scale = (1 + pulse * (state.phase2 ? 0.15 : 0.09)) * (1 - b.recoil * 0.14);
+        const r = baseR * scale;
+        const rot = state.beat * (state.phase2 ? 0.65 : 0.34);
+        const mainCol = b.hitFlash > 0.35 ? '#ffffff' : '#ff1f6e';
+
+        for (const ag of b.afterimages) {
+          ctx.save(); ctx.globalAlpha = (ag.life / ag.max) * 0.25;
+          ctx.fillStyle = '#ff1f6e'; ctx.beginPath(); ctx.arc(ag.x * W, ag.y * H, r * 0.95, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+        if (bossType === 'pendulum') {
+          ctx.save(); ctx.strokeStyle = 'rgba(255,31,110,0.3)'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(W * 0.5, 0); ctx.lineTo(bx, by); ctx.stroke(); ctx.restore();
+        }
+
+        ctx.save();
+        ctx.globalAlpha = b.hitFlash > 0.35 ? 0.92 : 0.62;
+        ctx.translate(bx, by);
+
+        const clawDist = r * (1.72 + b.clawPunch * 0.42);
+        for (const side of [-1, 1]) {
+          ctx.save(); ctx.translate(side * clawDist, Math.sin(state.beat * 1.5 + side) * 10); ctx.rotate(side * (0.25 - b.clawPunch * 0.35));
+          ctx.fillStyle = mainCol;
+          ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(side * 20, 0); ctx.lineTo(0, 13); ctx.lineTo(-side * 7, 0); ctx.closePath(); ctx.fill();
+          ctx.restore();
+        }
+        ctx.strokeStyle = state.phase2 ? 'rgba(255,31,110,0.5)' : 'rgba(255,31,110,0.28)';
+        ctx.lineWidth = state.phase2 ? 3 : 2;
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.42, 0, Math.PI * 2); ctx.stroke();
+
+        if (bossType === 'crown') {
+          ctx.save(); ctx.rotate(rot); ctx.fillStyle = mainCol;
+          const teeth = 12; ctx.beginPath();
+          for (let i = 0; i < teeth * 2; i++) { const rad = i % 2 === 0 ? r * 1.24 : r * 0.9, ang = (Math.PI * i) / teeth; if (i === 0) ctx.moveTo(Math.cos(ang) * rad, Math.sin(ang) * rad); else ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad); }
+          ctx.closePath(); ctx.fill(); ctx.restore();
+          ctx.fillStyle = mainCol; const cyTop = -r * 1.32 - pulse * 7;
+          ctx.beginPath(); ctx.moveTo(-r * 0.42, cyTop + 13); ctx.lineTo(-r * 0.48, cyTop - 10); ctx.lineTo(-r * 0.16, cyTop + 4); ctx.lineTo(0, cyTop - 17); ctx.lineTo(r * 0.16, cyTop + 4); ctx.lineTo(r * 0.48, cyTop - 10); ctx.lineTo(r * 0.42, cyTop + 13); ctx.closePath(); ctx.fill();
+        } else if (bossType === 'prism') {
+          ctx.save(); ctx.rotate(Math.sin(state.beat * 0.8) * 0.22); ctx.fillStyle = mainCol;
+          ctx.beginPath();
+          for (let i = 0; i < 3; i++) { const ang = -Math.PI / 2 + (Math.PI * 2 * i) / 3; if (i === 0) ctx.moveTo(Math.cos(ang) * r * 1.34, Math.sin(ang) * r * 1.34); else ctx.lineTo(Math.cos(ang) * r * 1.34, Math.sin(ang) * r * 1.34); }
+          ctx.closePath(); ctx.fill(); ctx.restore();
+        } else if (bossType === 'pendulum') {
+          ctx.save(); ctx.rotate(Math.sin(state.beat * 0.5) * 0.15); ctx.fillStyle = mainCol;
+          ctx.beginPath(); ctx.moveTo(0, -r * 1.3); ctx.lineTo(r * 1.25, 0); ctx.lineTo(0, r * 1.3); ctx.lineTo(-r * 1.25, 0); ctx.closePath(); ctx.fill(); ctx.restore();
+        } else if (bossType === 'gear') {
+          for (const dir of [1, -1]) {
+            ctx.save(); ctx.rotate(rot * dir * 1.25); ctx.fillStyle = dir === 1 ? mainCol : 'rgba(255,31,110,0.48)';
+            const radOut = dir === 1 ? r * 1.18 : r * 1.44, teeth = dir === 1 ? 8 : 16; ctx.beginPath();
+            for (let i = 0; i < teeth * 2; i++) { const rad = i % 2 === 0 ? radOut : radOut * 0.82, ang = (Math.PI * i) / teeth; if (i === 0) ctx.moveTo(Math.cos(ang) * rad, Math.sin(ang) * rad); else ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad); }
+            ctx.closePath(); ctx.fill(); ctx.restore();
+          }
+        } else {
+          ctx.save(); ctx.rotate(rot * 0.6); ctx.fillStyle = mainCol; ctx.beginPath();
+          for (let i = 0; i < 6; i++) { const ang = (Math.PI * 2 * i) / 6; if (i === 0) ctx.moveTo(Math.cos(ang) * r * 1.3, Math.sin(ang) * r * 1.3); else ctx.lineTo(Math.cos(ang) * r * 1.3, Math.sin(ang) * r * 1.3); }
+          ctx.closePath(); ctx.fill(); ctx.restore();
+          for (let s = 0; s < 6; s++) {
+            const ang = -rot * 1.1 + (Math.PI * 2 * s) / 6; ctx.save(); ctx.translate(Math.cos(ang) * r * 1.65, Math.sin(ang) * r * 1.65); ctx.rotate(ang);
+            ctx.fillStyle = mainCol; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, -6); ctx.lineTo(-6, 6); ctx.closePath(); ctx.fill(); ctx.restore();
+          }
+        }
+
+        const faceCol = '#060812'; ctx.fillStyle = faceCol;
+        const eyeY = -r * 0.08, eyeX = r * 0.28, eyeS = r * 0.18;
+        if (b.hitFlash > 0.25) {
+          ctx.strokeStyle = faceCol; ctx.lineWidth = Math.max(2.5, r * 0.09); ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(-eyeX - eyeS * 0.6, eyeY - eyeS * 0.5); ctx.lineTo(-eyeX + eyeS * 0.4, eyeY); ctx.lineTo(-eyeX - eyeS * 0.6, eyeY + eyeS * 0.5);
+          ctx.moveTo(eyeX + eyeS * 0.6, eyeY - eyeS * 0.5); ctx.lineTo(eyeX - eyeS * 0.4, eyeY); ctx.lineTo(eyeX + eyeS * 0.6, eyeY + eyeS * 0.5);
+          ctx.stroke();
+        } else {
+          const slant = state.phase2 ? 0.92 : 0.6;
+          ctx.beginPath(); ctx.moveTo(-eyeX - eyeS, eyeY - eyeS * slant); ctx.lineTo(-eyeX + eyeS * 0.8, eyeY); ctx.lineTo(-eyeX - eyeS * 0.5, eyeY + eyeS * 0.7); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(eyeX + eyeS, eyeY - eyeS * slant); ctx.lineTo(eyeX - eyeS * 0.8, eyeY); ctx.lineTo(eyeX + eyeS * 0.5, eyeY + eyeS * 0.7); ctx.closePath(); ctx.fill();
+        }
+        const mH = r * (0.1 + pulse * 0.15 + (state.phase2 ? 0.06 : 0));
+        ctx.beginPath(); ctx.moveTo(-r * 0.34, r * 0.22); ctx.lineTo(-r * 0.14, r * 0.22 + mH); ctx.lineTo(0, r * 0.22 + mH * 0.42); ctx.lineTo(r * 0.14, r * 0.22 + mH); ctx.lineTo(r * 0.34, r * 0.22); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+
+      function draw() {
+        const st = STAGES[state.stageIdx], R = nodeRadius();
+        const pulse = (state.mode === 'playing' && state.beat >= 0) ? Math.pow(1 - (state.beat - Math.floor(state.beat)), 3.6) : 0;
+        const isWarn = state.mode === 'playing' && state.beat >= st.warnBeat && state.beat < st.bossBeat;
+        const cx = W * 0.5, cy = H * 0.5;
+
+        ctx.save();
+        ctx.translate(cx, cy); ctx.scale(state.camZoom, state.camZoom);
+        ctx.translate(-cx + (state.shake > 0 ? (Math.random() - 0.5) * state.shake : 0), -cy + (state.shake > 0 ? (Math.random() - 0.5) * state.shake : 0));
+
+        ctx.fillStyle = isWarn ? '#180612' : '#060812';
+        ctx.fillRect(0, 0, W, H);
+
+        // 1) BESPOKE SIGNATURE WORLD PER CHAPTER!
+        drawSignatureWorld(st.world, cx, cy, pulse, isWarn);
+
+        for (const s of stars) {
+          ctx.fillStyle = state.odActive > 0 ? `rgba(255,212,121,${0.25 + s.z * 0.35})` : `rgba(180,220,255,${0.12 + s.z * 0.25})`;
+          ctx.fillRect(s.x * W, s.y * H, (state.boss.active ? 5 : 13) * s.z, 1.4);
+        }
+
+        for (const h of state.hazards) {
+          const k = h.life / h.max;
+          if (h.type === 'wave_bar') { ctx.fillStyle = `rgba(255, 31, 110, ${0.12 * k})`; ctx.fillRect(h.x, h.y - h.h * 0.5, h.w, h.h); }
+          else if (h.type === 'boss_laser') {
+            ctx.save(); ctx.translate(h.x, h.y); ctx.rotate(h.ang);
+            ctx.fillStyle = k > 0.72 ? `rgba(255,255,255,${k * 0.13})` : `rgba(255,31,110,${k * 0.10})`;
+            const lw = 6 + (1 - k) * 22; ctx.fillRect(-Math.max(W, H), -lw * 0.5, Math.max(W, H) * 2, lw); ctx.restore();
+          }
+        }
+
+        // Overdrive Golden-Cyan Edge Aura
+        if (state.odActive > 0) {
+          ctx.save(); ctx.strokeStyle = `rgba(255,212,121,${0.35 + 0.25 * pulse})`; ctx.lineWidth = 6;
+          ctx.strokeRect(3, 3, W - 6, H - 6); ctx.restore();
+        }
+
+        drawMovingBoss(pulse, st.bossType);
+
+        // Continuous Roaring HOLD RESONANCE BEAM!
+        if (state.activeHoldNode && !state.activeHoldNode.done) {
+          const hn = state.activeHoldNode, hx = hn.x * W, hy = hn.y * H;
+          const tx = state.boss.active ? state.boss.x * W : cx, ty = state.boss.active ? state.boss.y * H : cy * 0.35;
+          ctx.save();
+          ctx.strokeStyle = 'rgba(0,240,255,0.45)'; ctx.lineWidth = 18 + pulse * 8; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+          ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 8 + pulse * 4;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+          ctx.restore();
+        }
+
+        for (const bm of state.beams) {
+          const k = bm.life / bm.max;
+          ctx.save(); ctx.globalAlpha = k;
+          ctx.strokeStyle = bm.col; ctx.lineWidth = bm.w * k; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(bm.x1, bm.y1); ctx.lineTo(bm.x2, bm.y2); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = bm.w * 0.42 * k;
+          ctx.beginPath(); ctx.moveTo(bm.x1, bm.y1); ctx.lineTo(bm.x2, bm.y2); ctx.stroke();
+          ctx.restore();
+        }
+
+        if (state.mode === 'playing') {
+          ctx.save(); ctx.setLineDash([5, 6]);
+          for (let i = 0; i < state.nodes.length - 1; i++) {
+            const a = state.nodes[i], b = state.nodes[i + 1];
+            if (a.done || b.done) continue;
+            const da = a.b - state.beat, db = b.b - state.beat;
+            if (da > st.lead || db > st.lead + 1.0 || (b.b - a.b) > 3.5) continue;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'; ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.moveTo(a.x * W, a.y * H); ctx.lineTo(b.x * W, b.y * H); ctx.stroke();
+          }
+          ctx.restore();
+
+          let nextNodeIdx = -1;
+          for (let j = 0; j < state.nodes.length; j++) { if (!state.nodes[j].done) { nextNodeIdx = j; break; } }
+          const hWin = effHitBeats(st), pWin = effPerfBeats(st);
+
+          for (let i = state.nodes.length - 1; i >= 0; i--) {
+            const n = state.nodes[i];
+            if (n.done) continue;
+            const dt = n.b - state.beat;
+            if (!n.holding && (dt > st.lead || dt < -hWin)) continue;
+            const isPrimary = (i === nextNodeIdx);
+            const p = Math.max(0, Math.min(1.15, 1 - dt / st.lead));
+            const nx = n.x * W, ny = n.y * H;
+            const nearHit = Math.abs(dt) <= pWin || n.holding;
+            const baseAlpha = Math.min(1, p * 3.5);
+            const alpha = isPrimary || n.holding ? baseAlpha : baseAlpha * 0.85;
+
+            const u = Math.max(0, Math.min(1, 1 - dt / st.lead));
+            let rem;
+            if (u < 0.5) { const k = u / 0.5; rem = 0.25 + (1 - Math.pow(1 - k, 2.0)) * 0.75; }
+            else { const k = (u - 0.5) / 0.5; rem = Math.max(0, 1 - Math.pow(k, 1.55)); }
+            const isSnapping = u >= 0.5;
+
+            ctx.save(); ctx.globalAlpha = alpha;
+            if (isPrimary || n.holding) {
+              const focusHalo = ctx.createRadialGradient(nx, ny, R * 0.7, nx, ny, R * 1.9);
+              focusHalo.addColorStop(0, n.hold ? 'rgba(255,212,121,0.38)' : (nearHit ? 'rgba(0,240,255,0.36)' : 'rgba(255,255,255,0.16)'));
+              focusHalo.addColorStop(1, 'rgba(0,240,255,0)');
+              ctx.fillStyle = focusHalo; ctx.beginPath(); ctx.arc(nx, ny, R * 1.9, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // Active HOLD progress ring around node!
+            if (n.hold) {
+              const holdProg = n.holding ? Math.max(0, Math.min(1, (state.beat - n.b) / n.hold)) : 0;
+              ctx.strokeStyle = 'rgba(255,212,121,0.32)'; ctx.lineWidth = 4;
+              ctx.beginPath(); ctx.arc(nx, ny, R + 7, 0, Math.PI * 2); ctx.stroke();
+              if (n.holding) {
+                ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 5;
+                ctx.beginPath(); ctx.arc(nx, ny, R + 7, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * holdProg); ctx.stroke();
+              }
+            }
+
+            if (state.gfxStyle === 'osu') {
+              ctx.fillStyle = nearHit ? '#ffffff' : 'rgba(6, 8, 18, 0.92)';
+              ctx.beginPath(); ctx.arc(nx, ny, R, 0, Math.PI * 2); ctx.fill();
+              ctx.strokeStyle = n.hold ? '#ffd479' : (nearHit ? '#00f0ff' : '#ffffff');
+              ctx.lineWidth = nearHit ? 4.0 : 2.4;
+              ctx.beginPath(); ctx.arc(nx, ny, R, 0, Math.PI * 2); ctx.stroke();
+
+              if (!n.holding) {
+                const appR = R * (1 + rem * 1.75);
+                ctx.save();
+                if (!isSnapping) ctx.setLineDash([7, 5]);
+                ctx.strokeStyle = n.hold ? '#ffd479' : (nearHit ? '#00f0ff' : '#ff1f6e');
+                ctx.lineWidth = isSnapping ? (2.8 + 3.2 * (1 - rem)) : 2.0;
+                ctx.beginPath(); ctx.arc(nx, ny, appR, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+                if (isSnapping) {
+                  ctx.fillStyle = nearHit ? '#00f0ff' : '#ffffff';
+                  for (let t0 = 0; t0 < 4; t0++) {
+                    const ang = t0 * (Math.PI * 0.5);
+                    ctx.save(); ctx.translate(nx + Math.cos(ang) * (appR + 2), ny + Math.sin(ang) * (appR + 2)); ctx.rotate(ang);
+                    ctx.beginPath(); ctx.moveTo(-5.5, 0); ctx.lineTo(3.8, -3.5); ctx.lineTo(3.8, 3.5); ctx.closePath(); ctx.fill(); ctx.restore();
+                  }
+                }
+              }
+            } else {
+              const half = R * 0.92;
+              ctx.fillStyle = nearHit ? '#ffffff' : 'rgba(6, 8, 18, 0.92)';
+              ctx.fillRect(nx - half, ny - half, half * 2, half * 2);
+              ctx.strokeStyle = n.hold ? '#ffd479' : (nearHit ? '#00f0ff' : '#ffffff');
+              ctx.lineWidth = nearHit ? 4.0 : 2.2;
+              ctx.strokeRect(nx - half, ny - half, half * 2, half * 2);
+              if (!n.holding) {
+                const off = rem * R * 1.48, arm = half * 0.68;
+                ctx.strokeStyle = n.hold ? '#ffd479' : (nearHit ? '#00f0ff' : '#ff1f6e');
+                ctx.lineWidth = isSnapping ? 4.4 : 2.4; ctx.lineCap = 'square';
+                for (const [sx, sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]) {
+                  const cx0 = nx + sx * (half + off), cy0 = ny + sy * (half + off);
+                  ctx.beginPath(); ctx.moveTo(cx0 - sx * arm, cy0); ctx.lineTo(cx0, cy0); ctx.lineTo(cx0, cy0 - sy * arm); ctx.stroke();
+                }
+              }
+            }
+            ctx.fillStyle = nearHit ? '#060812' : '#ffffff';
+            ctx.font = `900 ${Math.max(10, R * (n.hold ? 0.44 : 0.62))}px ui-monospace, Inter, sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(n.hold ? 'HOLD' : String(n.idx), nx, ny);
+            ctx.restore();
+          }
+        }
+
+        for (const r of state.ripples) { ctx.globalAlpha = Math.max(0, r.alpha); ctx.strokeStyle = r.col; ctx.lineWidth = r.w; if (r.square) ctx.strokeRect(r.x - r.r, r.y - r.r, r.r * 2, r.r * 2); else { ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke(); } }
+        for (const p of state.sparks) { ctx.save(); ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.col; const s = p.sz; if (p.tri) { ctx.beginPath(); ctx.moveTo(0, -s); ctx.lineTo(s, s); ctx.lineTo(-s, s); ctx.closePath(); ctx.fill(); } else ctx.fillRect(-s * 0.7, -s * 0.7, s * 1.4, s * 1.4); ctx.restore(); }
+        for (const p of state.popups) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.col; ctx.font = '900 15px ui-monospace, Inter, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(p.text, p.x, p.y); }
+        ctx.globalAlpha = 1;
+
+        if (state.chromaFlash > 0.02) {
+          ctx.save(); ctx.fillStyle = `rgba(255,255,255,${state.chromaFlash * 0.25})`; ctx.fillRect(0, 0, W, H); ctx.restore();
+        }
+        if (isWarn) {
+          const flash = 0.55 + 0.45 * Math.sin(state.beat * Math.PI * 4);
+          ctx.save(); ctx.fillStyle = `rgba(255, 31, 110, ${0.22 * flash})`; ctx.fillRect(0, cy - 42, W, 84);
+          ctx.fillStyle = '#ff1f6e'; ctx.fillRect(0, cy - 44, W, 4); ctx.fillRect(0, cy + 40, W, 4);
+          ctx.fillStyle = '#ffffff'; ctx.font = `900 ${Math.max(22, Math.min(W * 0.052, 34))}px ui-monospace, Inter, sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`⚠ WARNING // ${st.bossName}`, cx, cy - 8);
+          ctx.fillStyle = '#00f0ff'; ctx.font = '800 13px ui-monospace, monospace'; ctx.fillText('BOSS APPROACHING — PREPARE COUNTER RESONANCE', cx, cy + 20);
+          ctx.restore();
+        }
+        if (state.phaseBanner > 0.01) {
+          ctx.save(); ctx.globalAlpha = Math.min(1, state.phaseBanner * 1.4);
+          ctx.fillStyle = 'rgba(255, 31, 110, 0.28)'; ctx.fillRect(0, cy - 26, W, 52);
+          ctx.fillStyle = '#ffffff'; ctx.font = '900 22px ui-monospace, Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('ARMOR BREAK // PHASE 2 OVERDRIVE', cx, cy); ctx.restore();
+        }
+        if (state.damageFlash > 0.01) {
+          ctx.save(); ctx.globalAlpha = state.damageFlash * 0.72; ctx.strokeStyle = '#ff1f6e'; ctx.lineWidth = 12 * state.damageFlash; ctx.strokeRect(0, 0, W, H); ctx.restore();
+        }
+        if (state.mode === 'playing' || state.mode === 'victory_anim') {
+          const mW = 160, mX = cx - mW * 0.5, mY = H - 36;
+          ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(mX, mY, mW, 3);
+          ctx.fillStyle = '#00f0ff'; ctx.fillRect(cx - 1, mY - 4, 2, 11);
+          for (const tk of state.timingTicks) { ctx.globalAlpha = tk.life / tk.max; ctx.fillStyle = tk.col; ctx.fillRect(cx + tk.norm * (mW * 0.48) - 1.5, mY - 3, 3, 9); }
+          ctx.globalAlpha = 1;
+          const barW = Math.min(W * 0.56, 420), barX = cx - barW * 0.5, barY = H - 16;
+          if (state.boss.active) {
+            const hpRatio = state.boss.shattered ? 0 : Math.max(0, state.boss.hp / state.boss.maxHp);
+            ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(barX, barY, barW, 6);
+            ctx.fillStyle = state.boss.hitFlash > 0.3 ? '#ffffff' : '#ff1f6e'; ctx.fillRect(barX, barY, barW * hpRatio, 6);
+            ctx.fillStyle = 'rgba(255,255,255,0.72)'; ctx.font = '800 10px ui-monospace, monospace'; ctx.textAlign = 'center';
+            ctx.fillText(`BOSS // ${st.bossName}  ${Math.round(hpRatio * 100)}%`, cx, barY - 6);
+          } else {
+            ctx.fillStyle = 'rgba(0,240,255,0.68)'; ctx.font = '800 10px ui-monospace, monospace'; ctx.textAlign = 'center';
+            ctx.fillText(`${st.ch} · ${st.title} — APPROACHING BOSS`, cx, barY);
+          }
+        }
+        if (state.mode === 'playing' && state.beat < 4) {
+          const num = Math.max(1, 4 - Math.floor(Math.max(0, state.beat)));
+          const frac = state.beat - Math.floor(state.beat);
+          ctx.strokeStyle = `rgba(0, 240, 255, ${1 - frac})`; ctx.lineWidth = 3.5;
+          const s = 44 + frac * 52; ctx.strokeRect(cx - s, cy - s, s * 2, s * 2);
+          ctx.fillStyle = '#ffffff'; ctx.font = `900 ${Math.max(46, Math.min(W, H) * 0.14)}px ui-monospace, Inter, sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(num), cx, cy); ctx.textBaseline = 'alphabetic';
+        }
+        ctx.restore();
+      }
+
+      function loop() { step(); draw(); rafId = requestAnimationFrame(loop); }
+
+      stageWrap.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('#overlay') || e.target.closest('#burstBtn')) return;
+        e.preventDefault(); ensureAudio(); handleTapAt(e.clientX, e.clientY, false);
+      }, { passive: false });
+      window.addEventListener('pointerup', releaseHold);
+      window.addEventListener('pointercancel', releaseHold);
+
+      window.addEventListener('keydown', (e) => {
+        if (e.repeat) return;
+        if (state.mode !== 'playing') { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); startStage(state.stageIdx); } return; }
+        if (['Space', 'KeyF', 'KeyJ', 'KeyK', 'KeyD'].includes(e.code)) { e.preventDefault(); handleTapAt(0, 0, true); }
+        if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') { e.preventDefault(); triggerOverdriveBurst(); }
+        if (e.code === 'Escape') showMenu();
+      });
+      window.addEventListener('keyup', (e) => { if (['Space', 'KeyF', 'KeyJ', 'KeyK', 'KeyD'].includes(e.code)) releaseHold(); });
+
+      burstBtn.addEventListener('click', (e) => { e.stopPropagation(); triggerOverdriveBurst(); });
+      function setDifficulty(d) { state.difficulty = d; diffBtn.textContent = `모드: ${DIFFS[d].label}`; diffBtn.classList.toggle('on', d === 'casual'); }
+      diffBtn.addEventListener('click', () => { setDifficulty(state.difficulty === 'casual' ? 'arcade' : 'casual'); if (state.mode === 'menu') showMenu(); else if (state.mode === 'playing') startStage(state.stageIdx); });
+      menuBtn.addEventListener('click', showMenu);
+      resetBtn.addEventListener('click', () => startStage(state.stageIdx));
+      styleBtn.addEventListener('click', () => { state.gfxStyle = state.gfxStyle === 'osu' ? 'shutter' : 'osu'; styleBtn.textContent = state.gfxStyle === 'osu' ? '그래픽: osu! 수축링' : '그래픽: jubeat 셔터'; });
+      syncBtn.addEventListener('click', () => { syncIdx = (syncIdx + 1) % SYNC_STEPS.length; const v = syncMs(); syncBtn.textContent = `싱크 ${v > 0 ? '+' : ''}${v}ms`; });
+      autoBtn.addEventListener('click', () => { state.autoPlay = !state.autoPlay; autoBtn.classList.toggle('on', state.autoPlay); autoBtn.textContent = state.autoPlay ? '오토 켜짐' : '오토 보기'; if (state.autoPlay && state.mode !== 'playing') startStage(state.stageIdx); });
+      muteBtn.addEventListener('click', () => { muted = !muted; muteBtn.textContent = muted ? '소리 꺼짐' : '소리 켜짐'; muteBtn.classList.toggle('on', muted); });
+      window.addEventListener('resize', resize);
+      window.addEventListener('load', () => { resize(); updateHud(); showMenu(); if (rafId) cancelAnimationFrame(rafId); rafId = requestAnimationFrame(loop); });
+    })();
+  </script>
+</body>
+</html>
